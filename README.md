@@ -8,12 +8,12 @@ To get started with the Sehaj Path App, follow these steps:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/sehaj-path-app.git
+   git clone https://github.com/your-username/my-sehaj-path-app.git
    ```
 
 2. Install dependencies:
    ```
-   cd sehaj-path-app
+   cd my-sehaj-path-app
    npm install
 
    ```
