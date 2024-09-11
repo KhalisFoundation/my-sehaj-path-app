@@ -6,6 +6,7 @@ export default function AppTro() {
 
   return (
     <View style={styles.container}>
+      
       <ImageBackground
         source={require('../assets/image1.png')}
         style={styles.backgroundImage}
