@@ -1,36 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import Svg, { Circle, LinearGradient, Stop, Defs } from 'react-native-svg';
-import {typography, applyTypography } from '../styles/typography';
+import React from 'react';
+import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import Svg, { Circle, Path, LinearGradient, Stop, Defs } from 'react-native-svg';
 
 const ProgressCard = ({ sehajNumber, angNumber, progress }) => {
-  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => {
-      setDimensions(window);
-    });
-
-    return () => subscription?.remove();
-  }, []);
-
-  const { width } = dimensions;
-  const cardWidth = width * 0.6;
-  const cardHeight = cardWidth * 1.2;
-  const size = cardWidth * 0.5;
-  const strokeWidth = size * 0.13;
-  const center = size / 2;
-  const radius = size / 2 - strokeWidth / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-
-  const dynamicStyles = StyleSheet.create({
+  const styles = StyleSheet.create({
     container: {
-      width: cardWidth,
-      height: cardHeight,
+      width: screenWidth < 768 ? 199 : 239,
+      height: screenWidth < 768 ? 220 : 264,
       backgroundColor: 'white',
-      borderRadius: cardWidth * 0.07,
-      padding: cardWidth * 0.07,
+      borderRadius: 14,
+      padding: screenWidth < 768 ? 20 : 24,
       justifyContent: 'space-between',
       alignItems: 'center',
       shadowColor: '#000',
@@ -41,70 +22,95 @@ const ProgressCard = ({ sehajNumber, angNumber, progress }) => {
     },
     textContainer: {
       alignItems: 'center',
-      marginBottom: cardHeight * 0.10,
+      marginBottom: screenWidth < 768 ? 2 : 4,
     },
-    sehajText: applyTypography({
-      fontSize: cardWidth * 0.12,
-      fontWeight: '800',
-      lineHeight: cardWidth * 0.17,
+    sehajText: {
+      fontFamily: 'BrandonGrotesque-Bold',
+      fontSize: screenWidth < 768 ? 18 : 22,
+      lineHeight: screenWidth < 768 ? 26 : 31,
       textAlign: 'center',
       color: '#11336A',
-    }),
-    angText: applyTypography({
-      fontSize: cardWidth * 0.09,
-      fontWeight: '690',
-      lineHeight: cardWidth * 0.13,
+    },
+    angText: {
+      fontFamily: 'BrandonGrotesque-Regular',
+      fontSize: screenWidth < 768 ? 14 : 17,
+      lineHeight: screenWidth < 768 ? 20 : 24,
       textAlign: 'center',
       color: '#666666',
-    }),
-    angNumber: applyTypography({
-      fontWeight: '720',
+    },
+    angNumber: {
+      fontFamily: 'BrandonGrotesque-Bold',
       color: '#11336A',
-    }),
+    },
     progressContainer: {
-      width: cardWidth * 0.6,
-      height: cardWidth * 0.6,
+      width: screenWidth < 768 ? 60 : 72,
+      height: screenWidth < 768 ? 60 : 72,
       justifyContent: 'center',
       alignItems: 'center',
-      marginBottom: cardHeight * 0.05,
+      marginTop: 'auto',
+      marginBottom: 'auto',
     },
   });
 
+  const size = screenWidth < 768 ? 60 : 72;
+  const strokeWidth = screenWidth < 768 ? 12 : 14;
+  const center = size / 2;
+  const radius = (size - strokeWidth) / 2;
+
+  const calculateArcPath = (x, y, radius, startAngle, endAngle) => {
+    const start = polarToCartesian(x, y, radius, endAngle);
+    const end = polarToCartesian(x, y, radius, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+    return [
+      "M", start.x, start.y, 
+      "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+    ].join(" ");
+  };
+
+  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
+    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+    return {
+      x: centerX + (radius * Math.cos(angleInRadians)),
+      y: centerY + (radius * Math.sin(angleInRadians))
+    };
+  };
+
+  const progressAngle = 360 * (progress / 100);
+
   return (
-    <View style={dynamicStyles.container}>
-      <View style={dynamicStyles.textContainer}>
-        <Text style={dynamicStyles.sehajText}>Sehaj #{sehajNumber}</Text>
-        <Text style={dynamicStyles.angText}>
-          Ang <Text style={dynamicStyles.angNumber}>{angNumber}</Text>
+    <View style={styles.container}>
+      <View style={styles.textContainer}>
+        <Text style={styles.sehajText}>Sehaj #{sehajNumber}</Text>
+        <Text style={styles.angText}>
+          Ang <Text style={styles.angNumber}>{angNumber}</Text>
         </Text>
       </View>
-      <View style={dynamicStyles.progressContainer}>
-      <Svg width={size} height={size}>
+      <View style={styles.progressContainer}>
+        <Svg width={size} height={size}>
           <Defs>
-            <LinearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor="#2459AD" stopOpacity="1" />
-              <Stop offset="1" stopColor="#0D2346" stopOpacity="1" />
+            <LinearGradient id="filledGrad" x1="16.15%" y1="85.35%" x2="85.35%" y2="16.15%">
+              <Stop offset="0%" stopColor="#2459AD" />
+              <Stop offset="100%" stopColor="#0D2346" />
+            </LinearGradient>
+            <LinearGradient id="unfilledGrad" x1="16.15%" y1="85.35%" x2="85.35%" y2="16.15%">
+              <Stop offset="0%" stopColor="rgba(36, 89, 173, 0.1)" />
+              <Stop offset="100%" stopColor="rgba(13, 35, 70, 0.1)" />
             </LinearGradient>
           </Defs>
           <Circle
-            stroke="#E0E0E0"
-            fill="none"
             cx={center}
             cy={center}
             r={radius}
+            fill="none"
+            stroke="url(#unfilledGrad)"
             strokeWidth={strokeWidth}
           />
-          <Circle
-            stroke="url(#grad)"
+          <Path
+            d={calculateArcPath(center, center, radius, -90, progressAngle - 90)}
             fill="none"
-            cx={center}
-            cy={center}
-            r={radius}
+            stroke="url(#filledGrad)"
             strokeWidth={strokeWidth}
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
-            transform={`rotate(-90 ${center} ${center})`}
           />
         </Svg>
       </View>
