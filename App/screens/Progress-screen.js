@@ -1,20 +1,36 @@
-import React from 'react';
+import React,{useState,useEffect} from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Image } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Font from 'expo-font';
+ 
+
 
 const SehajPathScreen = () => {
-  
+  const [isFontLoaded, setIsFontLoaded] = useState(false);
+
+  useEffect(() => {
+    async function loadFont() {
+      await Font.loadAsync({
+        'BalooPaaji2-Bold': require('../assets/fonts/BalooPaaji2-Bold.ttf'),
+        'BalooPaaji2-Regular': require('../assets/fonts/BalooPaaji2-Regular.ttf'),
+        'brandon-grotesque-regular-italic-58a8a456c4724':require('../assets/fonts/brandon-grotesque-regular-italic-58a8a456c4724.otf'), 
+       });
+      setIsFontLoaded(true);
+    }
+
+    loadFont();
+  }, []);
   const currentAng = 745;
   const completionPercentage = 54;
   const daysElapsed = 42;
   const averageAngPerDay = 4;
   const estimatedCompletionDate = '24th Jan, 2025';
-  const streaks = ['complete', 'complete', 'half', 'complete', 'complete', 'complete', 'incomplete'];
+  const streaks = ['complete', 'complete', 'half', 'complete', 'complete', 'complete', 'incomplete','complete', 'complete', 'half', 'complete', 'complete', 'complete', 'incomplete','complete', 'complete', 'half', 'complete', 'complete', 'complete', 'incomplete','complete', 'complete', 'half', 'complete', 'complete', 'complete', 'incomplete','complete', 'complete', 'half', 'complete', 'complete', 'complete', 'incomplete','complete', 'complete', 'half', 'complete', 'complete', 'complete', 'incomplete'];
 
   return (
     <View style={styles.container}> 
       <ImageBackground
-        source={require('./images/image2.png')}
+        source={require('../assets/image2.png')}
         style={styles.backgroundImage}
       >
        <View style={styles.contentContainer}> 
@@ -22,30 +38,31 @@ const SehajPathScreen = () => {
       <View style={styles.header}>
       <TouchableOpacity style={styles.backLinkContainer}>
           <Image 
-            source={require('./images/Arrow1.png')}
+            source={require('../assets/Arrow1.png')}
             style={styles.backArrowIcon} 
           />
           <Text style={styles.backLink}>See all paths</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Main Section */}
-      <Text style={styles.title}>Sehaj #14</Text>
-      <Text style={styles.subText}>ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ ॥ ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ ॥ 🙏</Text>
-
-      {/* Progress Info */}
-      <Text style={styles.progressText}>
+      
+      <Text style={[styles.title, isFontLoaded && { fontFamily: 'brandon-grotesque-regular-italic-58a8a456c4724' }]}>Sehaj #14</Text>
+      <Text style={[styles.subText, isFontLoaded && { fontFamily: 'BalooPaaji2-Bold' }]}>
+        ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ ॥ ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ ॥ 🙏
+      </Text>
+     
+      <Text style={[styles.progressText,isFontLoaded && { fontFamily: 'BalooPaaji2-Regular' }]}>
         You are on ang number <Text style={styles.highlightBox}>{currentAng}</Text> and have completed{' '}
         <Text style={styles.highlightBox}>{completionPercentage}%</Text> of your Sri Sehaj Path.🎉
       </Text>
-      <Text style={styles.detailsText}>
+      <Text style={[styles.detailsText,isFontLoaded && { fontFamily: 'BalooPaaji2-Regular' }]}>
         You started this path <Text style={styles.highlight}>{daysElapsed} days ago.</Text>
         {'\n'}You average about <Text style={styles.highlight}>{averageAngPerDay} angs a day.{' '}</Text>
         With your current speed, you will complete this Sehaj Path on{' '}
         <Text style={styles.highlight}>{estimatedCompletionDate}.</Text> 🎯
       </Text>
 
-      {/* Streak Chart */}
+      
       <Text style={styles.streakLabel}>Here’s your streak chart so far: ⚡</Text>
       <View style={styles.streakChart}>
         {streaks.map((streak, index) => (
@@ -55,26 +72,18 @@ const SehajPathScreen = () => {
           />
         ))}
       </View>
-
-      {/* Continue Button */}
-      <View style={{ flex: 1 }}> 
-      <LinearGradient
-        colors={['#274682', '#0C2340']} 
-        start={{ x: 0, y: 0 }} 
-        end={{ x: 1, y: 1 }} 
-        style={styles.linearGradient}
-      >
-        <TouchableOpacity style={styles.continueButton}>
-          <View style={styles.buttonContent}>
-            <Image
-              source={require('./images/play.png')} 
-              style={styles.playIcon}
-            />
-            <Text style={styles.continueButtonText}>Continue</Text>
-          </View>
-        </TouchableOpacity>
-      </LinearGradient>
-      </View>
+      <TouchableOpacity style={styles.continueButton}>
+        <LinearGradient
+          colors={['#00164d', '#0047ab']}
+          style={styles.buttonContent}
+        >
+          <Image 
+            source={require('../assets/play.png')} // Replace this with the appropriate play icon
+            style={styles.playIcon} 
+          />
+          <Text style={styles.continueButtonText}>Continue</Text>
+        </LinearGradient>
+      </TouchableOpacity>
       </View>
     </ImageBackground>
     </View>
@@ -85,12 +94,39 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  buttonContent: {
+    flexDirection: 'row', 
+    paddingVertical: 10,
+  },
+  playIcon: {
+    width: 20, 
+    height: 20, 
+    marginRight: 8, 
+  },
+  continueButtonText: {
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
   linearGradient: {
-    paddingVertical: 12,
-    borderRadius: 10, 
-    width: 150, 
-    alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
+    paddingLeft: 15,
+    paddingRight: 15,
+    borderRadius: 5
+  },
+  buttonText: {
+    fontSize: 18,
+    
+    textAlign: 'center',
+    margin: 10,
+    color: '#ffffff',
+    backgroundColor: 'transparent',
+  },
+  continueButton:{
+    width:'95%',
+    height:210,
+    paddingHorizontal:10,
+    borderRadius:35,
   },
   backgroundImage: {
     flex: 1,
@@ -98,6 +134,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     
+  },
+  headercontainer:{
+    width:'100%',
+    marginTop:30,
+    display:'flex',
+    
+    alignItems:'center',
   },
   contentContainer: {
     flex: 1,
@@ -127,19 +170,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 20,
     color: '#00376b',
-    fontFamily:'HvDTrial_Brandon_Grotesque_regular-BF64a625c9311e1'
+    fontFamily:''
   },
   subText: {
     fontSize: 18,
     color: '#11336A',
     marginBottom: 20,
-    fontFamily:'BalooPaaji2-Bold'
+ 
+   
   },
   progressText: {
     fontSize: 24,
     marginBottom: 10,
     lineHeight: 42,
-    fontFamily:'BalooPaaji2-Regular'
+    // fontFamily:'BalooPaaji2-Regular',
+    color:'#999999'
+    
   },
   highlight: {
     fontWeight: 'bold',
@@ -157,10 +203,11 @@ const styles = StyleSheet.create({
   },
   detailsText: {
     fontSize: 18,
-    color: '#666',
+    color: '#999999',
     marginBottom: 20,
     lineHeight: 28,
-    fontFamily:'BalooPaaji2-Regular'
+    // fontFamily:'BalooPaaji2-Medium',
+    
   },
   streakLabel: {
     fontSize: 16,
@@ -179,14 +226,18 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   continueButton: {
-    paddingVertical: 8,
-    borderRadius: 6,
-    alignItems: 'center',
+    paddingVertical:  8,
+    borderRadius: 16,
+    alignItems:'flex-start',
     width: '100%', 
+    
   },
   buttonContent: {
     flexDirection: 'row', 
-    alignItems: 'center', 
+    alignItems: 'center',
+    paddingVertical:  15,
+    paddingHorizontal:16,
+    borderRadius:5 
   },
   playIcon: {
     width: 30, 
@@ -197,7 +248,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#fff',
     fontWeight: 'bold',
-    fontFamily:'BalooPaaji2-Regular'
+ 
   },
 });
 
