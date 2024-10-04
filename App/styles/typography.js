@@ -1,14 +1,22 @@
 import { StyleSheet } from 'react-native';
 
 export const typography = StyleSheet.create({
-  default: {
-    fontFamily: 'WorkSans_400Regular',
+  regular: {
+    fontFamily: 'BrandonGrotesque-Regular',
   },
   bold: {
-    fontFamily: 'WorkSans_700Bold',
+    fontFamily: 'BrandonGrotesque-Bold',
+  },
+  light: {
+    fontFamily: 'BrandonGrotesque-Light',
+  },
+  medium: {
+    fontFamily: 'BrandonGrotesque-Medium',
+  },
+  black: {
+    fontFamily: 'BrandonGrotesque-Black',
   },
 });
 
-export const applyTypography = (style) => {
-  return [typography.default, style];
-};
+
+

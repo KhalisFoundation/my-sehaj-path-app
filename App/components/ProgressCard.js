@@ -52,7 +52,7 @@ const ProgressCard = ({ sehajNumber, angNumber, progress }) => {
     },
   });
 
-  const size = screenWidth < 768 ? 60 : 72;
+  const size = screenWidth < 768 ? 53 : 72;
   const strokeWidth = screenWidth < 768 ? 12 : 14;
   const center = size / 2;
   const radius = (size - strokeWidth) / 2;

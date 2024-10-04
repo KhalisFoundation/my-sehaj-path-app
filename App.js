@@ -1,13 +1,16 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { useFonts, WorkSans_400Regular, WorkSans_700Bold } from '@expo-google-fonts/work-sans';
+import { View, StyleSheet, ImageBackground, Dimensions } from 'react-native';
+import { useFonts } from 'expo-font';
 import ProgressCard from './App/components/ProgressCard';
-import { typography } from './App/styles/typography';
+
 
 export default function App() {
   let [fontsLoaded] = useFonts({
-    WorkSans_400Regular,
-    WorkSans_700Bold,
+    'BrandonGrotesque-Regular': require('./App/assets/fonts/brandon-grotesque-regular.otf'),
+    'BrandonGrotesque-Bold': require('./App/assets/fonts/brandon-grotesque-bold.otf'),
+    'BrandonGrotesque-Light': require('./App/assets/fonts/brandon-grotesque-light.otf'),
+    'BrandonGrotesque-Medium': require('./App/assets/fonts/brandon-grotesque-medium.otf'),
+    'BrandonGrotesque-Black': require('./App/assets/fonts/brandon-grotesque-black.otf'),
   });
 
   if (!fontsLoaded) {
@@ -15,17 +18,30 @@ export default function App() {
   }
 
   return (
-    <View style={styles.container}>
-      <ProgressCard sehajNumber={14} angNumber={745} progress={30} />
-    </View>
+      <View style={styles.borderContainer}>
+        <View style={styles.container}>
+          <ProgressCard sehajNumber={14} angNumber={745} progress={50} />
+        </View>
+      </View>
   );
 }
 
 const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+  },
+  borderContainer: {
+    flex: 1,
+    borderWidth: 4,
+    borderColor: '#FDC6064D',
+    borderRadius: 10, 
+  },
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: 'rgba(250, 250, 250, 0.3)', 
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
