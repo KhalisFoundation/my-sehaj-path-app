@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ImageBackground, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useFonts } from 'expo-font';
 import ProgressCard from './App/components/ProgressCard';
 
@@ -40,7 +40,6 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: 'rgba(250, 250, 250, 0.3)', 
     justifyContent: 'center',
     alignItems: 'center',
   },
