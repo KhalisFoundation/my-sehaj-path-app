@@ -19,9 +19,6 @@ export default function App() {
 
   return (
       <View style={styles.borderContainer}>
-        <View style={styles.container}>
-          <ProgressCard sehajNumber={14} angNumber={745} progress={50} />
-        </View>
       </View>
   );
 }
@@ -37,10 +34,5 @@ const styles = StyleSheet.create({
     borderWidth: 4,
     borderColor: '#FDC6064D',
     borderRadius: 10, 
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
