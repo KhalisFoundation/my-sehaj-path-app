@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Circle, Path, LinearGradient, Stop, Defs } from 'react-native-svg';
 
-const ProgressCard = ({ sehajNumber, angNumber, progress }) => {
+const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
 
   const styles = StyleSheet.create({
@@ -80,7 +80,7 @@ const ProgressCard = ({ sehajNumber, angNumber, progress }) => {
   return (
     <View style={styles.container}>
       <View style={styles.textContainer}>
-        <Text style={styles.sehajText}>Sehaj #{sehajNumber}</Text>
+        <Text style={styles.sehajText}>Sehaj #{sheajPathNumber}</Text>
         <Text style={styles.angText}>
           Ang <Text style={styles.angNumber}>{angNumber}</Text>
         </Text>
