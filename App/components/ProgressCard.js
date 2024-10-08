@@ -58,8 +58,8 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
   const radius = (size - strokeWidth) / 2;
 
   const calculateArcPath = (x, y, radius, startAngle, endAngle) => {
-    const start = polarToCartesian(x, y, radius, startAngle);
-    const end = polarToCartesian(x, y, radius, endAngle);
+    const start = polarToCartesian(x, y, radius, endAngle);
+    const end = polarToCartesian(x, y, radius, startAngle);
     const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
     return [
       "M", start.x, start.y, 
@@ -77,7 +77,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
 
   const progressAngle = 360 * (progress / 100);
   const startAngle = 0; 
-  const endAngle = startAngle - progressAngle; 
+  const endAngle = progressAngle; 
 
   return (
     <View style={styles.container}>
