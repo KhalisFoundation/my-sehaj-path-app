@@ -1,7 +1,6 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useFonts } from 'expo-font';
-import ProgressCard from './App/components/ProgressCard';
 
 
 export default function App() {
@@ -18,21 +17,7 @@ export default function App() {
   }
 
   return (
-      <View style={styles.borderContainer}>
+      <View >
       </View>
   );
 }
-
-const styles = StyleSheet.create({
-  background: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  borderContainer: {
-    flex: 1,
-    borderWidth: 4,
-    borderColor: '#FDC6064D',
-    borderRadius: 10, 
-  },
-});
