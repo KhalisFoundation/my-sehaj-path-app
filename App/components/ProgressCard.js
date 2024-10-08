@@ -58,8 +58,8 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
   const radius = (size - strokeWidth) / 2;
 
   const calculateArcPath = (x, y, radius, startAngle, endAngle) => {
-    const start = polarToCartesian(x, y, radius, endAngle);
-    const end = polarToCartesian(x, y, radius, startAngle);
+    const start = polarToCartesian(x, y, radius, startAngle);
+    const end = polarToCartesian(x, y, radius, endAngle);
     const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
     return [
       "M", start.x, start.y, 
@@ -68,7 +68,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
   };
 
   const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+    const angleInRadians = ((angleInDegrees - 90) % 360) * Math.PI / 180.0;
     return {
       x: centerX + (radius * Math.cos(angleInRadians)),
       y: centerY + (radius * Math.sin(angleInRadians))
@@ -76,6 +76,8 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
   };
 
   const progressAngle = 360 * (progress / 100);
+  const startAngle = 0; 
+  const endAngle = startAngle - progressAngle; 
 
   return (
     <View style={styles.container}>
@@ -106,7 +108,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
             strokeWidth={strokeWidth}
           />
           <Path
-            d={calculateArcPath(center, center, radius, -90, progressAngle - 90)}
+            d={calculateArcPath(center, center, radius, startAngle, endAngle)}
             fill="none"
             stroke="url(#filledGrad)"
             strokeWidth={strokeWidth}
