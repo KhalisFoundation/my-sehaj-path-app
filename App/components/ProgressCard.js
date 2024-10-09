@@ -15,10 +15,10 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       justifyContent: 'space-between',
       alignItems: 'center',
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
+      shadowOffset: { width: 15, height: 15 },
       shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      shadowRadius: 45,
+      elevation: 15,
     },
     textContainer: {
       alignItems: 'center',
@@ -48,7 +48,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 'auto',
-      marginBottom: 'auto',
+      marginBottom: 'auto'
     },
   });
 
