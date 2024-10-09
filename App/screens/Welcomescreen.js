@@ -1,10 +1,10 @@
 import React,{useState,useEffect} from 'react';
 import { StyleSheet, View, ImageBackground, Text, Button } from 'react-native';
 import * as Font from 'expo-font';
-import {StackScreenProps} from "@react-navigation/stack"
-import {RootStackParamList} from "../../App"
-type homeprops=StackScreenProps<RootStackParamList,'Welcomescreen'>
-export default function AppTro({navigation}:homeprops) {
+// import {StackScreenProps} from "@react-navigation/stack"
+// import {RootStackParamList} from "../../App"
+// type homeprops=StackScreenProps<RootStackParamList,'Welcomescreen'>
+export default function AppTro() {
   const [isFontLoaded, setIsFontLoaded] = useState(false);
 
   useEffect(() => {
@@ -30,16 +30,7 @@ export default function AppTro({navigation}:homeprops) {
           <Text style={[styles.welcometitle , isFontLoaded && { fontFamily: 'BalooPaaji2-Bold' }]}>ਸਹਿਜ ਪਾਠ</Text>
           <Text style={[styles.welcometext,isFontLoaded && { fontFamily: 'BalooPaaji2-Medium'}]}>Building the habit</Text>
           <Text style={styles.welcometext}>of reading Gurbani</Text>
-          <Button title='go to details'
-          // onPress={()=>navigation.navigate('Progressscreen',{
-          //   productId:"86"                                             
-          // })}
-          // onPress={()=>navigation.navigate('Progressscreen')}
-          onPress={()=>navigation.push('Progressscreen',{
-            productId:"86"                                             
-          })}
-           />
-
+         
         </View>
       </ImageBackground>
     </View>
