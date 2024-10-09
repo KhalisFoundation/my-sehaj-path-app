@@ -1,8 +1,10 @@
 import React,{useState,useEffect} from 'react';
-import { StyleSheet, View, ImageBackground, Text } from 'react-native';
+import { StyleSheet, View, ImageBackground, Text, Button } from 'react-native';
 import * as Font from 'expo-font';
-
-export default function AppTro() {
+import {StackScreenProps} from "@react-navigation/stack"
+import {RootStackParamList} from "../../App"
+type homeprops=StackScreenProps<RootStackParamList,'Welcomescreen'>
+export default function AppTro({navigation}:homeprops) {
   const [isFontLoaded, setIsFontLoaded] = useState(false);
 
   useEffect(() => {
@@ -28,6 +30,15 @@ export default function AppTro() {
           <Text style={[styles.welcometitle , isFontLoaded && { fontFamily: 'BalooPaaji2-Bold' }]}>ਸਹਿਜ ਪਾਠ</Text>
           <Text style={[styles.welcometext,isFontLoaded && { fontFamily: 'BalooPaaji2-Medium'}]}>Building the habit</Text>
           <Text style={styles.welcometext}>of reading Gurbani</Text>
+          <Button title='go to details'
+          // onPress={()=>navigation.navigate('Progressscreen',{
+          //   productId:"86"                                             
+          // })}
+          // onPress={()=>navigation.navigate('Progressscreen')}
+          onPress={()=>navigation.push('Progressscreen',{
+            productId:"86"                                             
+          })}
+           />
 
         </View>
       </ImageBackground>
@@ -39,7 +50,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
-    height: '100%',
+    
   
   },
   backgroundImage: {
@@ -47,32 +58,22 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
     width: '100%',
     height: '100%', 
-    alignItems: 'center',
-    justifyContent: 'center',
+  
    
   },
   blueRectangle: {
  flex:1,
  width:'100%',
-    top: 0,
-    left: 0,
-    bottom: 0,
-    right: 0,
+    
     backgroundColor: '#0D2346',
     opacity: 0.93,
 
   },
   welcometitle: {
-
     fontSize: 50,
     color: 'white',
     textAlign: 'center',
     marginTop:250,
-    
- 
-
-
-
   },
   welcometext: {
     
