@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Path, LinearGradient, Stop, Defs } from 'react-native-svg';
+import Svg, { Circle, Path, LinearGradient, Stop, Defs, Filter, FeGaussianBlur, FeOffset, FeComposite, FeFlood, FeMerge, FeMergeNode } from 'react-native-svg';
 
 const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
@@ -48,7 +48,13 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 'auto',
-      marginBottom: 'auto'
+      marginBottom: 'auto',
+      // borderRadius: 50,
+      // shadowColor: '#0D2346',
+      // shadowOffset: { width: 5, height: 5 },
+      // shadowOpacity: 0.3,
+      // shadowRadius: 50,
+      // elevation:15,
     },
   });
 
@@ -98,6 +104,16 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
               <Stop offset="0%" stopColor="rgba(36, 89, 173, 0.1)" />
               <Stop offset="100%" stopColor="rgba(13, 35, 70, 0.1)" />
             </LinearGradient>
+            <Filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
+              <FeGaussianBlur in="SourceAlpha" stdDeviation="3.75" /> 
+              <FeOffset dx="5" dy="5" result="offsetblur" />
+              <FeFlood floodColor="#0D2346" floodOpacity="0.3" />
+              <FeComposite in2="offsetblur" operator="in" />
+              <FeMerge>
+                <FeMergeNode />
+                <FeMergeNode in="SourceGraphic" />
+              </FeMerge>
+            </Filter>
           </Defs>
           <Circle
             cx={center}
@@ -113,6 +129,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
             stroke="url(#filledGrad)"
             strokeWidth={strokeWidth}
             strokeLinecap="round"
+            filter="url(#dropShadow)"
           />
         </Svg>
       </View>
