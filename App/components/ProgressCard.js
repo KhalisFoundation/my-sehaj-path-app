@@ -14,7 +14,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       padding: screenWidth < 768 ? 20 : 24,
       justifyContent: 'space-between',
       alignItems: 'center',
-      shadowColor: '#11336A1A',
+      shadowColor: '#11336A',
       shadowOffset: { width: 15, height: 15 },
       shadowOpacity: 0.1,
       shadowRadius: 45,
