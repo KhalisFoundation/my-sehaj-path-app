@@ -14,7 +14,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       padding: screenWidth < 768 ? 20 : 24,
       justifyContent: 'space-between',
       alignItems: 'center',
-      shadowColor: '#000',
+      shadowColor: '#0D23464D',
       shadowOffset: { width: 15, height: 15 },
       shadowOpacity: 0.1,
       shadowRadius: 45,
@@ -49,12 +49,6 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       alignItems: 'center',
       marginTop: 'auto',
       marginBottom: 'auto',
-      // borderRadius: 50,
-      // shadowColor: '#0D2346',
-      // shadowOffset: { width: 5, height: 5 },
-      // shadowOpacity: 0.3,
-      // shadowRadius: 50,
-      // elevation:15,
     },
   });
 
