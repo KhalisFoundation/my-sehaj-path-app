@@ -22,6 +22,16 @@
     },
     "web": {
       "favicon": "./App/assets/favicon.png"
-    }
+    },
+    "fonts": [
+      {
+        "asset": "./assets/fonts/BrandonGrotesque-Regular.ttf",
+        "family": "BrandonGrotesque-Regular"
+      },
+      {
+        "asset": "./assets/fonts/BrandonGrotesque-Bold.ttf",
+        "family": "BrandonGrotesque-Bold"
+      }
+    ]
   }
 }
