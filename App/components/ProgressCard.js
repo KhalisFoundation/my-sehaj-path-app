@@ -1,9 +1,9 @@
 import React from 'react';
 import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
-import Svg, { Circle, Path, LinearGradient, Stop, Defs, Filter, FeGaussianBlur, FeOffset, FeComposite, FeFlood, FeMerge, FeMergeNode } from 'react-native-svg';
+import CircularProgress from 'react-native-circular-progress-indicator';
 
 const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
 
   const styles = StyleSheet.create({
     container: {
@@ -14,9 +14,9 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       padding: screenWidth < 768 ? 20 : 24,
       justifyContent: 'space-between',
       alignItems: 'center',
-      shadowColor: '#11336A',
+      shadowColor: '#11336A1A',
       shadowOffset: { width: 15, height: 15 },
-      shadowOpacity: 0.15,
+      shadowOpacity: 0.7,
       shadowRadius: 45,
       elevation: 15,
     },
@@ -48,36 +48,15 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 'auto',
+      borderRadius: 50,
       marginBottom: 'auto',
+      shadowColor: '#0D2346',
+      shadowOffset: { width: 5, height: 5 },
+      shadowOpacity: 0.3,
+      shadowRadius: 3.75,
+      elevation: 5,
     },
   });
-
-  const size = screenWidth < 768 ? 53 : 72;
-  const strokeWidth = screenWidth < 768 ? 12 : 14;
-  const center = size / 2;
-  const radius = (size - strokeWidth) / 2;
-
-  const calculateArcPath = (x, y, radius, startAngle, endAngle) => {
-    const start = polarToCartesian(x, y, radius, startAngle);
-    const end = polarToCartesian(x, y, radius, endAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-    return [
-      "M", start.x, start.y, 
-      "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
-    ].join(" ");
-  };
-
-  const polarToCartesian = (centerX, centerY, radius, angleInDegrees) => {
-    const angleInRadians = ((angleInDegrees - 90) % 360) * Math.PI / 180.0;
-    return {
-      x: centerX + (radius * Math.cos(angleInRadians)),
-      y: centerY + (radius * Math.sin(angleInRadians))
-    };
-  };
-
-  const progressAngle = 360 * (progress / 100);
-  const startAngle = 0; 
-  const endAngle = startAngle - progressAngle; 
 
   return (
     <View style={styles.container}>
@@ -88,44 +67,26 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
         </Text>
       </View>
       <View style={styles.progressContainer}>
-        <Svg width={size} height={size}>
-          <Defs>
-            <LinearGradient id="filledGrad" x1="16.15%" y1="85.35%" x2="85.35%" y2="16.15%">
-              <Stop offset="0%" stopColor="#2459AD" />
-              <Stop offset="100%" stopColor="#0D2346" />
-            </LinearGradient>
-            <LinearGradient id="unfilledGrad" x1="16.15%" y1="85.35%" x2="85.35%" y2="16.15%">
-              <Stop offset="0%" stopColor="rgba(36, 89, 173, 0.1)" />
-              <Stop offset="100%" stopColor="rgba(13, 35, 70, 0.1)" />
-            </LinearGradient>
-            <Filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
-              <FeGaussianBlur in="SourceAlpha" stdDeviation="3.75" /> 
-              <FeOffset dx="5" dy="5" result="offsetblur" />
-              <FeFlood floodColor="#0D2346" floodOpacity="0.3" />
-              <FeComposite in2="offsetblur" operator="in" />
-              <FeMerge>
-                <FeMergeNode />
-                <FeMergeNode in="SourceGraphic" />
-              </FeMerge>
-            </Filter>
-          </Defs>
-          <Circle
-            cx={center}
-            cy={center}
-            r={radius}
-            fill="none"
-            stroke="url(#unfilledGrad)"
-            strokeWidth={strokeWidth}
-          />
-          <Path
-            d={calculateArcPath(center, center, radius, startAngle, endAngle)}
-            fill="none"
-            stroke="url(#filledGrad)"
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            filter="url(#dropShadow)"
-          />
-        </Svg>
+        <CircularProgress
+          value={progress}
+          radius={screenWidth < 768 ? 26.5 : 36}
+          duration={0}
+          maxValue={100}
+          showProgressValue={false}
+          activeStrokeColor={'#2459AD'}
+          activeStrokeSecondaryColor={'#0D2346'}
+          inActiveStrokeColor={'rgba(36, 89, 173, 0.1)'}
+          inActiveStrokeOpacity={1}
+          inActiveStrokeWidth={screenWidth < 768 ? 12 : 14}
+          activeStrokeWidth={screenWidth < 768 ? 12 : 14}
+          strokeLinecap="round"
+          progressValueStyle={{ display: 'none' }}
+          dashedStrokeConfig={{
+            count: 0,
+            width: screenWidth < 768 ? 12 : 14,
+          }}
+          circleBackgroundColor="transparent"
+        />
       </View>
     </View>
   );
