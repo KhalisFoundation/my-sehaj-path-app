@@ -16,7 +16,7 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
       alignItems: 'center',
       shadowColor: '#11336A',
       shadowOffset: { width: 15, height: 15 },
-      shadowOpacity: 0.1,
+      shadowOpacity: 0.15,
       shadowRadius: 45,
       elevation: 15,
     },
