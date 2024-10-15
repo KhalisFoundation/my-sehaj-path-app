@@ -4,8 +4,10 @@
     "slug": "firstApp",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./App/assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./App/assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -14,6 +16,7 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./App/assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
     },
@@ -23,6 +26,5 @@
     "plugins": [
       "expo-font" 
     ]
-
   }
 }
