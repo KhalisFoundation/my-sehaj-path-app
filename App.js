@@ -1,8 +1,7 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StatusBar } from "expo-status-bar";
+import { StyleSheet, Text, View } from "react-native";
 import { useFonts } from 'expo-font';
-
-
+import Welcomescreen from "./App/screens/Welcomescreen"
 export default function App() {
   let [fontsLoaded] = useFonts({
     'BrandonGrotesque-Regular': require('./App/assets/fonts/brandon-grotesque-regular.otf'),
@@ -13,11 +12,14 @@ export default function App() {
   });
 
   if (!fontsLoaded) {
-    return null; 
+    return null;
   }
 
   return (
-      <View >
-      </View>
+    <View >
+
+
+    </View>
   );
 }
+
