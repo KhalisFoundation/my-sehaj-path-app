@@ -1,19 +1,25 @@
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, Text, View } from "react-native";
+import { useFonts } from 'expo-font';
 import Welcomescreen from "./App/screens/Welcomescreen"
 export default function App() {
+  let [fontsLoaded] = useFonts({
+    'BrandonGrotesque-Regular': require('./App/assets/fonts/brandon-grotesque-regular.otf'),
+    'BrandonGrotesque-Bold': require('./App/assets/fonts/brandon-grotesque-bold.otf'),
+    'BrandonGrotesque-Light': require('./App/assets/fonts/brandon-grotesque-light.otf'),
+    'BrandonGrotesque-Medium': require('./App/assets/fonts/brandon-grotesque-medium.otf'),
+    'BrandonGrotesque-Black': require('./App/assets/fonts/brandon-grotesque-black.otf'),
+  });
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <View style={styles.container}>
-    <Welcomescreen/>
-   
+    <View >
+
+
     </View>
   );
 }
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-});
+
