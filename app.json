@@ -1,30 +1,32 @@
 {
   "expo": {
-    "name": "firstApp",
-    "slug": "firstApp",
+    "name": "Sheaj Path",
+    "slug": "sheaj-path-App",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./App/assets/SplashBackground.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./App/assets/SplashBackground.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.simarjot0032.sheajpathApp"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./App/assets/SplashBackground.png"
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2385bb6e-e6cd-4ee8-8b24-3ebbefc201c0"
+      }
+    },
+    "owner": "simarjot0032"
   }
 }

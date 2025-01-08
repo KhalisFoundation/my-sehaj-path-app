@@ -34,14 +34,14 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
     sehajText: {
       fontFamily: "BrandonGrotesque-Bold",
       fontSize: screenWidth < 768 ? 18 : 22,
-      lineHeight: screenWidth < 768 ? 26 : 31,
+      lineHeight: screenWidth < 768 ? 25 : 30,
       textAlign: "center",
       color: "#11336A",
     },
     angText: {
       fontFamily: "BrandonGrotesque-Regular",
-      fontSize: screenWidth < 768 ? 14 : 17,
-      lineHeight: screenWidth < 768 ? 20 : 24,
+      fontSize: screenWidth < 768 ? 14 : 19,
+      lineHeight: screenWidth < 768 ? 20 : 27,
       textAlign: "center",
       color: "#666666",
     },
@@ -103,7 +103,9 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
           Ang <Text style={styles.angNumber}>{angNumber}</Text>
         </Text>
       </View>
-      <View style={styles.progressContainer}>
+      <View
+        style={{ ...styles.progressContainer, transform: "rotateY(180deg)" }}
+      >
         <Svg width={size} height={size}>
           <Defs>
             <LinearGradient
@@ -123,8 +125,8 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }) => {
               x2="85.35%"
               y2="16.15%"
             >
-              <Stop offset="0%" stopColor="rgba(36, 89, 173, 0.1)" />
-              <Stop offset="100%" stopColor="rgba(13, 35, 70, 0.1)" />
+              <Stop offset="0%" stopColor="white" />
+              <Stop offset="100%" stopColor="white" />
             </LinearGradient>
           </Defs>
           <Circle

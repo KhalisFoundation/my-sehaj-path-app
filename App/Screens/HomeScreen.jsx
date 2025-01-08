@@ -12,12 +12,13 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import ProgressCard from "../Components/ProgressCard";
 import CompletedPathCard from "../Components/CompletePathCard";
+import AsyncStroage from "@react-native-async-storage/async-storage";
 const HomeScreen = () => {
-  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const { width: screenWidth } = useWindowDimensions();
 
   const inProgressPaths = [
-    { number: 14, ang: 745, progress: 65 },
-    { number: 15, ang: 1145, progress: 25 },
+    { number: 14, ang: 745, progress: 50 },
+    { number: 15, ang: 1145, progress: 75 },
     { number: 16, ang: 500, progress: 40 },
     { number: 17, ang: 800, progress: 80 },
   ];
@@ -27,7 +28,9 @@ const HomeScreen = () => {
     { number: 10, date: "13th Jan 2024" },
     { number: 9, date: "11th Oct 2023" },
   ];
-
+  const handleNewPath = () => {
+    let lastPathNumber = 1;
+  };
   return (
     <>
       <ImageBackground
@@ -180,36 +183,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#11336A",
   },
-
-  //   cardWrapper: {
-  //     marginRight: 15,
-  //   },
-  //   completedCardWrapper: {
-  //     marginRight: 15,
-  //     marginBottom: 15,
-  //   },
-  //   completedText: {
-  //     fontSize: 16,
-  //     color: "#11336A",
-  //   },
-  //   completedAngText: {
-  //     fontSize: 14,
-  //     color: "#666666",
-  //   },
-  //   screenBorder: {
-  //     width: 393,
-  //     height: 852,
-  //     position: "absolute",
-  //     top: -444,
-  //     left: 1564,
-  //     borderRadius: 15,
-  //     borderTopWidth: 4,
-  //     borderTopColor: "rgba(253, 198, 6, 0.3)",
-  //     borderRightWidth: 0,
-  //     borderBottomWidth: 0,
-  //     borderLeftWidth: 0,
-  //     opacity: 1,
-  //   },
 });
 
 export default HomeScreen;

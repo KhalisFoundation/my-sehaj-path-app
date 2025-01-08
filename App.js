@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
 import * as Font from "expo-font";
+import { useEffect, useState } from "react";
 
 import HomeScreen from "./App/Screens/HomeScreen";
+import SplashScreen from "./App/Screens/SplashScreen";
 export default function App() {
   const [fontsLoaded] = Font.useFonts({
     BalooPaaji2Bold: require("./App/assets/Fonts/BalooPaaji2Bold.ttf"),
@@ -18,18 +19,21 @@ export default function App() {
     "BrandonGrotesque-RegularItalic": require("./App/assets/Fonts/BrandonGrotesque-RegularItalic.otf"),
     "Recoleta-Regular": require("./App/assets/Fonts/Recoleta-Regular.otf"),
   });
+  const [showSplash, setshowSplash] = useState(true);
+  useEffect(() => {
+    setTimeout(() => {
+      setshowSplash(false);
+    }, 3000);
+  }, []);
 
   return (
-    <>{fontsLoaded ? <HomeScreen /> : console.log("no fonts are not loaded")}</>
+    <>
+      {fontsLoaded ? (
+        <>
+          {showSplash && <SplashScreen />}
+          {!showSplash && <HomeScreen />}
+        </>
+      ) : undefined}
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-    fontFamily: "BalooPaaji2-Bold",
-  },
-});

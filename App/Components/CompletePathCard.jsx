@@ -6,7 +6,7 @@ const CompletedPathCard = ({ sehajNumber, completionDate }) => {
 
   const styles = StyleSheet.create({
     container: {
-      width: screenWidth < 768 ? 130 : 156,
+      width: screenWidth < 768 ? 130 : 165,
       height: screenWidth < 768 ? 107 : 128,
       backgroundColor: "white",
       borderRadius: 15,
@@ -22,8 +22,8 @@ const CompletedPathCard = ({ sehajNumber, completionDate }) => {
     },
     sehajText: {
       fontFamily: "BrandonGrotesque-Bold",
-      fontSize: screenWidth < 768 ? 16 : 18,
-      lineHeight: screenWidth < 768 ? 24 : 26,
+      fontSize: screenWidth < 768 ? 18 : 23,
+      lineHeight: screenWidth < 768 ? 25 : 30,
       textAlign: "center",
       color: "#11336A",
     },
