@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,32 +12,73 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import ProgressCard from "../Components/ProgressCard";
 import CompletedPathCard from "../Components/CompletePathCard";
-import AsyncStroage from "@react-native-async-storage/async-storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const HomeScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
+  const [onGoingPath, setOnGogingPath] = useState([]);
+  const [completedPath, setCompletedPath] = useState([]);
+  useEffect(() => {
+    const fetchPath = async () => {
+      try {
+        // const complete = [{ number: 1, date: "5 Jan 2024" }];
+        // await AsyncStorage.setItem("CompletedPath", JSON.stringify(complete));
+        const storedInProgressPath = await AsyncStorage.getItem(
+          "PathInProgress"
+        );
+        const paths = storedInProgressPath
+          ? JSON.parse(storedInProgressPath)
+          : [];
+        const storedCompletedPath = await AsyncStorage.getItem("CompletedPath");
+        const completedPath = storedCompletedPath
+          ? JSON.parse(storedCompletedPath)
+          : [];
+        setCompletedPath(completedPath);
+        setOnGogingPath(paths);
+      } catch {
+        setOnGogingPath([]);
+      }
+    };
+    fetchPath();
+  }, []);
+  useEffect(() => {});
 
-  const inProgressPaths = [
-    { number: 14, ang: 745, progress: 50 },
-    { number: 15, ang: 1145, progress: 75 },
-    { number: 16, ang: 500, progress: 40 },
-    { number: 17, ang: 800, progress: 80 },
-  ];
+  const handleNewPath = async () => {
+    try {
+      let storedPath = await AsyncStorage.getItem("PathInProgress");
 
-  const completedPaths = [
-    { number: 11, date: "4th Aug 2024" },
-    { number: 10, date: "13th Jan 2024" },
-    { number: 9, date: "11th Oct 2023" },
-  ];
-  const handleNewPath = () => {
-    let lastPathNumber = 1;
+      let pathInProgressArray = storedPath ? JSON.parse(storedPath) : [];
+
+      let lastPath =
+        pathInProgressArray.length <= 0
+          ? 0
+          : pathInProgressArray[pathInProgressArray.length - 1].number;
+      let pathnumber = (await lastPath) + 1;
+      await pathInProgressArray.push({
+        number: pathnumber,
+        ang: 1,
+        progress: 0,
+      });
+      await AsyncStorage.setItem(
+        "PathInProgress",
+        JSON.stringify(pathInProgressArray)
+      );
+      setOnGogingPath(pathInProgressArray);
+    } catch (e) {
+      console.log(e);
+    }
   };
+
   return (
     <>
       <ImageBackground
         source={require("../assets/HomeScreenBackground.png")}
         style={styles.backgroundImage}
       >
-        <View style={{ paddingTop: screenWidth > 768 ? 28 : 50 }}>
+        <View
+          style={{
+            paddingTop: screenWidth > 768 ? 28 : 50,
+          }}
+        >
           <Text style={styles.startSheajpathHeading}>
             It's a Fine day to start a
           </Text>
@@ -49,6 +90,7 @@ const HomeScreen = () => {
                 width: screenWidth > 768 ? 140 : 112,
                 height: screenWidth > 768 ? 55 : 48,
               }}
+              onPress={handleNewPath}
             >
               <LinearGradient
                 colors={["#11336A", "#0D2346"]}
@@ -84,56 +126,65 @@ const HomeScreen = () => {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-          <View style={styles.sectionTitleContainer}>
-            <Text
-              style={{
-                ...styles.sectionTitle,
-                fontSize: screenWidth > 500 ? 21 : 14,
-              }}
-            >
-              Sehaj Path in Progress:
-            </Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.horizontalScroll}
-          >
-            {inProgressPaths.map((path, index) => (
-              <View key={index} style={styles.cardWrapper}>
-                <ProgressCard
-                  sheajPathNumber={path.number}
-                  angNumber={path.ang}
-                  progress={path.progress}
-                />
+          {onGoingPath.length != 0 ? (
+            <>
+              <View style={styles.sectionTitleContainer}>
+                <Text
+                  style={{
+                    ...styles.sectionTitle,
+                    fontSize: screenWidth > 500 ? 21 : 14,
+                  }}
+                >
+                  Sehaj Path in Progress:
+                </Text>
               </View>
-            ))}
-          </ScrollView>
-
-          <View style={styles.sectionTitleContainer}>
-            <Text
-              style={{
-                ...styles.sectionTitle,
-                fontSize: screenWidth > 500 ? 21 : 14,
-              }}
-            >
-              Sehaj Paths Completed:
-            </Text>
-          </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.horizontalScroll}
-          >
-            {completedPaths.map((path, index) => (
-              <View key={index} style={styles.completedCardWrapper}>
-                <CompletedPathCard
-                  sehajNumber={path.number}
-                  completionDate={path.date}
-                />
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.horizontalScroll}
+              >
+                {onGoingPath.length != 0
+                  ? onGoingPath.map((path, index) => (
+                      <View key={index} style={styles.cardWrapper}>
+                        <ProgressCard
+                          sheajPathNumber={path.number}
+                          angNumber={path.ang}
+                          progress={path.progress}
+                        />
+                      </View>
+                    ))
+                  : undefined}
+              </ScrollView>
+            </>
+          ) : undefined}
+          {completedPath.length != 0 ? (
+            <>
+              <View style={styles.sectionTitleContainer}>
+                <Text
+                  style={{
+                    ...styles.sectionTitle,
+                    fontSize: screenWidth > 500 ? 21 : 14,
+                  }}
+                >
+                  Sehaj Paths Completed:
+                </Text>
               </View>
-            ))}
-          </ScrollView>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.horizontalScroll}
+              >
+                {completedPath.map((path, index) => (
+                  <View key={index} style={styles.completedCardWrapper}>
+                    <CompletedPathCard
+                      sehajNumber={path.number}
+                      completionDate={path.date}
+                    />
+                  </View>
+                ))}
+              </ScrollView>
+            </>
+          ) : undefined}
         </View>
       </ImageBackground>
     </>
@@ -150,6 +201,8 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     height: "100%",
+    justifyContent: "center",
+    alignContent: "center",
   },
 
   startSheajpathHeading: {
