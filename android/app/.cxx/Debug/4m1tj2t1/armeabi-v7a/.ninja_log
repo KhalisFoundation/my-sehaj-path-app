@@ -1,5 +1,10 @@
 # ninja log v5
-0	13	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/armeabi-v7a/CMakeFiles/cmake.verify_globs	ab06d9f5f275f4ea
-0	1779	1737107460639225464	CMakeFiles/appmodules.dir/home/simar/my-sehaj-path-app/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	792593e100b4476e
-1	2060	1737107460915219979	CMakeFiles/appmodules.dir/OnLoad.cpp.o	21d0b33dc0e2bbb8
-2060	2117	1737107460978218728	/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/armeabi-v7a/libappmodules.so	20a69f6db5dfd94e
+0	7	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/armeabi-v7a/CMakeFiles/cmake.verify_globs	ab06d9f5f275f4ea
+0	1449	1737111051251541064	CMakeFiles/appmodules.dir/home/simar/my-sehaj-path-app/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	792593e100b4476e
+0	1683	1737111051479545003	CMakeFiles/appmodules.dir/OnLoad.cpp.o	21d0b33dc0e2bbb8
+1683	1712	1737111051518545676	/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/armeabi-v7a/libappmodules.so	20a69f6db5dfd94e
+0	6	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/armeabi-v7a/CMakeFiles/cmake.verify_globs	ab06d9f5f275f4ea
+0	6	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/armeabi-v7a/CMakeFiles/cmake.verify_globs	ab06d9f5f275f4ea
+0	7	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/armeabi-v7a/CMakeFiles/cmake.verify_globs	ab06d9f5f275f4ea
+0	6	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/armeabi-v7a/CMakeFiles/cmake.verify_globs	ab06d9f5f275f4ea
+0	7	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/armeabi-v7a/CMakeFiles/cmake.verify_globs	ab06d9f5f275f4ea
