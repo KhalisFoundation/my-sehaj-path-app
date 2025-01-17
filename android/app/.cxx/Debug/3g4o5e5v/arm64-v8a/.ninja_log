@@ -1,0 +1,12 @@
+# ninja log v5
+1	10	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
+0	1671	1736973122214915776	CMakeFiles/appmodules.dir/home/simar/SheajPathApp/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	b66ff4c1af119e17
+1	1993	1736973122534902872	CMakeFiles/appmodules.dir/OnLoad.cpp.o	6ede95e9467ef0b3
+1994	2097	1736973122648898275	/home/simar/SheajPathApp/android/app/build/intermediates/cxx/Debug/3g4o5e5v/obj/arm64-v8a/libappmodules.so	39b7d9a8993143ea
+7	15	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
+6	15	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
+0	7	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
+0	6	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
+0	8	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
+0	10	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
+0	7	0	/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/arm64-v8a/CMakeFiles/cmake.verify_globs	22561864f8e0cc7
