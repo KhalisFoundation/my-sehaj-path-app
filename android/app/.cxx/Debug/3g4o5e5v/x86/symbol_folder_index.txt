@@ -1,0 +1,1 @@
+/home/simar/SheajPathApp/android/app/build/intermediates/cxx/Debug/3g4o5e5v/obj/x86

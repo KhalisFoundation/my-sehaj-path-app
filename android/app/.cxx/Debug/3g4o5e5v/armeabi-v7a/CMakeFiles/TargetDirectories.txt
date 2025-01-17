@@ -1,0 +1,3 @@
+/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/armeabi-v7a/CMakeFiles/appmodules.dir
+/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/armeabi-v7a/CMakeFiles/edit_cache.dir
+/home/simar/SheajPathApp/android/app/.cxx/Debug/3g4o5e5v/armeabi-v7a/CMakeFiles/rebuild_cache.dir
