@@ -26,14 +26,13 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -48,5 +47,37 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Brandon-Grotesque-Black-.otf</string>
+		<string>Brandon-Grotesque-Bold-Italic-.otf</string>
+		<string>Brandon-Grotesque-Bold.otf</string>
+		<string>Brandon-Grotesque-Light.otf</string>
+		<string>Brandon-Grotesque-Medium-Italic.otf</string>
+		<string>Brandon-Grotesque-Medium.otf</string>
+		<string>Brandon-Grotesque-Regular.otf</string>
+		<string>Brandon-Grotesque-Thin-Italic.otf</string>
+		<string>Brandon-Grotesque-Thin.otf</string>
+		<string>BrandonGrotesque-Black.otf</string>
+		<string>BrandonGrotesque-BlackItalic.otf</string>
+		<string>BrandonGrotesque-Bold.otf</string>
+		<string>BrandonGrotesque-BoldItalic.otf</string>
+		<string>BrandonGrotesque-Light.otf</string>
+		<string>BrandonGrotesque-LightItalic.otf</string>
+		<string>BrandonGrotesque-Medium.otf</string>
+		<string>BrandonGrotesque-MediumItalic.otf</string>
+		<string>BrandonGrotesque-Regular.otf</string>
+		<string>BrandonGrotesque-RegularItalic.otf</string>
+		<string>BrandonGrotesque-Thin.otf</string>
+		<string>BrandonGrotesque-ThinItalic.otf</string>
+		<string>Recoleta-Regular.otf</string>
+		<string>brandon-grotesque-light-italic-58a8a4ccb88be.otf</string>
+		<string>brandon-grotesque-light-italic.otf</string>
+		<string>BalooPaaji2Bold.ttf</string>
+		<string>BalooPaaji2ExtraBold.ttf</string>
+		<string>BalooPaaji2Medium.ttf</string>
+		<string>BalooPaaji2Regular.ttf</string>
+		<string>BalooPaaji2SemiBold.ttf</string>
+	</array>
 </dict>
 </plist>

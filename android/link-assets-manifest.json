@@ -1,0 +1,121 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/BalooPaaji2Bold.ttf",
+      "sha1": "69125bfeb6139f1538ab3bb36d3aa92f94ff098d"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2ExtraBold.ttf",
+      "sha1": "7cf99bd9a1736513ef55c1edfe7fe1673d9d2b72"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2Medium.ttf",
+      "sha1": "41fc3051891132d114138bfb281e3b9d307a6e73"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2Regular.ttf",
+      "sha1": "3c323fe0c2b7224c49ab646bce249efb2bbade42"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2SemiBold.ttf",
+      "sha1": "e59b9fd28a3cb63da67e119c9316025b4e1d0525"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Black-.otf",
+      "sha1": "0217e9d4487aeaafaa779c97ea93d641e570a36f"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Bold-Italic-.otf",
+      "sha1": "23b3c5e6c7a740e7199a139c2879b1b63eacb8ca"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Bold.otf",
+      "sha1": "23b3c5e6c7a740e7199a139c2879b1b63eacb8ca"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Light.otf",
+      "sha1": "a8231e2776ee4f0c9834d77f4163a64912e84f89"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Medium-Italic.otf",
+      "sha1": "4038ee844879d19e11c21cfa289b9d3e0ade0680"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Medium.otf",
+      "sha1": "4038ee844879d19e11c21cfa289b9d3e0ade0680"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Regular.otf",
+      "sha1": "671d38680ff1ea4f76f73a64a6ae06a4774cbd34"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Thin-Italic.otf",
+      "sha1": "f46fd0a2e64d48c44f235179e0efc8fa8da26a6f"
+    },
+    {
+      "path": "assets/fonts/Brandon-Grotesque-Thin.otf",
+      "sha1": "f46fd0a2e64d48c44f235179e0efc8fa8da26a6f"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-Black.otf",
+      "sha1": "ff127561d42f25a2a0c4b0be81934a708282f4fa"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-BlackItalic.otf",
+      "sha1": "e4b8d4bdc23d0be287a54fd80d8863b3e820d6a8"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-Bold.otf",
+      "sha1": "5559a4e1feb6b9199f25d9b1bb213bcb7ad9e15f"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-BoldItalic.otf",
+      "sha1": "819ea43fb7a89235b092776a0ad2dc33048e231b"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-Light.otf",
+      "sha1": "b0eac6b0f42b82b12af1bec65f3564daa4ad8a09"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-LightItalic.otf",
+      "sha1": "9fd3f450f55e560d95fc43e548b8060aeb488854"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-Medium.otf",
+      "sha1": "2073c1528361279df8b4690f72606f64b395d059"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-MediumItalic.otf",
+      "sha1": "f51486b651928a4c43d8d6a3fcd4a6fef708ac45"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-Regular.otf",
+      "sha1": "05665bbfe2e7c12cf7724bd3a065466315445fc9"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-RegularItalic.otf",
+      "sha1": "493824d287301775b2778502f30a68895659ef54"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-Thin.otf",
+      "sha1": "64ce46f1173b22b8f09976bce93c65f15e097435"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesque-ThinItalic.otf",
+      "sha1": "e8fe064f7dd6fb3c8ff24e6576bce9ec5f506d9d"
+    },
+    {
+      "path": "assets/fonts/Recoleta-Regular.otf",
+      "sha1": "56bec949bc9ac1bf62b44e1d846c4dff001433f1"
+    },
+    {
+      "path": "assets/fonts/brandon-grotesque-light-italic-58a8a4ccb88be.otf",
+      "sha1": "ca09ddade8f42775006857a9bb6b5879d0d4ca10"
+    },
+    {
+      "path": "assets/fonts/brandon-grotesque-light-italic.otf",
+      "sha1": "ca09ddade8f42775006857a9bb6b5879d0d4ca10"
+    }
+  ]
+}

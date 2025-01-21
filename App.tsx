@@ -1,14 +1,15 @@
 import React from "react";
 import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import SplashScreen from "./screens/SplashScreen";
 function App() {
   return (
     <>
       <SafeAreaView>
-        <View style={styleSheet.background}>
+        {/* <View style={styleSheet.background}>
           <Text style={styleSheet.text}>Khalis Foundation</Text>
-
           <Text style={styleSheet.text}>Sheaj-Path-App</Text>
-        </View>
+        </View> testing splash screen */}
+        <SplashScreen />
       </SafeAreaView>
     </>
   );
