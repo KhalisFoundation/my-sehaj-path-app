@@ -33,8 +33,8 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     justifyContent: "center",
-    backgroundColor: "#0D2346",
-    opacity: 0.85,
+    backgroundColor: "rgba(13, 35, 70, 1)",
+    opacity: 0.93,
   },
   splashTitle: {
     fontSize: 48,
