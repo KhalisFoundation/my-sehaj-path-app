@@ -34,13 +34,13 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     backgroundColor: "rgba(13, 35, 70, 1)",
-    opacity: 0.93,
+    opacity: 0.9,
   },
   splashTitle: {
     fontSize: 48,
     color: "white",
     textAlign: "center",
-    fontFamily: font.Baloo_Paaji_2_Bold,
+    fontFamily: font.Baloo_Paaji_2_Extra_Bold,
     lineHeight: 85,
   },
   splashSubTitle: {
