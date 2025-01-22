@@ -1,0 +1,77 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/BalooPaaji2Bold.ttf",
+      "sha1": "69125bfeb6139f1538ab3bb36d3aa92f94ff098d"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2ExtraBold.ttf",
+      "sha1": "7cf99bd9a1736513ef55c1edfe7fe1673d9d2b72"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2Medium.ttf",
+      "sha1": "41fc3051891132d114138bfb281e3b9d307a6e73"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2Regular.ttf",
+      "sha1": "3c323fe0c2b7224c49ab646bce249efb2bbade42"
+    },
+    {
+      "path": "assets/fonts/BalooPaaji2SemiBold.ttf",
+      "sha1": "e59b9fd28a3cb63da67e119c9316025b4e1d0525"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueBlack.otf",
+      "sha1": "0217e9d4487aeaafaa779c97ea93d641e570a36f"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueBlackItalic.otf",
+      "sha1": "e4b8d4bdc23d0be287a54fd80d8863b3e820d6a8"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueBold.otf",
+      "sha1": "5559a4e1feb6b9199f25d9b1bb213bcb7ad9e15f"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueBoldItalic.otf",
+      "sha1": "819ea43fb7a89235b092776a0ad2dc33048e231b"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueLight.otf",
+      "sha1": "b0eac6b0f42b82b12af1bec65f3564daa4ad8a09"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueLightItalic.otf",
+      "sha1": "9fd3f450f55e560d95fc43e548b8060aeb488854"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueMedium.otf",
+      "sha1": "2073c1528361279df8b4690f72606f64b395d059"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueMediumItalic.otf",
+      "sha1": "f51486b651928a4c43d8d6a3fcd4a6fef708ac45"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueRegular.otf",
+      "sha1": "05665bbfe2e7c12cf7724bd3a065466315445fc9"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueRegularItalic.otf",
+      "sha1": "493824d287301775b2778502f30a68895659ef54"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueThin.otf",
+      "sha1": "64ce46f1173b22b8f09976bce93c65f15e097435"
+    },
+    {
+      "path": "assets/fonts/BrandonGrotesqueThinItalic.otf",
+      "sha1": "e8fe064f7dd6fb3c8ff24e6576bce9ec5f506d9d"
+    },
+    {
+      "path": "assets/fonts/Recoleta Regular.otf",
+      "sha1": "a502e8fd4588955109c862f24d9198ab23f60552"
+    }
+  ]
+}
