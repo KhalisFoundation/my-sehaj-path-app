@@ -15,7 +15,7 @@ interface Prop {
 }
 const ProgressCard = ({ sheajPathNumber, angNumber, progress }: Prop) => {
   const { width: screenWidth } = useWindowDimensions();
-
+  progress = progress >= 100 ? 99 : progress;
   const styles = StyleSheet.create({
     container: {
       width: screenWidth < 768 ? 199 : 239,

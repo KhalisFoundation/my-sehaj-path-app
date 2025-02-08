@@ -1,2 +1,3 @@
+/home/simar/my-sehaj-path-app/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt
 /home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/src/main/jni/CMakeLists.txt
 /home/simar/my-sehaj-path-app/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt

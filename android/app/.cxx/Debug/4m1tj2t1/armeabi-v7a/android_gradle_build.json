@@ -1,5 +1,6 @@
 {
   "buildFiles": [
+    "/home/simar/my-sehaj-path-app/node_modules/@react-native-async-storage/async-storage/android/build/generated/source/codegen/jni/CMakeLists.txt",
     "/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/src/main/jni/CMakeLists.txt",
     "/home/simar/my-sehaj-path-app/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt"
   ],
@@ -29,6 +30,11 @@
         "/home/simar/.gradle/caches/8.10.2/transforms/ffea390e40bce9ede11ecb704e97298f/transformed/react-android-0.76.6-debug/prefab/modules/jsi/libs/android.armeabi-v7a/libjsi.so",
         "/home/simar/.gradle/caches/8.10.2/transforms/ffea390e40bce9ede11ecb704e97298f/transformed/react-android-0.76.6-debug/prefab/modules/reactnative/libs/android.armeabi-v7a/libreactnative.so"
       ]
+    },
+    "react_codegen_rnasyncstorage::@1596841e19ec5b9eeffe": {
+      "toolchain": "toolchain",
+      "abi": "armeabi-v7a",
+      "artifactName": "react_codegen_rnasyncstorage"
     },
     "react_codegen_rnsvg::@4f40eb209d0c0b4a3b65": {
       "toolchain": "toolchain",

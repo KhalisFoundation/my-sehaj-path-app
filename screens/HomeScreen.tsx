@@ -9,25 +9,23 @@ import {
   ImageBackground,
   useWindowDimensions,
 } from "react-native";
-
 import ProgressCard from "../components/PathProgressCard";
 import CompletedPathCard from "../components/CompletedPathCard";
 import LinearGradient from "react-native-linear-gradient";
 import font from "../utils/font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-interface onGoingPath {
+interface Path {
   number: number;
   ang: number;
   progress: number;
+  startDate: string;
+  endDate: string;
 }
-interface completedPath {
-  number: number;
-  date: string;
-}
+
 const HomeScreen = () => {
   const { width } = useWindowDimensions();
-  const [onGoingPath, setOnGogingPath] = useState<onGoingPath[]>([]);
-  const [completedPath, setCompletedPath] = useState<completedPath[]>([]);
+  const [onGoingPath, setOnGogingPath] = useState<Path[]>([]);
+  const [completedPath, setCompletedPath] = useState<Path[]>([]);
   useEffect(() => {
     const fetchPath = async () => {
       try {
@@ -37,12 +35,10 @@ const HomeScreen = () => {
         const paths = storedInProgressPath
           ? JSON.parse(storedInProgressPath)
           : [];
-        const storedCompletedPath = await AsyncStorage.getItem("CompletedPath");
-        const completedPath = storedCompletedPath
-          ? JSON.parse(storedCompletedPath)
-          : [];
-        setCompletedPath(completedPath);
-        setOnGogingPath(paths);
+        console.log(paths);
+
+        setCompletedPath(paths?.filter((path: Path) => path.ang == 1438));
+        setOnGogingPath(paths?.filter((path: Path) => path.ang != 1438));
       } catch {
         setOnGogingPath([]);
       }
@@ -52,23 +48,32 @@ const HomeScreen = () => {
   const handleNewPath = async () => {
     try {
       let storedPath = await AsyncStorage.getItem("PathInProgress");
-
       let pathInProgressArray = storedPath ? JSON.parse(storedPath) : [];
       let lastPath =
         pathInProgressArray.length <= 0
           ? 0
           : pathInProgressArray[pathInProgressArray.length - 1].number;
       let pathnumber = (await lastPath) + 1;
+      const todayDate: string = new Date()
+        .toUTCString()
+        .split(" ")
+        .slice(1, 4)
+        .join("");
+
       await pathInProgressArray.push({
         number: pathnumber,
-        ang: 1,
-        progress: 0,
+        ang: 138,
+        progress: 15,
+        startData: todayDate,
+        endDate: "",
       });
       await AsyncStorage.setItem(
         "PathInProgress",
         JSON.stringify(pathInProgressArray)
       );
-      setOnGogingPath(pathInProgressArray);
+      setOnGogingPath(
+        pathInProgressArray.filter((path: Path) => path.ang != 1438)
+      );
     } catch (e) {
       console.log(e);
     }
@@ -178,7 +183,7 @@ const HomeScreen = () => {
                   <View key={index}>
                     <CompletedPathCard
                       sheajPathNumber={path?.number}
-                      pathCompletionDate={path?.date}
+                      pathCompletionDate={path?.endDate}
                     />
                   </View>
                 ))}
@@ -258,20 +263,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666666",
   },
-  //   screenBorder: {
-  //     width: 393,
-  //     height: 852,
-  //     position: "absolute",
-  //     top: -444,
-  //     left: 1564,
-  //     borderRadius: 15,
-  //     borderTopWidth: 4,
-  //     borderTopColor: "rgba(253, 198, 6, 0.3)",
-  //     borderRightWidth: 0,
-  //     borderBottomWidth: 0,
-  //     borderLeftWidth: 0,
-  //     opacity: 1,
-  //   },
 });
 
 export default HomeScreen;
