@@ -1,5 +1,6 @@
 {
   "buildFiles": [
+    "/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/src/main/jni/CMakeLists.txt",
     "/home/simar/my-sehaj-path-app/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup/CMakeLists.txt"
   ],
   "cleanCommandsComponents": [
@@ -23,9 +24,21 @@
       "artifactName": "appmodules",
       "output": "/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64/libappmodules.so",
       "runtimeFiles": [
+        "/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64/libreact_codegen_rnsvg.so",
         "/home/simar/.gradle/caches/8.10.2/transforms/712459f74e1b69cabe04723869743a98/transformed/fbjni-0.6.0/prefab/modules/fbjni/libs/android.x86_64/libfbjni.so",
         "/home/simar/.gradle/caches/8.10.2/transforms/ffea390e40bce9ede11ecb704e97298f/transformed/react-android-0.76.6-debug/prefab/modules/jsi/libs/android.x86_64/libjsi.so",
         "/home/simar/.gradle/caches/8.10.2/transforms/ffea390e40bce9ede11ecb704e97298f/transformed/react-android-0.76.6-debug/prefab/modules/reactnative/libs/android.x86_64/libreactnative.so"
+      ]
+    },
+    "react_codegen_rnsvg::@4f40eb209d0c0b4a3b65": {
+      "toolchain": "toolchain",
+      "abi": "x86_64",
+      "artifactName": "react_codegen_rnsvg",
+      "output": "/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64/libreact_codegen_rnsvg.so",
+      "runtimeFiles": [
+        "/home/simar/.gradle/caches/8.10.2/transforms/ffea390e40bce9ede11ecb704e97298f/transformed/react-android-0.76.6-debug/prefab/modules/reactnative/libs/android.x86_64/libreactnative.so",
+        "/home/simar/.gradle/caches/8.10.2/transforms/ffea390e40bce9ede11ecb704e97298f/transformed/react-android-0.76.6-debug/prefab/modules/jsi/libs/android.x86_64/libjsi.so",
+        "/home/simar/.gradle/caches/8.10.2/transforms/712459f74e1b69cabe04723869743a98/transformed/fbjni-0.6.0/prefab/modules/fbjni/libs/android.x86_64/libfbjni.so"
       ]
     }
   },

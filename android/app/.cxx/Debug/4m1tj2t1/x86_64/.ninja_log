@@ -1,10 +1,17 @@
 # ninja log v5
-0	6	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64/CMakeFiles/cmake.verify_globs	6bae1fb9cfc6ba64
-0	1513	1737111056186626608	CMakeFiles/appmodules.dir/home/simar/my-sehaj-path-app/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	7e7f66f05dd5d152
-0	1692	1737111056367629759	CMakeFiles/appmodules.dir/OnLoad.cpp.o	30f4d47d11668e41
-1692	1729	1737111056412630542	/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64/libappmodules.so	7ffe81634790c350
-0	9	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64/CMakeFiles/cmake.verify_globs	6bae1fb9cfc6ba64
-0	7	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64/CMakeFiles/cmake.verify_globs	6bae1fb9cfc6ba64
-0	6	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64/CMakeFiles/cmake.verify_globs	6bae1fb9cfc6ba64
-0	9	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64/CMakeFiles/cmake.verify_globs	6bae1fb9cfc6ba64
-0	7	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64/CMakeFiles/cmake.verify_globs	6bae1fb9cfc6ba64
+0	10	0	/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64/CMakeFiles/cmake.verify_globs	6bae1fb9cfc6ba64
+2	2617	1740599022400926661	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/build/generated/source/codegen/jni/react/renderer/components/rnsvg/EventEmitters.cpp.o	ae9698f6e393e995
+1	3872	1740599023650941474	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/common/cpp/react/renderer/components/rnsvg/RNSVGShadowNodes.cpp.o	f150bc27e5bf88e4
+0	4766	1740599024538951998	CMakeFiles/appmodules.dir/OnLoad.cpp.o	80321f8f30370d80
+0	5080	1740599024862955838	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/common/cpp/react/renderer/components/rnsvg/RNSVGImageState.cpp.o	331dcbb9d0897ed2
+1	5433	1740599025208959939	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/common/cpp/react/renderer/components/rnsvg/RNSVGLayoutableShadowNode.cpp.o	6e5a2ccba1112b8f
+1	5733	1740599025489963269	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/build/generated/source/codegen/jni/react/renderer/components/rnsvg/ComponentDescriptors.cpp.o	6b0031e861f32bf1
+3873	6267	1740599026040969801	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/build/generated/source/codegen/jni/react/renderer/components/rnsvg/States.cpp.o	ddeff79d2b0acfec
+2618	6811	1740599026592976344	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/build/generated/source/codegen/jni/react/renderer/components/rnsvg/ShadowNodes.cpp.o	4890e7cec60db3ae
+2	6921	1740599026699977613	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/rnsvg.cpp.o	10a0cd577e7f08ca
+0	7000	1740599026776978525	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/common/cpp/react/renderer/components/rnsvg/RNSVGImageShadowNode.cpp.o	403219308604dd93
+6	7465	1740599027235983967	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/build/generated/source/codegen/jni/react/renderer/components/rnsvg/Props.cpp.o	868e84215cefcc1e
+4767	7602	1740599027386985757	rnsvg_autolinked_build/CMakeFiles/react_codegen_rnsvg.dir/home/simar/my-sehaj-path-app/node_modules/react-native-svg/android/build/generated/source/codegen/jni/react/renderer/components/rnsvg/rnsvgJSI-generated.cpp.o	b08a173ebc1623a0
+7602	7672	1740599027462986658	/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64/libreact_codegen_rnsvg.so	ccaf63895f11eab8
+0	9273	1740599029014005047	CMakeFiles/appmodules.dir/home/simar/my-sehaj-path-app/android/app/build/generated/autolinking/src/main/jni/autolinking.cpp.o	807a4d8d607fbe33
+9273	9322	1740599029112006209	/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64/libappmodules.so	4aa577b0c737de94
