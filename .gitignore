@@ -62,4 +62,8 @@ build/
 local.properties
 *.iml
 *.hprof
-.cxx/
+android/app/.cxx/
+
+
+# CocoaPods
+/ios/Pods/
