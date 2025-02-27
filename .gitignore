@@ -64,6 +64,5 @@ local.properties
 *.hprof
 android/app/.cxx/
 
-
 # CocoaPods
 /ios/Pods/
