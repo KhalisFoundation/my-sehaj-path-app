@@ -11,7 +11,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "arm64-v8a"
+			"value" : "x86_64"
 		},
 		{
 			"name" : "ANDROID_NDK",
@@ -99,7 +99,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "arm64-v8a"
+			"value" : "x86_64"
 		},
 		{
 			"name" : "CMAKE_ANDROID_NDK",
@@ -187,7 +187,7 @@
 				}
 			],
 			"type" : "INTERNAL",
-			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/arm64-v8a"
+			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64"
 		},
 		{
 			"name" : "CMAKE_CACHE_MAJOR_VERSION",
@@ -260,6 +260,22 @@
 			],
 			"type" : "INTERNAL",
 			"value" : "/usr/bin/ctest"
+		},
+		{
+			"name" : "CMAKE_CXX_COMPILER",
+			"properties" : 
+			[
+				{
+					"name" : "ADVANCED",
+					"value" : "1"
+				},
+				{
+					"name" : "HELPSTRING",
+					"value" : "(This variable does not exist and should not be used)"
+				}
+			],
+			"type" : "UNINITIALIZED",
+			"value" : ""
 		},
 		{
 			"name" : "CMAKE_CXX_COMPILER_AR",
@@ -388,6 +404,22 @@
 			],
 			"type" : "STRING",
 			"value" : "-latomic -lm"
+		},
+		{
+			"name" : "CMAKE_C_COMPILER",
+			"properties" : 
+			[
+				{
+					"name" : "ADVANCED",
+					"value" : "1"
+				},
+				{
+					"name" : "HELPSTRING",
+					"value" : "(This variable does not exist and should not be used)"
+				}
+			],
+			"type" : "UNINITIALIZED",
+			"value" : ""
 		},
 		{
 			"name" : "CMAKE_C_COMPILER_AR",
@@ -659,7 +691,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/prefab/arm64-v8a/prefab"
+			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/prefab/x86_64/prefab"
 		},
 		{
 			"name" : "CMAKE_GENERATOR",
@@ -755,7 +787,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/arm64-v8a"
+			"value" : "/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64"
 		},
 		{
 			"name" : "CMAKE_LINKER",
@@ -1027,7 +1059,7 @@
 				}
 			],
 			"type" : "UNINITIALIZED",
-			"value" : "/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/arm64-v8a"
+			"value" : "/home/simar/my-sehaj-path-app/android/app/build/intermediates/cxx/Debug/4m1tj2t1/obj/x86_64"
 		},
 		{
 			"name" : "CMAKE_SHARED_LINKER_FLAGS",
@@ -1267,10 +1299,10 @@
 			[
 				{
 					"name" : "HELPSTRING",
-					"value" : "No help, variable specified on the command line."
+					"value" : "The CMake toolchain file"
 				}
 			],
-			"type" : "UNINITIALIZED",
+			"type" : "FILEPATH",
 			"value" : "/home/simar/Android/Sdk/ndk/26.1.10909125/build/cmake/android.toolchain.cmake"
 		},
 		{
@@ -1335,7 +1367,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/prefab/arm64-v8a/prefab/lib/aarch64-linux-android/cmake/ReactAndroid"
+			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/prefab/x86_64/prefab/lib/x86_64-linux-android/cmake/ReactAndroid"
 		},
 		{
 			"name" : "appmodules_BINARY_DIR",
@@ -1347,7 +1379,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/arm64-v8a"
+			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/x86_64"
 		},
 		{
 			"name" : "appmodules_IS_TOP_LEVEL",
@@ -1383,7 +1415,7 @@
 				}
 			],
 			"type" : "PATH",
-			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/prefab/arm64-v8a/prefab/lib/aarch64-linux-android/cmake/fbjni"
+			"value" : "/home/simar/my-sehaj-path-app/android/app/.cxx/Debug/4m1tj2t1/prefab/x86_64/prefab/lib/x86_64-linux-android/cmake/fbjni"
 		}
 	],
 	"kind" : "cache",

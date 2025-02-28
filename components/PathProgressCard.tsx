@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, useWindowDimensions } from "react-native";
+import { View, Text, useWindowDimensions } from "react-native";
 import Svg, {
   Circle,
   Path,
@@ -7,68 +7,24 @@ import Svg, {
   Stop,
   Defs,
 } from "react-native-svg";
-import font from "../utils/font";
+import { CreatePathProgressCardStyles } from "../styles/PathProgress";
+
 interface Prop {
-  sheajPathNumber: number;
+  sehajPathNumber: number;
   angNumber: number;
   progress: number;
 }
-const ProgressCard = ({ sheajPathNumber, angNumber, progress }: Prop) => {
-  const { width: screenWidth } = useWindowDimensions();
-  progress = progress >= 100 ? 99 : progress;
-  const styles = StyleSheet.create({
-    container: {
-      width: screenWidth < 768 ? 199 : 239,
-      height: screenWidth < 768 ? 220 : 264,
-      backgroundColor: "white",
-      borderRadius: 15,
-      padding: screenWidth < 768 ? 20 : 24,
-      justifyContent: "space-between",
-      alignItems: "center",
-      shadowColor: "#000",
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
-      marginRight: 16,
-    },
-    textContainer: {
-      alignItems: "center",
-      marginBottom: screenWidth < 768 ? 2 : 4,
-    },
-    sehajText: {
-      fontFamily: font.Brandon_Grotesque_Black,
-      fontSize: screenWidth < 768 ? 18 : 22,
-      lineHeight: screenWidth < 768 ? 26 : 31,
-      textAlign: "center",
-      color: "#11336A",
-    },
-    angText: {
-      fontFamily: font.Brandon_Grotesque_Regular,
-      fontSize: screenWidth < 768 ? 14 : 17,
-      lineHeight: screenWidth < 768 ? 20 : 24,
-      textAlign: "center",
-      color: "#666666",
-    },
-    angNumber: {
-      fontFamily: "BrandonGrotesque-Bold",
-      color: "#11336A",
-    },
-    progressContainer: {
-      width: screenWidth < 768 ? 53 : 72,
-      height: screenWidth < 768 ? 53 : 72,
-      justifyContent: "center",
-      alignItems: "center",
-      marginTop: "auto",
-      marginBottom: "auto",
-    },
-  });
 
-  const size = screenWidth < 768 ? 53 : 72;
-  const strokeWidth = screenWidth < 768 ? 12 : 14;
+const ProgressCard = ({ sehajPathNumber, angNumber, progress }: Prop) => {
+  const { width } = useWindowDimensions();
+  const PathProgressCardStyles = CreatePathProgressCardStyles({
+    screenWidth: width,
+  });
+  progress = progress >= 100 ? 99 : progress;
+  const size = width < 768 ? 53 : 72;
+  const strokeWidth = width < 768 ? 12 : 14;
   const center = size / 2;
   const radius = (size - strokeWidth) / 2;
-
   const calculateArcPath = (
     x: number,
     y: number,
@@ -112,16 +68,18 @@ const ProgressCard = ({ sheajPathNumber, angNumber, progress }: Prop) => {
   const endAngle = progressAngle;
 
   return (
-    <View style={styles.container}>
-      <View style={styles.textContainer}>
-        <Text style={styles.sehajText}>Sehaj #{sheajPathNumber}</Text>
-        <Text style={styles.angText}>
-          Ang <Text style={styles.angNumber}>{angNumber}</Text>
+    <View style={PathProgressCardStyles.container}>
+      <View style={PathProgressCardStyles.textContainer}>
+        <Text style={PathProgressCardStyles.sehajText}>
+          Sehaj #{sehajPathNumber}
+        </Text>
+        <Text style={PathProgressCardStyles.angText}>
+          Ang <Text style={PathProgressCardStyles.angNumber}>{angNumber}</Text>
         </Text>
       </View>
       <View
         style={{
-          ...styles.progressContainer,
+          ...PathProgressCardStyles.progressContainer,
           transform: [{ rotateY: "180deg" }],
         }}
       >

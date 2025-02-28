@@ -223,11 +223,11 @@
 	[
 		{
 			"backtrace" : 4,
-			"id" : "react_codegen_rnasyncstorage::@1596841e19ec5b9eeffe"
+			"id" : "react_codegen_rnsvg::@4f40eb209d0c0b4a3b65"
 		},
 		{
 			"backtrace" : 4,
-			"id" : "react_codegen_rnsvg::@4f40eb209d0c0b4a3b65"
+			"id" : "react_codegen_rnasyncstorage::@1596841e19ec5b9eeffe"
 		}
 	],
 	"id" : "appmodules::@6890427a1f51a3e7e1df",

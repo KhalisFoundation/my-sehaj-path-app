@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Image,
@@ -12,8 +11,9 @@ import {
 import ProgressCard from "../components/PathProgressCard";
 import CompletedPathCard from "../components/CompletedPathCard";
 import LinearGradient from "react-native-linear-gradient";
-import font from "../utils/font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { HomeScreenStyles } from "../styles/HomeScreen";
+
 interface Path {
   number: number;
   ang: number;
@@ -26,19 +26,15 @@ const HomeScreen = () => {
   const { width } = useWindowDimensions();
   const [onGoingPath, setOnGogingPath] = useState<Path[]>([]);
   const [completedPath, setCompletedPath] = useState<Path[]>([]);
+
   useEffect(() => {
     const fetchPath = async () => {
       try {
-        const storedInProgressPath = await AsyncStorage.getItem(
-          "PathInProgress"
-        );
-        const paths = storedInProgressPath
-          ? JSON.parse(storedInProgressPath)
-          : [];
-        console.log(paths);
+        const storedPath = await AsyncStorage.getItem("storedPath");
+        const paths = storedPath ? JSON.parse(storedPath) : [];
 
-        setCompletedPath(paths?.filter((path: Path) => path.ang == 1438));
-        setOnGogingPath(paths?.filter((path: Path) => path.ang != 1438));
+        setCompletedPath(paths?.filter((path: Path) => path.ang == 1430));
+        setOnGogingPath(paths?.filter((path: Path) => path.ang != 1430));
       } catch {
         setOnGogingPath([]);
       }
@@ -47,33 +43,30 @@ const HomeScreen = () => {
   }, []);
   const handleNewPath = async () => {
     try {
-      let storedPath = await AsyncStorage.getItem("PathInProgress");
-      let pathInProgressArray = storedPath ? JSON.parse(storedPath) : [];
+      const storedPath = await AsyncStorage.getItem("storedPath");
+      let storedPathArray = storedPath ? JSON.parse(storedPath) : [];
+
       let lastPath =
-        pathInProgressArray.length <= 0
+        storedPathArray.length <= 0
           ? 0
-          : pathInProgressArray[pathInProgressArray.length - 1].number;
-      let pathnumber = (await lastPath) + 1;
+          : storedPathArray[storedPathArray.length - 1].number;
+      let pathnumber = lastPath + 1;
       const todayDate: string = new Date()
         .toUTCString()
         .split(" ")
         .slice(1, 4)
         .join("");
 
-      await pathInProgressArray.push({
+      storedPathArray.push({
         number: pathnumber,
-        ang: 138,
-        progress: 15,
-        startData: todayDate,
+        ang: 1,
+        progress: 0,
+        startDate: todayDate,
         endDate: "",
       });
-      await AsyncStorage.setItem(
-        "PathInProgress",
-        JSON.stringify(pathInProgressArray)
-      );
-      setOnGogingPath(
-        pathInProgressArray.filter((path: Path) => path.ang != 1438)
-      );
+
+      setOnGogingPath(storedPathArray.filter((path: Path) => path.ang != 1430));
+      await AsyncStorage.setItem("storedPath", JSON.stringify(storedPathArray));
     } catch (e) {
       console.log(e);
     }
@@ -83,20 +76,22 @@ const HomeScreen = () => {
     <>
       <ImageBackground
         source={require("../images/homeScreenBackground.png")}
-        imageStyle={styles.backgroundImage}
+        imageStyle={HomeScreenStyles.backgroundImage}
       >
-        <View style={styles.container}>
-          <View style={styles.headingContainer}>
-            <Text style={styles.header}>It's a Fine day to start a</Text>
-            <Text style={styles.header}> new Sehaj Path!</Text>
+        <View style={HomeScreenStyles.container}>
+          <View style={HomeScreenStyles.headingContainer}>
+            <Text style={HomeScreenStyles.header}>
+              It's a Fine day to start a
+            </Text>
+            <Text style={HomeScreenStyles.header}> new Sehaj Path!</Text>
           </View>
-          <View style={styles.startButtonContainer}>
+          <View style={HomeScreenStyles.startButtonContainer}>
             <LinearGradient
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               colors={["#11336A", "#0D2346"]}
               style={{
-                ...styles.startButton,
+                ...HomeScreenStyles.startButton,
                 width: width > 768 ? 140 : 112,
                 height: width > 768 ? 55 : 48,
               }}
@@ -112,14 +107,14 @@ const HomeScreen = () => {
                 <Image
                   source={require("../images/pathStartButtonIcon.png")}
                   style={{
-                    ...styles.pathStartButtonIcon,
+                    ...HomeScreenStyles.pathStartButtonIcon,
                     height: width > 768 ? 30 : 24,
                     width: width > 768 ? 30 : 24,
                   }}
                 />
                 <Text
                   style={{
-                    ...styles.startButtonText,
+                    ...HomeScreenStyles.startButtonText,
                     fontSize: width > 768 ? 20 : 16,
                   }}
                 >
@@ -129,12 +124,12 @@ const HomeScreen = () => {
             </LinearGradient>
           </View>
 
-          {onGoingPath.length != 0 ? (
+          {onGoingPath.length > 0 ? (
             <>
-              <View style={styles.sectionTitleContainer}>
+              <View style={HomeScreenStyles.sectionTitleContainer}>
                 <Text
                   style={{
-                    ...styles.sectionTitle,
+                    ...HomeScreenStyles.sectionTitle,
                     fontSize: width > 500 ? 21 : 14,
                   }}
                 >
@@ -144,30 +139,27 @@ const HomeScreen = () => {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
+                style={HomeScreenStyles.horizontalScroll}
               >
-                {onGoingPath.length != 0
-                  ? onGoingPath.map((path, index) => {
-                      return (
-                        <View key={index}>
-                          <ProgressCard
-                            sheajPathNumber={path.number}
-                            angNumber={path.ang}
-                            progress={path.progress}
-                          />
-                        </View>
-                      );
-                    })
-                  : undefined}
+                {onGoingPath.map((path, index) => {
+                  return (
+                    <ProgressCard
+                      key={index}
+                      sehajPathNumber={path.number}
+                      angNumber={path.ang}
+                      progress={path.progress}
+                    />
+                  );
+                })}
               </ScrollView>
             </>
           ) : undefined}
-          {completedPath.length != 0 ? (
+          {completedPath.length > 0 ? (
             <>
-              <View style={styles.sectionTitleContainer}>
+              <View style={HomeScreenStyles.sectionTitleContainer}>
                 <Text
                   style={{
-                    ...styles.sectionTitle,
+                    ...HomeScreenStyles.sectionTitle,
                     fontSize: width > 500 ? 21 : 14,
                   }}
                 >
@@ -177,92 +169,23 @@ const HomeScreen = () => {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}
+                style={HomeScreenStyles.horizontalScroll}
               >
                 {completedPath.map((path, index) => (
                   <View key={index}>
                     <CompletedPathCard
-                      sheajPathNumber={path?.number}
+                      sehajPathNumber={path?.number}
                       pathCompletionDate={path?.endDate}
                     />
                   </View>
                 ))}
               </ScrollView>
             </>
-          ) : undefined}
+          ) : null}
         </View>
       </ImageBackground>
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  backgroundImage: {
-    resizeMode: "cover",
-    transform: [{ scale: 1.2 }, { translateX: 0 }],
-    width: "300%",
-    height: "100%",
-    overflow: "hidden",
-  },
-  container: {
-    backgroundColor: "rgba(245, 245, 245,0.89)",
-    height: "100%",
-    padding: 15,
-    paddingTop: 59,
-  },
-  headingContainer: { marginBottom: 20 },
-  header: {
-    fontSize: 27,
-    color: "#11336A",
-    textAlign: "center",
-    fontFamily: font.Recoleta_Regular,
-    lineHeight: 38,
-  },
-  startButtonContainer: {
-    alignItems: "center",
-    marginBottom: 41,
-  },
-  startButton: {
-    padding: 7,
-    backgroundColor: "transparent",
-    justifyContent: "center",
-    borderRadius: 100,
-  },
-  startButtonText: {
-    color: "white",
-    fontSize: 16,
-    letterSpacing: 2,
-    fontFamily: font.Baloo_Paaji_2_Regular,
-  },
-  pathStartButtonIcon: {
-    width: 24,
-    height: 24,
-    marginRight: 11,
-  },
-  sectionTitleContainer: {
-    alignItems: "center",
-    marginBottom: 15,
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontFamily: font.Brandon_Grotesque_Regular,
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
-    color: "#11336A",
-  },
-  horizontalScroll: {
-    flexDirection: "row",
-    marginBottom: 40,
-  },
-  completedText: {
-    fontSize: 16,
-    color: "#11336A",
-  },
-  completedAngText: {
-    fontSize: 14,
-    color: "#666666",
-  },
-});
 
 export default HomeScreen;
