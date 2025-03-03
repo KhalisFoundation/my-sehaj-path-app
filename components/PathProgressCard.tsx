@@ -8,6 +8,7 @@ import Svg, {
   Defs,
 } from "react-native-svg";
 import { CreatePathProgressCardStyles } from "../styles/PathProgress";
+import { Constants } from "../constants/Constants";
 
 interface Prop {
   sehajPathNumber: number;
@@ -71,10 +72,11 @@ const ProgressCard = ({ sehajPathNumber, angNumber, progress }: Prop) => {
     <View style={PathProgressCardStyles.container}>
       <View style={PathProgressCardStyles.textContainer}>
         <Text style={PathProgressCardStyles.sehajText}>
-          Sehaj #{sehajPathNumber}
+          {Constants.SEHAJ} #{sehajPathNumber}
         </Text>
         <Text style={PathProgressCardStyles.angText}>
-          Ang <Text style={PathProgressCardStyles.angNumber}>{angNumber}</Text>
+          {Constants.ANG}{" "}
+          <Text style={PathProgressCardStyles.angNumber}>{angNumber}</Text>
         </Text>
       </View>
       <View

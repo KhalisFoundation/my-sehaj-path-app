@@ -1,12 +1,12 @@
 import React from "react";
 import { SafeAreaView } from "react-native";
-import HomeScreen from "./screens/HomeScreen";
+import SplashScreen from "./screens/SplashScreen";
 
 function App() {
   return (
     <>
       <SafeAreaView>
-        <HomeScreen />
+        <SplashScreen />
       </SafeAreaView>
     </>
   );

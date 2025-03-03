@@ -3,7 +3,7 @@ set(CMAKE_HOST_SYSTEM_NAME "Linux")
 set(CMAKE_HOST_SYSTEM_VERSION "6.8.0-52-generic")
 set(CMAKE_HOST_SYSTEM_PROCESSOR "x86_64")
 
-include("/home/simar/Android/Sdk/ndk/26.1.10909125/build/cmake/android.toolchain.cmake")
+include("/media/simar/ExtraStorageForLINUX/Android/Sdk/ndk/26.1.10909125/build/cmake/android.toolchain.cmake")
 
 set(CMAKE_SYSTEM "Android-1")
 set(CMAKE_SYSTEM_NAME "Android")

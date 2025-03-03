@@ -13,6 +13,7 @@ import CompletedPathCard from "../components/CompletedPathCard";
 import LinearGradient from "react-native-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HomeScreenStyles } from "../styles/HomeScreen";
+import { Constants } from "../constants/Constants";
 
 interface Path {
   number: number;
@@ -41,16 +42,17 @@ const HomeScreen = () => {
     };
     fetchPath();
   }, []);
+
   const handleNewPath = async () => {
     try {
       const storedPath = await AsyncStorage.getItem("storedPath");
       let storedPathArray = storedPath ? JSON.parse(storedPath) : [];
-
       let lastPath =
         storedPathArray.length <= 0
           ? 0
           : storedPathArray[storedPathArray.length - 1].number;
       let pathnumber = lastPath + 1;
+
       const todayDate: string = new Date()
         .toUTCString()
         .split(" ")
@@ -64,7 +66,6 @@ const HomeScreen = () => {
         startDate: todayDate,
         endDate: "",
       });
-
       setOnGogingPath(storedPathArray.filter((path: Path) => path.ang != 1430));
       await AsyncStorage.setItem("storedPath", JSON.stringify(storedPathArray));
     } catch (e) {
@@ -81,9 +82,12 @@ const HomeScreen = () => {
         <View style={HomeScreenStyles.container}>
           <View style={HomeScreenStyles.headingContainer}>
             <Text style={HomeScreenStyles.header}>
-              It's a Fine day to start a
+              {Constants.HOME_TAGLINE_1}
             </Text>
-            <Text style={HomeScreenStyles.header}> new Sehaj Path!</Text>
+            <Text style={HomeScreenStyles.header}>
+              {" "}
+              {Constants.HOME_TAGLINE_2}
+            </Text>
           </View>
           <View style={HomeScreenStyles.startButtonContainer}>
             <LinearGradient
@@ -118,7 +122,7 @@ const HomeScreen = () => {
                     fontSize: width > 768 ? 20 : 16,
                   }}
                 >
-                  START
+                  {Constants.START}
                 </Text>
               </TouchableOpacity>
             </LinearGradient>
@@ -133,7 +137,7 @@ const HomeScreen = () => {
                     fontSize: width > 500 ? 21 : 14,
                   }}
                 >
-                  Sehaj Path in Progress:
+                  {Constants.SEHAJ_PATH_IN_PROGRESS}:
                 </Text>
               </View>
               <ScrollView
@@ -163,7 +167,7 @@ const HomeScreen = () => {
                     fontSize: width > 500 ? 21 : 14,
                   }}
                 >
-                  Sehaj Paths Completed:
+                  {Constants.SEHAJ_PATH_COMPLETED}:
                 </Text>
               </View>
               <ScrollView

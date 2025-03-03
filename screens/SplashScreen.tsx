@@ -1,5 +1,6 @@
 import { ImageBackground, Text, View } from "react-native";
 import { SplashScreenStyles } from "../styles/SplashScreen";
+import { Constants } from "../constants/Constants";
 
 const SplashScreen = () => {
   return (
@@ -10,12 +11,14 @@ const SplashScreen = () => {
           style={SplashScreenStyles.backgroundImage}
         >
           <View style={SplashScreenStyles.blueRectangle}>
-            <Text style={SplashScreenStyles.splashTitle}>ਸਹਿਜ ਪਾਠ</Text>
-            <Text style={SplashScreenStyles.splashSubTitle}>
-              Building the habit
+            <Text style={SplashScreenStyles.splashTitle}>
+              {Constants.SEHAJ_PATH}
             </Text>
             <Text style={SplashScreenStyles.splashSubTitle}>
-              of reading Gurbani
+              {Constants.SPLASH_SCREEN_SUB_TITLE_1}
+            </Text>
+            <Text style={SplashScreenStyles.splashSubTitle}>
+              {Constants.SPLASH_SCREEN_SUB_TITLE_2}
             </Text>
           </View>
         </ImageBackground>
