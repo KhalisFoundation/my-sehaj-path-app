@@ -62,7 +62,7 @@ build/
 local.properties
 *.iml
 *.hprof
-android/app/.cxx/
+.cxx/
 
 # CocoaPods
 /ios/Pods/
