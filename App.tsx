@@ -1,28 +1,24 @@
 import React from "react";
-import { SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView, Text, View } from "react-native";
+import PrimaryButton from "./components/PrimaryButton";
+import Start from "./icons/Start";
 function App() {
   return (
     <>
       <SafeAreaView>
-        <View style={styleSheet.background}>
-          <Text style={styleSheet.text}>Khalis Foundation</Text>
-
-          <Text style={styleSheet.text}>Sheaj-Path-App</Text>
+        <View>
+          <PrimaryButton
+            buttonTitle={"START"}
+            Icon={<Start />}
+            onPress={() => {
+              console.log("hello");
+            }}
+            containerStyle={{ borderRadius: 100 }}
+          />
         </View>
       </SafeAreaView>
     </>
   );
 }
-const styleSheet = StyleSheet.create({
-  background: {
-    backgroundColor: "black",
-    height: "100%",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  text: {
-    color: "white",
-    fontSize: 25,
-  },
-});
+
 export default App;
