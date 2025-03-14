@@ -8,12 +8,12 @@ import {
   ViewStyle,
 } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
-import { PrimaryButtonStyles } from "../styles/PrimaryButton";
+import { PrimaryButtonStyles } from "../styles/PrimaryButtonStyles";
 
 interface Props {
   buttonTitle: string;
   Icon: React.ReactNode;
-  onPress: () => void;
+  onPress: () => any;
   containerStyle?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
 }
