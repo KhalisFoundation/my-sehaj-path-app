@@ -6,6 +6,7 @@ export const PrimaryButtonStyles = StyleSheet.create({
     width: 112,
     height: 48,
     marginTop: 10,
+    borderRadius: 100,
   },
   button: {
     flexDirection: "row",

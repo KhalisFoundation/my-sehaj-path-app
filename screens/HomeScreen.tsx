@@ -89,7 +89,6 @@ export default function HomeScreen() {
             <PrimaryButton
               buttonTitle={Constants.START}
               Icon={<StartIcon />}
-              containerStyle={HomeScreenStyles.startButtonContainer}
               onPress={handleStart}
             />
             {pathInProgress?.length > 0 ? (

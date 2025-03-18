@@ -1,18 +1,15 @@
 import React from "react";
-import { Text, StyleProp, TextStyle } from "react-native";
+import { Text } from "react-native";
 import { HeadlineStyle } from "../styles/HeadlineStyles";
 
 interface Props {
   headline: string;
-  customHeadlineStyle?: StyleProp<TextStyle>;
 }
 
-export default function Headline({ headline, customHeadlineStyle }: Props) {
+export default function Headline({ headline }: Props) {
   return (
     <>
-      <Text style={[HeadlineStyle.headline, customHeadlineStyle]}>
-        {headline}
-      </Text>
+      <Text style={HeadlineStyle.headline}>{headline}</Text>
     </>
   );
 }

@@ -17,9 +17,7 @@ export const HomeScreenStyles = StyleSheet.create({
   scrollContainer: {
     minHeight: "100%",
   },
-  startButtonContainer: {
-    borderRadius: 100,
-  },
+
   pathInProgressContianer: {
     marginTop: 41,
   },
