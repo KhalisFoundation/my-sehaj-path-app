@@ -13,6 +13,10 @@ export const HomeScreenStyles = StyleSheet.create({
     padding: 15,
     paddingTop: 59,
     height: "100%",
+    borderWidth: 6,
+    borderRightWidth: 4,
+    borderLeftWidth: 4,
+    borderColor: "rgba(253, 198, 6, 0.3)",
   },
   scrollContainer: {
     minHeight: "100%",
