@@ -5,9 +5,7 @@ import HomeScreen from "./screens/HomeScreen";
 function App() {
   return (
     <>
-      <SafeAreaView style={{ flex: 1 }}>
-        <HomeScreen />
-      </SafeAreaView>
+      <SafeAreaView style={{ flex: 1 }}></SafeAreaView>
     </>
   );
 }
