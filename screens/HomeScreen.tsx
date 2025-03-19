@@ -100,6 +100,7 @@ export default function HomeScreen() {
                       sehajPathNumber={path.pathId}
                       angNumber={path.angNumber}
                       progress={path.progress}
+                      onPress={() => {}}
                     />
                   ))}
                   widthOfCard={199}

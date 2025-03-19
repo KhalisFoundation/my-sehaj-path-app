@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import Svg, {
   Circle,
   Path,
@@ -14,9 +14,15 @@ interface Prop {
   sehajPathNumber: number;
   angNumber: number;
   progress: number;
+  onPress: () => void;
 }
 
-export const PrimaryCard = ({ sehajPathNumber, angNumber, progress }: Prop) => {
+export const PrimaryCard = ({
+  sehajPathNumber,
+  angNumber,
+  progress,
+  onPress,
+}: Prop) => {
   progress = progress >= 100 ? 99 : progress;
   const size = 53;
   const strokeWidth = 12;
@@ -65,7 +71,10 @@ export const PrimaryCard = ({ sehajPathNumber, angNumber, progress }: Prop) => {
   const endAngle = progressAngle;
 
   return (
-    <View style={PathProgressCardStyles.container}>
+    <TouchableOpacity
+      style={PathProgressCardStyles.container}
+      onPress={onPress}
+    >
       <View style={PathProgressCardStyles.textContainer}>
         <Text style={PathProgressCardStyles.sehajText}>
           {Constants.SEHAJ} #{sehajPathNumber}
@@ -121,6 +130,6 @@ export const PrimaryCard = ({ sehajPathNumber, angNumber, progress }: Prop) => {
           />
         </Svg>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
