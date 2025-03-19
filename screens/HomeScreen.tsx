@@ -108,7 +108,7 @@ export default function HomeScreen() {
                 />
               </View>
             ) : undefined}
-            {pathCompleted?.length < 0 ? (
+            {pathCompleted?.length > 0 ? (
               <View style={HomeScreenStyles.pathCompletedContainer}>
                 <Label label={`${Constants.SEHAJ_PATH_COMPLETED} :`} />
                 <Slider
