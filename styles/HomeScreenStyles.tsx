@@ -3,19 +3,16 @@ import { StyleSheet } from "react-native";
 export const HomeScreenStyles = StyleSheet.create({
   backgroundImage: {
     height: "100%",
-    transform: [{ scale: 1.1 }, { translateX: 0 }],
   },
   container: {
     backgroundColor: "rgba(245, 245, 245,0.89)",
-    transform: [{ scale: 0.92 }, { translateX: 0 }],
     alignItems: "center",
     justifyContent: "center",
     padding: 15,
     paddingTop: 59,
     height: "100%",
-    borderWidth: 8,
-    borderRightWidth: 6,
-    borderLeftWidth: 6,
+    borderWidth: 4,
+    borderRightWidth: 5,
     borderColor: "rgba(253, 198, 6, 0.3)",
   },
   scrollContainer: {
