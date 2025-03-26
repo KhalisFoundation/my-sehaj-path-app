@@ -20,7 +20,11 @@ interface PathData {
 }
 interface DateData {
   pathid: number;
-  dates: [{}];
+  dates: PathData[];
+}
+interface PathDate {
+  date: string;
+  angs: number;
 }
 
 export default function HomeScreen() {
@@ -64,7 +68,7 @@ export default function HomeScreen() {
     });
     pathDateDataArray.push({
       pathid: newPathid,
-      dates: [{}],
+      dates: [],
     });
     setPathInProgress(pathDataArray.filter((path) => path.angNumber != 1430));
     setPathCompleted(
