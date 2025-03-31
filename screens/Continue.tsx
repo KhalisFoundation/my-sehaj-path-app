@@ -109,13 +109,6 @@ export default function Continue({ pathId }: Props) {
   }, []);
   useEffect(() => {
     pathData?.startDate ? makeStreakIndicator(pathData.startDate) : undefined;
-    setStreakData([
-      { angs: 5, date: "31-Match-2025" },
-      {
-        angs: 5,
-        date: "31-Match-2025",
-      },
-    ]);
   }, [pathData]);
 
   return (
