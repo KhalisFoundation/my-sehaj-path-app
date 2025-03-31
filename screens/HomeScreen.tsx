@@ -20,7 +20,7 @@ interface PathData {
 }
 interface DateData {
   pathid: number;
-  dates: PathData[];
+  dates: PathDate[];
 }
 interface PathDate {
   date: string;
@@ -56,9 +56,9 @@ export default function HomeScreen() {
     let pathid = pathDataArray.length > 0 ? pathDataArray.length : 0;
     let newPathid = pathid + 1;
     const date = new Date();
-    const startNewPathDate = `${date.getDate()} ${
+    const startNewPathDate = `${date.getDate()}-${
       MonthConstant[date.getMonth()]
-    } ${date.getFullYear()}`;
+    }-${date.getFullYear()}`;
     pathDataArray.push({
       pathId: newPathid,
       progress: 1,
