@@ -1,4 +1,11 @@
-import { View, FlatList, Animated, StyleProp, ViewStyle } from "react-native";
+import {
+  View,
+  FlatList,
+  Animated,
+  StyleProp,
+  ViewStyle,
+  useWindowDimensions,
+} from "react-native";
 import React, { useRef, useState } from "react";
 import { SliderStyles } from "../styles/SliderStyles";
 
@@ -20,11 +27,13 @@ export default function Slider({
   dotsContainerStyle,
 }: Props) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const { width } = useWindowDimensions();
+
   const scrollX = useRef(new Animated.Value(0)).current;
   const cardwidthOfCard = widthOfCard;
   const gap = 10;
   const scrollInterval = cardwidthOfCard + gap;
-  const viewPortCards = Math.ceil(widthOfCard / scrollInterval);
+  const viewPortCards = Math.floor(width / scrollInterval);
   const totalPages = Math.ceil(arrayOfCards.length / viewPortCards);
 
   const handleScroll = Animated.event(
@@ -33,7 +42,8 @@ export default function Slider({
       useNativeDriver: false,
       listener: (event: any) => {
         const offsetX = event.nativeEvent.contentOffset.x;
-        const index = Math.ceil(offsetX / scrollInterval);
+        const pageWidth = viewPortCards * scrollInterval;
+        const index = Math.ceil(offsetX / pageWidth);
         setActiveIndex(index);
       },
     }
