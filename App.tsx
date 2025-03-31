@@ -1,11 +1,15 @@
 import React from "react";
-import { SafeAreaView, View } from "react-native";
+import { SafeAreaView } from "react-native";
 import HomeScreen from "./screens/HomeScreen";
+import Continue from "./screens/Continue";
 
 function App() {
   return (
     <>
-      <SafeAreaView style={{ flex: 1 }}></SafeAreaView>
+      <SafeAreaView style={{ flex: 1 }}>
+        <Continue pathId={1} />
+        {/* <HomeScreen /> */}
+      </SafeAreaView>
     </>
   );
 }
