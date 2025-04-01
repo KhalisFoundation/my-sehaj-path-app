@@ -1,5 +1,6 @@
 import { StyleSheet } from "react-native";
 import font from "../utils/font";
+
 export const ContinueScreenStyles = StyleSheet.create({
   backgroundImage: {
     height: "100%",
@@ -53,5 +54,10 @@ export const ContinueScreenStyles = StyleSheet.create({
     maxHeight: 85,
     marginTop: 10,
     marginBottom: 48,
+  },
+  complete10Angs: {
+    fontFamily: font.Brandon_Grotesque_Regular,
+    color: "gray",
+    fontSize: 24,
   },
 });

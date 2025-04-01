@@ -62,7 +62,7 @@ export default function HomeScreen() {
     pathDataArray.push({
       pathId: newPathid,
       progress: 1,
-      angNumber: 1,
+      angNumber: 0,
       startDate: startNewPathDate,
       completionDate: "",
     });

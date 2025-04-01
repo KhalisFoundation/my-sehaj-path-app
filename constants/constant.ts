@@ -21,4 +21,6 @@ export const Constants: Constant = {
     "With your current speed, you will complete this Sehaj Path on ",
   HERE_YOURS_STREAK_CHART: "Here’s your streak chart so far: ⚡",
   CONTINUE: "Continue",
+  COMPLETE_10_ANGS:
+    "Awesome, you have starated the sehaj path, once you complete 10 angs you will see more details here.",
 };

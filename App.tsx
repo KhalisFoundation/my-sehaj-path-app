@@ -6,10 +6,7 @@ import Continue from "./screens/Continue";
 function App() {
   return (
     <>
-      <SafeAreaView style={{ flex: 1 }}>
-        <Continue pathId={1} />
-        {/* <HomeScreen /> */}
-      </SafeAreaView>
+      <SafeAreaView style={{ flex: 1 }}></SafeAreaView>
     </>
   );
 }
