@@ -13,11 +13,12 @@ export const Constants: Constant = {
   SEHAJ_PATH_COMPLETED: "Sehaj Paths Completed",
   ANG: "Ang",
   SEE_ALL_PATH: "See all paths",
+  PATH: "Path",
   WAHEGURU_JI_KA_KHALSA_WAHEGURU_JI_KI_FATEH:
     "ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ ॥ ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ ॥ 🙏🏽 ",
   YOU_ARE_ON_ANG_NUMBER: "You are on ang number  ",
   HAVE_COMPLETED: " and have completed ",
-  SRI_SEHAJ_PATH: " of your Sri Sehaj Path. 🎉 ",
+  SRI_SEHAJ_PATH: " of your Sehaj Path. 🎉 ",
   STARTED_PATH: "You started this path ",
   AVERAGE_ABOUT: "ago. You average about ",
   COMPLETION_SEHAJ_PATH:

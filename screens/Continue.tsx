@@ -125,7 +125,7 @@ export default function Continue({ pathId }: Props) {
             </View>
             <View style={ContinueScreenStyles.sehajHeadingContainer}>
               <SecondaryHeading
-                text={Constants.SEHAJ}
+                text={Constants.PATH}
                 textStyles={ContinueScreenStyles.sehajHeading}
               />
               <SecondaryHeading
