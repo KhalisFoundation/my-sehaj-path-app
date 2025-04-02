@@ -2,6 +2,9 @@ interface Constant {
   [key: string]: any;
 }
 export const Constants: Constant = {
+  SEHAJ_PATH: "ਸਹਿਜ ਪਾਠ ",
+  BUILDING_THE_HABIT: "Building the habit",
+  OF_READING_GURBANI: "of reading Gurbani.",
   SEHAJ: "Sehaj",
   ITS_FINE_DAY_TO_START_A: "It's Fine day to start a",
   NEW_SEHAJ_PATH: "new Sehaj Path",
