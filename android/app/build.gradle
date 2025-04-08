@@ -77,9 +77,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.sheajpathapp"
+    namespace "com.sehajpathapp"
     defaultConfig {
-        applicationId "com.sheajpathapp"
+        applicationId "com.sehajpathapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

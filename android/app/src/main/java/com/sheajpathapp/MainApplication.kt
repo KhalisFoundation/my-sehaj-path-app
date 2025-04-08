@@ -1,4 +1,4 @@
-package com.sheajpathapp
+package com.sehajPathApp
 
 import android.app.Application
 import com.facebook.react.PackageList

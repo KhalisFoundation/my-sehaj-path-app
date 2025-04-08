@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "SheajPathApp.app"
-               BlueprintName = "SheajPathApp"
-               ReferencedContainer = "container:SheajPathApp.xcodeproj">
+               BuildableName = "SehajPathApp.app"
+               BlueprintName = "SehajPathApp"
+               ReferencedContainer = "container:SehajPathApp.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "SheajPathAppTests.xctest"
-               BlueprintName = "SheajPathAppTests"
-               ReferencedContainer = "container:SheajPathApp.xcodeproj">
+               BuildableName = "SehajPathAppTests.xctest"
+               BlueprintName = "SehajPathAppTests"
+               ReferencedContainer = "container:SehajPathApp.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SheajPathApp.app"
-            BlueprintName = "SheajPathApp"
-            ReferencedContainer = "container:SheajPathApp.xcodeproj">
+            BuildableName = "SehajPathApp.app"
+            BlueprintName = "SehajPathApp"
+            ReferencedContainer = "container:SehajPathApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "SheajPathApp.app"
-            BlueprintName = "SheajPathApp"
-            ReferencedContainer = "container:SheajPathApp.xcodeproj">
+            BuildableName = "SehajPathApp.app"
+            BlueprintName = "SehajPathApp"
+            ReferencedContainer = "container:SehajPathApp.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
