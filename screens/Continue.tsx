@@ -13,10 +13,9 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Streak } from "../components/Streak";
 import SecondaryButton from "../components/SecondaryButton";
 import ContinueIcon from "../icons/Continue.icon";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../App";
 
-interface Props {
-  pathId: number;
-}
 interface PathData {
   pathId: number;
   angNumber: number;
@@ -33,7 +32,9 @@ interface PathDate {
   dates: Date[];
 }
 
-export default function Continue({ pathId }: Props) {
+type ContinueProps = NativeStackScreenProps<RootStackParamList, "Continue">;
+
+export default function Continue({ route, navigation }: ContinueProps) {
   const [pathData, setPathData] = useState<PathData>();
   const [pathDate, setPathDate] = useState<PathDate>();
   const [pathAng, setPathAng] = useState<number>(0);
@@ -43,7 +44,7 @@ export default function Continue({ pathId }: Props) {
   const [finishDate, setFinishDate] = useState<string>();
   const [streakData, setStreakData] = useState<Date[]>();
   const [showData, setShowData] = useState<boolean>();
-
+  const { pathId } = route.params;
   dayjs.extend(customParseFormat);
 
   const fetchPath = async () => {
@@ -120,7 +121,12 @@ export default function Continue({ pathId }: Props) {
         >
           <View style={ContinueScreenStyles.container}>
             <View style={ContinueScreenStyles.navContainer}>
-              <NavContent navIcon={<GoBackIcon />} />
+              <NavContent
+                navIcon={<GoBackIcon />}
+                onPress={() => {
+                  navigation.goBack();
+                }}
+              />
               <NavContent text={Constants.SEE_ALL_PATH} />
             </View>
             <View style={ContinueScreenStyles.sehajHeadingContainer}>

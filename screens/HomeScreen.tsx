@@ -10,6 +10,8 @@ import Label from "../components/Label";
 import { HomeScreenStyles } from "../styles/HomeScreenStyles";
 import { Constants, MonthConstant } from "../constants/index";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { RootStackParamList } from "../App";
 
 interface PathData {
   pathId: number;
@@ -26,8 +28,9 @@ interface PathDate {
   date: string;
   angs: number;
 }
+type HomeProps = NativeStackScreenProps<RootStackParamList, "Home">;
 
-export default function HomeScreen() {
+export default function HomeScreen({ navigation }: HomeProps) {
   const [pathInProgress, setPathInProgress] = useState<PathData[]>([]);
   const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
   useEffect(() => {
@@ -104,7 +107,9 @@ export default function HomeScreen() {
                       sehajPathNumber={path.pathId}
                       angNumber={path.angNumber}
                       progress={path.progress}
-                      onPress={() => {}}
+                      onPress={() => {
+                        navigation.push("Continue", { pathId: path.pathId });
+                      }}
                     />
                   ))}
                   widthOfCard={199}

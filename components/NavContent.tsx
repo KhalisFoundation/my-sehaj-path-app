@@ -1,16 +1,21 @@
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import React from "react";
 import { NavContentStyles } from "../styles/NavContentStyles";
 
 interface Props {
   text?: string;
   navIcon?: React.ReactNode;
+  onPress?: () => void;
 }
-export default function NavContent({ text, navIcon }: Props) {
+export default function NavContent({ text, navIcon, onPress }: Props) {
   return (
     <>
       <View style={NavContentStyles.conatiner}>
-        {text ? <Text style={NavContentStyles.navText}>{text}</Text> : navIcon}
+        {text ? (
+          <Text style={NavContentStyles.navText}>{text}</Text>
+        ) : (
+          <TouchableOpacity onPress={onPress}>{navIcon}</TouchableOpacity>
+        )}
       </View>
     </>
   );
