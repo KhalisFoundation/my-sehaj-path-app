@@ -79,6 +79,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
     );
     AsyncStorage.setItem("pathDetails", JSON.stringify(pathDataArray));
     AsyncStorage.setItem("pathDateDetails", JSON.stringify(pathDateDataArray));
+    navigation.push("Continue", { pathId: newPathid });
   };
 
   return (

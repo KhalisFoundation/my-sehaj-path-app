@@ -3,7 +3,7 @@ import React from "react";
 import { SimpleTextStyles } from "../styles/SimpleTextStyles";
 
 interface Props {
-  simpleText: string[] | React.ReactNode[];
+  simpleText: string[] | React.ReactNode[] | string;
   simpleTextStyle?: StyleProp<TextStyle>;
 }
 
@@ -11,9 +11,11 @@ export default function SimpleText({ simpleText, simpleTextStyle }: Props) {
   return (
     <>
       <Text style={[SimpleTextStyles.simpleText, simpleTextStyle]}>
-        {simpleText.map((text, index) => (
-          <React.Fragment key={index}>{text}</React.Fragment>
-        ))}
+        {typeof simpleText === "string"
+          ? simpleText
+          : simpleText.map((text, index) => (
+              <React.Fragment key={index}>{text}</React.Fragment>
+            ))}
       </Text>
     </>
   );

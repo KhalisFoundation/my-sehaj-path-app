@@ -211,7 +211,9 @@ export default function Continue({ route, navigation }: ContinueProps) {
               </>
             )}
             <SecondaryButton
-              onPress={() => {}}
+              onPress={() => {
+                navigation.push("Path", { pathId: pathId });
+              }}
               buttonText={"Continue"}
               buttonIcon={<ContinueIcon />}
               buttonStyle={{ width: 110 }}
