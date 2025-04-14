@@ -1,4 +1,4 @@
-package com.SehajPathApp
+package com.sehajpathapp
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
