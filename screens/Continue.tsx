@@ -7,7 +7,6 @@ import { Constants } from "../constants";
 import SecondaryHeading from "../components/SecondaryHeading";
 import ImportantText from "../components/ImportantText";
 import SimpleText from "../components/SimpleText";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
 import { Streak } from "../components/Streak";
@@ -15,6 +14,7 @@ import SecondaryButton from "../components/SecondaryButton";
 import ContinueIcon from "../icons/Continue.icon";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
+import { useLocal } from "../hooks/useLocal";
 
 interface PathData {
   pathId: number;
@@ -46,14 +46,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
   const [showData, setShowData] = useState<boolean>();
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
-
-  const fetchPath = async () => {
-    const allPathData = await AsyncStorage.getItem("pathDetails");
-    const allPthDates = await AsyncStorage.getItem("pathDateDetails");
-    const allPath = allPathData ? JSON.parse(allPathData) : undefined;
-    const allDates = allPthDates ? JSON.parse(allPthDates) : undefined;
-    return { allPath, allDates };
-  };
+  const { fetchFromLocal } = useLocal();
 
   const calculatePathCompletion = (matchedPath: PathData) => {
     const today = dayjs();
@@ -71,21 +64,25 @@ export default function Continue({ route, navigation }: ContinueProps) {
   };
 
   const updateTheData = async () => {
-    const { allPath, allDates } = await fetchPath();
-    const matchedPath = allPath.find((path: PathData) => path.pathId == pathId);
-    const matchedDates = allDates.find(
+    const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+    const matchedPath = pathDataArray.find(
+      (path: PathData) => path.pathId == pathId
+    );
+    const matchedDates = pathDateDataArray.find(
       (path: PathDate) => path.pathid === pathId
     );
-    const show = matchedPath.angNumber < 10 ? false : true;
-    setShowData(show);
-    setPathDate(matchedDates);
-    setPathData(matchedPath);
-    setPathAng(matchedPath?.angNumber || 0);
-    const pathPercentage = parseFloat(
-      (((matchedPath?.angNumber || 0) / 1430) * 100).toFixed(2)
-    );
-    setPathPercentage(pathPercentage);
-    calculatePathCompletion(matchedPath);
+    if (matchedPath) {
+      const show = matchedPath?.angNumber < 10 ? false : true;
+      setShowData(show);
+      setPathDate(matchedDates);
+      setPathData(matchedPath);
+      setPathAng(matchedPath?.angNumber || 0);
+      const pathPercentage = parseFloat(
+        (((matchedPath?.angNumber || 0) / 1430) * 100).toFixed(2)
+      );
+      setPathPercentage(pathPercentage);
+      calculatePathCompletion(matchedPath);
+    }
   };
 
   const makeStreakIndicator = (date: string) => {

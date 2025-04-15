@@ -1,7 +1,7 @@
 import Svg, { Path } from "react-native-svg";
 import React from "react";
 
-export const RightArrow = () => {
+export const RightArrowIcon = () => {
   return (
     <>
       <Svg width="21" height="16" viewBox="0 0 21 16" fill="none">

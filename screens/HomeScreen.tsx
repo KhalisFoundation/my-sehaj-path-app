@@ -2,7 +2,7 @@ import { View, ImageBackground, ScrollView } from "react-native";
 import React, { useEffect, useState } from "react";
 import Headline from "../components/Headline";
 import PrimaryButton from "../components/PrimaryButton";
-import StartIcon from "../icons/Start.icon";
+import { StartIcon } from "../icons/Start.icon";
 import Slider from "../components/Slider";
 import { PrimaryCard } from "../components/PrimaryCard";
 import { SecondaryCard } from "../components/SecondaryCard";
@@ -12,6 +12,7 @@ import { Constants, MonthConstant } from "../constants/index";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
+import { useLocal } from "../hooks/useLocal";
 
 interface PathData {
   pathId: number;
@@ -33,9 +34,10 @@ type HomeProps = NativeStackScreenProps<RootStackParamList, "Home">;
 export default function HomeScreen({ navigation }: HomeProps) {
   const [pathInProgress, setPathInProgress] = useState<PathData[]>([]);
   const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
+  const { fetchFromLocal, handleNewPath } = useLocal();
   useEffect(() => {
     const fetch = async () => {
-      const { pathDataArray, pathDateDataArray } = await fetchPathLocal();
+      const { pathDataArray } = await fetchFromLocal();
       setPathCompleted(
         pathDataArray.filter((path: PathData) => path.angNumber == 1430)
       );
@@ -45,35 +47,13 @@ export default function HomeScreen({ navigation }: HomeProps) {
     };
     fetch();
   }, []);
-  const fetchPathLocal = async () => {
-    const pathData = await AsyncStorage.getItem("pathDetails");
-    const pathDataArray: PathData[] = pathData ? JSON.parse(pathData) : [];
-    const pathDateData = await AsyncStorage.getItem("pathDateDetails");
-    const pathDateDataArray: DateData[] = pathDateData
-      ? JSON.parse(pathDateData)
-      : [];
-    return { pathDataArray, pathDateDataArray };
-  };
+
   const handleStart = async () => {
-    const { pathDataArray, pathDateDataArray } = await fetchPathLocal();
-    let pathid = pathDataArray.length > 0 ? pathDataArray.length : 0;
-    let newPathid = pathid + 1;
-    const date = new Date();
-    const startNewPathDate = `${date.getDate()}-${
-      MonthConstant[date.getMonth()]
-    }-${date.getFullYear()}`;
-    pathDataArray.push({
-      pathId: newPathid,
-      progress: 1,
-      angNumber: 0,
-      startDate: startNewPathDate,
-      completionDate: "",
-    });
-    pathDateDataArray.push({
-      pathid: newPathid,
-      dates: [],
-    });
-    setPathInProgress(pathDataArray.filter((path) => path.angNumber != 1430));
+    const { pathDataArray, pathDateDataArray, newPathid } =
+      await handleNewPath();
+    setPathInProgress(
+      pathDataArray.filter((path: PathData) => path.angNumber != 1430)
+    );
     setPathCompleted(
       pathDataArray.filter((path: PathData) => path.angNumber == 1430)
     );

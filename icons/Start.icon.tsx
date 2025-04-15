@@ -1,7 +1,7 @@
 import React from "react";
 import Svg, { G, Path } from "react-native-svg";
 
-export default function StartIcon() {
+export const StartIcon = () => {
   return (
     <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
       <G id="plus-waves">
@@ -16,4 +16,4 @@ export default function StartIcon() {
       </G>
     </Svg>
   );
-}
+};

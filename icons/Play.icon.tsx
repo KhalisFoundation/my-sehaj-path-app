@@ -1,7 +1,7 @@
 import React from "react";
 import Svg, { Path } from "react-native-svg";
 
-export default function Play() {
+export const PlayIcon = () => {
   return (
     <>
       <Svg width="31" height="31" viewBox="0 0 31 31" fill="none">
@@ -15,4 +15,4 @@ export default function Play() {
       </Svg>
     </>
   );
-}
+};
