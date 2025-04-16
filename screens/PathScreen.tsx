@@ -4,6 +4,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Dimensions,
+  Animated,
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
 import { PathScreenStyles } from "../styles/PathScreenStyles";
@@ -13,30 +14,33 @@ import { PunjabiNumbers } from "../constants/Number";
 import { RightArrowIcon } from "../icons/RightArrow.icon";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BaniDB } from "../utils/BaniDB";
-import SimpleText from "../components/SimpleText";
 import { HomeIcon } from "../icons/Home.icon";
 import { SettingsIcon } from "../icons/Settings.icon";
 import { SaveIcon } from "../icons/Save.icon";
 import { PlayIcon } from "../icons/Play.icon";
 import { useLocal } from "../hooks/useLocal";
-import { Rect, Svg } from "react-native-svg";
 import PauseIcon from "../icons/Pause.icon";
+import SimpleTextForPath from "../components/SimpleTextForPath";
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, "Path">;
 
 export const PathScreen = ({ navigation, route }: PathScreenProps) => {
-  const [pathAng, setPathAng] = useState<string>("0");
+  const [pathPujabiAng, setPathPunjabiAng] = useState<string>("0");
+  const [pathAng, setPathAng] = useState<number>(0);
+
   const [pathContent, setPathContent] = useState<any>();
   const [autoScroll, setAutoScroll] = useState<boolean>(false);
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
-
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isSaved, setIsSaved] = useState<boolean>(false);
+  const [verseId, setVerseId] = useState<number>(0);
   const loadingIndicator = useRef<any>();
-  const { fetchFromLocal } = useLocal();
-  const { width, height } = Dimensions.get("window");
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const { fetchFromLocal, handleUpdatePath } = useLocal();
+
   useEffect(() => {
     const fetchPath = async () => {
       const { pathDataArray } = await fetchFromLocal();
@@ -44,8 +48,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         (path) => path.pathId === route.params.pathId
       );
       if (matchedPath) {
-        const pathAng = matchedPath.angNumber == 0 ? 1 : matchedPath.angNumber;
-        setPathAng(
+        const pathAng =
+          matchedPath.saveData.angNumber == 0
+            ? 1
+            : matchedPath.saveData.angNumber;
+        setPathAng(pathAng);
+        setPathPunjabiAng(
           pathAng
             ?.toString()
             .split("")
@@ -66,7 +74,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       y: 0,
       animated: true,
     });
-    setPathAng(
+    setPathPunjabiAng(
       (pageNo + 1)
         ?.toString()
         .split("")
@@ -87,7 +95,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       y: 0,
       animated: true,
     });
-    setPathAng(
+    setPathPunjabiAng(
       (pageNo - 1)
         ?.toString()
         .split("")
@@ -130,6 +138,20 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     }
     return () => handleStopAutoScroll();
   }, [autoScroll]);
+  useEffect(() => {
+    if (isSaved) {
+      fadeAnim.setValue(1);
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 1500,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsSaving(false);
+        setIsSaved(false);
+      });
+    }
+  }, [isSaved]);
+
   return (
     <>
       <View style={PathScreenStyles.container}>
@@ -140,7 +162,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               handleLeftArrow(pathContent?.source?.pageNo);
             }}
           />
-          <NavContent text={pathAng} />
+          <NavContent text={pathPujabiAng} />
           <NavContent
             navIcon={<RightArrowIcon />}
             onPress={() => {
@@ -158,27 +180,30 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           scrollEventThrottle={16}
         >
           {pathContent?.page?.map((path: any, index: number) => (
-            <SimpleText
+            <SimpleTextForPath
               key={index}
-              simpleText={path.verse.unicode}
-              simpleTextStyle={PathScreenStyles.pathContent}
+              gurbaniLine={path.verse.unicode}
+              onPress={() => {
+                if (isSaving) {
+                  setVerseId(index + 1);
+                }
+              }}
+              iconPress={() =>
+                handleUpdatePath(
+                  route.params.pathId || 1,
+                  pathAng,
+                  path.verseId,
+                  setIsSaved
+                )
+              }
+              isSaving={isSaving}
+              verseId={verseId}
+              index={index + 1}
             />
           ))}
         </ScrollView>
-        {loadingIndicator.current != undefined ? ( // for showing loading indicator
-          <View
-            style={{
-              position: "absolute",
-              top: height / 2 - 50,
-              left: width / 2 - (width * 0.8) / 2,
-              zIndex: 9,
-              backgroundColor: "white",
-              width: "80%",
-              height: "10%",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+        {loadingIndicator.current != undefined ? (
+          <View style={PathScreenStyles.loadingContainer}>
             {loadingIndicator.current}
             <Text>Loading ...</Text>
           </View>
@@ -186,18 +211,38 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           ""
         )}
 
-        <View style={PathScreenStyles.navigationContainer}>
-          <NavContent
-            navIcon={<HomeIcon />}
-            onPress={() => navigation.push("Home")}
-          />
-          <NavContent navIcon={<SaveIcon />} />
-          <NavContent
-            navIcon={autoScroll ? <PauseIcon /> : <PlayIcon />}
-            onPress={() => setAutoScroll((prev) => !prev)}
-          />
-          <NavContent navIcon={<SettingsIcon />} />
-        </View>
+        {!isSaving ? (
+          <View style={PathScreenStyles.navigationContainer}>
+            <NavContent
+              navIcon={<HomeIcon />}
+              onPress={() => navigation.push("Home")}
+            />
+            <NavContent
+              navIcon={<SaveIcon />}
+              onPress={() => {
+                setIsSaving(!isSaving);
+                fadeAnim.setValue(1);
+              }}
+            />
+            <NavContent
+              navIcon={autoScroll ? <PauseIcon /> : <PlayIcon />}
+              onPress={() => setAutoScroll((prev) => !prev)}
+            />
+            <NavContent navIcon={<SettingsIcon />} />
+          </View>
+        ) : undefined}
+        {isSaving && (
+          <Animated.View
+            style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}
+          >
+            <NavContent navIcon={<SaveIcon />} />
+            <Text style={PathScreenStyles.saveText}>
+              {!isSaved
+                ? "Select a panktee to save progress."
+                : "Saved the highlighted panktee!"}
+            </Text>
+          </Animated.View>
+        )}
       </View>
     </>
   );

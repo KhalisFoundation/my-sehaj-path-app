@@ -21,12 +21,7 @@ export const PathScreenStyles = StyleSheet.create({
     padding: 15,
     paddingTop: 20,
   },
-  pathContent: {
-    color: "#000",
-    fontSize: 18,
-    lineHeight: 36,
-    fontFamily: font.Baloo_Paaji_2_Medium,
-  },
+
   navigationContainer: {
     position: "absolute",
     bottom: 5,
@@ -41,5 +36,38 @@ export const PathScreenStyles = StyleSheet.create({
     alignSelf: "center",
     borderRadius: 5,
     flexDirection: "row",
+  },
+  loadingContainer: {
+    position: "absolute",
+    zIndex: 9,
+    backgroundColor: "white",
+    width: "80%",
+    height: "10%",
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    top: "40%",
+    borderRadius: 10,
+  },
+  saveContainer: {
+    position: "absolute",
+    bottom: 0,
+    zIndex: 100,
+    width: "100%",
+    maxWidth: 356,
+    height: 48,
+    alignSelf: "center",
+    padding: 10,
+    alignItems: "center",
+    flexDirection: "row",
+    borderRadius: 10,
+    backgroundColor: "#11336A",
+    gap: 10,
+  },
+
+  saveText: {
+    color: "#fff",
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    fontSize: 16,
   },
 });

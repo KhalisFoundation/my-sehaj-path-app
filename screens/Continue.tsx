@@ -15,14 +15,8 @@ import ContinueIcon from "../icons/Continue.icon";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
 import { useLocal } from "../hooks/useLocal";
+import { PathData } from "../hooks/useLocal";
 
-interface PathData {
-  pathId: number;
-  angNumber: number;
-  progress: number;
-  startDate: string;
-  completionDate: string;
-}
 interface Date {
   date: string;
   angs: number;
@@ -52,8 +46,9 @@ export default function Continue({ route, navigation }: ContinueProps) {
     const today = dayjs();
     const startDate = dayjs(matchedPath.startDate, "D-MMMM-YYYY");
     const days = today.diff(startDate, "day");
-    const averageAngs = (matchedPath.angNumber || 0) / (days ? days : 1);
-    const remainingAngs = 1430 - matchedPath.angNumber;
+    const averageAngs =
+      (matchedPath.saveData.angNumber || 0) / (days ? days : 1);
+    const remainingAngs = 1430 - matchedPath.saveData.angNumber;
     const remainingDays = remainingAngs / (averageAngs ? averageAngs : 1);
     const completionDate = today.add(remainingDays, "day");
     setFinishDate(dayjs(completionDate).format("D-MMMM-YYYY"));
@@ -72,13 +67,13 @@ export default function Continue({ route, navigation }: ContinueProps) {
       (path: PathDate) => path.pathid === pathId
     );
     if (matchedPath) {
-      const show = matchedPath?.angNumber < 10 ? false : true;
+      const show = matchedPath?.saveData.angNumber < 10 ? false : true;
       setShowData(show);
       setPathDate(matchedDates);
       setPathData(matchedPath);
-      setPathAng(matchedPath?.angNumber || 0);
+      setPathAng(matchedPath?.saveData.angNumber || 0);
       const pathPercentage = parseFloat(
-        (((matchedPath?.angNumber || 0) / 1430) * 100).toFixed(2)
+        (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
       );
       setPathPercentage(pathPercentage);
       calculatePathCompletion(matchedPath);
@@ -121,7 +116,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
               <NavContent
                 navIcon={<GoBackIcon />}
                 onPress={() => {
-                  navigation.goBack();
+                  navigation.push("Home");
                 }}
               />
               <NavContent text={Constants.SEE_ALL_PATH} />

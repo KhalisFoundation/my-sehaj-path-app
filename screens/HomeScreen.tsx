@@ -16,18 +16,10 @@ import { useLocal } from "../hooks/useLocal";
 
 interface PathData {
   pathId: number;
-  angNumber: number;
+  saveData: { angNumber: number; verseId: number };
   progress: number;
   startDate: string;
   completionDate: string;
-}
-interface DateData {
-  pathid: number;
-  dates: PathDate[];
-}
-interface PathDate {
-  date: string;
-  angs: number;
 }
 type HomeProps = NativeStackScreenProps<RootStackParamList, "Home">;
 
@@ -38,11 +30,18 @@ export default function HomeScreen({ navigation }: HomeProps) {
   useEffect(() => {
     const fetch = async () => {
       const { pathDataArray } = await fetchFromLocal();
+
       setPathCompleted(
-        pathDataArray.filter((path: PathData) => path.angNumber == 1430)
+        pathDataArray.filter(
+          (path: PathData) =>
+            path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
+        )
       );
       setPathInProgress(
-        pathDataArray.filter((path: PathData) => path.angNumber != 1430)
+        pathDataArray.filter(
+          (path: PathData) =>
+            path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+        )
       );
     };
     fetch();
@@ -52,10 +51,13 @@ export default function HomeScreen({ navigation }: HomeProps) {
     const { pathDataArray, pathDateDataArray, newPathid } =
       await handleNewPath();
     setPathInProgress(
-      pathDataArray.filter((path: PathData) => path.angNumber != 1430)
+      pathDataArray.filter((path: PathData) => path.saveData.angNumber != 1430)
     );
     setPathCompleted(
-      pathDataArray.filter((path: PathData) => path.angNumber == 1430)
+      pathDataArray.filter(
+        (path: PathData) =>
+          path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
+      )
     );
     AsyncStorage.setItem("pathDetails", JSON.stringify(pathDataArray));
     AsyncStorage.setItem("pathDateDetails", JSON.stringify(pathDateDataArray));
@@ -86,7 +88,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
                   arrayOfCards={pathInProgress?.map((path: PathData) => (
                     <PrimaryCard
                       sehajPathNumber={path.pathId}
-                      angNumber={path.angNumber}
+                      angNumber={path.saveData.angNumber}
                       progress={path.progress}
                       onPress={() => {
                         navigation.push("Continue", { pathId: path.pathId });

@@ -1,9 +1,9 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MonthConstant } from "../constants";
 
-interface PathData {
+export interface PathData {
   pathId: number;
-  angNumber: number;
+  saveData: { angNumber: number; verseId: number };
   progress: number;
   startDate: string;
   completionDate: string;
@@ -39,7 +39,7 @@ export const useLocal = () => {
     pathDataArray.push({
       pathId: newPathid,
       progress: 1,
-      angNumber: 0,
+      saveData: { angNumber: 0, verseId: 0 },
       startDate: startNewPathDate,
       completionDate: "",
     });
@@ -49,5 +49,29 @@ export const useLocal = () => {
     });
     return { pathDataArray, pathDateDataArray, newPathid };
   };
-  return { fetchFromLocal, handleNewPath };
+  const handleUpdatePath = async (
+    pathId: number,
+    angNumber: number,
+    verseId: number,
+    setIsSaved: (value: boolean) => void
+  ) => {
+    const { pathDataArray } = await fetchFromLocal();
+    console.log(angNumber, verseId);
+    const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
+    if (matchedPath) {
+      matchedPath.saveData = { angNumber, verseId };
+      if (verseId == 60403) {
+        const date = new Date();
+        const completionDate = `${date.getDate()}-${
+          MonthConstant[date.getMonth()]
+        }-${date.getFullYear()}`;
+        matchedPath.completionDate = completionDate;
+      }
+      AsyncStorage.setItem("pathDetails", JSON.stringify(pathDataArray));
+      setIsSaved(true);
+    } else {
+      console.log("path not found");
+    }
+  };
+  return { fetchFromLocal, handleNewPath, handleUpdatePath };
 };

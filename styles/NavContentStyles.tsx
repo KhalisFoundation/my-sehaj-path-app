@@ -6,7 +6,7 @@ export const NavContentStyles = StyleSheet.create({
     alignItems: "center",
   },
   navText: {
-    color: "rgba(17, 51, 106, 1)",
+    color: "#11336A",
     fontFamily: font.Baloo_Paaji_2_Medium,
     fontSize: 18,
   },
