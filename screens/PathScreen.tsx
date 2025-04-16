@@ -28,7 +28,6 @@ type PathScreenProps = NativeStackScreenProps<RootStackParamList, "Path">;
 export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [pathPujabiAng, setPathPunjabiAng] = useState<string>("0");
   const [pathAng, setPathAng] = useState<number>(0);
-
   const [pathContent, setPathContent] = useState<any>();
   const [autoScroll, setAutoScroll] = useState<boolean>(false);
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
@@ -37,6 +36,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [verseId, setVerseId] = useState<number>(0);
+  const [matchedVerseId, setMatchedVerseId] = useState<number>(0);
   const loadingIndicator = useRef<any>();
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const { fetchFromLocal, handleUpdatePath } = useLocal();
@@ -52,6 +52,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           matchedPath.saveData.angNumber == 0
             ? 1
             : matchedPath.saveData.angNumber;
+        setMatchedVerseId(matchedPath.saveData.verseId);
         setPathAng(pathAng);
         setPathPunjabiAng(
           pathAng
@@ -74,6 +75,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       y: 0,
       animated: true,
     });
+    setPathAng(pageNo + 1);
     setPathPunjabiAng(
       (pageNo + 1)
         ?.toString()
@@ -95,6 +97,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       y: 0,
       animated: true,
     });
+    setPathAng(pageNo - 1);
     setPathPunjabiAng(
       (pageNo - 1)
         ?.toString()
@@ -112,9 +115,20 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setPathContent(pathFromBaniDB);
     loadingIndicator.current = undefined;
   };
-  const handleAutoScroll = () => {
-    console.log("scrolling to:", scorllOffset.current);
+  const scrollToMatchedVerse = () => {
+    const scrollIndex = pathContent?.page?.findIndex(
+      (page: any) => page.verseId === matchedVerseId
+    );
 
+    if (scrollIndex !== -1) {
+      scorllOffset.current = scrollIndex * 100;
+      scrollRef.current?.scrollTo({
+        y: scorllOffset.current,
+        animated: false,
+      });
+    }
+  };
+  const handleAutoScroll = () => {
     scrollInveral.current = setInterval(() => {
       scorllOffset.current += 1;
       scrollRef.current?.scrollTo({

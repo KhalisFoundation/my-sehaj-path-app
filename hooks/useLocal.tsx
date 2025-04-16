@@ -60,6 +60,8 @@ export const useLocal = () => {
     const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
     if (matchedPath) {
       matchedPath.saveData = { angNumber, verseId };
+      matchedPath.progress = (angNumber / 1430) * 100;
+      console.log(matchedPath);
       if (verseId == 60403) {
         const date = new Date();
         const completionDate = `${date.getDate()}-${
@@ -67,7 +69,7 @@ export const useLocal = () => {
         }-${date.getFullYear()}`;
         matchedPath.completionDate = completionDate;
       }
-      AsyncStorage.setItem("pathDetails", JSON.stringify(pathDataArray));
+      await AsyncStorage.setItem("pathDetails", JSON.stringify(pathDataArray));
       setIsSaved(true);
     } else {
       console.log("path not found");

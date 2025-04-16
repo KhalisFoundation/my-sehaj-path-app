@@ -8,6 +8,7 @@ export const PathScreenStyles = StyleSheet.create({
     borderColor: "rgba(253, 198, 6, 0.3)",
     height: "100%",
     width: "100%",
+    paddingBottom: 40,
   },
   navContainer: {
     flexDirection: "row",
@@ -43,6 +44,7 @@ export const PathScreenStyles = StyleSheet.create({
     backgroundColor: "white",
     width: "80%",
     height: "10%",
+    minHeight: 100,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
