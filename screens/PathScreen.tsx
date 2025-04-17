@@ -3,7 +3,6 @@ import {
   Text,
   ScrollView,
   ActivityIndicator,
-  Dimensions,
   Animated,
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
@@ -35,10 +34,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const scrollRef = useRef<ScrollView | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
-  const [verseId, setVerseId] = useState<number>(0);
   const [matchedVerseId, setMatchedVerseId] = useState<number>(0);
+  const [pressIndex, setPressIndex] = useState<number>(0);
   const loadingIndicator = useRef<any>();
+  const [found, setFound] = useState<boolean>(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
   const { fetchFromLocal, handleUpdatePath } = useLocal();
 
   useEffect(() => {
@@ -119,15 +120,21 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     const scrollIndex = pathContent?.page?.findIndex(
       (page: any) => page.verseId === matchedVerseId
     );
-
+    setFound(true);
     if (scrollIndex !== -1) {
-      scorllOffset.current = scrollIndex * 100;
+      const scrollY = scrollIndex * 100;
+      scorllOffset.current = scrollY;
       scrollRef.current?.scrollTo({
         y: scorllOffset.current,
         animated: false,
       });
     }
+    setTimeout(() => {
+      setMatchedVerseId(0);
+      setFound(false);
+    }, 1000);
   };
+
   const handleAutoScroll = () => {
     scrollInveral.current = setInterval(() => {
       scorllOffset.current += 1;
@@ -153,18 +160,23 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     return () => handleStopAutoScroll();
   }, [autoScroll]);
   useEffect(() => {
-    if (isSaved) {
+    if (isSaved || found) {
       fadeAnim.setValue(1);
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 1500,
+        duration: 2500,
         useNativeDriver: true,
       }).start(() => {
         setIsSaving(false);
         setIsSaved(false);
       });
     }
-  }, [isSaved]);
+  }, [isSaved, found]);
+  useEffect(() => {
+    if (pathContent?.page?.length > 0 && matchedVerseId) {
+      scrollToMatchedVerse();
+    }
+  }, [pathContent, matchedVerseId]);
 
   return (
     <>
@@ -199,7 +211,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               gurbaniLine={path.verse.unicode}
               onPress={() => {
                 if (isSaving) {
-                  setVerseId(index + 1);
+                  setPressIndex(index + 1);
                 }
               }}
               iconPress={() =>
@@ -211,8 +223,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
                 )
               }
               isSaving={isSaving}
-              verseId={verseId}
+              pressIndex={pressIndex}
               index={index + 1}
+              verseId={path.verseId}
+              matchedVerseId={matchedVerseId}
             />
           ))}
         </ScrollView>
@@ -225,7 +239,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           ""
         )}
 
-        {!isSaving ? (
+        {!isSaving && !found ? (
           <View style={PathScreenStyles.navigationContainer}>
             <NavContent
               navIcon={<HomeIcon />}
@@ -254,6 +268,16 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               {!isSaved
                 ? "Select a panktee to save progress."
                 : "Saved the highlighted panktee!"}
+            </Text>
+          </Animated.View>
+        )}
+        {found && (
+          <Animated.View
+            style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}
+          >
+            <NavContent navIcon={<SaveIcon />} />
+            <Text style={PathScreenStyles.saveText}>
+              Last saved panktee founded!
             </Text>
           </Animated.View>
         )}

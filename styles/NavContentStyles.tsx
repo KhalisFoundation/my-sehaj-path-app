@@ -2,7 +2,7 @@ import { StyleSheet } from "react-native";
 import font from "../utils/font";
 
 export const NavContentStyles = StyleSheet.create({
-  conatiner: {
+  container: {
     alignItems: "center",
   },
   navText: {

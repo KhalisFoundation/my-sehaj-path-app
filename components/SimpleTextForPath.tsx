@@ -7,31 +7,34 @@ interface Props {
   gurbaniLine: string;
   onPress: () => void;
   isSaving: boolean;
-  verseId: number;
+  pressIndex: number;
   index: number;
   iconPress: () => void;
+  verseId?: number;
+  matchedVerseId?: number;
 }
 
 export default function SimpleTextForPath({
   gurbaniLine,
   onPress,
   isSaving,
-  verseId,
+  pressIndex,
   index,
   iconPress,
+  verseId,
+  matchedVerseId,
 }: Props) {
   return (
     <>
       <Pressable
         onPress={onPress}
         style={
-          isSaving && verseId == index
-            ? SimpleTextForGurbaniStyles.coloredContainer
-            : SimpleTextForGurbaniStyles.container
+          (verseId == matchedVerseId || (isSaving && pressIndex == index)) &&
+          SimpleTextForGurbaniStyles.coloredContainer
         }
       >
         <Text style={SimpleTextForGurbaniStyles.text}>{gurbaniLine}</Text>
-        {isSaving && verseId == index ? (
+        {isSaving && pressIndex == index ? (
           <TouchableOpacity
             onPress={iconPress}
             style={SimpleTextForGurbaniStyles.icon}

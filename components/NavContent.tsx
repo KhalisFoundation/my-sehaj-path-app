@@ -10,7 +10,7 @@ interface Props {
 export default function NavContent({ text, navIcon, onPress }: Props) {
   return (
     <>
-      <View style={NavContentStyles.conatiner}>
+      <View style={NavContentStyles.container}>
         {text ? (
           <Text style={NavContentStyles.navText}>{text}</Text>
         ) : (

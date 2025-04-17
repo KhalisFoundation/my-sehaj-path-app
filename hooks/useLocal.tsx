@@ -56,7 +56,6 @@ export const useLocal = () => {
     setIsSaved: (value: boolean) => void
   ) => {
     const { pathDataArray } = await fetchFromLocal();
-    console.log(angNumber, verseId);
     const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
     if (matchedPath) {
       matchedPath.saveData = { angNumber, verseId };
