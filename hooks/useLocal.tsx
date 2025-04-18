@@ -28,6 +28,7 @@ export const useLocal = () => {
       : [];
     return { pathDataArray: pathFromLocalArray, pathDateDataArray };
   };
+
   const handleNewPath = async () => {
     const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
     let pathid = pathDataArray.length > 0 ? pathDataArray.length : 0;
@@ -49,26 +50,56 @@ export const useLocal = () => {
     });
     return { pathDataArray, pathDateDataArray, newPathid };
   };
+
   const handleUpdatePath = async (
     pathId: number,
     angNumber: number,
     verseId: number,
     setIsSaved: (value: boolean) => void
   ) => {
-    const { pathDataArray } = await fetchFromLocal();
+    const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+    const date = new Date();
+    const todayDate = `${date.getDate()}-${
+      MonthConstant[date.getMonth()]
+    }-${date.getFullYear()}`;
     const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
-    if (matchedPath) {
+
+    const matchedDate = pathDateDataArray.find(
+      (path) => path.pathid === pathId
+    );
+    const updatedPathDate = pathDateDataArray.filter(
+      (path) => path.pathid !== pathId
+    );
+    if (matchedPath && matchedDate) {
+      const cleanMatchedPathDates = matchedDate.dates.filter(
+        (date) => date.date !== todayDate
+      );
+      const lastAngs =
+        cleanMatchedPathDates && cleanMatchedPathDates.length > 0
+          ? cleanMatchedPathDates[cleanMatchedPathDates.length - 1].angs
+          : 0;
+
+      const lastestAngsDone = angNumber - lastAngs;
+
       matchedPath.saveData = { angNumber, verseId };
       matchedPath.progress = (angNumber / 1430) * 100;
-      console.log(matchedPath);
+      cleanMatchedPathDates.push({
+        date: todayDate,
+        angs: lastestAngsDone,
+      });
+      updatedPathDate.push({
+        pathid: pathId,
+        dates: cleanMatchedPathDates,
+      });
+
       if (verseId == 60403) {
-        const date = new Date();
-        const completionDate = `${date.getDate()}-${
-          MonthConstant[date.getMonth()]
-        }-${date.getFullYear()}`;
-        matchedPath.completionDate = completionDate;
+        matchedPath.completionDate = todayDate;
       }
       await AsyncStorage.setItem("pathDetails", JSON.stringify(pathDataArray));
+      await AsyncStorage.setItem(
+        "pathDateDetails",
+        JSON.stringify(updatedPathDate)
+      );
       setIsSaved(true);
     } else {
       console.log("path not found");
