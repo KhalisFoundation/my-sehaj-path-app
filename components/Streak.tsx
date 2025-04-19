@@ -12,7 +12,7 @@ export function Streak({ value }: Props) {
       <View
         style={{
           ...StreakStyles.streakContainer,
-          opacity: value >= 0 ? 0.2 : value <= 5 && value > 0 ? 0.2 : 1,
+          opacity: value <= 0 ? 0.2 : value <= 5 && value > 0 ? 0.5 : 1,
         }}
       ></View>
     </>

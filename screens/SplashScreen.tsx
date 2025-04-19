@@ -10,13 +10,15 @@ type SplashProps = NativeStackScreenProps<RootStackParamList, "Splash">;
 export default function SplashScreen({ navigation }: SplashProps) {
   const fadeOut = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    Animated.timing(fadeOut, {
-      toValue: 0,
-      duration: 1500,
-      useNativeDriver: true,
-    }).start(() => {
-      navigation.push("Home");
-    });
+    setTimeout(() => {
+      Animated.timing(fadeOut, {
+        toValue: 0,
+        duration: 1500,
+        useNativeDriver: true,
+      }).start(() => {
+        navigation.replace("Home");
+      });
+    }, 500);
   }, []);
   return (
     <>

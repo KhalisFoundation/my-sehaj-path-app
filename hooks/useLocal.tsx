@@ -16,6 +16,10 @@ interface PathDate {
   date: string;
   angs: number;
 }
+export interface fontSizeData {
+  fontSize: string;
+  number: number;
+}
 export const useLocal = () => {
   const fetchFromLocal = async () => {
     const pathFromLocal = await AsyncStorage.getItem("pathDetails");
@@ -105,5 +109,29 @@ export const useLocal = () => {
       console.log("path not found");
     }
   };
-  return { fetchFromLocal, handleNewPath, handleUpdatePath };
+  const saveFontSize = async (fontSize: fontSizeData) => {
+    await AsyncStorage.setItem("fontSize", JSON.stringify(fontSize));
+  };
+  const fetchFontSize = async () => {
+    const fontSize = await AsyncStorage.getItem("fontSize");
+    return fontSize
+      ? JSON.parse(fontSize)
+      : { fontSize: "Small (Default)", number: 18 };
+  };
+  const saveLarivaar = async (larivaar: boolean) => {
+    await AsyncStorage.setItem("larivaar", larivaar.toString());
+  };
+  const fetchLarivaar = async () => {
+    const larivaar = await AsyncStorage.getItem("larivaar");
+    return larivaar === "true";
+  };
+  return {
+    fetchFromLocal,
+    handleNewPath,
+    handleUpdatePath,
+    saveFontSize,
+    fetchFontSize,
+    saveLarivaar,
+    fetchLarivaar,
+  };
 };

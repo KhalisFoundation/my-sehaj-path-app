@@ -21,6 +21,7 @@ import { PlayIcon } from "../icons/Play.icon";
 import { useLocal } from "../hooks/useLocal";
 import PauseIcon from "../icons/Pause.icon";
 import SimpleTextForPath from "../components/SimpleTextForPath";
+import { useFocusEffect } from "@react-navigation/native";
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, "Path">;
 
@@ -39,8 +40,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const loadingIndicator = useRef<any>();
   const [found, setFound] = useState<boolean>(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
 
-  const { fetchFromLocal, handleUpdatePath } = useLocal();
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar } = useLocal();
 
   useEffect(() => {
     const fetchPath = async () => {
@@ -122,7 +124,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     );
     setFound(true);
     if (scrollIndex !== -1) {
-      const scrollY = scrollIndex * 100;
+      const scrollY = scrollIndex * 150;
       scorllOffset.current = scrollY;
       scrollRef.current?.scrollTo({
         y: scorllOffset.current,
@@ -132,7 +134,16 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setTimeout(() => {
       setMatchedVerseId(0);
       setFound(false);
-    }, 1000);
+      fadeAnim.setValue(1);
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 2500,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsSaving(false);
+        setIsSaved(false);
+      });
+    }, 1500);
   };
 
   const handleAutoScroll = () => {
@@ -162,22 +173,32 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   useEffect(() => {
     if (isSaved || found) {
       fadeAnim.setValue(1);
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 2500,
-        useNativeDriver: true,
-      }).start(() => {
-        setIsSaving(false);
-        setIsSaved(false);
-      });
+      setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 2500,
+          useNativeDriver: true,
+        }).start(() => {
+          setIsSaving(false);
+          setIsSaved(false);
+        });
+      }, 500);
     }
   }, [isSaved, found]);
   useEffect(() => {
     if (pathContent?.page?.length > 0 && matchedVerseId) {
-      scrollToMatchedVerse();
+      setTimeout(() => {
+        scrollToMatchedVerse();
+      }, 500);
     }
   }, [pathContent, matchedVerseId]);
-
+  useFocusEffect(() => {
+    const fetchFromLocal = async () => {
+      const larivaar = await fetchLarivaar();
+      setIsLarivaar(larivaar || false);
+    };
+    fetchFromLocal();
+  });
   return (
     <>
       <View style={PathScreenStyles.container}>
@@ -208,7 +229,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           {pathContent?.page?.map((path: any, index: number) => (
             <SimpleTextForPath
               key={index}
-              gurbaniLine={path.verse.unicode}
+              gurbaniLine={
+                isLarivaar ? path.larivaar.unicode : path.verse.unicode
+              }
               onPress={() => {
                 if (isSaving) {
                   setPressIndex(index + 1);
@@ -256,7 +279,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               navIcon={autoScroll ? <PauseIcon /> : <PlayIcon />}
               onPress={() => setAutoScroll((prev) => !prev)}
             />
-            <NavContent navIcon={<SettingsIcon />} />
+            <NavContent
+              navIcon={<SettingsIcon />}
+              onPress={() => navigation.push("Setting")}
+            />
           </View>
         ) : undefined}
         {isSaving && (

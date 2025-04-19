@@ -11,7 +11,7 @@ export default function SimpleText({ simpleText, simpleTextStyle }: Props) {
   return (
     <>
       <Text style={[SimpleTextStyles.simpleText, simpleTextStyle]}>
-        {typeof simpleText === "string"
+        {typeof simpleText == "string"
           ? simpleText
           : simpleText.map((text, index) => (
               <React.Fragment key={index}>{text}</React.Fragment>
