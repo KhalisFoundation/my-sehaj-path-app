@@ -49,7 +49,7 @@ export default function SimpleTextForPath({
           style={{
             ...SimpleTextForGurbaniStyles.text,
             fontSize,
-            lineHeight: fontSize * 2,
+            lineHeight: fontSize * 2.2,
           }}
         >
           {gurbaniLine}
