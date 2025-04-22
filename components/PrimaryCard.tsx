@@ -7,8 +7,8 @@ import Svg, {
   Stop,
   Defs,
 } from "react-native-svg";
-import { PathProgressCardStyles } from "../styles/PrimaryCardStyles";
-import { Constants } from "../constants/constant";
+import { PathProgressCardStyles } from "@styles";
+import { Constants } from "@constants";
 
 interface Prop {
   sehajPathNumber: number;

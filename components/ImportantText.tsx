@@ -1,16 +1,16 @@
 import { StyleProp, Text, TextStyle } from "react-native";
 import React from "react";
-import { ImportantTextStyles } from "../styles/ImportantTextStyles";
+import { ImportantTextStyles } from "@styles";
 
 interface Props {
   importantText: string;
   importantTextStyles?: StyleProp<TextStyle>;
 }
 
-export default function ImportantText({
+export const ImportantText = ({
   importantText,
   importantTextStyles,
-}: Props) {
+}: Props) => {
   return (
     <>
       <Text style={[ImportantTextStyles.importantText, importantTextStyles]}>
@@ -18,4 +18,4 @@ export default function ImportantText({
       </Text>
     </>
   );
-}
+};

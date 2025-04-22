@@ -1,22 +1,21 @@
 import { View, ScrollView, ImageBackground, Text } from "react-native";
 import React, { useEffect, useState } from "react";
-import { ContinueScreenStyles } from "../styles/ContinueScreenStyles";
-import NavContent from "../components/NavContent";
-import GoBackIcon from "../icons/GoBack.icon";
-import { Constants } from "../constants";
-import SecondaryHeading from "../components/SecondaryHeading";
-import ImportantText from "../components/ImportantText";
-import SimpleText from "../components/SimpleText";
+import { ContinueScreenStyles } from "@styles";
+import { Constants } from "@constants";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { Streak } from "../components/Streak";
-import SecondaryButton from "../components/SecondaryButton";
-import ContinueIcon from "../icons/Continue.icon";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
-import { useLocal } from "../hooks/useLocal";
-import { PathData } from "../hooks/useLocal";
-
+import { useLocal, PathData } from "../hooks/useLocal";
+import { GoBackIcon, ContinueIcon } from "@icons";
+import {
+  NavContent,
+  SecondaryButton,
+  SimpleText,
+  SecondaryHeading,
+  ImportantText,
+  Streak,
+} from "@components";
 interface Date {
   date: string;
   angs: number;

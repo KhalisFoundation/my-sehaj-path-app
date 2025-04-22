@@ -7,7 +7,7 @@ import {
 } from "react-native";
 import React from "react";
 import LinearGradient from "react-native-linear-gradient";
-import { SecondaryButtonStyles } from "../styles/SecondaryButtonStyles";
+import { SecondaryButtonStyles } from "@styles";
 
 interface Props {
   onPress: () => void;
@@ -16,12 +16,12 @@ interface Props {
   buttonStyle?: StyleProp<ViewStyle>;
 }
 
-export default function SecondaryButton({
+export const SecondaryButton = ({
   onPress,
   buttonIcon,
   buttonText,
   buttonStyle,
-}: Props) {
+}: Props) => {
   return (
     <>
       <LinearGradient
@@ -44,4 +44,4 @@ export default function SecondaryButton({
       </LinearGradient>
     </>
   );
-}
+};

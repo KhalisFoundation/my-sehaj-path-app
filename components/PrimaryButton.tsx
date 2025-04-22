@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, TouchableOpacity, View } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
-import { PrimaryButtonStyles } from "../styles/PrimaryButtonStyles";
+import { PrimaryButtonStyles } from "@styles";
 
 interface Props {
   buttonTitle: string;
@@ -9,7 +9,7 @@ interface Props {
   onPress: () => any;
 }
 
-export default function PrimaryButton({ buttonTitle, Icon, onPress }: Props) {
+export const PrimaryButton = ({ buttonTitle, Icon, onPress }: Props) => {
   return (
     <>
       <LinearGradient
@@ -25,4 +25,4 @@ export default function PrimaryButton({ buttonTitle, Icon, onPress }: Props) {
       </LinearGradient>
     </>
   );
-}
+};

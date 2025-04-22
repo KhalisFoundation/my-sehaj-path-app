@@ -1,4 +1,5 @@
 import { fontSizeData } from "../hooks/useLocal";
+
 export const FontSizes: fontSizeData[] = [
   { fontSize: "Extra Small", number: 12 },
   { fontSize: "Small (Default)", number: 18 },

@@ -7,7 +7,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import React, { useRef, useState } from "react";
-import { SliderStyles } from "../styles/SliderStyles";
+import { SliderStyles } from "@styles";
 
 interface Props {
   arrayOfCards: React.ReactNode[];
@@ -18,14 +18,14 @@ interface Props {
   dotStyle?: StyleProp<ViewStyle>;
 }
 
-export default function Slider({
+export const Slider = ({
   arrayOfCards,
   widthOfCard,
   dotsIndicator,
   sliderContainerStyle,
   dotStyle,
   dotsContainerStyle,
-}: Props) {
+}: Props) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const { width } = useWindowDimensions();
 
@@ -81,4 +81,4 @@ export default function Slider({
       </View>
     </>
   );
-}
+};

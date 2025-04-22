@@ -1,12 +1,12 @@
 import { View } from "react-native";
 import React from "react";
-import { StreakStyles } from "../styles/StreakStyles";
+import { StreakStyles } from "@styles";
 
 interface Props {
   value: number;
 }
 
-export function Streak({ value }: Props) {
+export const Streak = ({ value }: Props) => {
   return (
     <>
       <View
@@ -17,4 +17,4 @@ export function Streak({ value }: Props) {
       ></View>
     </>
   );
-}
+};

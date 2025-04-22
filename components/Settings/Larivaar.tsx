@@ -1,12 +1,12 @@
 import { View } from "react-native";
 import React from "react";
-import SimpleText from "../SimpleText";
-import { LarivaarStyles } from "../../styles/LarivaarStyles";
+import { SimpleText } from "../index";
+import { LarivaarStyles } from "@styles";
 import { Switch } from "@rneui/themed";
 import { useState, useEffect } from "react";
 import { useLocal } from "../../hooks/useLocal";
 
-export default function Larivaar() {
+export const Larivaar = () => {
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
   const { saveLarivaar, fetchLarivaar } = useLocal();
   const handleLarivaar = (larivaar: boolean) => {
@@ -37,4 +37,4 @@ export default function Larivaar() {
       />
     </View>
   );
-}
+};

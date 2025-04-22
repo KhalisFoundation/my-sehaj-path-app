@@ -2,12 +2,9 @@ import { View } from "react-native";
 import React from "react";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
-import NavContent from "../components/NavContent";
-import GoBackIcon from "../icons/GoBack.icon";
-import { SettingScreenStyle } from "../styles/SettingStyle";
-import SimpleText from "../components/SimpleText";
-import FontSize from "../components/Settings/FontSize";
-import Larivaar from "../components/Settings/Larivaar";
+import { GoBackIcon } from "@icons";
+import { SettingScreenStyle } from "@styles";
+import { NavContent, SimpleText, FontSize, Larivaar } from "@components";
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, "Setting">;
 

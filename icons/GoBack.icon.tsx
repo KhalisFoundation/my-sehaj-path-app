@@ -1,7 +1,7 @@
 import Svg, { Path } from "react-native-svg";
 import React from "react";
 
-export default function GoBackIcon() {
+export const GoBackIcon = () => {
   return (
     <Svg width="21" height="16" viewBox="0 0 21 16" fill="none">
       <Path
@@ -10,4 +10,4 @@ export default function GoBackIcon() {
       />
     </Svg>
   );
-}
+};

@@ -1,13 +1,13 @@
 import { View, Text, TouchableOpacity } from "react-native";
 import React from "react";
-import { NavContentStyles } from "../styles/NavContentStyles";
+import { NavContentStyles } from "@styles";
 
 interface Props {
   text?: string;
   navIcon?: React.ReactNode;
   onPress?: () => void;
 }
-export default function NavContent({ text, navIcon, onPress }: Props) {
+export const NavContent = ({ text, navIcon, onPress }: Props) => {
   return (
     <>
       <View style={NavContentStyles.container}>
@@ -19,4 +19,4 @@ export default function NavContent({ text, navIcon, onPress }: Props) {
       </View>
     </>
   );
-}
+};

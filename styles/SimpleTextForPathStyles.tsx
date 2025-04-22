@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 import font from "../utils/font";
 
-export const SimpleTextForGurbaniStyles = StyleSheet.create({
+export const SimpleTextForPathStyles = StyleSheet.create({
   coloredContainer: {
     backgroundColor: "rgba(253, 198, 6, 0.3)",
     width: "auto",

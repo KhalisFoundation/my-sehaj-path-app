@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { MonthConstant } from "../constants";
+import { MonthConstant } from "@constants";
 
 export interface PathData {
   pathId: number;

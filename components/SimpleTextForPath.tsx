@@ -1,7 +1,7 @@
 import { Text, Pressable, TouchableOpacity } from "react-native";
-import React, { useEffect, useState } from "react";
-import { SimpleTextForGurbaniStyles } from "../styles/SimpleTextForPathStyles";
-import { SaveIcon } from "../icons/Save.icon";
+import React, { useState } from "react";
+import { SimpleTextForPathStyles } from "@styles";
+import { SaveIcon } from "@icons";
 import { useLocal } from "../hooks/useLocal";
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -18,7 +18,7 @@ interface Props {
   matchedVerseId?: number;
 }
 
-export default function SimpleTextForPath({
+export const SimpleTextForPath = ({
   gurbaniLine,
   onPress,
   isSaving,
@@ -27,7 +27,7 @@ export default function SimpleTextForPath({
   iconPress,
   verseId,
   matchedVerseId,
-}: Props) {
+}: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   useFocusEffect(() => {
     const fetch = async () => {
@@ -42,12 +42,12 @@ export default function SimpleTextForPath({
         onPress={onPress}
         style={
           (verseId == matchedVerseId || (isSaving && pressIndex == index)) &&
-          SimpleTextForGurbaniStyles.coloredContainer
+          SimpleTextForPathStyles.coloredContainer
         }
       >
         <Text
           style={{
-            ...SimpleTextForGurbaniStyles.text,
+            ...SimpleTextForPathStyles.text,
             fontSize,
             lineHeight: fontSize * 2.2,
           }}
@@ -57,7 +57,7 @@ export default function SimpleTextForPath({
         {isSaving && pressIndex == index ? (
           <TouchableOpacity
             onPress={iconPress}
-            style={SimpleTextForGurbaniStyles.icon}
+            style={SimpleTextForPathStyles.icon}
           >
             <SaveIcon color="rgba(17, 51, 106, 1)" />
           </TouchableOpacity>
@@ -65,4 +65,4 @@ export default function SimpleTextForPath({
       </Pressable>
     </>
   );
-}
+};

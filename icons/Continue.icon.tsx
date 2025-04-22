@@ -1,7 +1,7 @@
 import React from "react";
 import Svg, { Path } from "react-native-svg";
 
-export default function ContinueIcon() {
+export const ContinueIcon = () => {
   return (
     <Svg width="15" height="18" viewBox="0 0 11 15" fill="none">
       <Path
@@ -13,4 +13,4 @@ export default function ContinueIcon() {
       />
     </Svg>
   );
-}
+};

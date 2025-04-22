@@ -1,7 +1,7 @@
 import React from "react";
 import Svg, { Path } from "react-native-svg";
 
-export default function CheckMarkIcon() {
+export const CheckMarkIcon = () => {
   return (
     <Svg width={21} height={21} viewBox="0 0 24 24" fill="none">
       <Path
@@ -13,4 +13,4 @@ export default function CheckMarkIcon() {
       />
     </Svg>
   );
-}
+};

@@ -6,22 +6,23 @@ import {
   Animated,
 } from "react-native";
 import React, { useEffect, useRef, useState } from "react";
-import { PathScreenStyles } from "../styles/PathScreenStyles";
-import NavContent from "../components/NavContent";
-import { LeftArrowIcon } from "../icons/LeftArrow.icon";
-import { PunjabiNumbers } from "../constants/Number";
-import { RightArrowIcon } from "../icons/RightArrow.icon";
+import { PathScreenStyles } from "@styles";
+import { PunjabiNumbers } from "@constants";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
-import { BaniDB } from "../utils/BaniDB";
-import { HomeIcon } from "../icons/Home.icon";
-import { SettingsIcon } from "../icons/Settings.icon";
-import { SaveIcon } from "../icons/Save.icon";
-import { PlayIcon } from "../icons/Play.icon";
+import { BaniDB } from "@utils/BaniDB";
 import { useLocal } from "../hooks/useLocal";
-import PauseIcon from "../icons/Pause.icon";
-import SimpleTextForPath from "../components/SimpleTextForPath";
+import { NavContent, SimpleTextForPath } from "@components";
 import { useFocusEffect } from "@react-navigation/native";
+import {
+  HomeIcon,
+  SettingsIcon,
+  SaveIcon,
+  PlayIcon,
+  PauseIcon,
+  LeftArrowIcon,
+  RightArrowIcon,
+} from "../icons";
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, "Path">;
 
@@ -42,7 +43,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
 
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar } = useLocal();
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } =
+    useLocal();
 
   useEffect(() => {
     const fetchPath = async () => {
@@ -118,17 +120,32 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setPathContent(pathFromBaniDB);
     loadingIndicator.current = undefined;
   };
-  const scrollToMatchedVerse = () => {
+  const scrollToMatchedVerse = async () => {
     const scrollIndex = pathContent?.page?.findIndex(
       (page: any) => page.verseId === matchedVerseId
     );
     setFound(true);
+    const fontSize = await fetchFontSize();
+    const fontSizeNumber = fontSize.number;
+    let scrollHeight;
+
+    if (fontSizeNumber <= 18) {
+      scrollHeight = 25;
+    } else if (fontSizeNumber <= 24) {
+      scrollHeight = 50;
+    } else if (fontSizeNumber <= 30) {
+      scrollHeight = 100;
+    } else {
+      scrollHeight = 150;
+    }
+
     if (scrollIndex !== -1) {
-      const scrollY = scrollIndex * 150;
+      const scrollY = scrollIndex * scrollHeight;
+      console.log(scrollY, scrollIndex, scrollHeight);
       scorllOffset.current = scrollY;
       scrollRef.current?.scrollTo({
         y: scorllOffset.current,
-        animated: false,
+        animated: true,
       });
     }
     setTimeout(() => {

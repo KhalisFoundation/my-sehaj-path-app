@@ -1,7 +1,7 @@
 import { View, Text, ImageBackground, Animated } from "react-native";
 import React, { useEffect, useRef } from "react";
-import { SplashScreenStyles } from "../styles/SplashScreenStyles";
-import { Constants } from "../constants";
+import { SplashScreenStyles } from "@styles";
+import { Constants } from "@constants";
 import { RootStackParamList } from "../App";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 

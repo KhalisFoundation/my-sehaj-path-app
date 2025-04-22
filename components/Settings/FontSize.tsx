@@ -1,17 +1,13 @@
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, TouchableOpacity } from "react-native";
 import React, { useEffect, useState } from "react";
-import RightChevron from "../../icons/RightChevron.icon";
-import { FontSizeStyle } from "../../styles/FontSizeStyles";
+import { FontSizeStyle } from "@styles";
 import { ListItem, Overlay } from "@rneui/themed";
-import { LeftArrowIcon } from "../../icons/LeftArrow.icon";
-import NavContent from "../NavContent";
-import { FontSizes } from "../../constants/FontSize";
-import CheckMarkIcon from "../../icons/Checkmark.icon";
-import { useLocal } from "../../hooks/useLocal";
-import SimpleText from "../SimpleText";
-import { fontSizeData } from "../../hooks/useLocal";
+import { NavContent, SimpleText } from "../index";
+import { FontSizes } from "@constants";
+import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from "@icons";
+import { useLocal, fontSizeData } from "../../hooks/useLocal";
 
-export default function FontSize() {
+export const FontSize = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [fontSize, setFontSize] = useState<fontSizeData>({
     fontSize: "Small (Default)",
@@ -43,7 +39,7 @@ export default function FontSize() {
             simpleText={fontSize.fontSize || "Default"}
             simpleTextStyle={FontSizeStyle.text}
           />
-          <RightChevron />
+          <RightChevronIcon />
         </View>
       </TouchableOpacity>
 
@@ -78,4 +74,4 @@ export default function FontSize() {
       )}
     </>
   );
-}
+};

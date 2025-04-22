@@ -1,18 +1,20 @@
 import { View, ImageBackground, ScrollView } from "react-native";
 import React, { useEffect, useState } from "react";
-import Headline from "../components/Headline";
-import PrimaryButton from "../components/PrimaryButton";
-import { StartIcon } from "../icons/Start.icon";
-import Slider from "../components/Slider";
-import { PrimaryCard } from "../components/PrimaryCard";
-import { SecondaryCard } from "../components/SecondaryCard";
-import Label from "../components/Label";
-import { HomeScreenStyles } from "../styles/HomeScreenStyles";
-import { Constants, MonthConstant } from "../constants/index";
+import { HomeScreenStyles } from "@styles";
+import { Constants } from "@constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
 import { useLocal } from "../hooks/useLocal";
+import {
+  Headline,
+  Slider,
+  PrimaryButton,
+  PrimaryCard,
+  SecondaryCard,
+  Label,
+} from "../components";
+import { StartIcon } from "../icons";
 
 interface PathData {
   pathId: number;
