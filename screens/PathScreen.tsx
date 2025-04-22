@@ -141,7 +141,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
     if (scrollIndex !== -1) {
       const scrollY = scrollIndex * scrollHeight;
-      console.log(scrollY, scrollIndex, scrollHeight);
+
       scorllOffset.current = scrollY;
       scrollRef.current?.scrollTo({
         y: scorllOffset.current,
