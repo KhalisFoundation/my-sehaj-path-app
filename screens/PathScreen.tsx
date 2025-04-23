@@ -186,7 +186,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         y: scorllOffset.current,
         animated: false,
       });
-    }, 0);
+    }, 50);
   };
   const handleStopAutoScroll = () => {
     if (scrollInveral.current) {
