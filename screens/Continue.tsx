@@ -44,7 +44,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
   const { fetchFromLocal } = useLocal();
-  const { checkNetwork, isOnline } = useInternet();
+  const { checkNetwork, isOnline, updateOnlineStatus } = useInternet();
 
   const calculatePathCompletion = (matchedPath: PathData) => {
     const today = dayjs();
@@ -115,7 +115,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
     navigation.push("Path", { pathId: pathId });
   };
   useEffect(() => {
-    checkNetwork();
+    updateOnlineStatus();
   }, []);
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>

@@ -3,11 +3,15 @@ import { Alert } from "react-native";
 import { useState } from "react";
 
 export const useInternet = () => {
-  const [isOnline, setIsOnline] = useState<boolean>(false);
-  const checkNetwork = async () => {
+  const [isOnline, setIsOnline] = useState<boolean>(true);
+  const updateOnlineStatus = async () => {
     const netInfo = await NetInfo.fetch();
     setIsOnline(netInfo.isConnected || false);
-    if (!netInfo.isConnected) {
+    return netInfo.isConnected;
+  };
+  const checkNetwork = async () => {
+    const netInfo = await updateOnlineStatus();
+    if (!netInfo) {
       Alert.alert(
         "Please connect to the internet.",
         "Offline mode will be soon available.",
@@ -20,5 +24,5 @@ export const useInternet = () => {
       );
     }
   };
-  return { checkNetwork, isOnline, setIsOnline };
+  return { checkNetwork, isOnline, updateOnlineStatus };
 };
