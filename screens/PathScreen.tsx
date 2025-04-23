@@ -239,11 +239,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         const matchedPath = pathDataArray.find(
           (path) => path.pathId === route.params.pathId
         );
-
-        if (
-          matchedPath?.saveData.angNumber == pathAng &&
-          matchedPath?.saveData.verseId == matchedVerseId
-        ) {
+        if (matchedPath?.saveData.angNumber == pathAng) {
           navigation.goBack();
           return true;
         } else {
