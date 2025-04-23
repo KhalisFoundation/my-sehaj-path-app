@@ -7,9 +7,5 @@ interface Props {
 }
 
 export const Label = ({ label }: Props) => {
-  return (
-    <>
-      <Text style={LabelStyles.label}>{label}</Text>
-    </>
-  );
+  return <Text style={LabelStyles.label}>{label}</Text>;
 };

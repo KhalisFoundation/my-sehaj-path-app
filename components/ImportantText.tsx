@@ -12,10 +12,8 @@ export const ImportantText = ({
   importantTextStyles,
 }: Props) => {
   return (
-    <>
-      <Text style={[ImportantTextStyles.importantText, importantTextStyles]}>
-        {importantText}
-      </Text>
-    </>
+    <Text style={[ImportantTextStyles.importantText, importantTextStyles]}>
+      {importantText}
+    </Text>
   );
 };

@@ -1,5 +1,5 @@
-import { View, ImageBackground, ScrollView } from "react-native";
-import React, { useEffect, useState } from "react";
+import { View, ImageBackground, ScrollView, SafeAreaView } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
 import { HomeScreenStyles } from "@styles";
 import { Constants } from "@constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -15,6 +15,8 @@ import {
   Label,
 } from "../components";
 import { StartIcon } from "../icons";
+import { useFocusEffect } from "@react-navigation/native";
+import { SafeAreaStyle } from "@styles/SafeAreaStyle";
 
 interface PathData {
   pathId: number;
@@ -29,25 +31,27 @@ export default function HomeScreen({ navigation }: HomeProps) {
   const [pathInProgress, setPathInProgress] = useState<PathData[]>([]);
   const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
-  useEffect(() => {
-    const fetch = async () => {
-      const { pathDataArray } = await fetchFromLocal();
+  useFocusEffect(
+    useCallback(() => {
+      const fetch = async () => {
+        const { pathDataArray } = await fetchFromLocal();
 
-      setPathCompleted(
-        pathDataArray.filter(
-          (path: PathData) =>
-            path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
-        )
-      );
-      setPathInProgress(
-        pathDataArray.filter(
-          (path: PathData) =>
-            path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
-        )
-      );
-    };
-    fetch();
-  }, []);
+        setPathCompleted(
+          pathDataArray.filter(
+            (path: PathData) =>
+              path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
+          )
+        );
+        setPathInProgress(
+          pathDataArray.filter(
+            (path: PathData) =>
+              path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+          )
+        );
+      };
+      fetch();
+    }, [])
+  );
 
   const handleStart = async () => {
     const { pathDataArray, pathDateDataArray, newPathid } =
@@ -67,7 +71,7 @@ export default function HomeScreen({ navigation }: HomeProps) {
   };
 
   return (
-    <>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <ImageBackground
         source={require("../assets/Images/HomeScreenBg.png")}
         resizeMode="cover"
@@ -120,6 +124,6 @@ export default function HomeScreen({ navigation }: HomeProps) {
           </View>
         </ScrollView>
       </ImageBackground>
-    </>
+    </SafeAreaView>
   );
 }

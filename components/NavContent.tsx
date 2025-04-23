@@ -9,14 +9,12 @@ interface Props {
 }
 export const NavContent = ({ text, navIcon, onPress }: Props) => {
   return (
-    <>
-      <View style={NavContentStyles.container}>
-        {text ? (
-          <Text style={NavContentStyles.navText}>{text}</Text>
-        ) : (
-          <TouchableOpacity onPress={onPress}>{navIcon}</TouchableOpacity>
-        )}
-      </View>
-    </>
+    <View style={NavContentStyles.container}>
+      {text ? (
+        <Text style={NavContentStyles.navText}>{text}</Text>
+      ) : (
+        <TouchableOpacity onPress={onPress}>{navIcon}</TouchableOpacity>
+      )}
+    </View>
   );
 };

@@ -9,8 +9,6 @@ interface Props {
 
 export const SecondaryHeading = ({ text, textStyles }: Props) => {
   return (
-    <>
-      <Text style={[SecondaryHeadingStyles.heading, textStyles]}>{text}</Text>
-    </>
+    <Text style={[SecondaryHeadingStyles.heading, textStyles]}>{text}</Text>
   );
 };

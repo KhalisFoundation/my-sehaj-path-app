@@ -4,14 +4,16 @@ import {
   ScrollView,
   ActivityIndicator,
   Animated,
+  Alert,
+  BackHandler,
 } from "react-native";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { PathScreenStyles } from "@styles";
 import { PunjabiNumbers } from "@constants";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
 import { BaniDB } from "@utils/BaniDB";
-import { useLocal } from "../hooks/useLocal";
+import { PathData, useLocal } from "../hooks/useLocal";
 import { NavContent, SimpleTextForPath } from "@components";
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -23,6 +25,9 @@ import {
   LeftArrowIcon,
   RightArrowIcon,
 } from "../icons";
+import { useInternet } from "@hooks/useInternet";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaStyle } from "@styles/SafeAreaStyle";
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, "Path">;
 
@@ -42,6 +47,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [found, setFound] = useState<boolean>(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
+
+  const { checkNetwork, isOnline } = useInternet();
 
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } =
     useLocal();
@@ -71,7 +78,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     };
     fetchPath();
   }, []);
+
   const handleRightArrow = (pageNo: number) => {
+    checkNetwork();
+    if (!isOnline) {
+      return;
+    }
     if (pageNo >= 1430) {
       return;
     }
@@ -80,6 +92,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       y: 0,
       animated: true,
     });
+    loadingIndicator.current = (
+      <ActivityIndicator size={"large"} color={"#000"} />
+    );
+    fetchFromBaniDB(pageNo + 1);
     setPathAng(pageNo + 1);
     setPathPunjabiAng(
       (pageNo + 1)
@@ -88,12 +104,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         .map((num: string) => PunjabiNumbers[num])
         .join("") || "0"
     );
-    loadingIndicator.current = (
-      <ActivityIndicator size={"large"} color={"#000"} />
-    );
-    fetchFromBaniDB(pageNo + 1);
   };
   const handleLeftArrow = (pageNo: number) => {
+    checkNetwork();
+    if (!isOnline) {
+      return;
+    }
     if (pageNo <= 1) {
       return;
     }
@@ -216,8 +232,62 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     };
     fetchFromLocal();
   });
+  useFocusEffect(
+    useCallback(() => {
+      const handleBackPress = async () => {
+        const { pathDataArray } = await fetchFromLocal();
+        const matchedPath = pathDataArray.find(
+          (path) => path.pathId === route.params.pathId
+        );
+
+        if (matchedPath?.saveData.angNumber == pathAng) {
+          navigation.goBack();
+          return true;
+        } else {
+          Alert.alert(
+            "Please save your progress before leaving the Path.",
+            "",
+            [
+              {
+                text: "Go back",
+                onPress: () => {
+                  navigation.goBack();
+                },
+              },
+              {
+                text: "Cancel",
+                onPress: () => {},
+              },
+            ]
+          );
+        }
+        return false;
+      };
+
+      const handleBackPressWrapper = async () => {
+        return handleBackPress()
+          .then((result) => {
+            return result;
+          })
+          .catch(() => {
+            return false;
+          });
+      };
+
+      BackHandler.addEventListener("hardwareBackPress", handleBackPressWrapper);
+      return () => {
+        BackHandler.removeEventListener(
+          "hardwareBackPress",
+          handleBackPressWrapper
+        );
+      };
+    }, [navigation, pathAng, route.params.pathId])
+  );
+  useEffect(() => {
+    checkNetwork();
+  }, []);
   return (
-    <>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
         <View style={PathScreenStyles.navContainer}>
           <NavContent
@@ -325,6 +395,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           </Animated.View>
         )}
       </View>
-    </>
+    </SafeAreaView>
   );
 };

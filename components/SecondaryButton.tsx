@@ -23,25 +23,23 @@ export const SecondaryButton = ({
   buttonStyle,
 }: Props) => {
   return (
-    <>
-      <LinearGradient
-        colors={["rgba(17, 51, 106, 1)", "rgba(13, 35, 70, 1)"]}
-        start={{ x: 0, y: 0.1 }}
-        end={{ x: 1, y: 0 }}
-        style={[SecondaryButtonStyles.secondaryButtonContainer, buttonStyle]}
+    <LinearGradient
+      colors={["rgba(17, 51, 106, 1)", "rgba(13, 35, 70, 1)"]}
+      start={{ x: 0, y: 0.1 }}
+      end={{ x: 1, y: 0 }}
+      style={[SecondaryButtonStyles.secondaryButtonContainer, buttonStyle]}
+    >
+      <TouchableOpacity
+        onPress={() => {
+          onPress();
+        }}
+        style={SecondaryButtonStyles.secondaryButton}
       >
-        <TouchableOpacity
-          onPress={() => {
-            onPress();
-          }}
-          style={SecondaryButtonStyles.secondaryButton}
-        >
-          <View>{buttonIcon}</View>
-          <Text style={SecondaryButtonStyles.secondaryButtonContent}>
-            {buttonText}
-          </Text>
-        </TouchableOpacity>
-      </LinearGradient>
-    </>
+        <View>{buttonIcon}</View>
+        <Text style={SecondaryButtonStyles.secondaryButtonContent}>
+          {buttonText}
+        </Text>
+      </TouchableOpacity>
+    </LinearGradient>
   );
 };

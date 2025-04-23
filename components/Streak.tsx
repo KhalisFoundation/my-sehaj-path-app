@@ -8,13 +8,11 @@ interface Props {
 
 export const Streak = ({ value }: Props) => {
   return (
-    <>
-      <View
-        style={{
-          ...StreakStyles.streakContainer,
-          opacity: value <= 0 ? 0.2 : value <= 5 && value > 0 ? 0.5 : 1,
-        }}
-      ></View>
-    </>
+    <View
+      style={{
+        ...StreakStyles.streakContainer,
+        opacity: value <= 0 ? 0.2 : value <= 5 && value > 0 ? 0.5 : 1,
+      }}
+    ></View>
   );
 };

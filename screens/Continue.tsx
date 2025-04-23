@@ -1,5 +1,5 @@
 import { View, ScrollView, ImageBackground, Text } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { ContinueScreenStyles } from "@styles";
 import { Constants } from "@constants";
 import dayjs from "dayjs";
@@ -16,6 +16,10 @@ import {
   ImportantText,
   Streak,
 } from "@components";
+import { useInternet } from "../hooks/useInternet";
+import { useFocusEffect } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaStyle } from "@styles/SafeAreaStyle";
 interface Date {
   date: string;
   angs: number;
@@ -40,6 +44,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
   const { fetchFromLocal } = useLocal();
+  const { checkNetwork, isOnline } = useInternet();
 
   const calculatePathCompletion = (matchedPath: PathData) => {
     const today = dayjs();
@@ -94,14 +99,26 @@ export default function Continue({ route, navigation }: ContinueProps) {
     }
     setStreakData(Array.from(mergeDates.values()));
   };
-  useEffect(() => {
-    updateTheData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      updateTheData();
+    }, [])
+  );
   useEffect(() => {
     pathData?.startDate ? makeStreakIndicator(pathData.startDate) : undefined;
   }, [pathData]);
+  const handleContinue = async () => {
+    await checkNetwork();
+    if (!isOnline) {
+      return;
+    }
+    navigation.push("Path", { pathId: pathId });
+  };
+  useEffect(() => {
+    checkNetwork();
+  }, []);
   return (
-    <>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <ImageBackground
         source={require("../assets/Images/ContinueScreenBg.png")}
         style={ContinueScreenStyles.backgroundImage}
@@ -202,9 +219,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
               </>
             )}
             <SecondaryButton
-              onPress={() => {
-                navigation.push("Path", { pathId: pathId });
-              }}
+              onPress={() => handleContinue()}
               buttonText={"Continue"}
               buttonIcon={<ContinueIcon />}
               buttonStyle={{ width: 110 }}
@@ -212,6 +227,6 @@ export default function Continue({ route, navigation }: ContinueProps) {
           </View>
         </ScrollView>
       </ImageBackground>
-    </>
+    </SafeAreaView>
   );
 }

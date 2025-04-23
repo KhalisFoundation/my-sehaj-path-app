@@ -7,9 +7,5 @@ interface Props {
 }
 
 export const Headline = ({ headline }: Props) => {
-  return (
-    <>
-      <Text style={HeadlineStyle.headline}>{headline}</Text>
-    </>
-  );
+  return <Text style={HeadlineStyle.headline}>{headline}</Text>;
 };

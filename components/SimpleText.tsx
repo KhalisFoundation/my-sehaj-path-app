@@ -9,14 +9,12 @@ interface Props {
 
 export const SimpleText = ({ simpleText, simpleTextStyle }: Props) => {
   return (
-    <>
-      <Text style={[SimpleTextStyles.simpleText, simpleTextStyle]}>
-        {typeof simpleText == "string"
-          ? simpleText
-          : simpleText.map((text, index) => (
-              <React.Fragment key={index}>{text}</React.Fragment>
-            ))}
-      </Text>
-    </>
+    <Text style={[SimpleTextStyles.simpleText, simpleTextStyle]}>
+      {typeof simpleText == "string"
+        ? simpleText
+        : simpleText.map((text, index) => (
+            <React.Fragment key={index}>{text}</React.Fragment>
+          ))}
+    </Text>
   );
 };

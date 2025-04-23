@@ -4,6 +4,8 @@ import { SplashScreenStyles } from "@styles";
 import { Constants } from "@constants";
 import { RootStackParamList } from "../App";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaStyle } from "@styles/SafeAreaStyle";
 
 type SplashProps = NativeStackScreenProps<RootStackParamList, "Splash">;
 
@@ -21,7 +23,7 @@ export default function SplashScreen({ navigation }: SplashProps) {
     }, 500);
   }, []);
   return (
-    <>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <Animated.View style={{ opacity: fadeOut }}>
         <ImageBackground
           source={require("../assets/Images/SplashScreenBg.png")}
@@ -40,6 +42,6 @@ export default function SplashScreen({ navigation }: SplashProps) {
           </View>
         </ImageBackground>
       </Animated.View>
-    </>
+    </SafeAreaView>
   );
 }

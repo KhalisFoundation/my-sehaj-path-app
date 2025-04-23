@@ -37,32 +37,30 @@ export const SimpleTextForPath = ({
     fetch();
   });
   return (
-    <>
-      <Pressable
-        onPress={onPress}
-        style={
-          (verseId == matchedVerseId || (isSaving && pressIndex == index)) &&
-          SimpleTextForPathStyles.coloredContainer
-        }
+    <Pressable
+      onPress={onPress}
+      style={
+        (verseId == matchedVerseId || (isSaving && pressIndex == index)) &&
+        SimpleTextForPathStyles.coloredContainer
+      }
+    >
+      <Text
+        style={{
+          ...SimpleTextForPathStyles.text,
+          fontSize,
+          lineHeight: fontSize * 2.2,
+        }}
       >
-        <Text
-          style={{
-            ...SimpleTextForPathStyles.text,
-            fontSize,
-            lineHeight: fontSize * 2.2,
-          }}
+        {gurbaniLine}
+      </Text>
+      {isSaving && pressIndex == index ? (
+        <TouchableOpacity
+          onPress={iconPress}
+          style={SimpleTextForPathStyles.icon}
         >
-          {gurbaniLine}
-        </Text>
-        {isSaving && pressIndex == index ? (
-          <TouchableOpacity
-            onPress={iconPress}
-            style={SimpleTextForPathStyles.icon}
-          >
-            <SaveIcon color="rgba(17, 51, 106, 1)" />
-          </TouchableOpacity>
-        ) : null}
-      </Pressable>
-    </>
+          <SaveIcon color="rgba(17, 51, 106, 1)" />
+        </TouchableOpacity>
+      ) : null}
+    </Pressable>
   );
 };

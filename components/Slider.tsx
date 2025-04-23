@@ -28,7 +28,6 @@ export const Slider = ({
 }: Props) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const { width } = useWindowDimensions();
-
   const scrollX = useRef(new Animated.Value(0)).current;
   const cardwidthOfCard = widthOfCard;
   const gap = 10;
