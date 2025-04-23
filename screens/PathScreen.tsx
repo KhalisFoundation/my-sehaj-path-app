@@ -240,7 +240,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           (path) => path.pathId === route.params.pathId
         );
 
-        if (matchedPath?.saveData.angNumber == pathAng) {
+        if (
+          matchedPath?.saveData.angNumber == pathAng &&
+          matchedPath?.saveData.verseId == matchedVerseId
+        ) {
           navigation.goBack();
           return true;
         } else {
