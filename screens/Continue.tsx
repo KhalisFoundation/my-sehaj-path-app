@@ -20,6 +20,7 @@ import { useInternet } from "../hooks/useInternet";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SafeAreaStyle } from "@styles/SafeAreaStyle";
+
 interface Date {
   date: string;
   angs: number;
@@ -164,17 +165,21 @@ export default function Continue({ route, navigation }: ContinueProps) {
                   <SimpleText
                     simpleText={[
                       Constants.YOU_ARE_ON_ANG_NUMBER,
-                      <View style={ContinueScreenStyles.impTextContainer}>
+                      <View>
                         <ImportantText
                           importantText={`${pathAng}`}
-                          importantTextStyles={ContinueScreenStyles.textStyle}
+                          importantTextStyles={
+                            ContinueScreenStyles.impTextContainer
+                          }
                         />
                       </View>,
                       Constants.HAVE_COMPLETED,
-                      <View style={ContinueScreenStyles.impTextContainer}>
+                      <View>
                         <ImportantText
                           importantText={`${pathPercentage}%`}
-                          importantTextStyles={ContinueScreenStyles.textStyle}
+                          importantTextStyles={
+                            ContinueScreenStyles.impTextContainer
+                          }
                         />
                       </View>,
                       Constants.SRI_SEHAJ_PATH,
@@ -222,7 +227,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
               onPress={() => handleContinue()}
               buttonText={"Continue"}
               buttonIcon={<ContinueIcon />}
-              buttonStyle={{ width: 110 }}
+              buttonStyle={ContinueScreenStyles.continueButton}
             />
           </View>
         </ScrollView>

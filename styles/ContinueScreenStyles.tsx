@@ -1,5 +1,8 @@
 import { StyleSheet } from "react-native";
 import font from "../utils/font";
+import { PixelRatio } from "react-native";
+
+const fontSize = PixelRatio.getFontScale();
 
 export const ContinueScreenStyles = StyleSheet.create({
   backgroundImage: {
@@ -37,13 +40,20 @@ export const ContinueScreenStyles = StyleSheet.create({
     marginTop: 24,
   },
   impTextContainer: {
-    padding: 1,
-    backgroundColor: "rgba(253, 198, 6, 0.3)",
+    padding: 5,
+    paddingVertical: 0,
     borderRadius: 10,
-    transform: [{ translateY: 10 }],
+    backgroundColor: "rgba(253, 198, 6, 0.3)",
+    fontSize: 22,
+    height: "auto",
+    justifyContent: "center",
+    alignItems: "center",
+    transform: [{ translateY: fontSize > 1 ? 30 : 5 }],
+    marginRight: fontSize > 1 ? 0 : 12,
   },
   textStyle: {
     fontSize: 24,
+    lineHeight: 45,
   },
   streakScroll: {
     flexDirection: "row",
@@ -59,5 +69,9 @@ export const ContinueScreenStyles = StyleSheet.create({
     fontFamily: font.Brandon_Grotesque_Regular,
     color: "gray",
     fontSize: 24,
+  },
+  continueButton: {
+    width: "auto",
+    alignSelf: "flex-start",
   },
 });

@@ -3,8 +3,9 @@ import font from "../utils/font";
 
 export const PrimaryButtonStyles = StyleSheet.create({
   container: {
-    width: 112,
-    height: 48,
+    width: "auto",
+    minWidth: 112,
+    height: "auto",
     marginTop: 10,
     borderRadius: 100,
   },
@@ -19,5 +20,6 @@ export const PrimaryButtonStyles = StyleSheet.create({
     letterSpacing: 1,
     fontFamily: font.Baloo_Paaji_2_Medium,
     fontSize: 16,
+    transform: [{ translateY: -1 }],
   },
 });
