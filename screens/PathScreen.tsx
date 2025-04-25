@@ -376,7 +376,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}
           >
             <NavContent navIcon={<SaveIcon />} />
-            <Text style={PathScreenStyles.saveText}>
+            <Text style={PathScreenStyles.saveText} allowFontScaling={false}>
               {!isSaved
                 ? "Select a panktee to save progress."
                 : "Saved the highlighted panktee!"}
@@ -388,7 +388,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}
           >
             <NavContent navIcon={<SaveIcon />} />
-            <Text style={PathScreenStyles.saveText}>
+            <Text style={PathScreenStyles.saveText} allowFontScaling={false}>
               Last saved panktee founded!
             </Text>
           </Animated.View>
