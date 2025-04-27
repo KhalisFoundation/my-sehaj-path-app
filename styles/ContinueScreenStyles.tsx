@@ -3,6 +3,7 @@ import font from "../utils/font";
 import { PixelRatio } from "react-native";
 
 const fontSize = PixelRatio.getFontScale();
+console.log(fontSize);
 
 export const ContinueScreenStyles = StyleSheet.create({
   backgroundImage: {
@@ -46,8 +47,12 @@ export const ContinueScreenStyles = StyleSheet.create({
     backgroundColor: "rgba(253, 198, 6, 0.3)",
     fontSize: 22,
     height: "auto",
-
-    transform: [{ translateY: fontSize > 1 ? "20%" : 5 }],
+    transform: [
+      {
+        translateY:
+          fontSize > 1 && fontSize < 1.3 ? "20%" : fontSize > 1.3 ? "50%" : 0,
+      },
+    ],
     marginRight: fontSize > 1 ? 0 : 8,
   },
   textStyle: {
