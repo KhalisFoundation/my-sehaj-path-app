@@ -13,7 +13,7 @@ import { PunjabiNumbers } from "@constants";
 import { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { RootStackParamList } from "../App";
 import { BaniDB } from "@utils/BaniDB";
-import { PathData, useLocal } from "../hooks/useLocal";
+import { useLocal } from "../hooks/useLocal";
 import { NavContent, SimpleTextForPath } from "@components";
 import { useFocusEffect } from "@react-navigation/native";
 import {
@@ -92,9 +92,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       y: 0,
       animated: true,
     });
-    loadingIndicator.current = (
-      <ActivityIndicator size={"large"} color={"#000"} />
-    );
+
     fetchFromBaniDB(pageNo + 1);
     setPathAng(pageNo + 1);
     setPathPunjabiAng(
@@ -126,12 +124,13 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         .map((num: string) => PunjabiNumbers[num])
         .join("") || "0"
     );
-    loadingIndicator.current = (
-      <ActivityIndicator size={"large"} color={"#000"} />
-    );
+
     fetchFromBaniDB(pageNo - 1);
   };
   const fetchFromBaniDB = async (angNumber: number) => {
+    loadingIndicator.current = (
+      <ActivityIndicator size={"large"} color={"#000"} />
+    );
     const pathFromBaniDB = await BaniDB(angNumber);
     setPathContent(pathFromBaniDB);
     loadingIndicator.current = undefined;
@@ -344,9 +343,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             {loadingIndicator.current}
             <Text>Loading ...</Text>
           </View>
-        ) : (
-          ""
-        )}
+        ) : null}
 
         {!isSaving && !found ? (
           <View style={PathScreenStyles.navigationContainer}>
