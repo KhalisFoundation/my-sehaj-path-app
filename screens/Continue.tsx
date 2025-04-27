@@ -161,46 +161,44 @@ export default function Continue({ route, navigation }: ContinueProps) {
 
             {showData ? (
               <>
-                <View>
-                  <SimpleText
-                    simpleText={[
-                      Constants.YOU_ARE_ON_ANG_NUMBER,
-                      <View>
-                        <ImportantText
-                          importantText={`${pathAng}`}
-                          importantTextStyles={
-                            ContinueScreenStyles.impTextContainer
-                          }
-                        />
-                      </View>,
-                      Constants.HAVE_COMPLETED,
-                      <View>
-                        <ImportantText
-                          importantText={`${pathPercentage}%`}
-                          importantTextStyles={
-                            ContinueScreenStyles.impTextContainer
-                          }
-                        />
-                      </View>,
-                      Constants.SRI_SEHAJ_PATH,
-                    ]}
-                    simpleTextStyle={ContinueScreenStyles.textStyle}
-                  />
-                </View>
-                <View>
-                  <SimpleText
-                    simpleText={[
-                      Constants.STARTED_PATH,
-                      <ImportantText importantText={`${daysAgo} days `} />,
-                      Constants.AVERAGE_ABOUT,
+                <SimpleText
+                  simpleText={[
+                    Constants.YOU_ARE_ON_ANG_NUMBER,
+                    <View>
                       <ImportantText
-                        importantText={`${averageAngs} angs a day. `}
-                      />,
-                      Constants.COMPLETION_SEHAJ_PATH,
-                      <ImportantText importantText={`${finishDate} 🎯 .`} />,
-                    ]}
-                  />
-                </View>
+                        importantText={`${pathAng}`}
+                        importantTextStyles={
+                          ContinueScreenStyles.impTextContainer
+                        }
+                      />
+                    </View>,
+                    Constants.HAVE_COMPLETED,
+                    <View>
+                      <ImportantText
+                        importantText={`${pathPercentage}%`}
+                        importantTextStyles={
+                          ContinueScreenStyles.impTextContainer
+                        }
+                      />
+                    </View>,
+                    Constants.SRI_SEHAJ_PATH,
+                  ]}
+                  simpleTextStyle={ContinueScreenStyles.textStyle}
+                />
+
+                <SimpleText
+                  simpleText={[
+                    Constants.STARTED_PATH,
+                    <ImportantText importantText={`${daysAgo} days `} />,
+                    Constants.AVERAGE_ABOUT,
+                    <ImportantText
+                      importantText={`${averageAngs} angs a day. `}
+                    />,
+                    Constants.COMPLETION_SEHAJ_PATH,
+                    <ImportantText importantText={`${finishDate} 🎯 .`} />,
+                  ]}
+                />
+
                 <View>
                   <SimpleText
                     simpleText={[`${Constants.HERE_YOURS_STREAK_CHART}`]}

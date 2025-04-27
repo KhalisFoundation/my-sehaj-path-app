@@ -46,10 +46,9 @@ export const ContinueScreenStyles = StyleSheet.create({
     backgroundColor: "rgba(253, 198, 6, 0.3)",
     fontSize: 22,
     height: "auto",
-    justifyContent: "center",
-    alignItems: "center",
-    transform: [{ translateY: fontSize > 1 ? 30 : 5 }],
-    marginRight: fontSize > 1 ? 0 : 12,
+
+    transform: [{ translateY: fontSize > 1 ? "20%" : 5 }],
+    marginRight: fontSize > 1 ? 0 : 8,
   },
   textStyle: {
     fontSize: 24,
