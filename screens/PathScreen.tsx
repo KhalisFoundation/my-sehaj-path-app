@@ -28,6 +28,7 @@ import {
 import { useInternet } from "@hooks/useInternet";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SafeAreaStyle } from "@styles/SafeAreaStyle";
+import GestureRecognizer from "react-native-swipe-gestures";
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, "Path">;
 
@@ -302,42 +303,47 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             }}
           />
         </View>
-        <ScrollView
-          contentContainerStyle={PathScreenStyles.pathContentContainer}
-          ref={scrollRef}
-          onScroll={(e) => {
-            scorllOffset.current = e.nativeEvent.contentOffset.y;
-          }}
-          onTouchStart={() => handleStopAutoScroll()}
-          scrollEventThrottle={16}
+        <GestureRecognizer
+          onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
+          onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
         >
-          {pathContent?.page?.map((path: any, index: number) => (
-            <SimpleTextForPath
-              key={index}
-              gurbaniLine={
-                isLarivaar ? path.larivaar.unicode : path.verse.unicode
-              }
-              onPress={() => {
-                if (isSaving) {
-                  setPressIndex(index + 1);
+          <ScrollView
+            contentContainerStyle={PathScreenStyles.pathContentContainer}
+            ref={scrollRef}
+            onScroll={(e) => {
+              scorllOffset.current = e.nativeEvent.contentOffset.y;
+            }}
+            onTouchStart={() => handleStopAutoScroll()}
+            scrollEventThrottle={16}
+          >
+            {pathContent?.page?.map((path: any, index: number) => (
+              <SimpleTextForPath
+                key={index}
+                gurbaniLine={
+                  isLarivaar ? path.larivaar.unicode : path.verse.unicode
                 }
-              }}
-              iconPress={() =>
-                handleUpdatePath(
-                  route.params.pathId || 1,
-                  pathAng,
-                  path.verseId,
-                  setIsSaved
-                )
-              }
-              isSaving={isSaving}
-              pressIndex={pressIndex}
-              index={index + 1}
-              verseId={path.verseId}
-              matchedVerseId={matchedVerseId}
-            />
-          ))}
-        </ScrollView>
+                onPress={() => {
+                  if (isSaving) {
+                    setPressIndex(index + 1);
+                  }
+                }}
+                iconPress={() =>
+                  handleUpdatePath(
+                    route.params.pathId || 1,
+                    pathAng,
+                    path.verseId,
+                    setIsSaved
+                  )
+                }
+                isSaving={isSaving}
+                pressIndex={pressIndex}
+                index={index + 1}
+                verseId={path.verseId}
+                matchedVerseId={matchedVerseId}
+              />
+            ))}
+          </ScrollView>
+        </GestureRecognizer>
         {loadingIndicator.current != undefined ? (
           <View style={PathScreenStyles.loadingContainer}>
             {loadingIndicator.current}

@@ -6,5 +6,6 @@ export const ImportantTextStyles = StyleSheet.create({
     color: "rgba(17, 51, 106, 1)",
     fontFamily: font.Baloo_Paaji_2_Medium,
     fontSize: 16,
+    padding: 5,
   },
 });
