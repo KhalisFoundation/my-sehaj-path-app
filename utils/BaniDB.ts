@@ -7,6 +7,6 @@ export const BaniDB = async (angNumber: number) => {
     const response = await axios.get(baniDBUrl);
     return response.data;
   } catch (error) {
-    return "Caught an error while fetching the Bani.";
+    return "Error";
   }
 };

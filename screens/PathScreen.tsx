@@ -44,7 +44,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [matchedVerseId, setMatchedVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
-  const loadingIndicator = useRef<any>();
+  const aleartIndicator = useRef<any>();
+  const alertText = useRef<string>("Loading ... ");
   const [found, setFound] = useState<boolean>(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
@@ -129,18 +130,21 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     fetchFromBaniDB(pageNo - 1);
   };
   const fetchFromBaniDB = async (angNumber: number) => {
-    loadingIndicator.current = (
+    aleartIndicator.current = (
       <ActivityIndicator size={"large"} color={"#000"} />
     );
     const pathFromBaniDB = await BaniDB(angNumber);
     setPathContent(pathFromBaniDB);
-    loadingIndicator.current = undefined;
+    if (pathFromBaniDB === "Error") {
+      navigation.replace("Error");
+    }
+    aleartIndicator.current = undefined;
   };
   const scrollToMatchedVerse = async () => {
     const scrollIndex = pathContent?.page?.findIndex(
       (page: any) => page.verseId === matchedVerseId
     );
-    setFound(true);
+
     const fontSize = await fetchFontSize();
     const fontSizeNumber = fontSize.number;
     let scrollHeight;
@@ -157,7 +161,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
     if (scrollIndex !== -1) {
       const scrollY = scrollIndex * scrollHeight;
-
+      setFound(true);
       scorllOffset.current = scrollY;
       scrollRef.current?.scrollTo({
         y: scorllOffset.current,
@@ -243,24 +247,21 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           navigation.goBack();
           return true;
         } else {
-          Alert.alert(
-            "Please save your progress before leaving the Path.",
-            "",
-            [
-              {
-                text: "Go back",
-                onPress: () => {
-                  navigation.goBack();
-                },
-              },
-              {
-                text: "Cancel",
-                onPress: () => {},
-              },
-            ]
+          alertText.current = "Saving Your Progress ... ";
+          aleartIndicator.current = (
+            <ActivityIndicator size={"large"} color={"#000"} />
           );
+          await handleUpdatePath(
+            route.params.pathId,
+            pathAng,
+            matchedVerseId,
+            setIsSaved
+          );
+          setTimeout(() => {
+            navigation.goBack();
+          }, 2000);
+          return true;
         }
-        return false;
       };
 
       const handleBackPressWrapper = async () => {
@@ -306,6 +307,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         <GestureRecognizer
           onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
           onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
+          onSwipeDown={() => undefined}
+          onSwipeUp={() => undefined}
         >
           <ScrollView
             contentContainerStyle={PathScreenStyles.pathContentContainer}
@@ -344,10 +347,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             ))}
           </ScrollView>
         </GestureRecognizer>
-        {loadingIndicator.current != undefined ? (
-          <View style={PathScreenStyles.loadingContainer}>
-            {loadingIndicator.current}
-            <Text>Loading ...</Text>
+        {aleartIndicator.current != undefined ? (
+          <View style={PathScreenStyles.alertContainer}>
+            {aleartIndicator.current}
+            <Text style={PathScreenStyles.alertText}>{alertText.current}</Text>
           </View>
         ) : null}
 

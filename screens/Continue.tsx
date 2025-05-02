@@ -20,6 +20,7 @@ import { useInternet } from "../hooks/useInternet";
 import { useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { SafeAreaStyle } from "@styles/SafeAreaStyle";
+import { Pressable } from "react-native";
 
 interface Date {
   date: string;
@@ -53,6 +54,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
     const days = today.diff(startDate, "day");
     const averageAngs =
       (matchedPath.saveData.angNumber || 0) / (days ? days : 1);
+
     const remainingAngs = 1430 - matchedPath.saveData.angNumber;
     const remainingDays = remainingAngs / (averageAngs ? averageAngs : 1);
     const completionDate = today.add(remainingDays, "day");
@@ -60,7 +62,9 @@ export default function Continue({ route, navigation }: ContinueProps) {
     setDaysAgo(
       today.format("D-MMMM-YYYY") == startDate.format("D-MMMM-YYYY") ? 0 : days
     );
-    setAverageAngs(averageAngs == Infinity ? 0 : averageAngs);
+    setAverageAngs(
+      averageAngs == Infinity ? 0 : parseFloat(averageAngs.toFixed(2))
+    );
   };
 
   const updateTheData = async () => {
@@ -80,6 +84,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
       const pathPercentage = parseFloat(
         (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
       );
+
       setPathPercentage(pathPercentage);
       calculatePathCompletion(matchedPath);
     }
@@ -164,28 +169,23 @@ export default function Continue({ route, navigation }: ContinueProps) {
                 <SimpleText
                   simpleText={[
                     Constants.YOU_ARE_ON_ANG_NUMBER,
-                    <View>
-                      <ImportantText
-                        importantText={`${pathAng}`}
-                        importantTextStyles={
-                          ContinueScreenStyles.impTextContainer
-                        }
-                      />
-                    </View>,
+                    <ImportantText
+                      importantText={`${pathAng}`}
+                      importantTextStyles={
+                        ContinueScreenStyles.impTextContainer
+                      }
+                    />,
                     Constants.HAVE_COMPLETED,
-                    <View>
-                      <ImportantText
-                        importantText={`${pathPercentage}%`}
-                        importantTextStyles={
-                          ContinueScreenStyles.impTextContainer
-                        }
-                      />
-                    </View>,
+                    <ImportantText
+                      importantText={`${pathPercentage}%`}
+                      importantTextStyles={
+                        ContinueScreenStyles.impTextContainer
+                      }
+                    />,
                     Constants.SRI_SEHAJ_PATH,
                   ]}
                   simpleTextStyle={ContinueScreenStyles.textStyle}
                 />
-
                 <SimpleText
                   simpleText={[
                     Constants.STARTED_PATH,
@@ -221,6 +221,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
                 </Text>
               </>
             )}
+
             <SecondaryButton
               onPress={() => handleContinue()}
               buttonText={"Continue"}

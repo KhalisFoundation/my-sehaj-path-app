@@ -8,6 +8,7 @@ import { PathScreen } from "./screens/PathScreen";
 import { Settings } from "./screens/Setting";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { SafeAreaStyle } from "@styles/SafeAreaStyle";
+import Error from "./screens/Error";
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   Continue: { pathId: number };
   Path: { pathId: number };
   Setting: undefined;
+  Error: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -32,6 +34,7 @@ function App() {
           <Stack.Screen name="Continue" component={Continue} />
           <Stack.Screen name="Path" component={PathScreen} />
           <Stack.Screen name="Setting" component={Settings} />
+          <Stack.Screen name="Error" component={Error} />
         </Stack.Navigator>
       </NavigationContainer>
     </SafeAreaProvider>

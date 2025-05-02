@@ -38,18 +38,23 @@ export const PathScreenStyles = StyleSheet.create({
     borderRadius: 5,
     flexDirection: "row",
   },
-  loadingContainer: {
+  alertContainer: {
     position: "absolute",
     zIndex: 9,
     backgroundColor: "white",
     width: "80%",
-    height: "10%",
+    height: "15%",
     minHeight: 100,
     alignItems: "center",
     justifyContent: "center",
     alignSelf: "center",
     top: "40%",
     borderRadius: 10,
+  },
+  alertText: {
+    color: "#11336A",
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    fontSize: 16,
   },
   saveContainer: {
     position: "absolute",

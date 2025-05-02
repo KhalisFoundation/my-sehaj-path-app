@@ -4,7 +4,6 @@ import { SimpleTextForPathStyles } from "@styles";
 import { SaveIcon } from "@icons";
 import { useLocal } from "../hooks/useLocal";
 import { useFocusEffect } from "@react-navigation/native";
-
 const { fetchFontSize } = useLocal();
 
 interface Props {

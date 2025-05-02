@@ -37,21 +37,12 @@ export const ContinueScreenStyles = StyleSheet.create({
     marginTop: 24,
   },
   impTextContainer: {
-    padding: 5,
-    paddingVertical: 0,
-    borderRadius: 10,
-    backgroundColor: "rgba(253, 198, 6, 0.3)",
     fontSize: 22,
-    height: "auto",
-    overflow: "hidden",
-    position: "relative",
-    top: 8,
-    left: 0,
-    marginRight: 5,
+    backgroundColor: "rgba(253, 198, 6, 0.3)",
   },
   textStyle: {
     fontSize: 24,
-    lineHeight: 45,
+    lineHeight: 48,
   },
   streakScroll: {
     flexDirection: "row",
