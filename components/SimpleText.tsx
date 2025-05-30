@@ -1,6 +1,6 @@
-import { StyleProp, Text, TextStyle } from "react-native";
-import React from "react";
-import { SimpleTextStyles } from "@styles";
+import { StyleProp, Text, TextStyle } from 'react-native';
+import React from 'react';
+import { SimpleTextStyles } from '@styles';
 
 interface Props {
   simpleText: string[] | React.ReactNode[] | string;
@@ -10,11 +10,9 @@ interface Props {
 export const SimpleText = ({ simpleText, simpleTextStyle }: Props) => {
   return (
     <Text style={[SimpleTextStyles.simpleText, simpleTextStyle]}>
-      {typeof simpleText == "string"
+      {typeof simpleText === 'string'
         ? simpleText
-        : simpleText.map((text, index) => (
-            <React.Fragment key={index}>{text}</React.Fragment>
-          ))}
+        : simpleText.map((text, index) => <React.Fragment key={index}>{text}</React.Fragment>)}
     </Text>
   );
 };

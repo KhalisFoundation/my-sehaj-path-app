@@ -1,15 +1,15 @@
-import { View, Text, ImageBackground, Animated } from "react-native";
-import React, { useEffect, useRef } from "react";
-import { SplashScreenStyles } from "@styles";
-import { Constants } from "@constants";
-import { RootStackParamList } from "../App";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { SafeAreaStyle } from "@styles/SafeAreaStyle";
+import { View, Text, ImageBackground, Animated } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { SplashScreenStyles } from '@styles';
+import { Constants } from '@constants';
+import { RootStackParamList } from '../App';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaStyle } from '@styles/SafeAreaStyle';
 
-type SplashProps = NativeStackScreenProps<RootStackParamList, "Splash">;
+type SplashProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
-export default function SplashScreen({ navigation }: SplashProps) {
+export const SplashScreen = ({ navigation }: SplashProps) => {
   const fadeOut = useRef(new Animated.Value(1)).current;
   useEffect(() => {
     setTimeout(() => {
@@ -18,7 +18,7 @@ export default function SplashScreen({ navigation }: SplashProps) {
         duration: 1500,
         useNativeDriver: true,
       }).start(() => {
-        navigation.replace("Home");
+        navigation.replace('Home');
       });
     }, 500);
   }, []);
@@ -26,22 +26,16 @@ export default function SplashScreen({ navigation }: SplashProps) {
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <Animated.View style={{ opacity: fadeOut }}>
         <ImageBackground
-          source={require("../assets/Images/SplashScreenBg.png")}
+          source={require('../assets/Images/SplashScreenBg.png')}
           style={SplashScreenStyles.backgroundImage}
         >
           <View style={SplashScreenStyles.overlayBg}>
-            <Text style={SplashScreenStyles.mainHeadline}>
-              {Constants.SEHAJ_PATH}
-            </Text>
-            <Text style={SplashScreenStyles.tagline}>
-              {Constants.BUILDING_THE_HABIT}
-            </Text>
-            <Text style={SplashScreenStyles.tagline}>
-              {Constants.OF_READING_GURBANI}
-            </Text>
+            <Text style={SplashScreenStyles.mainHeadline}>{Constants.SEHAJ_PATH}</Text>
+            <Text style={SplashScreenStyles.tagline}>{Constants.BUILDING_THE_HABIT}</Text>
+            <Text style={SplashScreenStyles.tagline}>{Constants.OF_READING_GURBANI}</Text>
           </View>
         </ImageBackground>
       </Animated.View>
     </SafeAreaView>
   );
-}
+};

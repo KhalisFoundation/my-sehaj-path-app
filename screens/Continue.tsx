@@ -1,13 +1,13 @@
-import { View, ScrollView, ImageBackground, Text } from "react-native";
-import React, { useCallback, useEffect, useState } from "react";
-import { ContinueScreenStyles } from "@styles";
-import { Constants } from "@constants";
-import dayjs from "dayjs";
-import customParseFormat from "dayjs/plugin/customParseFormat";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../App";
-import { useLocal, PathData } from "../hooks/useLocal";
-import { GoBackIcon, ContinueIcon } from "@icons";
+import { View, ScrollView, ImageBackground, Text } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ContinueScreenStyles } from '@styles';
+import { Constants } from '@constants';
+import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
+import { useLocal, PathData } from '../hooks/useLocal';
+import { GoBackIcon, ContinueIcon } from '@icons';
 import {
   NavContent,
   SecondaryButton,
@@ -15,12 +15,12 @@ import {
   SecondaryHeading,
   ImportantText,
   Streak,
-} from "@components";
-import { useInternet } from "../hooks/useInternet";
-import { useFocusEffect } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { SafeAreaStyle } from "@styles/SafeAreaStyle";
-import { Pressable } from "react-native";
+} from '@components';
+import { useInternet } from '../hooks/useInternet';
+import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaStyle } from '@styles/SafeAreaStyle';
+import { Pressable } from 'react-native';
 
 interface Date {
   date: string;
@@ -31,9 +31,9 @@ interface PathDate {
   dates: Date[];
 }
 
-type ContinueProps = NativeStackScreenProps<RootStackParamList, "Continue">;
+type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
-export default function Continue({ route, navigation }: ContinueProps) {
+export const Continue = ({ route, navigation }: ContinueProps) => {
   const [pathData, setPathData] = useState<PathData>();
   const [pathDate, setPathDate] = useState<PathDate>();
   const [pathAng, setPathAng] = useState<number>(0);
@@ -50,54 +50,44 @@ export default function Continue({ route, navigation }: ContinueProps) {
 
   const calculatePathCompletion = (matchedPath: PathData) => {
     const today = dayjs();
-    const startDate = dayjs(matchedPath.startDate, "D-MMMM-YYYY");
-    const days = today.diff(startDate, "day");
-    const averageAngs =
-      (matchedPath.saveData.angNumber || 0) / (days ? days : 1);
+    const startDate = dayjs(matchedPath.startDate, 'D-MMMM-YYYY');
+    const days = today.diff(startDate, 'day');
+    const averageMatchedAngs = (matchedPath.saveData.angNumber || 0) / (days ? days : 1);
 
     const remainingAngs = 1430 - matchedPath.saveData.angNumber;
-    const remainingDays = remainingAngs / (averageAngs ? averageAngs : 1);
-    const completionDate = today.add(remainingDays, "day");
-    setFinishDate(dayjs(completionDate).format("D-MMMM-YYYY"));
-    setDaysAgo(
-      today.format("D-MMMM-YYYY") == startDate.format("D-MMMM-YYYY") ? 0 : days
-    );
-    setAverageAngs(
-      averageAngs == Infinity ? 0 : parseFloat(averageAngs.toFixed(2))
-    );
+    const remainingDays = remainingAngs / (averageMatchedAngs ? averageMatchedAngs : 1);
+    const completionDate = today.add(remainingDays, 'day');
+    setFinishDate(dayjs(completionDate).format('D-MMMM-YYYY'));
+    setDaysAgo(today.format('D-MMMM-YYYY') === startDate.format('D-MMMM-YYYY') ? 0 : days);
+    setAverageAngs(averageMatchedAngs === Infinity ? 0 : parseFloat(averageMatchedAngs.toFixed(2)));
   };
 
   const updateTheData = async () => {
     const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
-    const matchedPath = pathDataArray.find(
-      (path: PathData) => path.pathId == pathId
-    );
-    const matchedDates = pathDateDataArray.find(
-      (path: PathDate) => path.pathid === pathId
-    );
+    const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
+    const matchedDates = pathDateDataArray.find((path: PathDate) => path.pathid === pathId);
     if (matchedPath) {
       const show = matchedPath?.saveData.angNumber < 10 ? false : true;
       setShowData(show);
       setPathDate(matchedDates);
       setPathData(matchedPath);
       setPathAng(matchedPath?.saveData.angNumber || 0);
-      const pathPercentage = parseFloat(
+      const matchedPathPercentage = parseFloat(
         (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
       );
-
-      setPathPercentage(pathPercentage);
+      setPathPercentage(matchedPathPercentage);
       calculatePathCompletion(matchedPath);
     }
   };
 
-  const makeStreakIndicator = (date: string) => {
+  const makeStreakIndicator = (startDate: string) => {
     const today = dayjs();
-    const startDate = dayjs(date, "D-MMMM-YYYY");
-    let currentDate = startDate;
+    const start = dayjs(startDate, 'D-MMMM-YYYY');
+    let currentDate = start;
     const dates: any = [];
     while (currentDate.isBefore(today) || currentDate.isSame(today)) {
-      dates.push({ date: currentDate.format("D-MMMM-YYYY"), angs: 0 });
-      currentDate = currentDate.add(1, "day");
+      dates.push({ date: currentDate.format('D-MMMM-YYYY'), angs: 0 });
+      currentDate = currentDate.add(1, 'day');
     }
     const mergeDates = new Map();
     for (let date of [...dates, ...(pathDate?.dates || [])]) {
@@ -108,7 +98,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
   useFocusEffect(
     useCallback(() => {
       updateTheData();
-    }, [])
+    }, [pathId])
   );
   useEffect(() => {
     pathData?.startDate ? makeStreakIndicator(pathData.startDate) : undefined;
@@ -118,7 +108,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
     if (!isOnline) {
       return;
     }
-    navigation.push("Path", { pathId: pathId });
+    navigation.push('Path', { pathId: pathId });
   };
   useEffect(() => {
     updateOnlineStatus();
@@ -126,7 +116,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <ImageBackground
-        source={require("../assets/Images/ContinueScreenBg.png")}
+        source={require('../assets/Images/ContinueScreenBg.png')}
         style={ContinueScreenStyles.backgroundImage}
       >
         <ScrollView
@@ -134,33 +124,21 @@ export default function Continue({ route, navigation }: ContinueProps) {
           showsVerticalScrollIndicator={false}
         >
           <View style={ContinueScreenStyles.container}>
-            <View style={ContinueScreenStyles.navContainer}>
-              <NavContent
-                navIcon={<GoBackIcon />}
-                onPress={() => {
-                  navigation.push("Home");
-                }}
-              />
+            <Pressable
+              style={ContinueScreenStyles.navContainer}
+              onPress={() => navigation.push('Home')}
+            >
+              <NavContent navIcon={<GoBackIcon />} />
               <NavContent text={Constants.SEE_ALL_PATH} />
-            </View>
+            </Pressable>
             <View style={ContinueScreenStyles.sehajHeadingContainer}>
               <SecondaryHeading
-                text={Constants.PATH}
-                textStyles={ContinueScreenStyles.sehajHeading}
-              />
-              <SecondaryHeading
-                text={" #"}
-                textStyles={ContinueScreenStyles.sehajHeading}
-              />
-              <SecondaryHeading
-                text={`${pathId}`}
+                text={pathData?.pathName}
                 textStyles={ContinueScreenStyles.sehajHeading}
               />
             </View>
             <ImportantText
-              importantText={
-                Constants.WAHEGURU_JI_KA_KHALSA_WAHEGURU_JI_KI_FATEH
-              }
+              importantText={Constants.WAHEGURU_JI_KA_KHALSA_WAHEGURU_JI_KI_FATEH}
               importantTextStyles={ContinueScreenStyles.waheguruHeading}
             />
 
@@ -171,16 +149,12 @@ export default function Continue({ route, navigation }: ContinueProps) {
                     Constants.YOU_ARE_ON_ANG_NUMBER,
                     <ImportantText
                       importantText={`${pathAng}`}
-                      importantTextStyles={
-                        ContinueScreenStyles.impTextContainer
-                      }
+                      importantTextStyles={ContinueScreenStyles.impTextContainer}
                     />,
                     Constants.HAVE_COMPLETED,
                     <ImportantText
                       importantText={`${pathPercentage}%`}
-                      importantTextStyles={
-                        ContinueScreenStyles.impTextContainer
-                      }
+                      importantTextStyles={ContinueScreenStyles.impTextContainer}
                     />,
                     Constants.SRI_SEHAJ_PATH,
                   ]}
@@ -191,18 +165,14 @@ export default function Continue({ route, navigation }: ContinueProps) {
                     Constants.STARTED_PATH,
                     <ImportantText importantText={`${daysAgo} days `} />,
                     Constants.AVERAGE_ABOUT,
-                    <ImportantText
-                      importantText={`${averageAngs} angs a day. `}
-                    />,
+                    <ImportantText importantText={`${averageAngs} angs a day. `} />,
                     Constants.COMPLETION_SEHAJ_PATH,
                     <ImportantText importantText={`${finishDate} 🎯 .`} />,
                   ]}
                 />
 
                 <View>
-                  <SimpleText
-                    simpleText={[`${Constants.HERE_YOURS_STREAK_CHART}`]}
-                  />
+                  <SimpleText simpleText={[`${Constants.HERE_YOURS_STREAK_CHART}`]} />
                   <ScrollView
                     contentContainerStyle={ContinueScreenStyles.streakScroll}
                     style={ContinueScreenStyles.streakScrollContainer}
@@ -224,7 +194,7 @@ export default function Continue({ route, navigation }: ContinueProps) {
 
             <SecondaryButton
               onPress={() => handleContinue()}
-              buttonText={"Continue"}
+              buttonText={'Continue'}
               buttonIcon={<ContinueIcon />}
               buttonStyle={ContinueScreenStyles.continueButton}
             />
@@ -233,4 +203,4 @@ export default function Continue({ route, navigation }: ContinueProps) {
       </ImageBackground>
     </SafeAreaView>
   );
-}
+};

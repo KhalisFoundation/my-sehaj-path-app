@@ -1,0 +1,53 @@
+{
+  "extends": [
+    "airbnb-typescript",
+    "@react-native-community",
+    "prettier",
+    "plugin:prettier/recommended",
+    "eslint-config-prettier"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  "plugins": [
+    "import",
+    "react",
+    "react-hooks",
+    "react-native",
+    "@typescript-eslint",
+    "prettier"
+  ],
+  "rules": {
+    "indent": ["error", 2],
+    "curly": "warn",
+
+    "import/no-unresolved": "off",
+    "default-param-last": "off",
+    "react/no-array-index-key": [0],
+    "no-console": "off",
+    "no-alert": "off",
+    "global-require": 0,
+    "react/jsx-no-bind": 0,
+    "react-hooks/exhaustive-deps": "warn",
+    "prefer-destructuring": ["error", { "object": true, "array": false }],
+    "react/function-component-definition": [
+      1,
+      {
+        "namedComponents": "arrow-function",
+        "unnamedComponents": "arrow-function"
+      }
+    ],
+    "prettier/prettier": [
+      "error",
+      {
+        "trailingComma": "es5",
+        "printWidth": 100,
+        "singleQuote": true
+      }
+    ]
+  }
+}

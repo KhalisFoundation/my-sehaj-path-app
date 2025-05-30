@@ -1,30 +1,30 @@
-import { StyleSheet } from "react-native";
-import font from "../utils/font";
+import { StyleSheet } from 'react-native';
+import font from '../utils/font';
 
 export const ContinueScreenStyles = StyleSheet.create({
   backgroundImage: {
-    height: "100%",
+    height: '100%',
   },
   scrollContainer: {
-    minHeight: "100%",
+    minHeight: '100%',
   },
   container: {
-    backgroundColor: "rgba(245, 245, 245,0.89)",
-    height: "100%",
+    backgroundColor: 'rgba(245, 245, 245,0.89)',
+    height: '100%',
     borderWidth: 4,
     borderRightWidth: 6,
-    borderColor: "rgba(253, 198, 6, 0.3)",
+    borderColor: 'rgba(253, 198, 6, 0.3)',
     padding: 35,
     paddingTop: 26,
     gap: 10,
   },
   navContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 15,
-    alignItems: "center",
+    alignItems: 'center',
   },
   sehajHeadingContainer: {
-    flexDirection: "row",
+    flexDirection: 'row',
     marginTop: 30,
   },
   sehajHeading: {
@@ -38,14 +38,14 @@ export const ContinueScreenStyles = StyleSheet.create({
   },
   impTextContainer: {
     fontSize: 22,
-    backgroundColor: "rgba(253, 198, 6, 0.3)",
+    backgroundColor: 'rgba(253, 198, 6, 0.3)',
   },
   textStyle: {
     fontSize: 24,
     lineHeight: 48,
   },
   streakScroll: {
-    flexDirection: "row",
+    flexDirection: 'row',
     gap: 6,
     width: 246,
   },
@@ -56,11 +56,11 @@ export const ContinueScreenStyles = StyleSheet.create({
   },
   complete10Angs: {
     fontFamily: font.Brandon_Grotesque_Regular,
-    color: "gray",
+    color: 'gray',
     fontSize: 24,
   },
   continueButton: {
-    width: "auto",
-    alignSelf: "flex-start",
+    width: 'auto',
+    alignSelf: 'flex-start',
   },
 });

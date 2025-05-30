@@ -1,21 +1,21 @@
-import { View, TouchableOpacity } from "react-native";
-import React, { useEffect, useState } from "react";
-import { FontSizeStyle } from "@styles";
-import { ListItem, Overlay } from "@rneui/themed";
-import { NavContent, SimpleText } from "../index";
-import { FontSizes } from "@constants";
-import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from "@icons";
-import { useLocal, fontSizeData } from "../../hooks/useLocal";
+import { View, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FontSizeStyle } from '@styles';
+import { ListItem, Overlay } from '@rneui/themed';
+import { NavContent, SimpleText } from '../index';
+import { FontSizes } from '@constants';
+import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from '@icons';
+import { useLocal, FontSizeData } from '../../hooks/useLocal';
 
 export const FontSize = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
-  const [fontSize, setFontSize] = useState<fontSizeData>({
-    fontSize: "Small (Default)",
+  const [fontSize, setFontSize] = useState<FontSizeData>({
+    fontSize: 'Small (Default)',
     number: 18,
   });
   const handleToggle = () => setIsVisible(!isVisible);
   const { saveFontSize, fetchFontSize } = useLocal();
-  const handleFontSize = (size: fontSizeData) => {
+  const handleFontSize = (size: FontSizeData) => {
     setFontSize(size);
     handleToggle();
     saveFontSize(size);
@@ -26,17 +26,14 @@ export const FontSize = () => {
       setFontSize(fontSizeData);
     };
     fetchFromLocal();
-  }, []);
+  }, [fetchFontSize]);
   return (
     <>
       <TouchableOpacity style={FontSizeStyle.container} onPress={handleToggle}>
-        <SimpleText
-          simpleText={"Font-Size"}
-          simpleTextStyle={FontSizeStyle.fontSizeText}
-        />
+        <SimpleText simpleText={'Font-Size'} simpleTextStyle={FontSizeStyle.fontSizeText} />
         <View style={FontSizeStyle.fontSizeContainer}>
           <SimpleText
-            simpleText={fontSize.fontSize || "Default"}
+            simpleText={fontSize.fontSize || 'Default'}
             simpleTextStyle={FontSizeStyle.text}
           />
           <RightChevronIcon />
@@ -51,14 +48,11 @@ export const FontSize = () => {
         >
           <View>
             <View style={FontSizeStyle.overlayHeader}>
-              <NavContent
-                navIcon={<LeftArrowIcon />}
-                onPress={() => handleToggle()}
-              />
-              <NavContent text={"Select you Font Size"} />
+              <NavContent navIcon={<LeftArrowIcon />} onPress={() => handleToggle()} />
+              <NavContent text={'Select you Font Size'} />
             </View>
             <View style={FontSizeStyle.overlayContent}>
-              {FontSizes.map((size, index) => (
+              {FontSizes.map((size: FontSizeData, index: number) => (
                 <ListItem onPress={() => handleFontSize(size)} key={index}>
                   <ListItem.Content style={FontSizeStyle.overlayTextContainer}>
                     <ListItem.Title style={FontSizeStyle.overlayText}>

@@ -1,6 +1,6 @@
-import React from "react";
-import { Text } from "react-native";
-import { LabelStyles } from "@styles";
+import React from 'react';
+import { Text } from 'react-native';
+import { LabelStyles } from '@styles';
 
 interface Props {
   label: string;

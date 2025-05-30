@@ -1,6 +1,6 @@
-import { View } from "react-native";
-import React from "react";
-import { StreakStyles } from "@styles";
+import { View } from 'react-native';
+import React from 'react';
+import { StreakStyles } from '@styles';
 
 interface Props {
   value: number;
@@ -13,6 +13,6 @@ export const Streak = ({ value }: Props) => {
         ...StreakStyles.streakContainer,
         opacity: value <= 0 ? 0.2 : value <= 5 && value > 0 ? 0.5 : 1,
       }}
-    ></View>
+    />
   );
 };

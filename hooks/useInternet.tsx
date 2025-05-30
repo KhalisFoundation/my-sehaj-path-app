@@ -1,6 +1,6 @@
-import NetInfo from "@react-native-community/netinfo";
-import { Alert } from "react-native";
-import { useState } from "react";
+import NetInfo from '@react-native-community/netinfo';
+import { Alert } from 'react-native';
+import { useState } from 'react';
 
 export const useInternet = () => {
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -12,16 +12,12 @@ export const useInternet = () => {
   const checkNetwork = async () => {
     const netInfo = await updateOnlineStatus();
     if (!netInfo) {
-      Alert.alert(
-        "Please connect to the internet.",
-        "Offline mode will be soon available.",
-        [
-          {
-            text: "OK",
-            onPress: () => {},
-          },
-        ]
-      );
+      Alert.alert('Please connect to the internet.', 'Offline mode will be soon available.', [
+        {
+          text: 'OK',
+          onPress: () => {},
+        },
+      ]);
     }
   };
   return { checkNetwork, isOnline, updateOnlineStatus };

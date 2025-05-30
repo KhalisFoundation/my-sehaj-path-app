@@ -1,33 +1,20 @@
-import { View, ImageBackground, ScrollView, SafeAreaView } from "react-native";
-import React, { useCallback, useEffect, useState } from "react";
-import { HomeScreenStyles } from "@styles";
-import { Constants } from "@constants";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../App";
-import { useLocal } from "../hooks/useLocal";
-import {
-  Headline,
-  Slider,
-  PrimaryButton,
-  PrimaryCard,
-  SecondaryCard,
-  Label,
-} from "../components";
-import { StartIcon } from "../icons";
-import { useFocusEffect } from "@react-navigation/native";
-import { SafeAreaStyle } from "@styles/SafeAreaStyle";
+import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { HomeScreenStyles } from '@styles';
+import { Constants } from '@constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
+import { useLocal } from '../hooks/useLocal';
+import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '../components';
+import { StartIcon } from '../icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaStyle } from '@styles/SafeAreaStyle';
+import { PathData } from '../hooks/useLocal';
 
-interface PathData {
-  pathId: number;
-  saveData: { angNumber: number; verseId: number };
-  progress: number;
-  startDate: string;
-  completionDate: string;
-}
-type HomeProps = NativeStackScreenProps<RootStackParamList, "Home">;
+type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-export default function HomeScreen({ navigation }: HomeProps) {
+export const HomeScreen = ({ navigation }: HomeProps) => {
   const [pathInProgress, setPathInProgress] = useState<PathData[]>([]);
   const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
@@ -38,14 +25,12 @@ export default function HomeScreen({ navigation }: HomeProps) {
 
         setPathCompleted(
           pathDataArray.filter(
-            (path: PathData) =>
-              path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
+            (path: PathData) => path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
           )
         );
         setPathInProgress(
           pathDataArray.filter(
-            (path: PathData) =>
-              path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+            (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
           )
         );
       };
@@ -54,26 +39,22 @@ export default function HomeScreen({ navigation }: HomeProps) {
   );
 
   const handleStart = async () => {
-    const { pathDataArray, pathDateDataArray, newPathid } =
-      await handleNewPath();
-    setPathInProgress(
-      pathDataArray.filter((path: PathData) => path.saveData.angNumber != 1430)
-    );
+    const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
+    setPathInProgress(pathDataArray.filter((path: PathData) => path.saveData.angNumber != 1430));
     setPathCompleted(
       pathDataArray.filter(
-        (path: PathData) =>
-          path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
+        (path: PathData) => path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
       )
     );
-    AsyncStorage.setItem("pathDetails", JSON.stringify(pathDataArray));
-    AsyncStorage.setItem("pathDateDetails", JSON.stringify(pathDateDataArray));
-    navigation.push("Continue", { pathId: newPathid });
+    AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
+    AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
+    navigation.push('Continue', { pathId: newPathid });
   };
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <ImageBackground
-        source={require("../assets/Images/HomeScreenBg.png")}
+        source={require('../assets/Images/HomeScreenBg.png')}
         resizeMode="cover"
         style={HomeScreenStyles.backgroundImage}
       >
@@ -93,11 +74,11 @@ export default function HomeScreen({ navigation }: HomeProps) {
                 <Slider
                   arrayOfCards={pathInProgress?.map((path: PathData) => (
                     <PrimaryCard
-                      sehajPathNumber={path.pathId}
+                      sehajPathName={path.pathName}
                       angNumber={path.saveData.angNumber}
                       progress={path.progress}
                       onPress={() => {
-                        navigation.push("Continue", { pathId: path.pathId });
+                        navigation.push('Continue', { pathId: path.pathId });
                       }}
                     />
                   ))}
@@ -126,4 +107,4 @@ export default function HomeScreen({ navigation }: HomeProps) {
       </ImageBackground>
     </SafeAreaView>
   );
-}
+};

@@ -1,6 +1,6 @@
-import React from "react";
-import { Text } from "react-native";
-import { HeadlineStyle } from "@styles";
+import React from 'react';
+import { Text } from 'react-native';
+import { HeadlineStyle } from '@styles';
 
 interface Props {
   headline: string;

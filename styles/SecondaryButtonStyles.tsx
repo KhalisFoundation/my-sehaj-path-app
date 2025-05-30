@@ -1,5 +1,5 @@
-import { StyleSheet } from "react-native";
-import font from "../utils/font";
+import { StyleSheet } from 'react-native';
+import font from '../utils/font';
 
 export const SecondaryButtonStyles = StyleSheet.create({
   secondaryButtonContainer: {
@@ -7,13 +7,13 @@ export const SecondaryButtonStyles = StyleSheet.create({
     borderRadius: 5,
   },
   secondaryButton: {
-    flexDirection: "row",
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   secondaryButtonContent: {
     fontFamily: font.Baloo_Paaji_2_Medium,
-    color: "white",
+    color: 'white',
     fontSize: 16,
   },
 });

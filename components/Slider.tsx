@@ -1,13 +1,6 @@
-import {
-  View,
-  FlatList,
-  Animated,
-  StyleProp,
-  ViewStyle,
-  useWindowDimensions,
-} from "react-native";
-import React, { useRef, useState } from "react";
-import { SliderStyles } from "@styles";
+import { View, FlatList, Animated, StyleProp, ViewStyle, useWindowDimensions } from 'react-native';
+import React, { useRef, useState } from 'react';
+import { SliderStyles } from '@styles';
 
 interface Props {
   arrayOfCards: React.ReactNode[];
@@ -35,18 +28,15 @@ export const Slider = ({
   const viewPortCards = Math.floor(width / scrollInterval);
   const totalPages = Math.ceil(arrayOfCards.length / viewPortCards);
 
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
-    {
-      useNativeDriver: false,
-      listener: (event: any) => {
-        const offsetX = event.nativeEvent.contentOffset.x;
-        const pageWidth = viewPortCards * scrollInterval;
-        const index = Math.ceil(offsetX / pageWidth);
-        setActiveIndex(index);
-      },
-    }
-  );
+  const handleScroll = Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+    useNativeDriver: false,
+    listener: (event: any) => {
+      const offsetX = event.nativeEvent.contentOffset.x;
+      const pageWidth = viewPortCards * scrollInterval;
+      const index = Math.ceil(offsetX / pageWidth);
+      setActiveIndex(index);
+    },
+  });
   return (
     <>
       <FlatList
@@ -66,12 +56,7 @@ export const Slider = ({
                 key={index}
                 style={[
                   SliderStyles.dots,
-                  {
-                    backgroundColor:
-                      activeIndex === index
-                        ? "#0D2346"
-                        : "rgba(13, 35, 70, 0.1)",
-                  },
+                  { backgroundColor: activeIndex === index ? '#0D2346' : 'rgba(13, 35, 70, 0.1)' },
                   dotStyle,
                 ]}
               />

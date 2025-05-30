@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios from 'axios';
 
 export const BaniDB = async (angNumber: number) => {
   const baniDBUrl = `https://api.banidb.com/v2/angs/${angNumber}`;
@@ -7,6 +7,6 @@ export const BaniDB = async (angNumber: number) => {
     const response = await axios.get(baniDBUrl);
     return response.data;
   } catch (error) {
-    return "Error";
+    return 'Error';
   }
 };

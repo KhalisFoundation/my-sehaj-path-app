@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { StyleSheet } from 'react-native';
 
 export const SliderStyles = StyleSheet.create({
   sliderContainer: {
@@ -6,11 +6,11 @@ export const SliderStyles = StyleSheet.create({
     paddingBottom: 10,
   },
   indicatorContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
+    flexDirection: 'row',
+    justifyContent: 'center',
     gap: 8,
     marginTop: 26,
-    flexWrap: "wrap",
+    flexWrap: 'wrap',
   },
   dots: {
     width: 8,

@@ -1,21 +1,13 @@
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  Animated,
-  Alert,
-  BackHandler,
-} from "react-native";
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { PathScreenStyles } from "@styles";
-import { PunjabiNumbers } from "@constants";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../App";
-import { BaniDB } from "@utils/BaniDB";
-import { useLocal } from "../hooks/useLocal";
-import { NavContent, SimpleTextForPath } from "@components";
-import { useFocusEffect } from "@react-navigation/native";
+import { View, Text, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { PathScreenStyles } from '@styles';
+import { PunjabiNumbers } from '@constants';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
+import { BaniDB } from '@utils/BaniDB';
+import { useLocal } from '../hooks/useLocal';
+import { NavContent, SimpleTextForPath } from '@components';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   HomeIcon,
   SettingsIcon,
@@ -24,16 +16,16 @@ import {
   PauseIcon,
   LeftArrowIcon,
   RightArrowIcon,
-} from "../icons";
-import { useInternet } from "@hooks/useInternet";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { SafeAreaStyle } from "@styles/SafeAreaStyle";
-import GestureRecognizer from "react-native-swipe-gestures";
+} from '../icons';
+import { useInternet } from '@hooks/useInternet';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaStyle } from '@styles/SafeAreaStyle';
+import GestureRecognizer from 'react-native-swipe-gestures';
 
-type PathScreenProps = NativeStackScreenProps<RootStackParamList, "Path">;
+type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
 export const PathScreen = ({ navigation, route }: PathScreenProps) => {
-  const [pathPujabiAng, setPathPunjabiAng] = useState<string>("0");
+  const [pathPujabiAng, setPathPunjabiAng] = useState<string>('0');
   const [pathAng, setPathAng] = useState<number>(0);
   const [pathContent, setPathContent] = useState<any>();
   const [autoScroll, setAutoScroll] = useState<boolean>(false);
@@ -45,35 +37,35 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [matchedVerseId, setMatchedVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
   const aleartIndicator = useRef<any>();
-  const alertText = useRef<string>("Loading ... ");
+  const alertText = useRef<string>('Loading ... ');
   const [found, setFound] = useState<boolean>(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
-
   const { checkNetwork, isOnline } = useInternet();
-
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } =
-    useLocal();
-
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } = useLocal();
+  const fetchFromBaniDB = async (angNumber: number) => {
+    aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+    const pathFromBaniDB = await BaniDB(angNumber);
+    setPathContent(pathFromBaniDB);
+    if (pathFromBaniDB === 'Error') {
+      navigation.replace('Error');
+    }
+    aleartIndicator.current = undefined;
+  };
   useEffect(() => {
     const fetchPath = async () => {
       const { pathDataArray } = await fetchFromLocal();
-      const matchedPath = pathDataArray.find(
-        (path) => path.pathId === route.params.pathId
-      );
+      const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
       if (matchedPath) {
-        const pathAng =
-          matchedPath.saveData.angNumber == 0
-            ? 1
-            : matchedPath.saveData.angNumber;
+        const pathAng = matchedPath.saveData.angNumber == 0 ? 1 : matchedPath.saveData.angNumber;
         setMatchedVerseId(matchedPath.saveData.verseId);
         setPathAng(pathAng);
         setPathPunjabiAng(
           pathAng
             ?.toString()
-            .split("")
+            .split('')
             .map((num: string) => PunjabiNumbers[num])
-            .join("") || "0"
+            .join('') || '0'
         );
         fetchFromBaniDB(pathAng);
       }
@@ -89,6 +81,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     if (pageNo >= 1430) {
       return;
     }
+    setIsSaving(false);
     scorllOffset.current = 0;
     scrollRef.current?.scrollTo({
       y: 0,
@@ -100,9 +93,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setPathPunjabiAng(
       (pageNo + 1)
         ?.toString()
-        .split("")
+        .split('')
         .map((num: string) => PunjabiNumbers[num])
-        .join("") || "0"
+        .join('') || '0'
     );
   };
   const handleLeftArrow = (pageNo: number) => {
@@ -113,6 +106,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     if (pageNo <= 1) {
       return;
     }
+    setIsSaving(false);
     scorllOffset.current = 0;
     scrollRef.current?.scrollTo({
       y: 0,
@@ -122,24 +116,14 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setPathPunjabiAng(
       (pageNo - 1)
         ?.toString()
-        .split("")
+        .split('')
         .map((num: string) => PunjabiNumbers[num])
-        .join("") || "0"
+        .join('') || '0'
     );
 
     fetchFromBaniDB(pageNo - 1);
   };
-  const fetchFromBaniDB = async (angNumber: number) => {
-    aleartIndicator.current = (
-      <ActivityIndicator size={"large"} color={"#000"} />
-    );
-    const pathFromBaniDB = await BaniDB(angNumber);
-    setPathContent(pathFromBaniDB);
-    if (pathFromBaniDB === "Error") {
-      navigation.replace("Error");
-    }
-    aleartIndicator.current = undefined;
-  };
+
   const scrollToMatchedVerse = async () => {
     const scrollIndex = pathContent?.page?.findIndex(
       (page: any) => page.verseId === matchedVerseId
@@ -240,23 +224,14 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     useCallback(() => {
       const handleBackPress = async () => {
         const { pathDataArray } = await fetchFromLocal();
-        const matchedPath = pathDataArray.find(
-          (path) => path.pathId === route.params.pathId
-        );
+        const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
         if (matchedPath?.saveData.angNumber == pathAng) {
           navigation.goBack();
           return true;
         } else {
-          alertText.current = "Saving Your Progress ... ";
-          aleartIndicator.current = (
-            <ActivityIndicator size={"large"} color={"#000"} />
-          );
-          await handleUpdatePath(
-            route.params.pathId,
-            pathAng,
-            matchedVerseId,
-            setIsSaved
-          );
+          alertText.current = 'Saving Your Progress ... ';
+          aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+          await handleUpdatePath(route.params.pathId, pathAng, matchedVerseId, setIsSaved);
           setTimeout(() => {
             navigation.goBack();
           }, 2000);
@@ -274,12 +249,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           });
       };
 
-      BackHandler.addEventListener("hardwareBackPress", handleBackPressWrapper);
+      BackHandler.addEventListener('hardwareBackPress', handleBackPressWrapper);
       return () => {
-        BackHandler.removeEventListener(
-          "hardwareBackPress",
-          handleBackPressWrapper
-        );
+        BackHandler.removeEventListener('hardwareBackPress', handleBackPressWrapper);
       };
     }, [navigation, pathAng, route.params.pathId])
   );
@@ -322,21 +294,14 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             {pathContent?.page?.map((path: any, index: number) => (
               <SimpleTextForPath
                 key={index}
-                gurbaniLine={
-                  isLarivaar ? path.larivaar.unicode : path.verse.unicode
-                }
+                gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
                 onPress={() => {
                   if (isSaving) {
                     setPressIndex(index + 1);
                   }
                 }}
                 iconPress={() =>
-                  handleUpdatePath(
-                    route.params.pathId || 1,
-                    pathAng,
-                    path.verseId,
-                    setIsSaved
-                  )
+                  handleUpdatePath(route.params.pathId || 1, pathAng, path.verseId, setIsSaved)
                 }
                 isSaving={isSaving}
                 pressIndex={pressIndex}
@@ -356,10 +321,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
         {!isSaving && !found ? (
           <View style={PathScreenStyles.navigationContainer}>
-            <NavContent
-              navIcon={<HomeIcon />}
-              onPress={() => navigation.push("Home")}
-            />
+            <NavContent navIcon={<HomeIcon />} onPress={() => navigation.push('Home')} />
             <NavContent
               navIcon={<SaveIcon />}
               onPress={() => {
@@ -371,28 +333,19 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               navIcon={autoScroll ? <PauseIcon /> : <PlayIcon />}
               onPress={() => setAutoScroll((prev) => !prev)}
             />
-            <NavContent
-              navIcon={<SettingsIcon />}
-              onPress={() => navigation.push("Setting")}
-            />
+            <NavContent navIcon={<SettingsIcon />} onPress={() => navigation.push('Setting')} />
           </View>
         ) : undefined}
         {isSaving && (
-          <Animated.View
-            style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}
-          >
+          <Animated.View style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}>
             <NavContent navIcon={<SaveIcon />} />
             <Text style={PathScreenStyles.saveText} allowFontScaling={false}>
-              {!isSaved
-                ? "Select a panktee to save progress."
-                : "Saved the highlighted panktee!"}
+              {!isSaved ? 'Select a panktee to save progress.' : 'Saved the highlighted panktee!'}
             </Text>
           </Animated.View>
         )}
         {found && (
-          <Animated.View
-            style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}
-          >
+          <Animated.View style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}>
             <NavContent navIcon={<SaveIcon />} />
             <Text style={PathScreenStyles.saveText} allowFontScaling={false}>
               Last saved panktee founded!

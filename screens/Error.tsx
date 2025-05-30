@@ -1,24 +1,22 @@
-import { View, Text, ScrollView, Image } from "react-native";
-import React from "react";
-import { ErrorScreenStyles } from "@styles";
-import { SimpleText } from "@components/SimpleText";
-import { NavContent } from "@components/NavContent";
-import { GoBackIcon, HomeIcon } from "@icons/index";
-import { NativeStackScreenProps } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../App";
+import { View, ScrollView, Image } from 'react-native';
+import React from 'react';
+import { ErrorScreenStyles } from '@styles';
+import { SimpleText } from '@components/SimpleText';
+import { NavContent } from '@components/NavContent';
+import { GoBackIcon, HomeIcon } from '@icons/index';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
 
-export default function Error({
-  navigation,
-}: NativeStackScreenProps<RootStackParamList, "Error">) {
+export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Error'>) => {
   return (
     <ScrollView contentContainerStyle={ErrorScreenStyles.container}>
       <Image
-        source={require("../assets/Images/BaniDB.png")}
+        source={require('../assets/Images/BaniDB.png')}
         style={ErrorScreenStyles.BaniDBImage}
       />
       <SimpleText
         simpleText={
-          "We are currently facing the issue while connecting to the BaniDB please try again later."
+          'We are currently facing the issue while connecting to the BaniDB please try again later.'
         }
         simpleTextStyle={ErrorScreenStyles.textStyle}
       />
@@ -33,11 +31,11 @@ export default function Error({
           <NavContent
             navIcon={<HomeIcon />}
             onPress={() => {
-              navigation.replace("Home");
+              navigation.replace('Home');
             }}
           />
         </View>
       </View>
     </ScrollView>
   );
-}
+};

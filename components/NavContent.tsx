@@ -1,6 +1,6 @@
-import { View, Text, TouchableOpacity } from "react-native";
-import React from "react";
-import { NavContentStyles } from "@styles";
+import { View, Text, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { NavContentStyles } from '@styles';
 
 interface Props {
   text?: string;
