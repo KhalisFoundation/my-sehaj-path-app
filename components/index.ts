@@ -12,3 +12,4 @@ export { Label } from './Label';
 export { ImportantText } from './ImportantText';
 export { Headline } from './Headline';
 export { Larivaar, FontSize } from './Settings';
+export { PathRename } from './PathRename';

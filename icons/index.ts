@@ -10,3 +10,4 @@ export { RightChevronIcon } from './RightChevron.icon';
 export { LeftArrowIcon } from './LeftArrow.icon';
 export { RightArrowIcon } from './RightArrow.icon';
 export { StartIcon } from './Start.icon';
+export { CrossIcon } from './Cross.icon';

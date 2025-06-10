@@ -15,13 +15,13 @@ import {
   SecondaryHeading,
   ImportantText,
   Streak,
+  PathRename,
 } from '@components';
 import { useInternet } from '../hooks/useInternet';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles/SafeAreaStyle';
 import { Pressable } from 'react-native';
-import { PathRename } from '@components/PathRename';
 
 interface Date {
   date: string;

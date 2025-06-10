@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { PathRenameStyle } from '@styles/PathRenameStyle';
 import { BlurView } from '@react-native-community/blur';
 import { useLocal } from '@hooks/useLocal';
-import { CrossIcon } from '@icons/Cross.icon';
+import { CrossIcon } from '@icons';
 
 interface Props {
   pathId: number;

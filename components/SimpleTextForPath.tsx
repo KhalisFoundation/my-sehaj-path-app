@@ -33,6 +33,8 @@ export const SimpleTextForPath = ({
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const [isLongPressing, setIsLongPressing] = useState(false);
+
   const { fetchFontSize } = useLocal();
   useFocusEffect(() => {
     const fetch = async () => {
@@ -42,6 +44,8 @@ export const SimpleTextForPath = ({
     fetch();
   });
   const handleLongPress = () => {
+    if (isLongPressing) return;
+    setIsLongPressing(true);
     setIsSaving(true);
     setIsSaved(false);
     setPressIndex(index);
@@ -56,6 +60,7 @@ export const SimpleTextForPath = ({
       }).start(() => {
         setIsSaving(false);
         setIsSaved(false);
+        setIsLongPressing(false);
       });
     }, 1000);
   };
