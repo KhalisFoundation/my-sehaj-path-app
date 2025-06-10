@@ -51,13 +51,13 @@ export const SimpleTextForPath = ({
       fadeAnim.setValue(1);
       Animated.timing(fadeAnim, {
         toValue: 0,
-        duration: 2500,
+        duration: 1500,
         useNativeDriver: true,
       }).start(() => {
         setIsSaving(false);
         setIsSaved(false);
       });
-    }, 2000);
+    }, 1000);
   };
 
   return (
