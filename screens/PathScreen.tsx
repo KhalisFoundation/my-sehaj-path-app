@@ -44,8 +44,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
   const [matchedPath, setMatchedPath] = useState<PathData>();
   const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
+  const [scrolledToSavedPath, setScrolledToSavedPath] = useState<boolean>(false);
   const { checkNetwork, isOnline } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar } = useLocal();
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } = useLocal();
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const debouncedScrollSave = useCallback(() => {
@@ -63,20 +64,40 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     }, 300);
   }, [handleUpdatePath]);
 
-  const scrollToSavedPathData = () => {
-    if (matchedPathDate) {
-      const scrollY = matchedPathDate.scrollPosition;
-      scorllOffset.current = scrollY;
-      scrollRef.current?.scrollTo({
-        y: scorllOffset.current,
-        animated: true,
-      });
+  const scrollToSavedPathData = async () => {
+    console.log('pathContent', pathContent ? true : false);
+    if (pathContent) {
+      const scrollIndex = pathContent?.page?.findIndex(
+        (page: any) => page.verseId === matchedVerseId
+      );
+
+      const fontSize = await fetchFontSize();
+      const fontSizeNumber = fontSize.number;
+      let scrollHeight;
+
+      if (fontSizeNumber <= 18) {
+        scrollHeight = 25;
+      } else if (fontSizeNumber <= 24) {
+        scrollHeight = 50;
+      } else if (fontSizeNumber <= 30) {
+        scrollHeight = 100;
+      } else {
+        scrollHeight = 150;
+      }
+
+      if (scrollIndex !== -1) {
+        const scrollY = scrollIndex * scrollHeight;
+        setFound(true);
+        scorllOffset.current = scrollY;
+        scrollRef.current?.scrollTo({
+          y: scorllOffset.current,
+          animated: true,
+        });
+        setScrolledToSavedPath(true);
+      }
     }
-    if (matchedVerseId) {
-      setFound(true);
-    }
+
     setTimeout(() => {
-      setMatchedVerseId(0);
       setFound(false);
       fadeAnim.setValue(1);
       Animated.timing(fadeAnim, {
@@ -86,8 +107,18 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }).start(() => {
         setIsSaving(false);
         setIsSaved(false);
+        setMatchedVerseId(0);
       });
     }, 2000);
+
+    if (matchedPathDate && !scrolledToSavedPath) {
+      const scrollY = matchedPathDate.scrollPosition;
+      scorllOffset.current = scrollY;
+      scrollRef.current?.scrollTo({
+        y: scorllOffset.current,
+        animated: true,
+      });
+    }
   };
   const fetchFromBaniDB = async (angNumber: number) => {
     aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
@@ -215,12 +246,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     }
   }, [isSaved, found]);
   useEffect(() => {
-    if (pathAng === matchedPath?.saveData.angNumber) {
+    if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
       setTimeout(() => {
         scrollToSavedPathData();
-      }, 500);
+      }, 800);
     }
-  }, [matchedPath, pathAng]);
+  }, [matchedPath, pathAng, pathContent]);
   useFocusEffect(() => {
     const fetchFromLocal = async () => {
       const larivaar = await fetchLarivaar();
@@ -228,47 +259,47 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     };
     fetchFromLocal();
   });
-  useFocusEffect(
-    useCallback(() => {
-      const handleBackPress = async () => {
-        const { pathDataArray } = await fetchFromLocal();
-        const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
-        if (matchedPath?.saveData.angNumber === pathAng) {
-          navigation.goBack();
-          return true;
-        } else {
-          alertText.current = 'Saving Your Progress ... ';
-          aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
-          await handleUpdatePath(
-            route.params.pathId,
-            pathAng,
-            matchedVerseId,
-            scorllOffset.current,
-            setIsSaved
-          );
-          setTimeout(() => {
-            navigation.goBack();
-          }, 1000);
-          return true;
-        }
-      };
+  // useFocusEffect(
+  //   useCallback(() => {
+  //     const handleBackPress = async () => {
+  //       const { pathDataArray } = await fetchFromLocal();
+  //       const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
+  //       if (matchedPath?.saveData.angNumber === pathAng) {
+  //         navigation.goBack();
+  //         return true;
+  //       } else {
+  //         alertText.current = 'Saving Your Progress ... ';
+  //         aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+  //         await handleUpdatePath(
+  //           route.params.pathId,
+  //           pathAng,
+  //           matchedVerseId,
+  //           scorllOffset.current,
+  //           setIsSaved
+  //         );
+  //         setTimeout(() => {
+  //           navigation.goBack();
+  //         }, 1000);
+  //         return true;
+  //       }
+  //     };
 
-      const handleBackPressWrapper = async () => {
-        return handleBackPress()
-          .then((result) => {
-            return result;
-          })
-          .catch(() => {
-            return false;
-          });
-      };
+  //     const handleBackPressWrapper = async () => {
+  //       return handleBackPress()
+  //         .then((result) => {
+  //           return result;
+  //         })
+  //         .catch(() => {
+  //           return false;
+  //         });
+  //     };
 
-      BackHandler.addEventListener('hardwareBackPress', handleBackPressWrapper);
-      return () => {
-        BackHandler.removeEventListener('hardwareBackPress', handleBackPressWrapper);
-      };
-    }, [navigation, pathAng, route.params.pathId])
-  );
+  //     BackHandler.addEventListener('hardwareBackPress', handleBackPressWrapper);
+  //     return () => {
+  //       BackHandler.removeEventListener('hardwareBackPress', handleBackPressWrapper);
+  //     };
+  //   }, [navigation, pathAng, route.params.pathId])
+  // );
   useEffect(() => {
     checkNetwork();
   }, []);
@@ -301,7 +332,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             ref={scrollRef}
             onScroll={(e) => {
               scorllOffset.current = e.nativeEvent.contentOffset.y;
-              debouncedScrollSave(route.params.pathId, scorllOffset.current);
+              debouncedScrollSave();
             }}
             onTouchStart={() => handleStopAutoScroll()}
             scrollEventThrottle={16}

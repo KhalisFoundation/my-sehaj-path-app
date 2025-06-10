@@ -104,9 +104,10 @@ export const useLocal = () => {
   const renamePath = async (pathId: number, pathName: string) => {
     const { pathDataArray } = await fetchFromLocal();
     const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
+    const updatedPathDataArray = pathDataArray.filter((path: PathData) => path.pathId !== pathId);
     if (matchedPath) {
       matchedPath.pathName = pathName;
-      pathDataArray.push(matchedPath);
+      updatedPathDataArray.push(matchedPath);
       await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
       return true;
     }
