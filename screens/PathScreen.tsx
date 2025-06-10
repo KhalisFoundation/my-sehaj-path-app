@@ -259,47 +259,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     };
     fetchFromLocal();
   });
-  // useFocusEffect(
-  //   useCallback(() => {
-  //     const handleBackPress = async () => {
-  //       const { pathDataArray } = await fetchFromLocal();
-  //       const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
-  //       if (matchedPath?.saveData.angNumber === pathAng) {
-  //         navigation.goBack();
-  //         return true;
-  //       } else {
-  //         alertText.current = 'Saving Your Progress ... ';
-  //         aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
-  //         await handleUpdatePath(
-  //           route.params.pathId,
-  //           pathAng,
-  //           matchedVerseId,
-  //           scorllOffset.current,
-  //           setIsSaved
-  //         );
-  //         setTimeout(() => {
-  //           navigation.goBack();
-  //         }, 1000);
-  //         return true;
-  //       }
-  //     };
 
-  //     const handleBackPressWrapper = async () => {
-  //       return handleBackPress()
-  //         .then((result) => {
-  //           return result;
-  //         })
-  //         .catch(() => {
-  //           return false;
-  //         });
-  //     };
-
-  //     BackHandler.addEventListener('hardwareBackPress', handleBackPressWrapper);
-  //     return () => {
-  //       BackHandler.removeEventListener('hardwareBackPress', handleBackPressWrapper);
-  //     };
-  //   }, [navigation, pathAng, route.params.pathId])
-  // );
   useEffect(() => {
     checkNetwork();
   }, []);
