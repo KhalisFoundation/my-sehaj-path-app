@@ -21,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles/SafeAreaStyle';
 import { Pressable } from 'react-native';
+import { PathRename } from '@components/PathRename';
 
 interface Date {
   date: string;
@@ -43,6 +44,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const [finishDate, setFinishDate] = useState<string>();
   const [streakData, setStreakData] = useState<Date[]>();
   const [showData, setShowData] = useState<boolean>();
+  const [showPathRename, setShowPathRename] = useState<boolean>(false);
+  const [pathName, setPathName] = useState<string>('');
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
   const { fetchFromLocal } = useLocal();
@@ -61,16 +64,19 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setDaysAgo(today.format('D-MMMM-YYYY') === startDate.format('D-MMMM-YYYY') ? 0 : days);
     setAverageAngs(averageMatchedAngs === Infinity ? 0 : parseFloat(averageMatchedAngs.toFixed(2)));
   };
-
-  const updateTheData = async () => {
+  const fetchPath = async () => {
     const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
     const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
     const matchedDates = pathDateDataArray.find((path: PathDate) => path.pathid === pathId);
+    setPathDate(matchedDates);
+    setPathData(matchedPath);
+    return { matchedPath, matchedDates };
+  };
+  const updateTheData = async () => {
+    const { matchedPath } = await fetchPath();
     if (matchedPath) {
       const show = matchedPath?.saveData.angNumber < 10 ? false : true;
       setShowData(show);
-      setPathDate(matchedDates);
-      setPathData(matchedPath);
       setPathAng(matchedPath?.saveData.angNumber || 0);
       const matchedPathPercentage = parseFloat(
         (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
@@ -113,6 +119,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   useEffect(() => {
     updateOnlineStatus();
   }, []);
+
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <ImageBackground
@@ -131,12 +138,16 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               <NavContent navIcon={<GoBackIcon />} />
               <NavContent text={Constants.SEE_ALL_PATH} />
             </Pressable>
-            <View style={ContinueScreenStyles.sehajHeadingContainer}>
+            <Pressable
+              style={ContinueScreenStyles.sehajHeadingContainer}
+              onPress={() => setShowPathRename(true)}
+              onLongPress={() => setShowPathRename(true)}
+            >
               <SecondaryHeading
-                text={pathData?.pathName}
+                text={pathName || pathData?.pathName}
                 textStyles={ContinueScreenStyles.sehajHeading}
               />
-            </View>
+            </Pressable>
             <ImportantText
               importantText={Constants.WAHEGURU_JI_KA_KHALSA_WAHEGURU_JI_KI_FATEH}
               importantTextStyles={ContinueScreenStyles.waheguruHeading}
@@ -201,6 +212,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           </View>
         </ScrollView>
       </ImageBackground>
+      {showPathRename && (
+        <PathRename pathId={pathId} setPathRename={setShowPathRename} setPathName={setPathName} />
+      )}
     </SafeAreaView>
   );
 };

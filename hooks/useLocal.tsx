@@ -9,11 +9,12 @@ export interface PathData {
   completionDate: string;
   pathName: string;
 }
-interface DateData {
+export interface DateData {
   pathid: number;
   dates: PathDate[];
+  scrollPosition: number;
 }
-interface PathDate {
+export interface PathDate {
   date: string;
   angs: number;
 }
@@ -49,6 +50,7 @@ export const useLocal = () => {
     pathDateDataArray.push({
       pathid: newPathid,
       dates: [],
+      scrollPosition: 0,
     });
     return { pathDataArray, pathDateDataArray, newPathid };
   };
@@ -57,6 +59,7 @@ export const useLocal = () => {
     pathId: number,
     angNumber: number,
     verseId: number,
+    scrollPosition: number,
     setIsSaved: (value: boolean) => void
   ) => {
     const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
@@ -84,9 +87,10 @@ export const useLocal = () => {
       updatedPathDate.push({
         pathid: pathId,
         dates: cleanMatchedPathDates,
+        scrollPosition: scrollPosition,
       });
 
-      if (verseId == 60403) {
+      if (angNumber === 1430) {
         matchedPath.completionDate = todayDate;
       }
       await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
@@ -95,6 +99,18 @@ export const useLocal = () => {
     } else {
       console.log('path not found');
     }
+  };
+
+  const renamePath = async (pathId: number, pathName: string) => {
+    const { pathDataArray } = await fetchFromLocal();
+    const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
+    if (matchedPath) {
+      matchedPath.pathName = pathName;
+      pathDataArray.push(matchedPath);
+      await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
+      return true;
+    }
+    return false;
   };
   const saveFontSize = async (fontSize: FontSizeData) => {
     await AsyncStorage.setItem('fontSize', JSON.stringify(fontSize));
@@ -118,5 +134,6 @@ export const useLocal = () => {
     fetchFontSize,
     saveLarivaar,
     fetchLarivaar,
+    renamePath,
   };
 };

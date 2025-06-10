@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { View, Text, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PathScreenStyles } from '@styles';
@@ -5,7 +6,7 @@ import { PunjabiNumbers } from '@constants';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { BaniDB } from '@utils/BaniDB';
-import { useLocal } from '../hooks/useLocal';
+import { DateData, PathData, useLocal } from '../hooks/useLocal';
 import { NavContent, SimpleTextForPath } from '@components';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -41,8 +42,53 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [found, setFound] = useState<boolean>(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
+  const [matchedPath, setMatchedPath] = useState<PathData>();
+  const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
   const { checkNetwork, isOnline } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } = useLocal();
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar } = useLocal();
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedScrollSave = useCallback(() => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    debounceTimer.current = setTimeout(() => {
+      handleUpdatePath(
+        route.params.pathId,
+        pathAng,
+        matchedVerseId,
+        scorllOffset.current,
+        setIsSaved
+      );
+    }, 300);
+  }, [handleUpdatePath]);
+
+  const scrollToSavedPathData = () => {
+    if (matchedPathDate) {
+      const scrollY = matchedPathDate.scrollPosition;
+      scorllOffset.current = scrollY;
+      scrollRef.current?.scrollTo({
+        y: scorllOffset.current,
+        animated: true,
+      });
+    }
+    if (matchedVerseId) {
+      setFound(true);
+    }
+    setTimeout(() => {
+      setMatchedVerseId(0);
+      setFound(false);
+      fadeAnim.setValue(1);
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 2500,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsSaving(false);
+        setIsSaved(false);
+      });
+    }, 2000);
+  };
   const fetchFromBaniDB = async (angNumber: number) => {
     aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
     const pathFromBaniDB = await BaniDB(angNumber);
@@ -52,12 +98,16 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     }
     aleartIndicator.current = undefined;
   };
+
   useEffect(() => {
     const fetchPath = async () => {
-      const { pathDataArray } = await fetchFromLocal();
+      const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
       const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
+      setMatchedPath(matchedPath);
+      const matchedDate = pathDateDataArray.find((date) => date.pathid === route.params.pathId);
+      setMatchedPathDate(matchedDate);
       if (matchedPath) {
-        const pathAng = matchedPath.saveData.angNumber == 0 ? 1 : matchedPath.saveData.angNumber;
+        const pathAng = matchedPath.saveData.angNumber === 0 ? 1 : matchedPath.saveData.angNumber;
         setMatchedVerseId(matchedPath.saveData.verseId);
         setPathAng(pathAng);
         setPathPunjabiAng(
@@ -67,7 +117,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             .map((num: string) => PunjabiNumbers[num])
             .join('') || '0'
         );
-        fetchFromBaniDB(pathAng);
+        await fetchFromBaniDB(pathAng);
       }
     };
     fetchPath();
@@ -124,49 +174,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     fetchFromBaniDB(pageNo - 1);
   };
 
-  const scrollToMatchedVerse = async () => {
-    const scrollIndex = pathContent?.page?.findIndex(
-      (page: any) => page.verseId === matchedVerseId
-    );
-
-    const fontSize = await fetchFontSize();
-    const fontSizeNumber = fontSize.number;
-    let scrollHeight;
-
-    if (fontSizeNumber <= 18) {
-      scrollHeight = 25;
-    } else if (fontSizeNumber <= 24) {
-      scrollHeight = 50;
-    } else if (fontSizeNumber <= 30) {
-      scrollHeight = 100;
-    } else {
-      scrollHeight = 150;
-    }
-
-    if (scrollIndex !== -1) {
-      const scrollY = scrollIndex * scrollHeight;
-      setFound(true);
-      scorllOffset.current = scrollY;
-      scrollRef.current?.scrollTo({
-        y: scorllOffset.current,
-        animated: true,
-      });
-    }
-    setTimeout(() => {
-      setMatchedVerseId(0);
-      setFound(false);
-      fadeAnim.setValue(1);
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 2500,
-        useNativeDriver: true,
-      }).start(() => {
-        setIsSaving(false);
-        setIsSaved(false);
-      });
-    }, 1500);
-  };
-
   const handleAutoScroll = () => {
     scrollInveral.current = setInterval(() => {
       scorllOffset.current += 1;
@@ -191,6 +198,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     }
     return () => handleStopAutoScroll();
   }, [autoScroll]);
+
   useEffect(() => {
     if (isSaved || found) {
       fadeAnim.setValue(1);
@@ -207,12 +215,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     }
   }, [isSaved, found]);
   useEffect(() => {
-    if (pathContent?.page?.length > 0 && matchedVerseId) {
+    if (pathAng === matchedPath?.saveData.angNumber) {
       setTimeout(() => {
-        scrollToMatchedVerse();
+        scrollToSavedPathData();
       }, 500);
     }
-  }, [pathContent, matchedVerseId]);
+  }, [matchedPath, pathAng]);
   useFocusEffect(() => {
     const fetchFromLocal = async () => {
       const larivaar = await fetchLarivaar();
@@ -225,16 +233,22 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       const handleBackPress = async () => {
         const { pathDataArray } = await fetchFromLocal();
         const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
-        if (matchedPath?.saveData.angNumber == pathAng) {
+        if (matchedPath?.saveData.angNumber === pathAng) {
           navigation.goBack();
           return true;
         } else {
           alertText.current = 'Saving Your Progress ... ';
           aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
-          await handleUpdatePath(route.params.pathId, pathAng, matchedVerseId, setIsSaved);
+          await handleUpdatePath(
+            route.params.pathId,
+            pathAng,
+            matchedVerseId,
+            scorllOffset.current,
+            setIsSaved
+          );
           setTimeout(() => {
             navigation.goBack();
-          }, 2000);
+          }, 1000);
           return true;
         }
       };
@@ -277,16 +291,17 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           />
         </View>
         <GestureRecognizer
-          onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
-          onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
-          onSwipeDown={() => undefined}
-          onSwipeUp={() => undefined}
+        // onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
+        // onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
+        // onSwipeDown={() => undefined}
+        // onSwipeUp={() => undefined}
         >
           <ScrollView
             contentContainerStyle={PathScreenStyles.pathContentContainer}
             ref={scrollRef}
             onScroll={(e) => {
               scorllOffset.current = e.nativeEvent.contentOffset.y;
+              debouncedScrollSave(route.params.pathId, scorllOffset.current);
             }}
             onTouchStart={() => handleStopAutoScroll()}
             scrollEventThrottle={16}
@@ -295,19 +310,28 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               <SimpleTextForPath
                 key={index}
                 gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
-                onPress={() => {
+                onSelection={() => {
                   if (isSaving) {
                     setPressIndex(index + 1);
                   }
                 }}
-                iconPress={() =>
-                  handleUpdatePath(route.params.pathId || 1, pathAng, path.verseId, setIsSaved)
+                onSave={() =>
+                  handleUpdatePath(
+                    route.params.pathId || 1,
+                    pathAng,
+                    path.verseId,
+                    scorllOffset.current,
+                    setIsSaved
+                  )
                 }
                 isSaving={isSaving}
                 pressIndex={pressIndex}
                 index={index + 1}
                 verseId={path.verseId}
                 matchedVerseId={matchedVerseId}
+                setIsSaving={setIsSaving}
+                setIsSaved={setIsSaved}
+                setPressIndex={setPressIndex}
               />
             ))}
           </ScrollView>
