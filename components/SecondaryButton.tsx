@@ -12,21 +12,20 @@ interface Props {
 
 export const SecondaryButton = ({ onPress, buttonIcon, buttonText, buttonStyle }: Props) => {
   return (
-    <LinearGradient
-      colors={['rgba(17, 51, 106, 1)', 'rgba(13, 35, 70, 1)']}
-      start={{ x: 0, y: 0.1 }}
-      end={{ x: 1, y: 0 }}
-      style={[SecondaryButtonStyles.secondaryButtonContainer, buttonStyle]}
+    <TouchableOpacity
+      onPress={() => {
+        onPress();
+      }}
     >
-      <TouchableOpacity
-        onPress={() => {
-          onPress();
-        }}
-        style={SecondaryButtonStyles.secondaryButton}
+      <LinearGradient
+        colors={['rgba(17, 51, 106, 1)', 'rgba(13, 35, 70, 1)']}
+        start={{ x: 0, y: 0.1 }}
+        end={{ x: 1, y: 0 }}
+        style={[SecondaryButtonStyles.secondaryButton, buttonStyle]}
       >
         <View>{buttonIcon}</View>
         <Text style={SecondaryButtonStyles.secondaryButtonContent}>{buttonText}</Text>
-      </TouchableOpacity>
-    </LinearGradient>
+      </LinearGradient>
+    </TouchableOpacity>
   );
 };
