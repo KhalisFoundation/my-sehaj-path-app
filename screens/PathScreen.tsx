@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { View, Text, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PathScreenStyles } from '@styles';
@@ -332,7 +333,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             ))}
           </ScrollView>
         </GestureRecognizer>
-        {aleartIndicator.current != undefined ? (
+        {aleartIndicator.current !== undefined ? (
           <View style={PathScreenStyles.alertContainer}>
             {aleartIndicator.current}
             <Text style={PathScreenStyles.alertText}>{alertText.current}</Text>
