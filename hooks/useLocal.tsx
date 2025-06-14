@@ -66,7 +66,6 @@ export const useLocal = () => {
     const date = new Date();
     const todayDate = `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
     const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
-
     const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
@@ -75,9 +74,7 @@ export const useLocal = () => {
         cleanMatchedPathDates && cleanMatchedPathDates.length > 0
           ? cleanMatchedPathDates[cleanMatchedPathDates.length - 1].angs
           : 0;
-
       const lastestAngsDone = angNumber - lastAngs;
-
       matchedPath.saveData = { angNumber, verseId };
       matchedPath.progress = (angNumber / 1430) * 100;
       cleanMatchedPathDates.push({
@@ -89,7 +86,6 @@ export const useLocal = () => {
         dates: cleanMatchedPathDates,
         scrollPosition: scrollPosition,
       });
-
       if (angNumber === 1430) {
         matchedPath.completionDate = todayDate;
       }
@@ -113,20 +109,25 @@ export const useLocal = () => {
     }
     return false;
   };
+
   const saveFontSize = async (fontSize: FontSizeData) => {
     await AsyncStorage.setItem('fontSize', JSON.stringify(fontSize));
   };
+
   const fetchFontSize = async () => {
     const fontSize = await AsyncStorage.getItem('fontSize');
     return fontSize ? JSON.parse(fontSize) : { fontSize: 'Small (Default)', number: 18 };
   };
+
   const saveLarivaar = async (larivaar: boolean) => {
     await AsyncStorage.setItem('larivaar', larivaar.toString());
   };
+
   const fetchLarivaar = async () => {
     const larivaar = await AsyncStorage.getItem('larivaar');
     return larivaar === 'true';
   };
+
   return {
     fetchFromLocal,
     handleNewPath,

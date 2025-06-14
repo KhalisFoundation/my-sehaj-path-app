@@ -1,5 +1,4 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-import { View, Text, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
+import { View, Text, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PathScreenStyles } from '@styles';
 import { PunjabiNumbers } from '@constants';
@@ -30,24 +29,24 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [pathAng, setPathAng] = useState<number>(0);
   const [pathContent, setPathContent] = useState<any>();
   const [autoScroll, setAutoScroll] = useState<boolean>(false);
-  const scrollInveral = useRef<NodeJS.Timeout | null>(null);
-  const scorllOffset = useRef<number>(0);
-  const scrollRef = useRef<ScrollView | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
-  const [matchedVerseId, setMatchedVerseId] = useState<number>(0);
+  const [savedPathVerseId, setSavedPathVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
-  const aleartIndicator = useRef<any>();
-  const alertText = useRef<string>('Loading ... ');
   const [found, setFound] = useState<boolean>(false);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
   const [matchedPath, setMatchedPath] = useState<PathData>();
   const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
   const [scrolledToSavedPath, setScrolledToSavedPath] = useState<boolean>(false);
+  const scrollInveral = useRef<NodeJS.Timeout | null>(null);
+  const scorllOffset = useRef<number>(0);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const aleartIndicator = useRef<any>();
+  const alertText = useRef<string>('Loading ... ');
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } = useLocal();
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
@@ -57,7 +56,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       handleUpdatePath(
         route.params.pathId,
         pathAng,
-        matchedVerseId,
+        savedPathVerseId,
         scorllOffset.current,
         setIsSaved
       );
@@ -65,16 +64,13 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   }, [handleUpdatePath]);
 
   const scrollToSavedPathData = async () => {
-    console.log('pathContent', pathContent ? true : false);
     if (pathContent) {
       const scrollIndex = pathContent?.page?.findIndex(
-        (page: any) => page.verseId === matchedVerseId
+        (page: any) => page.verseId === savedPathVerseId
       );
-
       const fontSize = await fetchFontSize();
       const fontSizeNumber = fontSize.number;
       let scrollHeight;
-
       if (fontSizeNumber <= 18) {
         scrollHeight = 25;
       } else if (fontSizeNumber <= 24) {
@@ -84,7 +80,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       } else {
         scrollHeight = 150;
       }
-
       if (scrollIndex !== -1) {
         const scrollY = scrollIndex * scrollHeight;
         setFound(true);
@@ -95,22 +90,19 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         });
         setScrolledToSavedPath(true);
       }
+      setTimeout(() => {
+        setFound(false);
+        fadeAnim.setValue(1);
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 2500,
+          useNativeDriver: true,
+        }).start(() => {
+          setIsSaving(false);
+          setIsSaved(false);
+        });
+      }, 2000);
     }
-
-    setTimeout(() => {
-      setFound(false);
-      fadeAnim.setValue(1);
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 2500,
-        useNativeDriver: true,
-      }).start(() => {
-        setIsSaving(false);
-        setIsSaved(false);
-        setMatchedVerseId(0);
-      });
-    }, 2000);
-
     if (matchedPathDate && !scrolledToSavedPath) {
       const scrollY = matchedPathDate.scrollPosition;
       scorllOffset.current = scrollY;
@@ -133,22 +125,23 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   useEffect(() => {
     const fetchPath = async () => {
       const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
-      const matchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
-      setMatchedPath(matchedPath);
+      const matchedPathData = pathDataArray.find((path) => path.pathId === route.params.pathId);
+      setMatchedPath(matchedPathData);
       const matchedDate = pathDateDataArray.find((date) => date.pathid === route.params.pathId);
       setMatchedPathDate(matchedDate);
-      if (matchedPath) {
-        const pathAng = matchedPath.saveData.angNumber === 0 ? 1 : matchedPath.saveData.angNumber;
-        setMatchedVerseId(matchedPath.saveData.verseId);
-        setPathAng(pathAng);
+      if (matchedPathData) {
+        const pathAngData =
+          matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
+        setSavedPathVerseId(matchedPathData.saveData.verseId);
+        setPathAng(pathAngData);
         setPathPunjabiAng(
-          pathAng
+          pathAngData
             ?.toString()
             .split('')
             .map((num: string) => PunjabiNumbers[num])
             .join('') || '0'
         );
-        await fetchFromBaniDB(pathAng);
+        await fetchFromBaniDB(pathAngData);
       }
     };
     fetchPath();
@@ -214,6 +207,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       });
     }, 50);
   };
+
   const handleStopAutoScroll = () => {
     if (scrollInveral.current) {
       clearInterval(scrollInveral.current);
@@ -221,6 +215,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       setAutoScroll(false);
     }
   };
+
   useEffect(() => {
     if (autoScroll) {
       handleAutoScroll();
@@ -245,6 +240,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }, 500);
     }
   }, [isSaved, found]);
+
   useEffect(() => {
     if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
       setTimeout(() => {
@@ -252,17 +248,19 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }, 800);
     }
   }, [matchedPath, pathAng, pathContent]);
+
   useFocusEffect(() => {
-    const fetchFromLocal = async () => {
+    const fetchLarivaarData = async () => {
       const larivaar = await fetchLarivaar();
       setIsLarivaar(larivaar || false);
     };
-    fetchFromLocal();
+    fetchLarivaarData();
   });
 
   useEffect(() => {
     checkNetwork();
   }, []);
+
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
@@ -282,10 +280,15 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           />
         </View>
         <GestureRecognizer
-        // onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
-        // onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
-        // onSwipeDown={() => undefined}
-        // onSwipeUp={() => undefined}
+          onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
+          onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
+          onSwipeDown={() => undefined}
+          onSwipeUp={() => undefined}
+          config={{
+            velocityThreshold: 0.3,
+            directionalOffsetThreshold: 125,
+            gestureIsClickThreshold: 5,
+          }}
         >
           <ScrollView
             contentContainerStyle={PathScreenStyles.pathContentContainer}
@@ -304,6 +307,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
                 onSelection={() => {
                   if (isSaving) {
                     setPressIndex(index + 1);
+                    setSavedPathVerseId(path.verseId);
                   }
                 }}
                 onSave={() =>
@@ -319,10 +323,11 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
                 pressIndex={pressIndex}
                 index={index + 1}
                 verseId={path.verseId}
-                matchedVerseId={matchedVerseId}
+                savedPathVerseId={savedPathVerseId}
                 setIsSaving={setIsSaving}
                 setIsSaved={setIsSaved}
                 setPressIndex={setPressIndex}
+                setSavedPathVerseId={setSavedPathVerseId}
               />
             ))}
           </ScrollView>
@@ -371,3 +376,5 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     </SafeAreaView>
   );
 };
+
+//  save pankeet will be always on out of view use position

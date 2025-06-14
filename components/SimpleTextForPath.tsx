@@ -3,6 +3,8 @@ import React, { useRef, useState } from 'react';
 import { SimpleTextForPathStyles } from '@styles';
 import { useLocal } from '../hooks/useLocal';
 import { useFocusEffect } from '@react-navigation/native';
+import { NavContent } from './NavContent';
+import { SaveIcon } from '@icons/Save.icon';
 
 interface Props {
   gurbaniLine: string;
@@ -12,10 +14,11 @@ interface Props {
   index: number;
   onSave: () => void;
   verseId?: number;
-  matchedVerseId?: number;
+  savedPathVerseId?: number;
   setIsSaving: any;
   setIsSaved: any;
   setPressIndex: any;
+  setSavedPathVerseId: any;
 }
 
 export const SimpleTextForPath = ({
@@ -26,13 +29,13 @@ export const SimpleTextForPath = ({
   index,
   onSave,
   verseId,
-  matchedVerseId,
+  savedPathVerseId,
   setIsSaved,
   setIsSaving,
   setPressIndex,
+  setSavedPathVerseId,
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
   const [isLongPressing, setIsLongPressing] = useState(false);
 
   const { fetchFontSize } = useLocal();
@@ -45,31 +48,20 @@ export const SimpleTextForPath = ({
   });
   const handleLongPress = () => {
     if (isLongPressing) return;
+    onSelection();
     setIsLongPressing(true);
     setIsSaving(true);
     setIsSaved(false);
     setPressIndex(index);
-    onSelection();
+    setSavedPathVerseId(verseId);
     onSave();
-    setTimeout(() => {
-      fadeAnim.setValue(1);
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 1500,
-        useNativeDriver: true,
-      }).start(() => {
-        setIsSaving(false);
-        setIsSaved(false);
-        setIsLongPressing(false);
-      });
-    }, 1000);
   };
 
   return (
     <Pressable
       onPress={onSelection}
       style={
-        (verseId === matchedVerseId || (isSaving && pressIndex === index)) &&
+        (verseId === savedPathVerseId || (isSaving && pressIndex === index)) &&
         SimpleTextForPathStyles.coloredContainer
       }
     >
@@ -90,6 +82,9 @@ export const SimpleTextForPath = ({
         }}
       >
         {gurbaniLine}
+        {(verseId === savedPathVerseId || (isSaving && pressIndex === index)) && (
+          <NavContent navIcon={<SaveIcon color="#0D2346" />} />
+        )}
       </Text>
     </Pressable>
   );
