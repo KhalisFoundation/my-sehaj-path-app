@@ -19,7 +19,6 @@ interface Props {
   setIsSaved: any;
   setPressIndex: any;
   setSavedPathVerseId: any;
-  isFirstOfShabad: boolean;
 }
 
 export const SimpleTextForPath = ({
@@ -35,7 +34,6 @@ export const SimpleTextForPath = ({
   setIsSaving,
   setPressIndex,
   setSavedPathVerseId,
-  isFirstOfShabad,
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [isLongPressing, setIsLongPressing] = useState(false);

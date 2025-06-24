@@ -50,7 +50,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  const seenShabadIds = new Set<number>();
+
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAkhandPath } =
     useLocal();
@@ -377,11 +377,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             scrollEventThrottle={16}
           >
             {pathContent?.page?.map((path: any, index: number) => {
-              const isFirstOfShabad = !seenShabadIds.has(path.shabadId);
-              if (isFirstOfShabad) {
-                seenShabadIds.add(path.shabadId);
-              }
-
               return (
                 <SimpleTextForPath
                   key={index}
@@ -410,7 +405,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
                   setIsSaved={setIsSaved}
                   setPressIndex={setPressIndex}
                   setSavedPathVerseId={setSavedPathVerseId}
-                  isFirstOfShabad={isFirstOfShabad}
                 />
               );
             })}
