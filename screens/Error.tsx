@@ -1,10 +1,10 @@
-import { View, ScrollView, Image } from 'react-native';
 import React from 'react';
+import { View, ScrollView, Image } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ErrorScreenStyles } from '@styles';
 import { SimpleText } from '@components/SimpleText';
 import { NavContent } from '@components/NavContent';
 import { GoBackIcon, HomeIcon } from '@icons/index';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 
 export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Error'>) => {

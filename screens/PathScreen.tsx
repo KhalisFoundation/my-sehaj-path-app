@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { View, Text, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { CalenderStyles } from '../styles/CalenderStyles';
+import { CalenderStyles } from '@styles';
 import { LeftArrowIcon, RightArrowIcon } from '../icons';
 import { CalenderDays } from '@constants/CalenderConstants';
 import dayjs from 'dayjs';
