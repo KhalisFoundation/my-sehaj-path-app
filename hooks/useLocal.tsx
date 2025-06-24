@@ -70,20 +70,26 @@ export const useLocal = () => {
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
+
       const lastAngs =
-        cleanMatchedPathDates && cleanMatchedPathDates.length > 0
+        cleanMatchedPathDates.length > 0
           ? cleanMatchedPathDates[cleanMatchedPathDates.length - 1].angs
           : 0;
       const lastestAngsDone = angNumber - lastAngs;
       matchedPath.saveData = { angNumber, verseId };
       matchedPath.progress = (angNumber / 1430) * 100;
-      cleanMatchedPathDates.push({
-        date: todayDate,
-        angs: lastestAngsDone,
-      });
+
+      const updatedDates = [
+        ...cleanMatchedPathDates,
+        {
+          date: todayDate,
+          angs: lastestAngsDone,
+        },
+      ];
+
       updatedPathDate.push({
         pathid: pathId,
-        dates: cleanMatchedPathDates,
+        dates: updatedDates,
         scrollPosition: scrollPosition,
       });
       if (angNumber === 1430) {
