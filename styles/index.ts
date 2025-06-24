@@ -19,3 +19,5 @@ export { SliderStyles } from './SliderStyles';
 export { SplashScreenStyles } from './SplashScreenStyles';
 export { StreakStyles } from './StreakStyles';
 export { ErrorScreenStyles } from './ErrorScreen';
+export { SafeAreaStyle } from './SafeAreaStyle';
+export { AkhandPathStyles } from './AkhandPathStyles';

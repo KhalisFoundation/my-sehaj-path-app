@@ -1,14 +1,16 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { View, Text, ScrollView, ActivityIndicator, Animated } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { PathScreenStyles } from '@styles';
-import { PunjabiNumbers } from '@constants';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../App';
+import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import GestureRecognizer from 'react-native-swipe-gestures';
 import { BaniDB } from '@utils/BaniDB';
+import { PathScreenStyles, SafeAreaStyle } from '@styles';
+import { PunjabiNumbers } from '@constants';
+import { RootStackParamList } from '../App';
 import { DateData, PathData, useLocal } from '../hooks/useLocal';
 import { NavContent, SimpleTextForPath } from '@components';
-import { useFocusEffect } from '@react-navigation/native';
 import {
   HomeIcon,
   SettingsIcon,
@@ -18,10 +20,7 @@ import {
   LeftArrowIcon,
   RightArrowIcon,
 } from '../icons';
-import { useInternet } from '@hooks/useInternet';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { SafeAreaStyle } from '@styles/SafeAreaStyle';
-import GestureRecognizer from 'react-native-swipe-gestures';
+import { useInternet } from '../hooks/useInternet';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -39,6 +38,11 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [matchedPath, setMatchedPath] = useState<PathData>();
   const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
   const [scrolledToSavedPath, setScrolledToSavedPath] = useState<boolean>(false);
+  const [isAkhandPath, setIsAkhandPath] = useState<boolean>(false);
+  const [control, setControl] = useState<boolean>(true);
+  const [contentHeight, setContentHeight] = useState<number>(0);
+  const [scrollViewHeight, setScrollViewHeight] = useState<number>(0);
+  const [isNearEnd, setIsNearEnd] = useState<boolean>(false);
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -46,8 +50,69 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const seenShabadIds = new Set<number>();
   const { checkNetwork, isOnline } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } = useLocal();
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAkhandPath } =
+    useLocal();
+
+  useFocusEffect(() => {
+    const fetchAkhandPathData = async () => {
+      const akhandPath = await fetchAkhandPath();
+      setIsAkhandPath(akhandPath || false);
+      setControl(!akhandPath);
+    };
+    fetchAkhandPathData();
+  });
+  const fetchAkhandPathData = async (angNumber: number) => {
+    setPathAng(angNumber);
+    setPathPunjabiAng(
+      angNumber
+        ?.toString()
+        .split('')
+        .map((num: string) => PunjabiNumbers[num])
+        .join('') || '0'
+    );
+    const pathFromBaniDB = await BaniDB(angNumber);
+    setPathContent((prev: any) => ({
+      ...prev,
+      page: [...prev.page, ...pathFromBaniDB.page],
+    }));
+  };
+
+  const checkIfNearEnd = useCallback(
+    (scrollY: number) => {
+      if (!isAkhandPath) {
+        return;
+      }
+
+      const threshold = 20;
+      const isNearBottom = scrollY + scrollViewHeight >= contentHeight - threshold;
+
+      if (isNearBottom && !isNearEnd) {
+        setIsNearEnd(true);
+        setTimeout(() => {
+          if (pathContent?.source?.pageNo && pathContent.source.pageNo < 1430) {
+            checkNetwork();
+            if (!isOnline) {
+              return;
+            }
+            fetchAkhandPathData(pathAng + 1);
+          }
+        }, 300);
+      } else if (!isNearBottom && isNearEnd) {
+        setIsNearEnd(false);
+      }
+    },
+    [
+      isAkhandPath,
+      contentHeight,
+      scrollViewHeight,
+      isNearEnd,
+      pathContent?.source?.pageNo,
+      checkNetwork,
+      isOnline,
+    ]
+  );
 
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
@@ -265,72 +330,90 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
-        <View style={PathScreenStyles.navContainer}>
-          <NavContent
-            navIcon={<LeftArrowIcon />}
-            onPress={() => {
-              handleLeftArrow(pathContent?.source?.pageNo);
-            }}
-          />
-          <NavContent text={pathPujabiAng} />
-          <NavContent
-            navIcon={<RightArrowIcon />}
-            onPress={() => {
-              handleRightArrow(pathContent?.source?.pageNo);
-            }}
-          />
-        </View>
+        {control ? (
+          <View style={PathScreenStyles.navContainer}>
+            <NavContent
+              navIcon={<LeftArrowIcon />}
+              onPress={() => {
+                handleLeftArrow(pathContent?.source?.pageNo);
+              }}
+            />
+            <NavContent text={pathPujabiAng} />
+            <NavContent
+              navIcon={<RightArrowIcon />}
+              onPress={() => {
+                handleRightArrow(pathContent?.source?.pageNo);
+              }}
+            />
+          </View>
+        ) : null}
         <GestureRecognizer
-          onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
-          onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
+          onSwipeLeft={() => !isAkhandPath && handleRightArrow(pathContent?.source?.pageNo)}
+          onSwipeRight={() => !isAkhandPath && handleLeftArrow(pathContent?.source?.pageNo)}
           onSwipeDown={() => undefined}
           onSwipeUp={() => undefined}
           config={{
-            velocityThreshold: 0.3,
-            directionalOffsetThreshold: 125,
-            gestureIsClickThreshold: 5,
+            velocityThreshold: 0.8,
+            directionalOffsetThreshold: 80,
+            gestureIsClickThreshold: 10,
           }}
         >
           <ScrollView
             contentContainerStyle={PathScreenStyles.pathContentContainer}
             ref={scrollRef}
+            onLayout={(e) => {
+              setScrollViewHeight(e.nativeEvent.layout.height);
+            }}
+            onContentSizeChange={(width, height) => {
+              setContentHeight(height);
+            }}
             onScroll={(e) => {
-              scorllOffset.current = e.nativeEvent.contentOffset.y;
+              const scrollY = e.nativeEvent.contentOffset.y;
+              scorllOffset.current = scrollY;
               debouncedScrollSave();
+              checkIfNearEnd(scrollY);
             }}
             onTouchStart={() => handleStopAutoScroll()}
             scrollEventThrottle={16}
           >
-            {pathContent?.page?.map((path: any, index: number) => (
-              <SimpleTextForPath
-                key={index}
-                gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
-                onSelection={() => {
-                  if (isSaving) {
-                    setPressIndex(index + 1);
-                    setSavedPathVerseId(path.verseId);
+            {pathContent?.page?.map((path: any, index: number) => {
+              const isFirstOfShabad = !seenShabadIds.has(path.shabadId);
+              if (isFirstOfShabad) {
+                seenShabadIds.add(path.shabadId);
+              }
+
+              return (
+                <SimpleTextForPath
+                  key={index}
+                  gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
+                  onSelection={() => {
+                    if (isSaving) {
+                      setPressIndex(index + 1);
+                      setSavedPathVerseId(path.verseId);
+                    }
+                  }}
+                  onSave={() =>
+                    handleUpdatePath(
+                      route.params.pathId || 1,
+                      pathAng,
+                      path.verseId,
+                      scorllOffset.current,
+                      setIsSaved
+                    )
                   }
-                }}
-                onSave={() =>
-                  handleUpdatePath(
-                    route.params.pathId || 1,
-                    pathAng,
-                    path.verseId,
-                    scorllOffset.current,
-                    setIsSaved
-                  )
-                }
-                isSaving={isSaving}
-                pressIndex={pressIndex}
-                index={index + 1}
-                verseId={path.verseId}
-                savedPathVerseId={savedPathVerseId}
-                setIsSaving={setIsSaving}
-                setIsSaved={setIsSaved}
-                setPressIndex={setPressIndex}
-                setSavedPathVerseId={setSavedPathVerseId}
-              />
-            ))}
+                  isSaving={isSaving}
+                  pressIndex={pressIndex}
+                  index={index + 1}
+                  verseId={path.verseId}
+                  savedPathVerseId={savedPathVerseId}
+                  setIsSaving={setIsSaving}
+                  setIsSaved={setIsSaved}
+                  setPressIndex={setPressIndex}
+                  setSavedPathVerseId={setSavedPathVerseId}
+                  isFirstOfShabad={isFirstOfShabad}
+                />
+              );
+            })}
           </ScrollView>
         </GestureRecognizer>
         {aleartIndicator.current !== undefined ? (
@@ -377,5 +460,3 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     </SafeAreaView>
   );
 };
-
-//  save pankeet will be always on out of view use position

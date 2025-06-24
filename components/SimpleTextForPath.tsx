@@ -1,5 +1,5 @@
-import { Text, Pressable, Animated } from 'react-native';
-import React, { useRef, useState } from 'react';
+import { Text, Pressable } from 'react-native';
+import React, { useState } from 'react';
 import { SimpleTextForPathStyles } from '@styles';
 import { useLocal } from '../hooks/useLocal';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,6 +19,7 @@ interface Props {
   setIsSaved: any;
   setPressIndex: any;
   setSavedPathVerseId: any;
+  isFirstOfShabad: boolean;
 }
 
 export const SimpleTextForPath = ({
@@ -34,6 +35,7 @@ export const SimpleTextForPath = ({
   setIsSaving,
   setPressIndex,
   setSavedPathVerseId,
+  isFirstOfShabad,
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [isLongPressing, setIsLongPressing] = useState(false);
@@ -47,7 +49,9 @@ export const SimpleTextForPath = ({
     fetch();
   });
   const handleLongPress = () => {
-    if (isLongPressing) return;
+    if (isLongPressing) {
+      return;
+    }
     onSelection();
     setIsLongPressing(true);
     setIsSaving(true);

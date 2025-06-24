@@ -6,6 +6,7 @@ import { GoBackIcon } from '@icons';
 import { SettingScreenStyle } from '@styles';
 import { NavContent, SimpleText, FontSize, Larivaar } from '@components';
 import { SafeAreaStyle } from '@styles/SafeAreaStyle';
+import { AkhandPath } from '@components/Settings/AkhandPath';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 
@@ -29,6 +30,7 @@ export const Settings = ({ navigation }: SettingProps) => {
               <SimpleText simpleText={'Bani Options'} />
             </View>
             <Larivaar />
+            <AkhandPath />
           </View>
         </View>
       </View>

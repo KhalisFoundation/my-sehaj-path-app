@@ -1,27 +1,26 @@
-import { View, ScrollView, ImageBackground, Text } from 'react-native';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ContinueScreenStyles } from '@styles';
-import { Constants } from '@constants';
+import { View, ScrollView, ImageBackground, Text, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../App';
-import { useLocal, PathData } from '../hooks/useLocal';
-import { GoBackIcon, ContinueIcon } from '@icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   NavContent,
   SecondaryButton,
   SimpleText,
   SecondaryHeading,
   ImportantText,
-  Streak,
   PathRename,
 } from '@components';
+import { Constants } from '@constants';
+import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
+import { RootStackParamList } from '../App';
+import { useLocal, PathData } from '../hooks/useLocal';
+import { GoBackIcon, ContinueIcon } from '@icons';
 import { useInternet } from '../hooks/useInternet';
-import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { SafeAreaStyle } from '@styles/SafeAreaStyle';
-import { Pressable } from 'react-native';
+import { Calender } from '@components/Calender';
+import { CalenderStyles } from '@styles/CalenderStyles';
 
 interface Date {
   date: string;
@@ -35,6 +34,8 @@ interface PathDate {
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
 export const Continue = ({ route, navigation }: ContinueProps) => {
+  const { pathId } = route.params;
+  dayjs.extend(customParseFormat);
   const [pathData, setPathData] = useState<PathData>();
   const [pathDate, setPathDate] = useState<PathDate>();
   const [pathAng, setPathAng] = useState<number>(0);
@@ -42,14 +43,18 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const [daysAgo, setDaysAgo] = useState<number>(0);
   const [averageAngs, setAverageAngs] = useState<number>(0);
   const [finishDate, setFinishDate] = useState<string>();
-  const [streakData, setStreakData] = useState<Date[]>();
   const [showData, setShowData] = useState<boolean>();
   const [showPathRename, setShowPathRename] = useState<boolean>(false);
+  const [tabs, setTabs] = useState<string>('progress');
   const [pathName, setPathName] = useState<string>('');
-  const { pathId } = route.params;
-  dayjs.extend(customParseFormat);
+  const [streakValue, setStreakValue] = useState<number>(0);
+  const streak = useRef(0);
   const { fetchFromLocal } = useLocal();
   const { checkNetwork, isOnline, updateOnlineStatus } = useInternet();
+
+  const handleStreakUpdate = (newStreakValue: number) => {
+    setStreakValue(newStreakValue);
+  };
 
   const calculatePathCompletion = (matchedPath: PathData) => {
     const today = dayjs();
@@ -86,29 +91,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
   };
 
-  const makeStreakIndicator = (startDate: string) => {
-    const today = dayjs();
-    const start = dayjs(startDate, 'D-MMMM-YYYY');
-    let currentDate = start;
-    const dates: any = [];
-    while (currentDate.isBefore(today) || currentDate.isSame(today)) {
-      dates.push({ date: currentDate.format('D-MMMM-YYYY'), angs: 0 });
-      currentDate = currentDate.add(1, 'day');
-    }
-    const mergeDates = new Map();
-    for (let date of [...dates, ...(pathDate?.dates || [])]) {
-      mergeDates.set(date.date, date);
-    }
-    setStreakData(Array.from(mergeDates.values()));
-  };
   useFocusEffect(
     useCallback(() => {
       updateTheData();
     }, [pathId])
   );
-  useEffect(() => {
-    pathData?.startDate ? makeStreakIndicator(pathData.startDate) : undefined;
-  }, [pathData]);
+
   const handleContinue = async () => {
     await checkNetwork();
     if (!isOnline) {
@@ -138,62 +126,88 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               <NavContent navIcon={<GoBackIcon />} />
               <NavContent text={Constants.SEE_ALL_PATH} />
             </Pressable>
-            <Pressable
-              style={ContinueScreenStyles.sehajHeadingContainer}
-              onPress={() => setShowPathRename(true)}
-              onLongPress={() => setShowPathRename(true)}
-            >
-              <SecondaryHeading
-                text={pathName || pathData?.pathName}
-                textStyles={ContinueScreenStyles.sehajHeading}
-              />
-            </Pressable>
-            <ImportantText
-              importantText={Constants.WAHEGURU_JI_KA_KHALSA_WAHEGURU_JI_KI_FATEH}
-              importantTextStyles={ContinueScreenStyles.waheguruHeading}
-            />
+            <View style={ContinueScreenStyles.tabsContainer}>
+              <Pressable
+                style={tabs === 'progress' ? ContinueScreenStyles.tabActive : null}
+                onPress={() => setTabs('progress')}
+                onLongPress={() => setTabs('progress')}
+              >
+                <Text style={ContinueScreenStyles.tabText}>Progress</Text>
+              </Pressable>
+              <Pressable
+                style={tabs === 'streak' ? ContinueScreenStyles.tabActive : null}
+                onPress={() => setTabs('streak')}
+                onLongPress={() => setTabs('streak')}
+              >
+                <Text style={ContinueScreenStyles.tabText}>Streak</Text>
+              </Pressable>
+            </View>
+            {tabs === 'progress' && (
+              <>
+                <Pressable
+                  style={ContinueScreenStyles.sehajHeadingContainer}
+                  onPress={() => setShowPathRename(true)}
+                  onLongPress={() => setShowPathRename(true)}
+                >
+                  <SecondaryHeading
+                    text={pathName || pathData?.pathName}
+                    textStyles={ContinueScreenStyles.sehajHeading}
+                  />
+                </Pressable>
+                <ImportantText
+                  importantText={Constants.WAHEGURU_JI_KA_KHALSA_WAHEGURU_JI_KI_FATEH}
+                  importantTextStyles={ContinueScreenStyles.waheguruHeading}
+                />
+              </>
+            )}
 
             {showData ? (
               <>
-                <SimpleText
-                  simpleText={[
-                    Constants.YOU_ARE_ON_ANG_NUMBER,
-                    <ImportantText
-                      importantText={`${pathAng}`}
-                      importantTextStyles={ContinueScreenStyles.impTextContainer}
-                    />,
-                    Constants.HAVE_COMPLETED,
-                    <ImportantText
-                      importantText={`${pathPercentage}%`}
-                      importantTextStyles={ContinueScreenStyles.impTextContainer}
-                    />,
-                    Constants.SRI_SEHAJ_PATH,
-                  ]}
-                  simpleTextStyle={ContinueScreenStyles.textStyle}
-                />
-                <SimpleText
-                  simpleText={[
-                    Constants.STARTED_PATH,
-                    <ImportantText importantText={`${daysAgo} days `} />,
-                    Constants.AVERAGE_ABOUT,
-                    <ImportantText importantText={`${averageAngs} angs a day. `} />,
-                    Constants.COMPLETION_SEHAJ_PATH,
-                    <ImportantText importantText={`${finishDate} 🎯 .`} />,
-                  ]}
-                />
-
-                <View>
-                  <SimpleText simpleText={[`${Constants.HERE_YOURS_STREAK_CHART}`]} />
-                  <ScrollView
-                    contentContainerStyle={ContinueScreenStyles.streakScroll}
-                    style={ContinueScreenStyles.streakScrollContainer}
-                    showsVerticalScrollIndicator={true}
-                  >
-                    {streakData?.map((data, index) => {
-                      return <Streak value={data.angs} key={index} />;
-                    })}
-                  </ScrollView>
-                </View>
+                {tabs === 'progress' && (
+                  <>
+                    <SimpleText
+                      simpleText={[
+                        Constants.YOU_ARE_ON_ANG_NUMBER,
+                        <ImportantText
+                          importantText={`${pathAng}`}
+                          importantTextStyles={ContinueScreenStyles.impTextContainer}
+                        />,
+                        Constants.HAVE_COMPLETED,
+                        <ImportantText
+                          importantText={`${pathPercentage}%`}
+                          importantTextStyles={ContinueScreenStyles.impTextContainer}
+                        />,
+                        Constants.SRI_SEHAJ_PATH,
+                      ]}
+                      simpleTextStyle={ContinueScreenStyles.textStyle}
+                    />
+                    <SimpleText
+                      simpleText={[
+                        Constants.STARTED_PATH,
+                        <ImportantText importantText={`${daysAgo} days `} />,
+                        Constants.AVERAGE_ABOUT,
+                        <ImportantText importantText={`${averageAngs} angs a day. `} />,
+                        Constants.COMPLETION_SEHAJ_PATH,
+                        <ImportantText importantText={`${finishDate} 🎯 .`} />,
+                      ]}
+                    />
+                  </>
+                )}
+                {tabs === 'streak' && (
+                  <>
+                    <View style={ContinueScreenStyles.streakContainer}>
+                      <View style={ContinueScreenStyles.streakValueContainer}>
+                        <SecondaryHeading
+                          text={streakValue}
+                          textStyles={ContinueScreenStyles.streakText}
+                        />
+                        <Text style={ContinueScreenStyles.lightningIcon}>⚡</Text>
+                      </View>
+                      <Text style={ContinueScreenStyles.streakTagLine}>Current Streak</Text>
+                    </View>
+                    <Calender pathId={pathId} streak={streak} onStreakUpdate={handleStreakUpdate} />
+                  </>
+                )}
               </>
             ) : (
               <>

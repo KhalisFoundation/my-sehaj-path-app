@@ -23,6 +23,21 @@ export const ContinueScreenStyles = StyleSheet.create({
     gap: 15,
     alignItems: 'center',
   },
+  tabsContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  tabActive: {
+    borderBottomWidth: 3,
+    borderBottomColor: '#11336A',
+    paddingBottom: 10,
+  },
+  tabText: {
+    fontFamily: font.Baloo_Paaji_2_Extra_Bold,
+    fontSize: 16,
+    color: '#11336A',
+  },
   sehajHeadingContainer: {
     flexDirection: 'row',
     marginTop: 30,
@@ -62,5 +77,31 @@ export const ContinueScreenStyles = StyleSheet.create({
   continueButton: {
     width: 'auto',
     alignSelf: 'flex-start',
+  },
+  streakContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  streakText: {
+    fontSize: 72,
+    fontFamily: font.Baloo_Paaji_2_Extra_Bold,
+  },
+  streakTagLine: {
+    fontSize: 14,
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    color: '#0D23464D',
+  },
+  lightningIcon: {
+    fontSize: 50,
+    color: '#FFD700',
+    position: 'relative',
+    right: 20,
+  },
+  streakValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
   },
 });

@@ -28,7 +28,7 @@ export const useLocal = () => {
     const pathFromLocalArray: PathData[] = pathFromLocal ? JSON.parse(pathFromLocal) : [];
     const pathDateData = await AsyncStorage.getItem('pathDateDetails');
     const pathDateDataArray: DateData[] = pathDateData ? JSON.parse(pathDateData) : [];
-    return { pathDataArray: pathFromLocalArray, pathDateDataArray };
+    return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
   };
 
   const handleNewPath = async () => {
@@ -69,7 +69,7 @@ export const useLocal = () => {
     const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
-      const cleanMatchedPathDates = matchedDate.dates.filter((date) => date.date !== todayDate);
+      const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
       const lastAngs =
         cleanMatchedPathDates && cleanMatchedPathDates.length > 0
           ? cleanMatchedPathDates[cleanMatchedPathDates.length - 1].angs
@@ -128,6 +128,15 @@ export const useLocal = () => {
     return larivaar === 'true';
   };
 
+  const saveAkhandPath = async (akhandPath: boolean) => {
+    await AsyncStorage.setItem('akhandPath', akhandPath.toString());
+  };
+
+  const fetchAkhandPath = async () => {
+    const akhandPath = await AsyncStorage.getItem('akhandPath');
+    return akhandPath === 'true';
+  };
+
   return {
     fetchFromLocal,
     handleNewPath,
@@ -137,5 +146,7 @@ export const useLocal = () => {
     saveLarivaar,
     fetchLarivaar,
     renamePath,
+    saveAkhandPath,
+    fetchAkhandPath,
   };
 };

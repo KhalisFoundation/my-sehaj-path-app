@@ -1,16 +1,14 @@
 import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import React, { useCallback, useState } from 'react';
-import { HomeScreenStyles } from '@styles';
-import { Constants } from '@constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../App';
-import { useLocal } from '../hooks/useLocal';
-import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '../components';
-import { StartIcon } from '../icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { SafeAreaStyle } from '@styles/SafeAreaStyle';
-import { PathData } from '../hooks/useLocal';
+import { RootStackParamList } from '../App';
+import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '../components';
+import { HomeScreenStyles, SafeAreaStyle } from '@styles/index';
+import { Constants } from '@constants';
+import { StartIcon } from '../icons';
+import { useLocal, PathData } from '../hooks/useLocal';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -25,7 +23,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
 
         setPathCompleted(
           pathDataArray.filter(
-            (path: PathData) => path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
+            (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
           )
         );
         setPathInProgress(
@@ -40,10 +38,10 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
 
   const handleStart = async () => {
     const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
-    setPathInProgress(pathDataArray.filter((path: PathData) => path.saveData.angNumber != 1430));
+    setPathInProgress(pathDataArray.filter((path: PathData) => path.saveData.angNumber !== 1430));
     setPathCompleted(
       pathDataArray.filter(
-        (path: PathData) => path.saveData.angNumber == 1430 && path.saveData.verseId == 60403
+        (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
       )
     );
     AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
