@@ -364,7 +364,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             onLayout={(e) => {
               setScrollViewHeight(e.nativeEvent.layout.height);
             }}
-            onContentSizeChange={(width, height) => {
+            onContentSizeChange={(_, height) => {
               setContentHeight(height);
             }}
             onScroll={(e) => {

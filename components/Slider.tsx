@@ -1,3 +1,4 @@
+/* eslint-disable react-native/no-inline-styles */
 import { View, FlatList, Animated, StyleProp, ViewStyle, useWindowDimensions } from 'react-native';
 import React, { useRef, useState } from 'react';
 import { SliderStyles } from '@styles';

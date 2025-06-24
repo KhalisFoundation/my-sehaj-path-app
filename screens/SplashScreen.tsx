@@ -21,7 +21,7 @@ export const SplashScreen = ({ navigation }: SplashProps) => {
         navigation.replace('Home');
       });
     }, 500);
-  }, []);
+  }, [fadeOut, navigation]);
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <Animated.View style={{ opacity: fadeOut }}>

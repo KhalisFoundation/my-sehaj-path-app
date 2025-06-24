@@ -45,7 +45,7 @@ export const useLocal = () => {
       saveData: { angNumber: 0, verseId: 0 },
       startDate: startNewPathDate,
       completionDate: '',
-      pathName: `Sample #${newPathid}`,
+      pathName: `Path #${newPathid}`,
     });
     pathDateDataArray.push({
       pathid: newPathid,

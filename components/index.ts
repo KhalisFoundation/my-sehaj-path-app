@@ -4,7 +4,6 @@ export { SecondaryHeading } from './SecondaryHeading';
 export { SimpleText } from './SimpleText';
 export { SimpleTextForPath } from './SimpleTextForPath';
 export { Slider } from './Slider';
-export { Streak } from './Streak';
 export { NavContent } from './NavContent';
 export { SecondaryCard } from './SecondaryCard';
 export { PrimaryCard } from './PrimaryCard';

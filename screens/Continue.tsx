@@ -20,16 +20,6 @@ import { useLocal, PathData } from '../hooks/useLocal';
 import { GoBackIcon, ContinueIcon } from '@icons';
 import { useInternet } from '../hooks/useInternet';
 import { Calender } from '@components/Calender';
-import { CalenderStyles } from '@styles/CalenderStyles';
-
-interface Date {
-  date: string;
-  angs: number;
-}
-interface PathDate {
-  pathid: number;
-  dates: Date[];
-}
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
@@ -37,7 +27,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
   const [pathData, setPathData] = useState<PathData>();
-  const [pathDate, setPathDate] = useState<PathDate>();
   const [pathAng, setPathAng] = useState<number>(0);
   const [pathPercentage, setPathPercentage] = useState<number>(0);
   const [daysAgo, setDaysAgo] = useState<number>(0);
@@ -69,15 +58,14 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setDaysAgo(today.format('D-MMMM-YYYY') === startDate.format('D-MMMM-YYYY') ? 0 : days);
     setAverageAngs(averageMatchedAngs === Infinity ? 0 : parseFloat(averageMatchedAngs.toFixed(2)));
   };
-  const fetchPath = async () => {
-    const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+  const fetchPath = useCallback(async () => {
+    const { pathDataArray } = await fetchFromLocal();
     const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
-    const matchedDates = pathDateDataArray.find((path: PathDate) => path.pathid === pathId);
-    setPathDate(matchedDates);
     setPathData(matchedPath);
-    return { matchedPath, matchedDates };
-  };
-  const updateTheData = async () => {
+    return { matchedPath };
+  }, [fetchFromLocal, pathId]);
+
+  const updateTheData = useCallback(async () => {
     const { matchedPath } = await fetchPath();
     if (matchedPath) {
       const show = matchedPath?.saveData.angNumber < 10 ? false : true;
@@ -89,12 +77,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       setPathPercentage(matchedPathPercentage);
       calculatePathCompletion(matchedPath);
     }
-  };
+  }, [fetchPath]);
 
   useFocusEffect(
     useCallback(() => {
       updateTheData();
-    }, [pathId])
+    }, [updateTheData])
   );
 
   const handleContinue = async () => {
@@ -106,7 +94,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   };
   useEffect(() => {
     updateOnlineStatus();
-  }, []);
+  }, [updateOnlineStatus]);
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>

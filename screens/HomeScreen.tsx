@@ -33,7 +33,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
         );
       };
       fetch();
-    }, [])
+    }, [fetchFromLocal])
   );
 
   const handleStart = async () => {
