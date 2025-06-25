@@ -95,7 +95,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
                       pathCompletionDate={path.completionDate}
                     />
                   ))}
-                  widthOfCard={0}
+                  widthOfCard={130}
                   dotsIndicator={false}
                 />
               </View>

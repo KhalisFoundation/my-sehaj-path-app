@@ -37,12 +37,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
   const [matchedPath, setMatchedPath] = useState<PathData>();
   const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
-  const [scrolledToSavedPath, setScrolledToSavedPath] = useState<boolean>(false);
-  const [isAkhandPath, setIsAkhandPath] = useState<boolean>(false);
-  const [control, setControl] = useState<boolean>(true);
-  const [contentHeight, setContentHeight] = useState<number>(0);
-  const [scrollViewHeight, setScrollViewHeight] = useState<number>(0);
-  const [isNearEnd, setIsNearEnd] = useState<boolean>(false);
+
+  const scrolledToSavedPath = useRef(false);
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
@@ -52,67 +48,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const { checkNetwork, isOnline } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAkhandPath } =
-    useLocal();
-
-  useFocusEffect(() => {
-    const fetchAkhandPathData = async () => {
-      const akhandPath = await fetchAkhandPath();
-      setIsAkhandPath(akhandPath || false);
-      setControl(!akhandPath);
-    };
-    fetchAkhandPathData();
-  });
-  const fetchAkhandPathData = async (angNumber: number) => {
-    setPathAng(angNumber);
-    setPathPunjabiAng(
-      angNumber
-        ?.toString()
-        .split('')
-        .map((num: string) => PunjabiNumbers[num])
-        .join('') || '0'
-    );
-    const pathFromBaniDB = await BaniDB(angNumber);
-    setPathContent((prev: any) => ({
-      ...prev,
-      page: [...prev.page, ...pathFromBaniDB.page],
-    }));
-  };
-
-  const checkIfNearEnd = useCallback(
-    (scrollY: number) => {
-      if (!isAkhandPath) {
-        return;
-      }
-
-      const threshold = 20;
-      const isNearBottom = scrollY + scrollViewHeight >= contentHeight - threshold;
-
-      if (isNearBottom && !isNearEnd) {
-        setIsNearEnd(true);
-        setTimeout(() => {
-          if (pathContent?.source?.pageNo && pathContent.source.pageNo < 1430) {
-            checkNetwork();
-            if (!isOnline) {
-              return;
-            }
-            fetchAkhandPathData(pathAng + 1);
-          }
-        }, 300);
-      } else if (!isNearBottom && isNearEnd) {
-        setIsNearEnd(false);
-      }
-    },
-    [
-      isAkhandPath,
-      contentHeight,
-      scrollViewHeight,
-      isNearEnd,
-      pathContent?.source?.pageNo,
-      checkNetwork,
-      isOnline,
-    ]
-  );
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } = useLocal();
 
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
@@ -154,7 +90,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           y: scorllOffset.current,
           animated: true,
         });
-        setScrolledToSavedPath(true);
+        scrolledToSavedPath.current = true;
       }
       setTimeout(() => {
         setFound(false);
@@ -169,7 +105,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         });
       }, 2000);
     }
-    if (matchedPathDate && !scrolledToSavedPath) {
+    if (matchedPathDate && !scrolledToSavedPath.current) {
       const scrollY = matchedPathDate.scrollPosition;
       scorllOffset.current = scrollY;
       scrollRef.current?.scrollTo({
@@ -330,26 +266,24 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
-        {control ? (
-          <View style={PathScreenStyles.navContainer}>
-            <NavContent
-              navIcon={<LeftArrowIcon />}
-              onPress={() => {
-                handleLeftArrow(pathContent?.source?.pageNo);
-              }}
-            />
-            <NavContent text={pathPujabiAng} />
-            <NavContent
-              navIcon={<RightArrowIcon />}
-              onPress={() => {
-                handleRightArrow(pathContent?.source?.pageNo);
-              }}
-            />
-          </View>
-        ) : null}
+        <View style={PathScreenStyles.navContainer}>
+          <NavContent
+            navIcon={<LeftArrowIcon />}
+            onPress={() => {
+              handleLeftArrow(pathContent?.source?.pageNo);
+            }}
+          />
+          <NavContent text={pathPujabiAng} />
+          <NavContent
+            navIcon={<RightArrowIcon />}
+            onPress={() => {
+              handleRightArrow(pathContent?.source?.pageNo);
+            }}
+          />
+        </View>
         <GestureRecognizer
-          onSwipeLeft={() => !isAkhandPath && handleRightArrow(pathContent?.source?.pageNo)}
-          onSwipeRight={() => !isAkhandPath && handleLeftArrow(pathContent?.source?.pageNo)}
+          onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
+          onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
           onSwipeDown={() => undefined}
           onSwipeUp={() => undefined}
           config={{
@@ -361,17 +295,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           <ScrollView
             contentContainerStyle={PathScreenStyles.pathContentContainer}
             ref={scrollRef}
-            onLayout={(e) => {
-              setScrollViewHeight(e.nativeEvent.layout.height);
-            }}
-            onContentSizeChange={(_, height) => {
-              setContentHeight(height);
-            }}
             onScroll={(e) => {
               const scrollY = e.nativeEvent.contentOffset.y;
               scorllOffset.current = scrollY;
               debouncedScrollSave();
-              checkIfNearEnd(scrollY);
             }}
             onTouchStart={() => handleStopAutoScroll()}
             scrollEventThrottle={16}
@@ -390,7 +317,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
                   onSave={() =>
                     handleUpdatePath(
                       route.params.pathId || 1,
-                      pathAng,
+                      path.pageNo,
                       path.verseId,
                       scorllOffset.current,
                       setIsSaved

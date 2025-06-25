@@ -22,6 +22,7 @@ export interface FontSizeData {
   fontSize: string;
   number: number;
 }
+
 export const useLocal = () => {
   const fetchFromLocal = async () => {
     const pathFromLocal = await AsyncStorage.getItem('pathDetails');
@@ -92,7 +93,7 @@ export const useLocal = () => {
         dates: updatedDates,
         scrollPosition: scrollPosition,
       });
-      if (angNumber === 1430) {
+      if (angNumber === 1430 && verseId === 60403) {
         matchedPath.completionDate = todayDate;
       }
       await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
@@ -134,15 +135,6 @@ export const useLocal = () => {
     return larivaar === 'true';
   };
 
-  const saveAkhandPath = async (akhandPath: boolean) => {
-    await AsyncStorage.setItem('akhandPath', akhandPath.toString());
-  };
-
-  const fetchAkhandPath = async () => {
-    const akhandPath = await AsyncStorage.getItem('akhandPath');
-    return akhandPath === 'true';
-  };
-
   return {
     fetchFromLocal,
     handleNewPath,
@@ -152,7 +144,5 @@ export const useLocal = () => {
     saveLarivaar,
     fetchLarivaar,
     renamePath,
-    saveAkhandPath,
-    fetchAkhandPath,
   };
 };
