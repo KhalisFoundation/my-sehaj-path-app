@@ -9,7 +9,7 @@ import { BaniDB } from '@utils/BaniDB';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import { PunjabiNumbers } from '@constants';
 import { RootStackParamList } from '../App';
-import { DateData, PathData, useLocal } from '../hooks/useLocal';
+import { AngsFormat, DateData, PathData, useLocal } from '../hooks/useLocal';
 import { NavContent, SimpleTextForPath } from '@components';
 import {
   HomeIcon,
@@ -37,7 +37,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
   const [matchedPath, setMatchedPath] = useState<PathData>();
   const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
-
+  const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
   const scrolledToSavedPath = useRef(false);
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
@@ -48,7 +48,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const { checkNetwork, isOnline } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize } = useLocal();
+  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
+    useLocal();
 
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
@@ -136,13 +137,17 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
         setSavedPathVerseId(matchedPathData.saveData.verseId);
         setPathAng(pathAngData);
-        setPathPunjabiAng(
-          pathAngData
-            ?.toString()
-            .split('')
-            .map((num: string) => PunjabiNumbers[num])
-            .join('') || '0'
-        );
+        if (angsFormat.format === 'Punjabi') {
+          setPathPunjabiAng(
+            pathAngData
+              ?.toString()
+              .split('')
+              .map((num: string) => PunjabiNumbers[num])
+              .join('') || '0'
+          );
+        } else {
+          setPathPunjabiAng(pathAngData?.toString() || '0');
+        }
         await fetchFromBaniDB(pathAngData);
       }
     };
@@ -166,13 +171,17 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
     fetchFromBaniDB(pageNo + 1);
     setPathAng(pageNo + 1);
-    setPathPunjabiAng(
-      (pageNo + 1)
-        ?.toString()
-        .split('')
-        .map((num: string) => PunjabiNumbers[num])
-        .join('') || '0'
-    );
+    if (angsFormat.format === 'Punjabi') {
+      setPathPunjabiAng(
+        (pageNo + 1)
+          ?.toString()
+          .split('')
+          .map((num: string) => PunjabiNumbers[num])
+          .join('') || '0'
+      );
+    } else {
+      setPathPunjabiAng((pageNo + 1)?.toString() || '0');
+    }
   };
   const handleLeftArrow = (pageNo: number) => {
     checkNetwork();
@@ -189,13 +198,17 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       animated: true,
     });
     setPathAng(pageNo - 1);
-    setPathPunjabiAng(
-      (pageNo - 1)
-        ?.toString()
-        .split('')
-        .map((num: string) => PunjabiNumbers[num])
-        .join('') || '0'
-    );
+    if (angsFormat.format === 'Punjabi') {
+      setPathPunjabiAng(
+        (pageNo - 1)
+          ?.toString()
+          .split('')
+          .map((num: string) => PunjabiNumbers[num])
+          .join('') || '0'
+      );
+    } else {
+      setPathPunjabiAng((pageNo - 1)?.toString() || '0');
+    }
 
     fetchFromBaniDB(pageNo - 1);
   };
@@ -263,6 +276,24 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     checkNetwork();
   }, []);
 
+  useFocusEffect(() => {
+    const fetchAngsFormatData = async () => {
+      const format = await fetchAngsFormat();
+      setAngsFormat(format);
+      if (format.format === 'Punjabi') {
+        setPathPunjabiAng(
+          pathAng
+            .toString()
+            .split('')
+            .map((num: string) => PunjabiNumbers[num])
+            .join('') || '0'
+        );
+      } else {
+        setPathPunjabiAng(pathAng.toString() || '0');
+      }
+    };
+    fetchAngsFormatData();
+  });
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>

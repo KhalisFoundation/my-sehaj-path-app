@@ -22,7 +22,9 @@ export interface FontSizeData {
   fontSize: string;
   number: number;
 }
-
+export interface AngsFormat {
+  format: string;
+}
 export const useLocal = () => {
   const fetchFromLocal = async () => {
     const pathFromLocal = await AsyncStorage.getItem('pathDetails');
@@ -135,6 +137,15 @@ export const useLocal = () => {
     return larivaar === 'true';
   };
 
+  const saveAngsFormat = async (angsFormat: AngsFormat) => {
+    await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
+  };
+
+  const fetchAngsFormat = async () => {
+    const angsFormat = await AsyncStorage.getItem('angsFormat');
+    return angsFormat ? JSON.parse(angsFormat) : { format: 'Punjabi' };
+  };
+
   return {
     fetchFromLocal,
     handleNewPath,
@@ -144,5 +155,7 @@ export const useLocal = () => {
     saveLarivaar,
     fetchLarivaar,
     renamePath,
+    saveAngsFormat,
+    fetchAngsFormat,
   };
 };

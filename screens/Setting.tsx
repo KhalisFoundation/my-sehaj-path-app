@@ -4,7 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../App';
 import { GoBackIcon } from '@icons';
 import { SettingScreenStyle } from '@styles';
-import { NavContent, SimpleText, FontSize, Larivaar } from '@components';
+import { NavContent, SimpleText, FontSize, Larivaar, Angs } from '@components';
 import { SafeAreaStyle } from '@styles/SafeAreaStyle';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
@@ -23,6 +23,7 @@ export const Settings = ({ navigation }: SettingProps) => {
               <SimpleText simpleText={'Display Options'} />
             </View>
             <FontSize />
+            <Angs />
           </View>
           <View>
             <View>
