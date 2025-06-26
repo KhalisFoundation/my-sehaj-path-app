@@ -1,6 +1,15 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  Animated,
+  TouchableOpacity,
+  Alert,
+  BackHandler,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,6 +30,7 @@ import {
   RightArrowIcon,
 } from '../icons';
 import { useInternet } from '../hooks/useInternet';
+import { AngsNavigation } from '@components/AngsNavigation';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -38,6 +48,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [matchedPath, setMatchedPath] = useState<PathData>();
   const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
+  const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
+  const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
+  const [angNavigationNumber, setAngNavigationNumber] = useState<number>(0);
   const scrolledToSavedPath = useRef(false);
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
@@ -67,7 +80,17 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   }, [handleUpdatePath]);
 
   const scrollToSavedPathData = async () => {
-    if (pathContent) {
+    if (matchedPathDate && !scrolledToSavedPath.current) {
+      const scrollY = matchedPathDate.scrollPosition;
+      scorllOffset.current = scrollY;
+      scrollRef.current?.scrollTo({
+        y: scorllOffset.current,
+        animated: true,
+      });
+
+      scrolledToSavedPath.current = true;
+    }
+    if (pathContent && !scrolledToSavedPath.current) {
       const scrollIndex = pathContent?.page?.findIndex(
         (page: any) => page.verseId === savedPathVerseId
       );
@@ -106,14 +129,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         });
       }, 2000);
     }
-    if (matchedPathDate && !scrolledToSavedPath.current) {
-      const scrollY = matchedPathDate.scrollPosition;
-      scorllOffset.current = scrollY;
-      scrollRef.current?.scrollTo({
-        y: scorllOffset.current,
-        animated: true,
-      });
-    }
   };
   const fetchFromBaniDB = async (angNumber: number) => {
     aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
@@ -123,7 +138,91 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       navigation.replace('Error');
     }
     aleartIndicator.current = undefined;
+
+    const currentDebounceTimer = debounceTimer.current;
+    if (currentDebounceTimer) {
+      clearTimeout(currentDebounceTimer);
+      debounceTimer.current = null;
+    }
+
+    scorllOffset.current = 0;
+    scrollRef.current?.scrollTo({
+      y: 0,
+      animated: false,
+    });
   };
+  const updatePathAng = (angNumber: number) => {
+    setPathAng(angNumber);
+    if (angsFormat.format === 'Punjabi') {
+      setPathPunjabiAng(
+        angNumber
+          .toString()
+          .split('')
+          .map((num: string) => PunjabiNumbers[num])
+          .join('') || '0'
+      );
+    } else {
+      setPathPunjabiAng(angNumber.toString() || '0');
+    }
+  };
+
+  const handleGoBack = useCallback(async () => {
+    if (isAngNavigation) {
+      const { pathDataArray } = await fetchFromLocal();
+      const currentMatchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
+      const lastSavedAngNumber = currentMatchedPath?.saveData.angNumber || 0;
+
+      if (pathAng !== lastSavedAngNumber) {
+        Alert.alert(
+          'Save Progress?',
+          'You have navigated to a different ang. Do you want to save your current progress or go back without saving?',
+          [
+            {
+              text: 'Save & Go Back',
+              onPress: () => {
+                handleUpdatePath(
+                  route.params.pathId,
+                  pathAng,
+                  savedPathVerseId,
+                  scorllOffset.current,
+                  setIsSaved
+                );
+                setIsAngNavigation(false);
+                navigation.push('Home');
+              },
+            },
+            {
+              text: 'Go Back Without Saving',
+              onPress: () => {
+                updatePathAng(lastSavedAngNumber);
+                navigation.push('Home');
+              },
+              style: 'destructive',
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel',
+            },
+          ]
+        );
+      } else {
+        navigation.push('Home');
+      }
+    } else {
+      navigation.push('Home');
+    }
+  }, [
+    isAngNavigation,
+    pathAng,
+    handleUpdatePath,
+    route.params.pathId,
+    savedPathVerseId,
+    setIsSaved,
+    setIsAngNavigation,
+    navigation,
+    updatePathAng,
+    fetchFromLocal,
+  ]);
 
   useEffect(() => {
     const fetchPath = async () => {
@@ -137,6 +236,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
         setSavedPathVerseId(matchedPathData.saveData.verseId);
         setPathAng(pathAngData);
+        setAngNavigationNumber(pathAngData);
         if (angsFormat.format === 'Punjabi') {
           setPathPunjabiAng(
             pathAngData
@@ -171,6 +271,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
     fetchFromBaniDB(pageNo + 1);
     setPathAng(pageNo + 1);
+    setAngNavigationNumber(pageNo + 1);
     if (angsFormat.format === 'Punjabi') {
       setPathPunjabiAng(
         (pageNo + 1)
@@ -198,6 +299,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       animated: true,
     });
     setPathAng(pageNo - 1);
+    setAngNavigationNumber(pageNo - 1);
     if (angsFormat.format === 'Punjabi') {
       setPathPunjabiAng(
         (pageNo - 1)
@@ -294,6 +396,20 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     };
     fetchAngsFormatData();
   });
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleGoBack();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [handleGoBack])
+  );
+
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
@@ -304,7 +420,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               handleLeftArrow(pathContent?.source?.pageNo);
             }}
           />
-          <NavContent text={pathPujabiAng} />
+          <TouchableOpacity onPress={() => setIsAngsNavigationVisible(true)}>
+            <NavContent text={pathPujabiAng} />
+          </TouchableOpacity>
           <NavContent
             navIcon={<RightArrowIcon />}
             onPress={() => {
@@ -329,7 +447,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             onScroll={(e) => {
               const scrollY = e.nativeEvent.contentOffset.y;
               scorllOffset.current = scrollY;
-              debouncedScrollSave();
+              if (!isAngNavigation) {
+                debouncedScrollSave();
+              }
             }}
             onTouchStart={() => handleStopAutoScroll()}
             scrollEventThrottle={16}
@@ -377,7 +497,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
         {!isSaving && !found ? (
           <View style={PathScreenStyles.navigationContainer}>
-            <NavContent navIcon={<HomeIcon />} onPress={() => navigation.push('Home')} />
+            <NavContent navIcon={<HomeIcon />} onPress={() => handleGoBack()} />
             <NavContent
               navIcon={<SaveIcon />}
               onPress={() => {
@@ -407,6 +527,19 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               Last saved panktee founded!
             </Text>
           </Animated.View>
+        )}
+        {isAngsNavigationVisible && (
+          <AngsNavigation
+            setIsAngsNavigationVisible={setIsAngsNavigationVisible}
+            handleRightArrow={() => handleRightArrow(pathAng)}
+            handleLeftArrow={() => handleLeftArrow(pathAng)}
+            angNavigationNumber={angNavigationNumber}
+            setAngNavigationNumber={setAngNavigationNumber}
+            isAngNavigation={isAngNavigation}
+            setIsAngNavigation={setIsAngNavigation}
+            fetchAngData={fetchFromBaniDB}
+            updatePathAng={updatePathAng}
+          />
         )}
       </View>
     </SafeAreaView>
