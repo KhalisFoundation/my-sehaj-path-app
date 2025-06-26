@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { CalenderStyles } from '@styles/CalenderStyles';
 import { LeftArrowIcon, RightArrowIcon } from '../icons';
 import { CalenderDays } from '@constants/CalenderConstants';
@@ -128,7 +128,12 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
     return (
       <View key={dateIndex} style={containerStyle}>
         <Text style={textStyle}>{date}</Text>
-        {showLightning && <Text style={CalenderStyles.lightningIcon}>⚡</Text>}
+        {showLightning && (
+          <Image
+            source={require('@assets/Images/Streak.png')}
+            style={CalenderStyles.lightningIcon}
+          />
+        )}
       </View>
     );
   };
@@ -156,7 +161,7 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
 
       <View style={CalenderStyles.calenderDays}>
         {Object.keys(CalenderDays).map((day, index) => (
-          <Text key={index} style={CalenderStyles.calenderDay}>
+          <Text key={index} style={CalenderStyles.calenderDay} allowFontScaling={false}>
             {CalenderDays[day]}
           </Text>
         ))}

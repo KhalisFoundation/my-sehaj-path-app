@@ -8,6 +8,7 @@ export const SliderStyles = StyleSheet.create({
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: 8,
     marginTop: 26,
     flexWrap: 'wrap',

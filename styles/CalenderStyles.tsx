@@ -2,8 +2,8 @@ import font from '@utils/font';
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 
 const dateCellBase: ViewStyle = {
-  height: 24,
-  width: 24,
+  minHeight: 24,
+  minWidth: 24,
   borderRadius: 3,
   justifyContent: 'center',
   alignItems: 'center',
@@ -69,6 +69,14 @@ export const CalenderStyles = StyleSheet.create({
   progressDate: {
     ...dateCellBase,
     backgroundColor: '#418A39',
+    shadowColor: '#EEEFAD4D',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   emptyProgressDate: {
     ...dateCellBase,
@@ -83,8 +91,8 @@ export const CalenderStyles = StyleSheet.create({
     color: 'white',
   },
   lightningIcon: {
-    fontSize: 10,
-    color: '#FFD700',
+    width: 13,
+    height: 13,
     position: 'absolute',
     right: 0,
     bottom: 0,

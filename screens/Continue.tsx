@@ -1,4 +1,4 @@
-import { View, ScrollView, ImageBackground, Text, Pressable } from 'react-native';
+import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -109,9 +109,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           <View style={ContinueScreenStyles.container}>
             <Pressable
               style={ContinueScreenStyles.navContainer}
-              onPress={() => navigation.push('Home')}
+              onPress={() => navigation.replace('Home')}
             >
-              <NavContent navIcon={<GoBackIcon />} />
+              <NavContent navIcon={<GoBackIcon />} onPress={() => navigation.replace('Home')} />
               <NavContent text={Constants.SEE_ALL_PATH} />
             </Pressable>
             <View style={ContinueScreenStyles.tabsContainer}>
@@ -189,7 +189,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                           text={streakValue}
                           textStyles={ContinueScreenStyles.streakText}
                         />
-                        <Text style={ContinueScreenStyles.lightningIcon}>⚡</Text>
+                        <Image
+                          source={require('@assets/Images/Streak.png')}
+                          style={ContinueScreenStyles.streakIcon}
+                        />
                       </View>
                       <Text style={ContinueScreenStyles.streakTagLine}>Current Streak</Text>
                     </View>

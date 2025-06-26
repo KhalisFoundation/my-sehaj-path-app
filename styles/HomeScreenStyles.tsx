@@ -21,8 +21,12 @@ export const HomeScreenStyles = StyleSheet.create({
 
   pathInProgressContianer: {
     marginTop: 41,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   pathCompletedContainer: {
     marginTop: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

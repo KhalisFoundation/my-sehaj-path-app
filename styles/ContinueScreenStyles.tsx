@@ -104,4 +104,18 @@ export const ContinueScreenStyles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
   },
+  streakIcon: {
+    width: 72,
+    height: 72,
+    position: 'relative',
+    right: 20,
+    shadowColor: '#EEEFAD4D',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
 });
