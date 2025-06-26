@@ -1,10 +1,8 @@
 import { View, Text, TouchableOpacity, TextInput, Pressable } from 'react-native';
 import React, { useState } from 'react';
-import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { BlurView } from '@react-native-community/blur';
-import { CrossIcon } from '@icons/Cross.icon';
-import { LeftArrowIcon } from '@icons/LeftArrow.icon';
-import { RightArrowIcon } from '@icons/RightArrow.icon';
+import { AngsNavigationStyle } from '@styles/AngsNavigation';
+import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
 
 interface Props {
   setIsAngsNavigationVisible: (isAngsNavigationVisible: boolean) => void;
