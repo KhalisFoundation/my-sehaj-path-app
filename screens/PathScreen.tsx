@@ -220,7 +220,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setIsSaved,
     setIsAngNavigation,
     navigation,
-    updatePathAng,
     fetchFromLocal,
   ]);
 
