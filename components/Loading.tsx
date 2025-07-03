@@ -1,6 +1,6 @@
 import { View, Text } from 'react-native';
 import React from 'react';
-import { PathScreenStyles } from '@styles/PathScreenStyles';
+import { LoadingStyles } from '@styles/LoadingStyles';
 
 interface Props {
   alertIndicator: React.ReactNode;
@@ -8,9 +8,9 @@ interface Props {
 }
 export const Loading = ({ alertIndicator, alertText }: Props) => {
   return (
-    <View style={PathScreenStyles.alertContainer}>
+    <View style={LoadingStyles.alertContainer}>
       {alertIndicator}
-      <Text style={PathScreenStyles.alertText}>{alertText}</Text>
+      <Text style={LoadingStyles.alertText}>{alertText}</Text>
     </View>
   );
 };

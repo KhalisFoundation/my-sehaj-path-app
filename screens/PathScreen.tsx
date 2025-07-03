@@ -37,6 +37,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [angNavigationNumber, setAngNavigationNumber] = useState<number>(0);
+  const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const scrolledToSavedPath = useRef(false);
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
@@ -241,7 +242,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     fetchPath();
   }, []);
 
-  const handleRightArrow = (pageNo: number) => {
+  const handleRightArrow = async (pageNo: number) => {
+    if (isNavigating) {
+      return;
+    }
     checkNetwork();
     if (!isOnline) {
       return;
@@ -249,6 +253,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     if (pageNo >= 1430) {
       return;
     }
+    setIsNavigating(true);
     setIsSaving(false);
     scorllOffset.current = 0;
     scrollRef.current?.scrollTo({
@@ -256,8 +261,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       animated: true,
     });
 
-    fetchFromBaniDB(pageNo + 1);
-    setPathAng(pageNo + 1);
+    await fetchFromBaniDB(pageNo + 1).finally(() => {
+      setIsNavigating(false);
+    });
     setAngNavigationNumber(pageNo + 1);
     if (angsFormat.format === 'Punjabi') {
       setPathPunjabiAng(
@@ -270,8 +276,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     } else {
       setPathPunjabiAng((pageNo + 1)?.toString() || '0');
     }
+    setPathAng(pageNo + 1);
   };
-  const handleLeftArrow = (pageNo: number) => {
+  const handleLeftArrow = async (pageNo: number) => {
+    if (isNavigating) {
+      return;
+    }
     checkNetwork();
     if (!isOnline) {
       return;
@@ -279,13 +289,16 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     if (pageNo <= 1) {
       return;
     }
+    setIsNavigating(true);
     setIsSaving(false);
     scorllOffset.current = 0;
     scrollRef.current?.scrollTo({
       y: 0,
       animated: true,
     });
-    setPathAng(pageNo - 1);
+    await fetchFromBaniDB(pageNo - 1).finally(() => {
+      setIsNavigating(false);
+    });
     setAngNavigationNumber(pageNo - 1);
     if (angsFormat.format === 'Punjabi') {
       setPathPunjabiAng(
@@ -298,8 +311,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     } else {
       setPathPunjabiAng((pageNo - 1)?.toString() || '0');
     }
-
-    fetchFromBaniDB(pageNo - 1);
+    setPathAng(pageNo - 1);
   };
 
   const handleAutoScroll = () => {
@@ -422,13 +434,15 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
-        <PathNavigation
-          pathPujabiAng={pathPujabiAng}
-          pathContent={pathContent}
-          handleLeftArrow={handleLeftArrow}
-          handleRightArrow={handleRightArrow}
-          setIsAngsNavigationVisible={setIsAngsNavigationVisible}
-        />
+        <View style={PathScreenStyles.navContainer}>
+          <PathNavigation
+            pathPujabiAng={pathPujabiAng}
+            pathAng={pathAng}
+            handleLeftArrow={handleLeftArrow}
+            handleRightArrow={handleRightArrow}
+            setIsAngsNavigationVisible={setIsAngsNavigationVisible}
+          />
+        </View>
         <PathReader
           pathContent={pathContent}
           isLarivaar={isLarivaar}
