@@ -20,6 +20,7 @@ import { RootStackParamList } from '../App';
 import { GoBackIcon, ContinueIcon } from '@icons';
 import { useLocal, PathData } from '../hooks/useLocal';
 import { useInternet } from '../hooks/useInternet';
+import { showErrorAlert } from '@utils/Error';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
@@ -58,24 +59,36 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setDaysAgo(today.format('D-MMMM-YYYY') === startDate.format('D-MMMM-YYYY') ? 0 : days);
     setAverageAngs(averageMatchedAngs === Infinity ? 0 : parseFloat(averageMatchedAngs.toFixed(2)));
   };
+
   const fetchPath = useCallback(async () => {
-    const { pathDataArray } = await fetchFromLocal();
-    const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
-    setPathData(matchedPath);
-    return { matchedPath };
+    try {
+      const { pathDataArray } = await fetchFromLocal();
+      const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
+      setPathData(matchedPath);
+      return { matchedPath };
+    } catch (error) {
+      console.error('Error fetching path data:', error);
+      showErrorAlert('Failed to load your Sehaj Path data.');
+      return { matchedPath: undefined };
+    }
   }, [fetchFromLocal, pathId]);
 
   const updateTheData = useCallback(async () => {
-    const { matchedPath } = await fetchPath();
-    if (matchedPath) {
-      const show = matchedPath?.saveData.angNumber < 10 ? false : true;
-      setShowData(show);
-      setPathAng(matchedPath?.saveData.angNumber || 0);
-      const matchedPathPercentage = parseFloat(
-        (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
-      );
-      setPathPercentage(matchedPathPercentage);
-      calculatePathCompletion(matchedPath);
+    try {
+      const { matchedPath } = await fetchPath();
+      if (matchedPath) {
+        const show = matchedPath?.saveData.angNumber < 10 ? false : true;
+        setShowData(show);
+        setPathAng(matchedPath?.saveData.angNumber || 0);
+        const matchedPathPercentage = parseFloat(
+          (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
+        );
+        setPathPercentage(matchedPathPercentage);
+        calculatePathCompletion(matchedPath);
+      }
+    } catch (error) {
+      console.error('Error updating path data:', error);
+      showErrorAlert('Failed to update your Sehaj Path data.');
     }
   }, [fetchPath]);
 
@@ -86,14 +99,24 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   );
 
   const handleContinue = async () => {
-    await checkNetwork();
-    if (!isOnline) {
-      return;
+    try {
+      await checkNetwork();
+      if (!isOnline) {
+        return;
+      }
+      navigation.push('Path', { pathId: pathId });
+    } catch (error) {
+      console.error('Error checking network:', error);
+      showErrorAlert('Failed to check network connection.');
     }
-    navigation.push('Path', { pathId: pathId });
   };
+
   useEffect(() => {
-    updateOnlineStatus();
+    try {
+      updateOnlineStatus();
+    } catch (error) {
+      console.error('Error updating online status:', error);
+    }
   }, [updateOnlineStatus]);
 
   return (
@@ -110,6 +133,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             <Pressable
               style={ContinueScreenStyles.navContainer}
               onPress={() => navigation.replace('Home')}
+              accessibilityLabel="Back to home"
+              accessibilityRole="button"
+              accessibilityHint="Tap to go back to home screen"
             >
               <NavContent navIcon={<GoBackIcon />} onPress={() => navigation.replace('Home')} />
               <NavContent text={Constants.SEE_ALL_PATH} />
@@ -119,6 +145,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                 style={tabs === 'progress' ? ContinueScreenStyles.tabActive : null}
                 onPress={() => setTabs('progress')}
                 onLongPress={() => setTabs('progress')}
+                accessibilityLabel="Progress tab"
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tabs === 'progress' }}
+                accessibilityHint="Tap to view progress information"
               >
                 <Text style={ContinueScreenStyles.tabText}>Progress</Text>
               </Pressable>
@@ -126,6 +156,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                 style={tabs === 'streak' ? ContinueScreenStyles.tabActive : null}
                 onPress={() => setTabs('streak')}
                 onLongPress={() => setTabs('streak')}
+                accessibilityLabel="Streak tab"
+                accessibilityRole="tab"
+                accessibilityState={{ selected: tabs === 'streak' }}
+                accessibilityHint="Tap to view streak information"
               >
                 <Text style={ContinueScreenStyles.tabText}>Streak</Text>
               </Pressable>
@@ -136,6 +170,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   style={ContinueScreenStyles.sehajHeadingContainer}
                   onPress={() => setShowPathRename(true)}
                   onLongPress={() => setShowPathRename(true)}
+                  accessibilityLabel={`Path name: ${pathName || pathData?.pathName}`}
+                  accessibilityRole="button"
+                  accessibilityHint="Tap to rename this path"
                 >
                   <SecondaryHeading
                     text={pathName || pathData?.pathName}

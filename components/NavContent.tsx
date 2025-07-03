@@ -13,7 +13,14 @@ export const NavContent = ({ text, navIcon, onPress }: Props) => {
       {text ? (
         <Text style={NavContentStyles.navText}>{text}</Text>
       ) : (
-        <TouchableOpacity onPress={onPress}>{navIcon}</TouchableOpacity>
+        <TouchableOpacity
+          onPress={onPress}
+          accessibilityLabel="Navigation button"
+          accessibilityRole="button"
+          accessibilityHint="Tap to navigate"
+        >
+          {navIcon}
+        </TouchableOpacity>
       )}
     </View>
   );

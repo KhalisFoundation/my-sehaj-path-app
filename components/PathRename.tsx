@@ -7,8 +7,8 @@ import { CrossIcon } from '@icons';
 
 interface Props {
   pathId: number;
-  setPathRename: any;
-  setPathName: any;
+  setPathRename: (value: boolean) => void;
+  setPathName: (value: string) => void;
 }
 
 export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
@@ -30,7 +30,13 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
     >
       <View style={PathRenameStyle.overlayContainer}>
         <View style={PathRenameStyle.renameContainer}>
-          <Pressable style={PathRenameStyle.crossIcon} onPress={() => setPathRename(false)}>
+          <Pressable
+            style={PathRenameStyle.crossIcon}
+            onPress={() => setPathRename(false)}
+            accessibilityLabel="Close rename dialog"
+            accessibilityRole="button"
+            accessibilityHint="Tap to close without saving changes"
+          >
             <CrossIcon />
           </Pressable>
           <Text style={PathRenameStyle.renameText}>Rename Your Path:</Text>
@@ -41,8 +47,16 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
             autoFocus={false}
             value={newName}
             onChangeText={setNewName}
+            accessibilityLabel="Path name input field"
+            accessibilityHint="Enter a new name for your Sehaj Path"
           />
-          <TouchableOpacity style={PathRenameStyle.updateButton} onPress={handleRename}>
+          <TouchableOpacity
+            style={PathRenameStyle.updateButton}
+            onPress={handleRename}
+            accessibilityLabel="Update path name"
+            accessibilityRole="button"
+            accessibilityHint="Tap to save the new path name"
+          >
             <Text style={PathRenameStyle.buttonText}>Update</Text>
           </TouchableOpacity>
         </View>

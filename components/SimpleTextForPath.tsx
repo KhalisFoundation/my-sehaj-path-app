@@ -59,13 +59,16 @@ export const SimpleTextForPath = ({
     onSave();
   };
 
+  const isSelected = verseId === savedPathVerseId || (isSaving && pressIndex === index);
+  const accessibilityLabel = `Gurbani line ${index + 1}${isSelected ? ', selected' : ''}`;
+
   return (
     <Pressable
       onPress={onSelection}
-      style={
-        (verseId === savedPathVerseId || (isSaving && pressIndex === index)) &&
-        SimpleTextForPathStyles.coloredContainer
-      }
+      style={isSelected && SimpleTextForPathStyles.coloredContainer}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      accessibilityHint="Tap to select, long press to save this line"
     >
       <Text
         style={{

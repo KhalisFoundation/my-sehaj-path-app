@@ -13,3 +13,5 @@ export { Headline } from './Headline';
 export { Larivaar, FontSize, Angs } from './Settings';
 export { PathRename } from './PathRename';
 export { Calender } from './Calender';
+export { PathReader } from './PathReader';
+export { PathNavigation } from './PathNavigation';

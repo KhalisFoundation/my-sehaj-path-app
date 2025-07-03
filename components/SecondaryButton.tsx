@@ -16,6 +16,9 @@ export const SecondaryButton = ({ onPress, buttonIcon, buttonText, buttonStyle }
       onPress={() => {
         onPress();
       }}
+      accessibilityLabel={buttonText}
+      accessibilityRole="button"
+      accessibilityHint={`Tap to ${buttonText.toLowerCase()}`}
     >
       <LinearGradient
         colors={['rgba(17, 51, 106, 1)', 'rgba(13, 35, 70, 1)']}

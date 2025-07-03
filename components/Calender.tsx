@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { CalenderStyles } from '@styles/CalenderStyles';
 import { LeftArrowIcon, RightArrowIcon } from '../icons';
@@ -44,6 +44,14 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
     return maxStreak;
   };
 
+  const currentStreak = useMemo(() => {
+    if (!progressDates?.dates) {
+      return 0;
+    }
+    const dateStrings = progressDates.dates.map((d) => d.date);
+    return calculateStreak(dateStrings);
+  }, [progressDates]);
+
   useEffect(() => {
     const daysInMonth = currentMonth.daysInMonth();
     const firstDayOfMonth = currentMonth.startOf('month').day();
@@ -66,16 +74,19 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
       const pathDateData = pathDateDataArray.find((path) => path.pathid === pathId);
       if (pathDateData) {
         setProgressDates(pathDateData);
-        const dateStrings = pathDateData.dates.map((d) => d.date);
-        const currentStreak = calculateStreak(dateStrings);
-        streak.current = currentStreak;
-        if (onStreakUpdate) {
-          onStreakUpdate(currentStreak);
-        }
       }
     };
     fetchProgressDates();
-  }, [fetchFromLocal, pathId, streak, onStreakUpdate]);
+  }, [fetchFromLocal, pathId]);
+
+  useEffect(() => {
+    if (currentStreak !== undefined) {
+      streak.current = currentStreak;
+      if (onStreakUpdate) {
+        onStreakUpdate(currentStreak);
+      }
+    }
+  }, [currentStreak, streak, onStreakUpdate]);
 
   const hasProgress = (date: dayjs.Dayjs): boolean => {
     if (!progressDates?.dates) {
@@ -150,11 +161,21 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
   return (
     <View style={CalenderStyles.calenderContainer}>
       <View style={CalenderStyles.calenderHeader}>
-        <TouchableOpacity onPress={() => setCurrentMonth(currentMonth.subtract(1, 'month'))}>
+        <TouchableOpacity
+          onPress={() => setCurrentMonth(currentMonth.subtract(1, 'month'))}
+          accessibilityLabel="Previous month"
+          accessibilityRole="button"
+          accessibilityHint="Tap to view previous month"
+        >
           <LeftArrowIcon />
         </TouchableOpacity>
         <Text style={CalenderStyles.calenderHeaderText}>{currentMonth.format('MMMM YYYY')}</Text>
-        <TouchableOpacity onPress={() => setCurrentMonth(currentMonth.add(1, 'month'))}>
+        <TouchableOpacity
+          onPress={() => setCurrentMonth(currentMonth.add(1, 'month'))}
+          accessibilityLabel="Next month"
+          accessibilityRole="button"
+          accessibilityHint="Tap to view next month"
+        >
           <RightArrowIcon />
         </TouchableOpacity>
       </View>

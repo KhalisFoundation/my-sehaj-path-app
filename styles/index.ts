@@ -22,3 +22,5 @@ export { ErrorScreenStyles } from './ErrorScreen';
 export { SafeAreaStyle } from './SafeAreaStyle';
 export { AkhandPathStyles } from './AkhandPathStyles';
 export { CalenderStyles } from './CalenderStyles';
+export { PathReaderStyles } from './PathReaderStyles';
+export { PathNavigationStyles } from './PathNavigationStyles';

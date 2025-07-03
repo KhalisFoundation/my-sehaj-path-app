@@ -6,6 +6,7 @@ import { NavContent, SimpleText } from '../index';
 import { FontSizes } from '@constants';
 import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from '@icons';
 import { useLocal, FontSizeData } from '../../hooks/useLocal';
+import { showErrorAlert } from '@utils/Error';
 
 export const FontSize = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
@@ -15,21 +16,41 @@ export const FontSize = () => {
   });
   const handleToggle = () => setIsVisible(!isVisible);
   const { saveFontSize, fetchFontSize } = useLocal();
-  const handleFontSize = (size: FontSizeData) => {
-    setFontSize(size);
-    handleToggle();
-    saveFontSize(size);
+
+  const handleFontSize = async (size: FontSizeData) => {
+    try {
+      setFontSize(size);
+      handleToggle();
+      await saveFontSize(size);
+    } catch (error) {
+      console.error('Error saving font size:', error);
+      showErrorAlert('Failed to save your font size preference.');
+      setFontSize(fontSize);
+    }
   };
+
   useEffect(() => {
     const fetchFromLocal = async () => {
-      const fontSizeData = await fetchFontSize();
-      setFontSize(fontSizeData);
+      try {
+        const fontSizeData = await fetchFontSize();
+        setFontSize(fontSizeData);
+      } catch (error) {
+        console.error('Error fetching font size:', error);
+        showErrorAlert('Failed to load your font size preference.');
+      }
     };
     fetchFromLocal();
   }, [fetchFontSize]);
+
   return (
     <>
-      <TouchableOpacity style={FontSizeStyle.container} onPress={handleToggle}>
+      <TouchableOpacity
+        style={FontSizeStyle.container}
+        onPress={handleToggle}
+        accessibilityLabel={`Font size setting, currently ${fontSize.fontSize}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to change font size"
+      >
         <SimpleText simpleText={'Font-Size'} simpleTextStyle={FontSizeStyle.fontSizeText} />
         <View style={FontSizeStyle.fontSizeContainer}>
           <SimpleText
@@ -53,7 +74,14 @@ export const FontSize = () => {
             </View>
             <View style={FontSizeStyle.overlayContent}>
               {FontSizes.map((size: FontSizeData, index: number) => (
-                <ListItem onPress={() => handleFontSize(size)} key={index}>
+                <ListItem
+                  onPress={() => handleFontSize(size)}
+                  key={index}
+                  accessibilityLabel={`Font size option: ${size.fontSize}`}
+                  accessibilityRole="button"
+                  accessibilityHint={`Tap to select ${size.fontSize} font size`}
+                  accessibilityState={{ selected: fontSize.fontSize === size.fontSize }}
+                >
                   <ListItem.Content style={FontSizeStyle.overlayTextContainer}>
                     <ListItem.Title style={FontSizeStyle.overlayText}>
                       {size.fontSize}

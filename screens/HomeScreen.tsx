@@ -9,6 +9,7 @@ import { HomeScreenStyles, SafeAreaStyle } from '@styles/index';
 import { Constants } from '@constants';
 import { StartIcon } from '../icons';
 import { useLocal, PathData } from '../hooks/useLocal';
+import { showErrorAlert } from '@utils/Error';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -16,37 +17,49 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
   const [pathInProgress, setPathInProgress] = useState<PathData[]>([]);
   const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
+
   useFocusEffect(
     useCallback(() => {
       const fetch = async () => {
-        const { pathDataArray } = await fetchFromLocal();
+        try {
+          const { pathDataArray } = await fetchFromLocal();
 
-        setPathCompleted(
-          pathDataArray.filter(
-            (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
-          )
-        );
-        setPathInProgress(
-          pathDataArray.filter(
-            (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
-          )
-        );
+          setPathCompleted(
+            pathDataArray.filter(
+              (path: PathData) =>
+                path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
+            )
+          );
+          setPathInProgress(
+            pathDataArray.filter(
+              (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+            )
+          );
+        } catch (error) {
+          console.error('Error fetching data:', error);
+          showErrorAlert('Failed to load your Sehaj Paths data.');
+        }
       };
       fetch();
     }, [fetchFromLocal])
   );
 
   const handleStart = async () => {
-    const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
-    setPathInProgress(pathDataArray.filter((path: PathData) => path.saveData.angNumber !== 1430));
-    setPathCompleted(
-      pathDataArray.filter(
-        (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
-      )
-    );
-    AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
-    AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
-    navigation.push('Continue', { pathId: newPathid });
+    try {
+      const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
+      setPathInProgress(pathDataArray.filter((path: PathData) => path.saveData.angNumber !== 1430));
+      setPathCompleted(
+        pathDataArray.filter(
+          (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
+        )
+      );
+      await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
+      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
+      navigation.push('Continue', { pathId: newPathid });
+    } catch (error) {
+      console.error('Error starting new path:', error);
+      showErrorAlert('Failed to start a new Sehaj Path.');
+    }
   };
 
   return (

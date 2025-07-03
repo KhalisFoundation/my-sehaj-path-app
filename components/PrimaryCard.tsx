@@ -47,7 +47,13 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Pro
   const endAngle = progressAngle;
 
   return (
-    <TouchableOpacity style={PathProgressCardStyles.container} onPress={onPress}>
+    <TouchableOpacity
+      style={PathProgressCardStyles.container}
+      onPress={onPress}
+      accessibilityLabel={`${sehajPathName}, Ang ${angNumber}, ${progress}% complete`}
+      accessibilityRole="button"
+      accessibilityHint="Tap to continue this Sehaj Path"
+    >
       <View style={PathProgressCardStyles.textContainer}>
         <Text style={PathProgressCardStyles.sehajText}>{sehajPathName}</Text>
         <Text style={PathProgressCardStyles.angText}>
@@ -59,6 +65,8 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Pro
           ...PathProgressCardStyles.progressContainer,
           transform: [{ rotateY: '180deg' }],
         }}
+        accessibilityLabel={`Progress circle showing ${progress}% completion`}
+        accessibilityRole="image"
       >
         <Svg width={size} height={size}>
           <Defs>

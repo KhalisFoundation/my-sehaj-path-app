@@ -1,36 +1,22 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  Animated,
-  TouchableOpacity,
-  Alert,
-  BackHandler,
-} from 'react-native';
+import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import GestureRecognizer from 'react-native-swipe-gestures';
 import { BaniDB } from '@utils/BaniDB';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import { PunjabiNumbers } from '@constants';
 import { RootStackParamList } from '../App';
 import { AngsFormat, DateData, PathData, useLocal } from '../hooks/useLocal';
-import { NavContent, SimpleTextForPath } from '@components';
-import {
-  HomeIcon,
-  SettingsIcon,
-  SaveIcon,
-  PlayIcon,
-  PauseIcon,
-  LeftArrowIcon,
-  RightArrowIcon,
-} from '../icons';
 import { useInternet } from '../hooks/useInternet';
 import { AngsNavigation } from '@components/AngsNavigation';
+import { Loading } from '@components/Loading';
+import { PathControls } from '@components/PathControls';
+import { Message } from '@components/Message';
+import { PathReader } from '@components/PathReader';
+import { PathNavigation } from '@components/PathNavigation';
+import { showSaveProgressAlert } from '@utils/alerts';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -59,6 +45,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
@@ -80,15 +67,33 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   }, [handleUpdatePath]);
 
   const scrollToSavedPathData = async () => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+
     if (matchedPathDate && !scrolledToSavedPath.current) {
+      setFound(true);
       const scrollY = matchedPathDate.scrollPosition;
       scorllOffset.current = scrollY;
       scrollRef.current?.scrollTo({
         y: scorllOffset.current,
         animated: true,
       });
-
       scrolledToSavedPath.current = true;
+
+      scrollTimeoutRef.current = setTimeout(() => {
+        setFound(false);
+        fadeAnim.setValue(1);
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 2500,
+          useNativeDriver: true,
+        }).start(() => {
+          setIsSaving(false);
+          setIsSaved(false);
+        });
+      }, 2000);
     }
     if (pathContent && !scrolledToSavedPath.current) {
       const scrollIndex = pathContent?.page?.findIndex(
@@ -116,7 +121,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         });
         scrolledToSavedPath.current = true;
       }
-      setTimeout(() => {
+      scrollTimeoutRef.current = setTimeout(() => {
         setFound(false);
         fadeAnim.setValue(1);
         Animated.timing(fadeAnim, {
@@ -138,13 +143,11 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       navigation.replace('Error');
     }
     aleartIndicator.current = undefined;
-
     const currentDebounceTimer = debounceTimer.current;
     if (currentDebounceTimer) {
       clearTimeout(currentDebounceTimer);
       debounceTimer.current = null;
     }
-
     scorllOffset.current = 0;
     scrollRef.current?.scrollTo({
       y: 0,
@@ -173,38 +176,23 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       const lastSavedAngNumber = currentMatchedPath?.saveData.angNumber || 0;
 
       if (pathAng !== lastSavedAngNumber) {
-        Alert.alert(
-          'Save Progress?',
-          'You have navigated to a different ang. Do you want to save your current progress or go back without saving?',
-          [
-            {
-              text: 'Save & Go Back',
-              onPress: () => {
-                handleUpdatePath(
-                  route.params.pathId,
-                  pathAng,
-                  savedPathVerseId,
-                  scorllOffset.current,
-                  setIsSaved
-                );
-                setIsAngNavigation(false);
-                navigation.push('Home');
-              },
-            },
-            {
-              text: 'Go Back Without Saving',
-              onPress: () => {
-                updatePathAng(lastSavedAngNumber);
-                navigation.push('Home');
-              },
-              style: 'destructive',
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ]
-        );
+        showSaveProgressAlert({
+          onSaveAndGoBack: () => {
+            handleUpdatePath(
+              route.params.pathId,
+              pathAng,
+              savedPathVerseId,
+              scorllOffset.current,
+              setIsSaved
+            );
+            setIsAngNavigation(false);
+            navigation.push('Home');
+          },
+          onGoBackWithoutSaving: () => {
+            updatePathAng(lastSavedAngNumber);
+            navigation.push('Home');
+          },
+        });
       } else {
         navigation.push('Home');
       }
@@ -344,7 +332,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   useEffect(() => {
     if (isSaved || found) {
       fadeAnim.setValue(1);
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         Animated.timing(fadeAnim, {
           toValue: 0,
           duration: 2500,
@@ -354,14 +342,18 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           setIsSaved(false);
         });
       }, 500);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [isSaved, found]);
 
   useEffect(() => {
     if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         scrollToSavedPathData();
       }, 800);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [matchedPath, pathAng, pathContent]);
 
@@ -409,124 +401,80 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     }, [handleGoBack])
   );
 
+  useEffect(() => {
+    return () => {
+      if (scrollInveral.current) {
+        clearInterval(scrollInveral.current);
+        scrollInveral.current = null;
+      }
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
+    };
+  }, []);
+
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
-        <View style={PathScreenStyles.navContainer}>
-          <NavContent
-            navIcon={<LeftArrowIcon />}
-            onPress={() => {
-              handleLeftArrow(pathContent?.source?.pageNo);
-            }}
-          />
-          <TouchableOpacity onPress={() => setIsAngsNavigationVisible(true)}>
-            <NavContent text={pathPujabiAng} />
-          </TouchableOpacity>
-          <NavContent
-            navIcon={<RightArrowIcon />}
-            onPress={() => {
-              handleRightArrow(pathContent?.source?.pageNo);
-            }}
-          />
-        </View>
-        <GestureRecognizer
-          onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
-          onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
-          onSwipeDown={() => undefined}
-          onSwipeUp={() => undefined}
-          config={{
-            velocityThreshold: 0.8,
-            directionalOffsetThreshold: 80,
-            gestureIsClickThreshold: 10,
-          }}
-        >
-          <ScrollView
-            contentContainerStyle={PathScreenStyles.pathContentContainer}
-            ref={scrollRef}
-            onScroll={(e) => {
-              const scrollY = e.nativeEvent.contentOffset.y;
-              scorllOffset.current = scrollY;
-              if (!isAngNavigation) {
-                debouncedScrollSave();
-              }
-            }}
-            onTouchStart={() => handleStopAutoScroll()}
-            scrollEventThrottle={16}
-          >
-            {pathContent?.page?.map((path: any, index: number) => {
-              return (
-                <SimpleTextForPath
-                  key={index}
-                  gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
-                  onSelection={() => {
-                    if (isSaving) {
-                      setPressIndex(index + 1);
-                      setSavedPathVerseId(path.verseId);
-                    }
-                  }}
-                  onSave={() =>
-                    handleUpdatePath(
-                      route.params.pathId || 1,
-                      path.pageNo,
-                      path.verseId,
-                      scorllOffset.current,
-                      setIsSaved
-                    )
-                  }
-                  isSaving={isSaving}
-                  pressIndex={pressIndex}
-                  index={index + 1}
-                  verseId={path.verseId}
-                  savedPathVerseId={savedPathVerseId}
-                  setIsSaving={setIsSaving}
-                  setIsSaved={setIsSaved}
-                  setPressIndex={setPressIndex}
-                  setSavedPathVerseId={setSavedPathVerseId}
-                />
-              );
-            })}
-          </ScrollView>
-        </GestureRecognizer>
+        <PathNavigation
+          pathPujabiAng={pathPujabiAng}
+          pathContent={pathContent}
+          handleLeftArrow={handleLeftArrow}
+          handleRightArrow={handleRightArrow}
+          setIsAngsNavigationVisible={setIsAngsNavigationVisible}
+        />
+        <PathReader
+          pathContent={pathContent}
+          isLarivaar={isLarivaar}
+          isSaving={isSaving}
+          pressIndex={pressIndex}
+          savedPathVerseId={savedPathVerseId}
+          scrollRef={scrollRef}
+          scorllOffset={scorllOffset}
+          isAngNavigation={isAngNavigation}
+          debouncedScrollSave={debouncedScrollSave}
+          handleStopAutoScroll={handleStopAutoScroll}
+          handleRightArrow={handleRightArrow}
+          handleLeftArrow={handleLeftArrow}
+          setPressIndex={setPressIndex}
+          setSavedPathVerseId={setSavedPathVerseId}
+          handleUpdatePath={handleUpdatePath}
+          setIsSaving={setIsSaving}
+          setIsSaved={setIsSaved}
+          pathId={route.params.pathId || 1}
+        />
         {aleartIndicator.current !== undefined ? (
-          <View style={PathScreenStyles.alertContainer}>
-            {aleartIndicator.current}
-            <Text style={PathScreenStyles.alertText}>{alertText.current}</Text>
-          </View>
+          <Loading alertIndicator={aleartIndicator.current} alertText={alertText.current} />
         ) : null}
 
         {!isSaving && !found ? (
           <View style={PathScreenStyles.navigationContainer}>
-            <NavContent navIcon={<HomeIcon />} onPress={() => handleGoBack()} />
-            <NavContent
-              navIcon={<SaveIcon />}
-              onPress={() => {
-                setIsSaving(!isSaving);
-                fadeAnim.setValue(1);
-              }}
+            <PathControls
+              handleGoBack={handleGoBack}
+              setIsSaving={setIsSaving}
+              isSaving={isSaving}
+              fadeAnim={fadeAnim}
+              autoScroll={autoScroll}
+              setAutoScroll={setAutoScroll}
+              navigation={navigation}
             />
-            <NavContent
-              navIcon={autoScroll ? <PauseIcon /> : <PlayIcon />}
-              onPress={() => setAutoScroll((prev) => !prev)}
-            />
-            <NavContent navIcon={<SettingsIcon />} onPress={() => navigation.push('Setting')} />
           </View>
         ) : undefined}
         {isSaving && (
-          <Animated.View style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}>
-            <NavContent navIcon={<SaveIcon />} />
-            <Text style={PathScreenStyles.saveText} allowFontScaling={false}>
-              {!isSaved ? 'Select a panktee to save progress.' : 'Saved the highlighted panktee!'}
-            </Text>
-          </Animated.View>
+          <Message
+            message={
+              !isSaved ? 'Select a panktee to save progress.' : 'Saved the highlighted panktee!'
+            }
+            fadeAnim={fadeAnim}
+          />
         )}
-        {found && (
-          <Animated.View style={{ ...PathScreenStyles.saveContainer, opacity: fadeAnim }}>
-            <NavContent navIcon={<SaveIcon />} />
-            <Text style={PathScreenStyles.saveText} allowFontScaling={false}>
-              Last saved panktee founded!
-            </Text>
-          </Animated.View>
-        )}
+        {found && <Message message={'Last saved panktee founded!'} fadeAnim={fadeAnim} />}
         {isAngsNavigationVisible && (
           <AngsNavigation
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}

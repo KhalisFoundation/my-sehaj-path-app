@@ -17,7 +17,13 @@ export const PrimaryButton = ({ buttonTitle, Icon, onPress }: Props) => {
       end={{ x: 1, y: 0 }}
       style={PrimaryButtonStyles.container}
     >
-      <TouchableOpacity onPress={onPress} style={PrimaryButtonStyles.button}>
+      <TouchableOpacity
+        onPress={onPress}
+        style={PrimaryButtonStyles.button}
+        accessibilityLabel={buttonTitle}
+        accessibilityRole="button"
+        accessibilityHint={`Tap to ${buttonTitle.toLowerCase()}`}
+      >
         <View>{Icon}</View>
         <Text style={PrimaryButtonStyles.text}>{buttonTitle}</Text>
       </TouchableOpacity>

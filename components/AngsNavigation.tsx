@@ -63,6 +63,9 @@ export const AngsNavigation = ({
           <Pressable
             style={AngsNavigationStyle.crossIcon}
             onPress={() => setIsAngsNavigationVisible(false)}
+            accessibilityLabel="Close angs navigation"
+            accessibilityRole="button"
+            accessibilityHint="Tap to close angs navigation dialog"
           >
             <CrossIcon />
           </Pressable>
@@ -73,6 +76,9 @@ export const AngsNavigation = ({
                 handleLeftArrow();
                 setIsAngsNavigationVisible(false);
               }}
+              accessibilityLabel="Previous ang"
+              accessibilityRole="button"
+              accessibilityHint="Tap to go to previous ang"
             >
               <LeftArrowIcon />
             </TouchableOpacity>
@@ -84,12 +90,17 @@ export const AngsNavigation = ({
               value={inputValue}
               onChangeText={handleAngNumber}
               keyboardType="numeric"
+              accessibilityLabel="Ang number input field"
+              accessibilityHint="Enter an ang number between 1 and 1430"
             />
             <TouchableOpacity
               onPress={() => {
                 handleRightArrow();
                 setIsAngsNavigationVisible(false);
               }}
+              accessibilityLabel="Next ang"
+              accessibilityRole="button"
+              accessibilityHint="Tap to go to next ang"
             >
               <RightArrowIcon />
             </TouchableOpacity>
@@ -114,6 +125,10 @@ export const AngsNavigation = ({
               }
             }}
             disabled={isGoButtonDisabled}
+            accessibilityLabel="Go to ang"
+            accessibilityRole="button"
+            accessibilityHint={`Tap to navigate to ang ${angNumber}`}
+            accessibilityState={{ disabled: isGoButtonDisabled }}
           >
             <Text
               style={[

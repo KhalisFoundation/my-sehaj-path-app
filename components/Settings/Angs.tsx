@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View, Alert } from 'react-native';
 import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent } from '@components/NavContent';
 import { SimpleText } from '@components/SimpleText';
@@ -8,27 +8,48 @@ import { AngsFormat, useLocal } from '@hooks/useLocal';
 import { LeftArrowIcon } from '@icons/LeftArrow.icon';
 import { RightChevronIcon } from '@icons/RightChevron.icon';
 import { AngsFormatStyles } from '@styles/AngsFormatStyles';
+import { showErrorAlert } from '@utils/Error';
 
 export const Angs = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
   const { saveAngsFormat, fetchAngsFormat } = useLocal();
   const handleToggle = () => setIsVisible(!isVisible);
-  const handleAngsFormat = (format: AngsFormat) => {
-    setAngsFormat(format);
-    saveAngsFormat(format);
-    handleToggle();
+
+  const handleAngsFormat = async (format: AngsFormat) => {
+    try {
+      setAngsFormat(format);
+      await saveAngsFormat(format);
+      handleToggle();
+    } catch (error) {
+      console.error('Error saving angs format:', error);
+      showErrorAlert('Failed to save your Angs format preference.');
+      setAngsFormat(angsFormat);
+    }
   };
+
   useEffect(() => {
     const fetchFromLocal = async () => {
-      const format = await fetchAngsFormat();
-      setAngsFormat(format);
+      try {
+        const format = await fetchAngsFormat();
+        setAngsFormat(format);
+      } catch (error) {
+        console.error('Error fetching angs format:', error);
+        showErrorAlert('Failed to load your Angs format preference.');
+      }
     };
     fetchFromLocal();
   }, [fetchAngsFormat]);
+
   return (
     <>
-      <TouchableOpacity onPress={handleToggle} style={AngsFormatStyles.container}>
+      <TouchableOpacity
+        onPress={handleToggle}
+        style={AngsFormatStyles.container}
+        accessibilityLabel={`Angs format setting, currently ${angsFormat.format}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to change angs format"
+      >
         <SimpleText simpleText={'Angs'} simpleTextStyle={AngsFormatStyles.angsText} />
         <View style={AngsFormatStyles.angsContainer}>
           <SimpleText simpleText={angsFormat.format} simpleTextStyle={AngsFormatStyles.text} />
@@ -44,7 +65,14 @@ export const Angs = () => {
           <View>
             {AngsFormatArray.map((format: AngsFormat, index: number) => {
               return (
-                <ListItem key={index} onPress={() => handleAngsFormat(format)}>
+                <ListItem
+                  key={index}
+                  onPress={() => handleAngsFormat(format)}
+                  accessibilityLabel={`Angs format option: ${format.format}`}
+                  accessibilityRole="button"
+                  accessibilityHint={`Tap to select ${format.format} format`}
+                  accessibilityState={{ selected: angsFormat.format === format.format }}
+                >
                   <ListItem.Content style={AngsFormatStyles.overlayTextContainer}>
                     <ListItem.Title style={AngsFormatStyles.overlayText}>
                       {format.format}
