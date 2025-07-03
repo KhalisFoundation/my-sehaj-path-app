@@ -4,19 +4,20 @@ import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'reac
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BaniDB } from '@utils/BaniDB';
-import { PathScreenStyles, SafeAreaStyle } from '@styles';
+import { BaniDB, showSaveProgressAlert } from '@utils';
 import { PunjabiNumbers } from '@constants';
+import { PathScreenStyles, SafeAreaStyle } from '@styles';
+import { AngsFormat, DateData, PathData, useLocal } from '@hooks/useLocal';
+import { useInternet } from '@hooks/useInternet';
+import {
+  AngsNavigation,
+  Loading,
+  PathControls,
+  Message,
+  PathReader,
+  PathNavigation,
+} from '@components';
 import { RootStackParamList } from '../App';
-import { AngsFormat, DateData, PathData, useLocal } from '../hooks/useLocal';
-import { useInternet } from '../hooks/useInternet';
-import { AngsNavigation } from '@components/AngsNavigation';
-import { Loading } from '@components/Loading';
-import { PathControls } from '@components/PathControls';
-import { Message } from '@components/Message';
-import { PathReader } from '@components/PathReader';
-import { PathNavigation } from '@components/PathNavigation';
-import { showSaveProgressAlert } from '@utils/alerts';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 

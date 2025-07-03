@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View } from 'react-native';
-import { SimpleText } from '../index';
-import { LarivaarStyles } from '@styles';
 import { Switch } from '@rneui/themed';
-import { useLocal } from '../../hooks/useLocal';
-import { showErrorAlert } from '@utils/Error';
+import { SimpleText } from '@components';
+import { useLocal } from '@hooks/useLocal';
+import { showErrorAlert } from '@utils';
+import { LarivaarStyles } from '@styles';
 
 export const Larivaar = () => {
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);

@@ -1,15 +1,15 @@
-import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import React, { useCallback, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { RootStackParamList } from '../App';
-import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '../components';
-import { HomeScreenStyles, SafeAreaStyle } from '@styles/index';
+import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
 import { Constants } from '@constants';
-import { StartIcon } from '../icons';
-import { useLocal, PathData } from '../hooks/useLocal';
-import { showErrorAlert } from '@utils/Error';
+import { StartIcon } from '@icons';
+import { useLocal, PathData } from '@hooks/useLocal';
+import { showErrorAlert } from '@utils';
+import { HomeScreenStyles, SafeAreaStyle } from '@styles';
+import { RootStackParamList } from '../App';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 

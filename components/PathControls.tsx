@@ -1,10 +1,6 @@
 import React from 'react';
-import { NavContent } from './NavContent';
-import { SaveIcon } from '@icons/Save.icon';
-import { SettingsIcon } from '@icons/Settings.icon';
-import { PauseIcon } from '@icons/Pause.icon';
-import { PlayIcon } from '@icons/Play.icon';
-import { HomeIcon } from '@icons/Home.icon';
+import { NavContent } from '@components';
+import { SaveIcon, SettingsIcon, PauseIcon, PlayIcon, HomeIcon } from '@icons';
 
 interface Props {
   handleGoBack: () => void;

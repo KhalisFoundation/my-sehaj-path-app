@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import font from '../utils/font';
+import font from '@utils/font';
 
 export const LabelStyles = StyleSheet.create({
   label: {

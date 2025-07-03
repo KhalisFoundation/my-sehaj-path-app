@@ -1,5 +1,5 @@
-import { StyleProp, Text, TextStyle } from 'react-native';
 import React from 'react';
+import { StyleProp, Text, TextStyle } from 'react-native';
 import { ImportantTextStyles } from '@styles';
 
 interface Props {

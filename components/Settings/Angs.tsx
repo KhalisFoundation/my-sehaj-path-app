@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, View, Alert } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { ListItem, Overlay } from '@rneui/themed';
-import { NavContent } from '@components/NavContent';
-import { SimpleText } from '@components/SimpleText';
-import { AngsFormatArray } from '@constants/Angs';
+import { NavContent, SimpleText } from '@components';
+import { AngsFormatArray } from '@constants';
 import { AngsFormat, useLocal } from '@hooks/useLocal';
-import { LeftArrowIcon } from '@icons/LeftArrow.icon';
-import { RightChevronIcon } from '@icons/RightChevron.icon';
-import { AngsFormatStyles } from '@styles/AngsFormatStyles';
-import { showErrorAlert } from '@utils/Error';
+import { LeftArrowIcon, RightChevronIcon } from '@icons';
+import { AngsFormatStyles } from '@styles';
+import { showErrorAlert } from '@utils';
 
 export const Angs = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);

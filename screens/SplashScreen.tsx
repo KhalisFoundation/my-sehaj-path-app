@@ -1,11 +1,10 @@
-import { View, Text, ImageBackground, Animated } from 'react-native';
 import React, { useEffect, useRef } from 'react';
-import { SplashScreenStyles } from '@styles';
-import { Constants } from '@constants';
-import { RootStackParamList } from '../App';
+import { View, Text, ImageBackground, Animated } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SafeAreaStyle } from '@styles/SafeAreaStyle';
+import { Constants } from '@constants';
+import { SplashScreenStyles, SafeAreaStyle } from '@styles';
+import { RootStackParamList } from '../App';
 
 type SplashProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 

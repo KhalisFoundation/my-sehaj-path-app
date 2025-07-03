@@ -1,7 +1,7 @@
-import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
+import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -16,11 +16,11 @@ import {
 } from '@components';
 import { Constants } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { RootStackParamList } from '../App';
+import { useLocal, PathData } from '@hooks/useLocal';
+import { useInternet } from '@hooks/useInternet';
+import { showErrorAlert } from '@utils';
 import { GoBackIcon, ContinueIcon } from '@icons';
-import { useLocal, PathData } from '../hooks/useLocal';
-import { useInternet } from '../hooks/useInternet';
-import { showErrorAlert } from '@utils/Error';
+import { RootStackParamList } from '../App';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 

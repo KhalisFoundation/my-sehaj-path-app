@@ -1,7 +1,7 @@
 import React from 'react';
-import { NavContent } from './NavContent';
 import { Animated, Text } from 'react-native';
-import { SaveIcon } from '@icons/Save.icon';
+import { NavContent } from '@components';
+import { SaveIcon } from '@icons';
 import { MessageStyles } from '@styles/MessageStyles';
 
 interface Props {

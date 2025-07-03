@@ -1,7 +1,7 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
 import GestureRecognizer from 'react-native-swipe-gestures';
-import { SimpleTextForPath } from './SimpleTextForPath';
+import { ScrollView } from 'react-native';
+import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles/PathReaderStyles';
 
 interface PathReaderProps {

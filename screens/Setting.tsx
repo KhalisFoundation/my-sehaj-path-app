@@ -1,11 +1,10 @@
-import { SafeAreaView, View } from 'react-native';
 import React from 'react';
+import { SafeAreaView, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../App';
-import { GoBackIcon } from '@icons';
-import { SettingScreenStyle } from '@styles';
 import { NavContent, SimpleText, FontSize, Larivaar, Angs } from '@components';
-import { SafeAreaStyle } from '@styles/SafeAreaStyle';
+import { GoBackIcon } from '@icons';
+import { SettingScreenStyle, SafeAreaStyle } from '@styles';
+import { RootStackParamList } from '../App';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 

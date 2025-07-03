@@ -1,5 +1,5 @@
-import font from '@utils/font';
 import { StyleSheet } from 'react-native';
+import font from '@utils/font';
 
 export const LoadingStyles = StyleSheet.create({
   alertContainer: {

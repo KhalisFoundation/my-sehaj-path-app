@@ -1,6 +1,6 @@
-import { StyleProp, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import React from 'react';
 import LinearGradient from 'react-native-linear-gradient';
+import { StyleProp, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { SecondaryButtonStyles } from '@styles';
 
 interface Props {

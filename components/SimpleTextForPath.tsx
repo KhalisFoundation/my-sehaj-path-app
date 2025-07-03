@@ -1,10 +1,10 @@
-import { Text, Pressable } from 'react-native';
 import React, { useState } from 'react';
-import { SimpleTextForPathStyles } from '@styles';
-import { useLocal } from '../hooks/useLocal';
+import { Text, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { NavContent } from './NavContent';
-import { SaveIcon } from '@icons/Save.icon';
+import { useLocal } from '@hooks/useLocal';
+import { NavContent } from '@components';
+import { SaveIcon } from '@icons';
+import { SimpleTextForPathStyles } from '@styles';
 
 interface Props {
   gurbaniLine: string;
@@ -15,10 +15,10 @@ interface Props {
   onSave: () => void;
   verseId?: number;
   savedPathVerseId?: number;
-  setIsSaving: any;
-  setIsSaved: any;
-  setPressIndex: any;
-  setSavedPathVerseId: any;
+  setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsSaved: React.Dispatch<React.SetStateAction<boolean>>;
+  setPressIndex: React.Dispatch<React.SetStateAction<number>>;
+  setSavedPathVerseId: React.Dispatch<React.SetStateAction<number | undefined>>;
 }
 
 export const SimpleTextForPath = ({

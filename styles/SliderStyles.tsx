@@ -18,4 +18,10 @@ export const SliderStyles = StyleSheet.create({
     height: 8,
     borderRadius: 5,
   },
+  activeDot: {
+    backgroundColor: '#0D2346',
+  },
+  inactiveDot: {
+    backgroundColor: 'rgba(13, 35, 70, 0.1)',
+  },
 });

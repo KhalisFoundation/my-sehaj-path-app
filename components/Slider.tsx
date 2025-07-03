@@ -1,6 +1,5 @@
-/* eslint-disable react-native/no-inline-styles */
-import { View, FlatList, Animated, StyleProp, ViewStyle, useWindowDimensions } from 'react-native';
 import React, { useRef, useState } from 'react';
+import { View, FlatList, Animated, StyleProp, ViewStyle, useWindowDimensions } from 'react-native';
 import { SliderStyles } from '@styles';
 
 interface Props {
@@ -57,8 +56,8 @@ export const Slider = ({
                 key={index}
                 style={[
                   SliderStyles.dots,
-                  { backgroundColor: activeIndex === index ? '#0D2346' : 'rgba(13, 35, 70, 0.1)' },
                   dotStyle,
+                  activeIndex === index ? SliderStyles.activeDot : SliderStyles.inactiveDot,
                 ]}
               />
             );
