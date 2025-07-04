@@ -3,7 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent, SimpleText } from '@components';
 import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from '@icons';
-import { useLocal, FontSizeData } from '@hooks/useLocal';
+import { useLocal, FontSizeData } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { FontSizeStyle } from '@styles';
 import { ErrorConstants } from '@constants';

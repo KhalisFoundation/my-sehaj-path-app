@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Text, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { useLocal } from '@hooks/useLocal';
+import { useLocal } from '@hooks';
 import { NavContent } from '@components';
 import { SaveIcon } from '@icons';
 import { SimpleTextForPathStyles } from '@styles';

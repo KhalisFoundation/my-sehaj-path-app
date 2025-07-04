@@ -14,14 +14,12 @@ import {
   PathRename,
   Calender,
 } from '@components';
-import { Constants } from '@constants';
+import { Constants, ErrorConstants } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { useLocal, PathData } from '@hooks/useLocal';
-import { useInternet } from '@hooks/useInternet';
+import { PathData, useLocal, useInternet } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { GoBackIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
-import { ErrorConstants } from '@constants';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 

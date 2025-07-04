@@ -4,13 +4,12 @@ import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
-import { Constants } from '@constants';
+import { Constants, ErrorConstants } from '@constants';
 import { StartIcon } from '@icons';
-import { useLocal, PathData } from '@hooks/useLocal';
+import { PathData, useLocal } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
-import { ErrorConstants } from '@constants/ErrorConstant';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 

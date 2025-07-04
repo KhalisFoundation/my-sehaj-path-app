@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View } from 'react-native';
 import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
-import { useLocal } from '@hooks/useLocal';
+import { useLocal } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { LarivaarStyles } from '@styles';
 import { ErrorConstants } from '@constants';

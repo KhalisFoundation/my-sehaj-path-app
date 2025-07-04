@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { NavContent } from '@components';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
-import { PathNavigationStyles } from '@styles/PathNavigationStyles';
+import { PathNavigationStyles } from '@styles';
 
 interface PathNavigationProps {
   pathPujabiAng: string;

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Pressable } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
-import { useLocal } from '@hooks/useLocal';
+import { useLocal } from '@hooks';
 import { CrossIcon } from '@icons';
-import { PathRenameStyle } from '@styles/PathRenameStyle';
+import { PathRenameStyle } from '@styles';
 
 interface Props {
   pathId: number;

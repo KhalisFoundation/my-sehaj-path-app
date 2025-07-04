@@ -1,5 +1,5 @@
-import font from '@utils/font';
 import { StyleSheet } from 'react-native';
+import font from '@utils/font';
 
 export const AngsNavigationStyle = StyleSheet.create({
   blurView: {

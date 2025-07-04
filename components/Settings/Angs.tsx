@@ -3,7 +3,7 @@ import { TouchableOpacity, View } from 'react-native';
 import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent, SimpleText } from '@components';
 import { AngsFormatArray } from '@constants';
-import { AngsFormat, useLocal } from '@hooks/useLocal';
+import { AngsFormat, useLocal } from '@hooks';
 import { LeftArrowIcon, RightChevronIcon } from '@icons';
 import { AngsFormatStyles } from '@styles';
 import { showErrorAlert } from '@utils';

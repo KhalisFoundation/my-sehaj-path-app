@@ -1,5 +1,5 @@
-import font from '@utils/font';
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import font from '@utils/font';
 
 const dateCellBase: ViewStyle = {
   minHeight: 24,

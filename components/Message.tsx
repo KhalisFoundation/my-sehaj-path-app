@@ -2,7 +2,7 @@ import React from 'react';
 import { Animated, Text } from 'react-native';
 import { NavContent } from '@components';
 import { SaveIcon } from '@icons';
-import { MessageStyles } from '@styles/MessageStyles';
+import { MessageStyles } from '@styles';
 
 interface Props {
   message: string;

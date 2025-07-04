@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Image } from 'react-native';
 import dayjs from 'dayjs';
-import { CalenderStyles } from '@styles/CalenderStyles';
+import { CalenderStyles } from '@styles';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
 import { CalenderDays } from '@constants';
-import { DateData, useLocal } from '@hooks/useLocal';
+import { DateData, useLocal } from '@hooks';
 
 interface Props {
   streak: any;

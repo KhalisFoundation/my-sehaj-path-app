@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { LoadingStyles } from '@styles/LoadingStyles';
+import { LoadingStyles } from '@styles';
 
 interface Props {
   alertIndicator: React.ReactNode;

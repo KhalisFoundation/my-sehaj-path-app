@@ -4,14 +4,17 @@ import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'reac
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BaniDB } from '@utils/BaniDB';
-import { showErrorAlert } from '@utils/Error';
-import { convertNumberToFormat } from '@utils/numberUtils';
+import { BaniDB, showErrorAlert, convertNumberToFormat } from '@utils';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
-import { AngsFormat, DateData, PathData, useLocal } from '@hooks/useLocal';
-import { useInternet } from '@hooks/useInternet';
-import { useNavigation } from '@hooks/useNavigation';
-import { usePathNavigation } from '@hooks/usePathNavigation';
+import {
+  AngsFormat,
+  DateData,
+  PathData,
+  useLocal,
+  useInternet,
+  useNavigation,
+  usePathNavigation,
+} from '@hooks';
 import {
   AngsNavigation,
   Loading,
@@ -21,7 +24,7 @@ import {
   PathNavigation,
 } from '@components';
 import { RootStackParamList } from '../App';
-import { ErrorConstants } from '@constants/ErrorConstant';
+import { ErrorConstants } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
