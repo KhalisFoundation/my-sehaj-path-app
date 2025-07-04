@@ -5,7 +5,7 @@ import { SimpleText } from '@components';
 import { useLocal } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { LarivaarStyles } from '@styles';
-import { ErrorConstants } from '@constants';
+import { ErrorConstants, Constants } from '@constants';
 
 export const Larivaar = () => {
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
@@ -35,7 +35,7 @@ export const Larivaar = () => {
 
   return (
     <View style={LarivaarStyles.container}>
-      <SimpleText simpleText={'Larivaar'} simpleTextStyle={LarivaarStyles.fontSizeText} />
+      <SimpleText simpleText={Constants.LARIVAAR} simpleTextStyle={LarivaarStyles.fontSizeText} />
       <Switch
         value={isLarivaar}
         onValueChange={handleLarivaar}

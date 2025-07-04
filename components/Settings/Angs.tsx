@@ -7,7 +7,7 @@ import { AngsFormat, useLocal } from '@hooks';
 import { LeftArrowIcon, RightChevronIcon } from '@icons';
 import { AngsFormatStyles } from '@styles';
 import { showErrorAlert } from '@utils';
-import { ErrorConstants } from '@constants';
+import { ErrorConstants, Constants } from '@constants';
 
 export const Angs = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
@@ -47,7 +47,7 @@ export const Angs = () => {
         accessibilityRole="button"
         accessibilityHint="Tap to change angs format"
       >
-        <SimpleText simpleText={'Angs'} simpleTextStyle={AngsFormatStyles.angsText} />
+        <SimpleText simpleText={Constants.ANG} simpleTextStyle={AngsFormatStyles.angsText} />
         <View style={AngsFormatStyles.angsContainer}>
           <SimpleText simpleText={angsFormat.format} simpleTextStyle={AngsFormatStyles.text} />
           <RightChevronIcon />
@@ -57,7 +57,7 @@ export const Angs = () => {
         <Overlay isVisible={isVisible} onBackdropPress={() => setIsVisible(false)}>
           <View style={AngsFormatStyles.overlayHeader}>
             <NavContent navIcon={<LeftArrowIcon />} onPress={() => handleToggle()} />
-            <NavContent text={'Select you Angs Format'} />
+            <NavContent text={Constants.SELECT_YOUR_ANG_FORMAT} />
           </View>
           <View>
             {AngsFormatArray.map((format: AngsFormat, index: number) => {

@@ -24,7 +24,7 @@ import {
   PathNavigation,
 } from '@components';
 import { RootStackParamList } from '../App';
-import { ErrorConstants } from '@constants';
+import { ErrorConstants, Constants } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -398,12 +398,14 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         {isSaving && (
           <Message
             message={
-              !isSaved ? 'Select a panktee to save progress.' : 'Saved the highlighted panktee!'
+              !isSaved
+                ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
+                : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE
             }
             fadeAnim={fadeAnim}
           />
         )}
-        {found && <Message message={'Last saved panktee founded!'} fadeAnim={fadeAnim} />}
+        {found && <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim} />}
         {isAngsNavigationVisible && (
           <AngsNavigation
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}

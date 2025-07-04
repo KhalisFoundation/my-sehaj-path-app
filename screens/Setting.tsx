@@ -15,7 +15,7 @@ export const Settings = ({ navigation }: SettingProps) => {
       <View style={SettingScreenStyle.container}>
         <View style={SettingScreenStyle.navContainer}>
           <NavContent navIcon={<GoBackIcon />} onPress={() => navigation.goBack()} />
-          <NavContent text="Settings" />
+          <NavContent text={Constants.SETTINGS} />
         </View>
         <View style={SettingScreenStyle.settingContainer}>
           <View>

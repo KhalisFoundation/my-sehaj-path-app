@@ -6,7 +6,7 @@ import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from '@icons';
 import { useLocal, FontSizeData } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { FontSizeStyle } from '@styles';
-import { ErrorConstants } from '@constants';
+import { ErrorConstants, Constants } from '@constants';
 import { FontSizes } from '@constants';
 
 export const FontSize = () => {
@@ -69,7 +69,7 @@ export const FontSize = () => {
           <View>
             <View style={FontSizeStyle.overlayHeader}>
               <NavContent navIcon={<LeftArrowIcon />} onPress={() => handleToggle()} />
-              <NavContent text={'Select you Font Size'} />
+              <NavContent text={Constants.SELECT_YOUR_FONT_SIZE} />
             </View>
             <View style={FontSizeStyle.overlayContent}>
               {FontSizes.map((size: FontSizeData, index: number) => (

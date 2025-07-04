@@ -27,4 +27,12 @@ export const Constants: Constant = {
     'Awesome, you have starated the sehaj path, once you complete 10 angs you will see more details here.',
   DISPLAY_OPTIONS: 'Display Options',
   BANI_OPTIONS: 'Bani Options',
+  SELECT_A_PANKTEE_TO_SAVE_PROGRESS: 'Select a panktee to save progress.',
+  SAVED_THE_HIGHLIGHTED_PANKTEE: 'Saved the highlighted panktee!',
+  LAST_SAVED_PANKTEE_FOUNDED: 'Last saved panktee founded!',
+  SELECT_YOUR_FONT_SIZE: 'Select your font size',
+  LARIVAAR: 'Larivaar',
+  SETTINGS: 'Settings',
+  SELECT_YOUR_ANG_FORMAT: 'Select your ang format',
+  ANGS: 'Angs',
 };
