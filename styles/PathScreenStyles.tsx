@@ -1,5 +1,4 @@
 import { StyleSheet } from 'react-native';
-import font from '@utils/font';
 
 export const PathScreenStyles = StyleSheet.create({
   container: {
