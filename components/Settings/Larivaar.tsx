@@ -5,6 +5,7 @@ import { SimpleText } from '@components';
 import { useLocal } from '@hooks/useLocal';
 import { showErrorAlert } from '@utils';
 import { LarivaarStyles } from '@styles';
+import { ErrorConstants } from '@constants';
 
 export const Larivaar = () => {
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
@@ -15,8 +16,7 @@ export const Larivaar = () => {
       setIsLarivaar(larivaar);
       await saveLarivaar(larivaar);
     } catch (error) {
-      console.error('Error saving larivaar setting:', error);
-      showErrorAlert('Failed to save your Larivaar preference.');
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_LARIVAAR);
       setIsLarivaar(!larivaar);
     }
   };
@@ -27,8 +27,7 @@ export const Larivaar = () => {
         const larivaar = await fetchLarivaar();
         setIsLarivaar(larivaar || false);
       } catch (error) {
-        console.error('Error fetching larivaar setting:', error);
-        showErrorAlert('Failed to load your Larivaar preference.');
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_LARIVAAR);
       }
     };
     fetchFromLocal();

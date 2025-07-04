@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MonthConstant } from '@constants';
+import { MonthConstant, ErrorConstants } from '@constants';
+import { showErrorAlert } from '@utils';
 
 export interface PathData {
   pathId: number;
@@ -32,14 +33,9 @@ export const useLocal = () => {
       let pathFromLocalArray: PathData[] = [];
 
       if (pathFromLocal) {
-        try {
-          pathFromLocalArray = JSON.parse(pathFromLocal);
-          if (!Array.isArray(pathFromLocalArray)) {
-            console.warn('Stored path data is not an array, resetting to empty array');
-            pathFromLocalArray = [];
-          }
-        } catch (parseError) {
-          console.error('Error parsing path data:', parseError);
+        pathFromLocalArray = JSON.parse(pathFromLocal);
+        if (!Array.isArray(pathFromLocalArray)) {
+          console.warn('Stored path data is not an array, resetting to empty array');
           pathFromLocalArray = [];
         }
       }
@@ -48,21 +44,16 @@ export const useLocal = () => {
       let pathDateDataArray: DateData[] = [];
 
       if (pathDateData) {
-        try {
-          pathDateDataArray = JSON.parse(pathDateData);
-          if (!Array.isArray(pathDateDataArray)) {
-            console.warn('Stored path date data is not an array, resetting to empty array');
-            pathDateDataArray = [];
-          }
-        } catch (parseError) {
-          console.error('Error parsing path date data:', parseError);
+        pathDateDataArray = JSON.parse(pathDateData);
+        if (!Array.isArray(pathDateDataArray)) {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_PROGRESS);
           pathDateDataArray = [];
         }
       }
 
       return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
     } catch (error) {
-      console.error('Error fetching from local storage:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA);
       return { pathDataArray: [], pathDateDataArray: [] };
     }
   };
@@ -97,7 +88,7 @@ export const useLocal = () => {
 
       return { pathDataArray, pathDateDataArray, newPathid };
     } catch (error) {
-      console.error('Error creating new path:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
       throw error;
     }
   };
@@ -150,11 +141,10 @@ export const useLocal = () => {
         await AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate));
         setIsSaved(true);
       } else {
-        console.log('path not found');
+        console.warn(`Path with ID ${pathId} not found during update operation`);
       }
     } catch (error) {
-      console.error('Error updating path:', error);
-      throw error;
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
     }
   };
 
@@ -172,8 +162,7 @@ export const useLocal = () => {
       }
       return false;
     } catch (error) {
-      console.error('Error renaming path:', error);
-      throw error;
+      showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
     }
   };
 
@@ -181,7 +170,7 @@ export const useLocal = () => {
     try {
       await AsyncStorage.setItem('fontSize', JSON.stringify(fontSize));
     } catch (error) {
-      console.error('Error saving font size:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
       throw error;
     }
   };
@@ -190,26 +179,21 @@ export const useLocal = () => {
     try {
       const fontSize = await AsyncStorage.getItem('fontSize');
       if (fontSize) {
-        try {
-          const parsedFontSize = JSON.parse(fontSize);
-          if (
-            parsedFontSize &&
-            typeof parsedFontSize.fontSize === 'string' &&
-            typeof parsedFontSize.number === 'number'
-          ) {
-            return parsedFontSize;
-          } else {
-            console.warn('Invalid font size data structure, using default');
-            return { fontSize: 'Small (Default)', number: 18 };
-          }
-        } catch (parseError) {
-          console.error('Error parsing font size:', parseError);
+        const parsedFontSize = JSON.parse(fontSize);
+        if (
+          parsedFontSize &&
+          typeof parsedFontSize.fontSize === 'string' &&
+          typeof parsedFontSize.number === 'number'
+        ) {
+          return parsedFontSize;
+        } else {
+          console.warn('Invalid font size data structure, using default');
           return { fontSize: 'Small (Default)', number: 18 };
         }
       }
       return { fontSize: 'Small (Default)', number: 18 };
     } catch (error) {
-      console.error('Error fetching font size:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
       return { fontSize: 'Small (Default)', number: 18 };
     }
   };
@@ -218,7 +202,7 @@ export const useLocal = () => {
     try {
       await AsyncStorage.setItem('larivaar', larivaar.toString());
     } catch (error) {
-      console.error('Error saving larivaar setting:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_LARIVAAR);
       throw error;
     }
   };
@@ -228,7 +212,7 @@ export const useLocal = () => {
       const larivaar = await AsyncStorage.getItem('larivaar');
       return larivaar === 'true';
     } catch (error) {
-      console.error('Error fetching larivaar setting:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_LARIVAAR);
       return false;
     }
   };
@@ -237,7 +221,7 @@ export const useLocal = () => {
     try {
       await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
     } catch (error) {
-      console.error('Error saving angs format:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_ANG_FORMAT);
       throw error;
     }
   };
@@ -246,22 +230,17 @@ export const useLocal = () => {
     try {
       const angsFormat = await AsyncStorage.getItem('angsFormat');
       if (angsFormat) {
-        try {
-          const parsedAngsFormat = JSON.parse(angsFormat);
-          if (parsedAngsFormat && typeof parsedAngsFormat.format === 'string') {
-            return parsedAngsFormat;
-          } else {
-            console.warn('Invalid angs format data structure, using default');
-            return { format: 'Punjabi' };
-          }
-        } catch (parseError) {
-          console.error('Error parsing angs format:', parseError);
+        const parsedAngsFormat = JSON.parse(angsFormat);
+        if (parsedAngsFormat && typeof parsedAngsFormat.format === 'string') {
+          return parsedAngsFormat;
+        } else {
+          console.warn('Invalid angs format data structure, using default');
           return { format: 'Punjabi' };
         }
       }
       return { format: 'Punjabi' };
     } catch (error) {
-      console.error('Error fetching angs format:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_ANG_FORMAT);
       return { format: 'Punjabi' };
     }
   };

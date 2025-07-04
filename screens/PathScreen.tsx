@@ -4,7 +4,7 @@ import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'reac
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BaniDB, showSaveProgressAlert } from '@utils';
+import { BaniDB, showSaveProgressAlert, showErrorAlert } from '@utils';
 import { PunjabiNumbers } from '@constants';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import { AngsFormat, DateData, PathData, useLocal } from '@hooks/useLocal';
@@ -98,43 +98,47 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }, 2000);
     }
     if (pathContent && !scrolledToSavedPath.current) {
-      const scrollIndex = pathContent?.page?.findIndex(
-        (page: any) => page.verseId === savedPathVerseId
-      );
-      const fontSize = await fetchFontSize();
-      const fontSizeNumber = fontSize.number;
-      let scrollHeight;
-      if (fontSizeNumber <= 18) {
-        scrollHeight = 25;
-      } else if (fontSizeNumber <= 24) {
-        scrollHeight = 50;
-      } else if (fontSizeNumber <= 30) {
-        scrollHeight = 100;
-      } else {
-        scrollHeight = 150;
+      try {
+        const scrollIndex = pathContent?.page?.findIndex(
+          (page: any) => page.verseId === savedPathVerseId
+        );
+        const fontSize = await fetchFontSize();
+        const fontSizeNumber = fontSize.number;
+        let scrollHeight;
+        if (fontSizeNumber <= 18) {
+          scrollHeight = 25;
+        } else if (fontSizeNumber <= 24) {
+          scrollHeight = 50;
+        } else if (fontSizeNumber <= 30) {
+          scrollHeight = 100;
+        } else {
+          scrollHeight = 150;
+        }
+        if (scrollIndex !== -1) {
+          const scrollY = scrollIndex * scrollHeight;
+          setFound(true);
+          scorllOffset.current = scrollY;
+          scrollRef.current?.scrollTo({
+            y: scorllOffset.current,
+            animated: true,
+          });
+          scrolledToSavedPath.current = true;
+        }
+        scrollTimeoutRef.current = setTimeout(() => {
+          setFound(false);
+          fadeAnim.setValue(1);
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 2500,
+            useNativeDriver: true,
+          }).start(() => {
+            setIsSaving(false);
+            setIsSaved(false);
+          });
+        }, 2000);
+      } catch (error) {
+        console.error('Error scrolling to saved path:', error);
       }
-      if (scrollIndex !== -1) {
-        const scrollY = scrollIndex * scrollHeight;
-        setFound(true);
-        scorllOffset.current = scrollY;
-        scrollRef.current?.scrollTo({
-          y: scorllOffset.current,
-          animated: true,
-        });
-        scrolledToSavedPath.current = true;
-      }
-      scrollTimeoutRef.current = setTimeout(() => {
-        setFound(false);
-        fadeAnim.setValue(1);
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }).start(() => {
-          setIsSaving(false);
-          setIsSaved(false);
-        });
-      }, 2000);
     }
   };
   const fetchFromBaniDB = async (angNumber: number) => {
@@ -215,29 +219,33 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useEffect(() => {
     const fetchPath = async () => {
-      const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
-      const matchedPathData = pathDataArray.find((path) => path.pathId === route.params.pathId);
-      setMatchedPath(matchedPathData);
-      const matchedDate = pathDateDataArray.find((date) => date.pathid === route.params.pathId);
-      setMatchedPathDate(matchedDate);
-      if (matchedPathData) {
-        const pathAngData =
-          matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
-        setSavedPathVerseId(matchedPathData.saveData.verseId);
-        setPathAng(pathAngData);
-        setAngNavigationNumber(pathAngData);
-        if (angsFormat.format === 'Punjabi') {
-          setPathPunjabiAng(
-            pathAngData
-              ?.toString()
-              .split('')
-              .map((num: string) => PunjabiNumbers[num])
-              .join('') || '0'
-          );
-        } else {
-          setPathPunjabiAng(pathAngData?.toString() || '0');
+      try {
+        const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+        const matchedPathData = pathDataArray.find((path) => path.pathId === route.params.pathId);
+        setMatchedPath(matchedPathData);
+        const matchedDate = pathDateDataArray.find((date) => date.pathid === route.params.pathId);
+        setMatchedPathDate(matchedDate);
+        if (matchedPathData) {
+          const pathAngData =
+            matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
+          setSavedPathVerseId(matchedPathData.saveData.verseId);
+          setPathAng(pathAngData);
+          setAngNavigationNumber(pathAngData);
+          if (angsFormat.format === 'Punjabi') {
+            setPathPunjabiAng(
+              pathAngData
+                ?.toString()
+                .split('')
+                .map((num: string) => PunjabiNumbers[num])
+                .join('') || '0'
+            );
+          } else {
+            setPathPunjabiAng(pathAngData?.toString() || '0');
+          }
+          await fetchFromBaniDB(pathAngData);
         }
-        await fetchFromBaniDB(pathAngData);
+      } catch (error) {
+        showErrorAlert('Failed to load path data. Please try again.');
       }
     };
     fetchPath();
@@ -262,22 +270,26 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       animated: true,
     });
 
-    await fetchFromBaniDB(pageNo + 1).finally(() => {
+    try {
+      await fetchFromBaniDB(pageNo + 1);
+      setAngNavigationNumber(pageNo + 1);
+      if (angsFormat.format === 'Punjabi') {
+        setPathPunjabiAng(
+          (pageNo + 1)
+            ?.toString()
+            .split('')
+            .map((num: string) => PunjabiNumbers[num])
+            .join('') || '0'
+        );
+      } else {
+        setPathPunjabiAng((pageNo + 1)?.toString() || '0');
+      }
+      setPathAng(pageNo + 1);
+    } catch (error) {
+      showErrorAlert('Failed to load the next ang. Please try again.');
+    } finally {
       setIsNavigating(false);
-    });
-    setAngNavigationNumber(pageNo + 1);
-    if (angsFormat.format === 'Punjabi') {
-      setPathPunjabiAng(
-        (pageNo + 1)
-          ?.toString()
-          .split('')
-          .map((num: string) => PunjabiNumbers[num])
-          .join('') || '0'
-      );
-    } else {
-      setPathPunjabiAng((pageNo + 1)?.toString() || '0');
     }
-    setPathAng(pageNo + 1);
   };
   const handleLeftArrow = async (pageNo: number) => {
     if (isNavigating) {
@@ -297,22 +309,26 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       y: 0,
       animated: true,
     });
-    await fetchFromBaniDB(pageNo - 1).finally(() => {
+    try {
+      await fetchFromBaniDB(pageNo - 1);
+      setAngNavigationNumber(pageNo - 1);
+      if (angsFormat.format === 'Punjabi') {
+        setPathPunjabiAng(
+          (pageNo - 1)
+            ?.toString()
+            .split('')
+            .map((num: string) => PunjabiNumbers[num])
+            .join('') || '0'
+        );
+      } else {
+        setPathPunjabiAng((pageNo - 1)?.toString() || '0');
+      }
+      setPathAng(pageNo - 1);
+    } catch (error) {
+      showErrorAlert('Failed to load the previous ang. Please try again.');
+    } finally {
       setIsNavigating(false);
-    });
-    setAngNavigationNumber(pageNo - 1);
-    if (angsFormat.format === 'Punjabi') {
-      setPathPunjabiAng(
-        (pageNo - 1)
-          ?.toString()
-          .split('')
-          .map((num: string) => PunjabiNumbers[num])
-          .join('') || '0'
-      );
-    } else {
-      setPathPunjabiAng((pageNo - 1)?.toString() || '0');
     }
-    setPathAng(pageNo - 1);
   };
 
   const handleAutoScroll = () => {
@@ -372,8 +388,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useFocusEffect(() => {
     const fetchLarivaarData = async () => {
-      const larivaar = await fetchLarivaar();
-      setIsLarivaar(larivaar || false);
+      try {
+        const larivaar = await fetchLarivaar();
+        setIsLarivaar(larivaar || false);
+      } catch (error) {
+        setIsLarivaar(false);
+      }
     };
     fetchLarivaarData();
   });
@@ -384,9 +404,22 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useFocusEffect(() => {
     const fetchAngsFormatData = async () => {
-      const format = await fetchAngsFormat();
-      setAngsFormat(format);
-      if (format.format === 'Punjabi') {
+      try {
+        const format = await fetchAngsFormat();
+        setAngsFormat(format);
+        if (format.format === 'Punjabi') {
+          setPathPunjabiAng(
+            pathAng
+              .toString()
+              .split('')
+              .map((num: string) => PunjabiNumbers[num])
+              .join('') || '0'
+          );
+        } else {
+          setPathPunjabiAng(pathAng.toString() || '0');
+        }
+      } catch (error) {
+        setAngsFormat({ format: 'Punjabi' });
         setPathPunjabiAng(
           pathAng
             .toString()
@@ -394,8 +427,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             .map((num: string) => PunjabiNumbers[num])
             .join('') || '0'
         );
-      } else {
-        setPathPunjabiAng(pathAng.toString() || '0');
       }
     };
     fetchAngsFormatData();

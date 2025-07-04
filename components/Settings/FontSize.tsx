@@ -6,6 +6,7 @@ import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from '@icons';
 import { useLocal, FontSizeData } from '@hooks/useLocal';
 import { showErrorAlert } from '@utils';
 import { FontSizes, FontSizeStyle } from '@styles';
+import { ErrorConstants } from '@constants';
 
 export const FontSize = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
@@ -22,8 +23,7 @@ export const FontSize = () => {
       handleToggle();
       await saveFontSize(size);
     } catch (error) {
-      console.error('Error saving font size:', error);
-      showErrorAlert('Failed to save your font size preference.');
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_FONT_SIZE);
       setFontSize(fontSize);
     }
   };
@@ -34,8 +34,7 @@ export const FontSize = () => {
         const fontSizeData = await fetchFontSize();
         setFontSize(fontSizeData);
       } catch (error) {
-        console.error('Error fetching font size:', error);
-        showErrorAlert('Failed to load your font size preference.');
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
       }
     };
     fetchFromLocal();

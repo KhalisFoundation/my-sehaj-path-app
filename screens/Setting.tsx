@@ -5,6 +5,7 @@ import { NavContent, SimpleText, FontSize, Larivaar, Angs } from '@components';
 import { GoBackIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
+import { Constants } from '@constants';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 
@@ -19,14 +20,14 @@ export const Settings = ({ navigation }: SettingProps) => {
         <View style={SettingScreenStyle.settingContainer}>
           <View>
             <View>
-              <SimpleText simpleText={'Display Options'} />
+              <SimpleText simpleText={Constants.DISPLAY_OPTIONS} />
             </View>
             <FontSize />
             <Angs />
           </View>
           <View>
             <View>
-              <SimpleText simpleText={'Bani Options'} />
+              <SimpleText simpleText={Constants.BANI_OPTIONS} />
             </View>
             <Larivaar />
           </View>

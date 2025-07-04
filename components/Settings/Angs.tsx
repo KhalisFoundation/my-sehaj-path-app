@@ -7,6 +7,7 @@ import { AngsFormat, useLocal } from '@hooks/useLocal';
 import { LeftArrowIcon, RightChevronIcon } from '@icons';
 import { AngsFormatStyles } from '@styles';
 import { showErrorAlert } from '@utils';
+import { ErrorConstants } from '@constants';
 
 export const Angs = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
@@ -17,11 +18,10 @@ export const Angs = () => {
   const handleAngsFormat = async (format: AngsFormat) => {
     try {
       setAngsFormat(format);
-      await saveAngsFormat(format);
       handleToggle();
+      await saveAngsFormat(format);
     } catch (error) {
-      console.error('Error saving angs format:', error);
-      showErrorAlert('Failed to save your Angs format preference.');
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_ANG_FORMAT);
       setAngsFormat(angsFormat);
     }
   };
@@ -29,11 +29,10 @@ export const Angs = () => {
   useEffect(() => {
     const fetchFromLocal = async () => {
       try {
-        const format = await fetchAngsFormat();
-        setAngsFormat(format);
+        const angsFormatData = await fetchAngsFormat();
+        setAngsFormat(angsFormatData);
       } catch (error) {
-        console.error('Error fetching angs format:', error);
-        showErrorAlert('Failed to load your Angs format preference.');
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_ANG_FORMAT);
       }
     };
     fetchFromLocal();

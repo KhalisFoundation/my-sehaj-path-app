@@ -33,7 +33,6 @@ export const AngsNavigation = ({
   const handleAngNumber = (number: string) => {
     setInputValue(number);
 
-    // Allow empty input
     if (number === '') {
       setIsValid(true);
       return;

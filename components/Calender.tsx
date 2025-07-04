@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Image } from 'react-native';
 import dayjs from 'dayjs';
 import { CalenderStyles } from '@styles/CalenderStyles';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
-import { CalenderDays } from '@constants/CalenderConstants';
+import { CalenderDays } from '@constants';
 import { DateData, useLocal } from '@hooks/useLocal';
 
 interface Props {

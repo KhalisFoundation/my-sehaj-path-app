@@ -5,6 +5,7 @@ import { SimpleText, NavContent } from '@components';
 import { GoBackIcon, HomeIcon } from '@icons';
 import { ErrorScreenStyles } from '@styles';
 import { RootStackParamList } from '../App';
+import { ErrorConstants } from '@constants';
 
 export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Error'>) => {
   return (
@@ -14,9 +15,7 @@ export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList,
         style={ErrorScreenStyles.BaniDBImage}
       />
       <SimpleText
-        simpleText={
-          'We are currently facing the issue while connecting to the BaniDB please try again later.'
-        }
+        simpleText={ErrorConstants.WE_ARE_CURRENTLY_FACING_ISSUE_BANIDB}
         simpleTextStyle={ErrorScreenStyles.textStyle}
       />
       <View style={ErrorScreenStyles.navContainer}>

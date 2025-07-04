@@ -21,8 +21,10 @@ export const Constants: Constant = {
   STARTED_PATH: 'You started this path ',
   AVERAGE_ABOUT: 'ago. You average about ',
   COMPLETION_SEHAJ_PATH: 'With your current speed, you will complete this Sehaj Path on ',
-  HERE_YOURS_STREAK_CHART: 'Here’s your streak chart so far: ⚡',
+  HERE_YOURS_STREAK_CHART: "Here's your streak chart so far: ⚡",
   CONTINUE: 'Continue',
   COMPLETE_10_ANGS:
     'Awesome, you have starated the sehaj path, once you complete 10 angs you will see more details here.',
+  DISPLAY_OPTIONS: 'Display Options',
+  BANI_OPTIONS: 'Bani Options',
 };

@@ -36,7 +36,6 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
             )
           );
         } catch (error) {
-          console.error('Error fetching data:', error);
           showErrorAlert('Failed to load your Sehaj Paths data.');
         }
       };
@@ -57,7 +56,6 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
       navigation.push('Continue', { pathId: newPathid });
     } catch (error) {
-      console.error('Error starting new path:', error);
       showErrorAlert('Failed to start a new Sehaj Path.');
     }
   };

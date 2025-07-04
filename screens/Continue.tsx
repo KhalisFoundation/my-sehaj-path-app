@@ -21,6 +21,7 @@ import { useInternet } from '@hooks/useInternet';
 import { showErrorAlert } from '@utils';
 import { GoBackIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
+import { ErrorConstants } from '@constants';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
@@ -67,8 +68,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       setPathData(matchedPath);
       return { matchedPath };
     } catch (error) {
-      console.error('Error fetching path data:', error);
-      showErrorAlert('Failed to load your Sehaj Path data.');
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA);
       return { matchedPath: undefined };
     }
   }, [fetchFromLocal, pathId]);
@@ -87,8 +87,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         calculatePathCompletion(matchedPath);
       }
     } catch (error) {
-      console.error('Error updating path data:', error);
-      showErrorAlert('Failed to update your Sehaj Path data.');
+      showErrorAlert(ErrorConstants.FAILED_TO_UPDATE_PATH_DATA);
     }
   }, [fetchPath]);
 
@@ -106,8 +105,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       }
       navigation.push('Path', { pathId: pathId });
     } catch (error) {
-      console.error('Error checking network:', error);
-      showErrorAlert('Failed to check network connection.');
+      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
     }
   };
 
@@ -115,7 +113,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     try {
       updateOnlineStatus();
     } catch (error) {
-      console.error('Error updating online status:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
     }
   }, [updateOnlineStatus]);
 
