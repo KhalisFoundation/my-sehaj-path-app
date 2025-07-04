@@ -4,11 +4,14 @@ import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'reac
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BaniDB, showSaveProgressAlert, showErrorAlert } from '@utils';
-import { PunjabiNumbers } from '@constants';
+import { BaniDB } from '@utils/BaniDB';
+import { showErrorAlert } from '@utils/Error';
+import { convertNumberToFormat } from '@utils/numberUtils';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import { AngsFormat, DateData, PathData, useLocal } from '@hooks/useLocal';
 import { useInternet } from '@hooks/useInternet';
+import { useNavigation } from '@hooks/useNavigation';
+import { usePathNavigation } from '@hooks/usePathNavigation';
 import {
   AngsNavigation,
   Loading,
@@ -52,6 +55,41 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
     useLocal();
+
+  const fetchFromBaniDB = async (angNumber: number) => {
+    aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+    const pathFromBaniDB = await BaniDB(angNumber);
+    setPathContent(pathFromBaniDB);
+    if (pathFromBaniDB === 'Error') {
+      navigation.replace('Error');
+    }
+    aleartIndicator.current = undefined;
+    const currentDebounceTimer = debounceTimer.current;
+    if (currentDebounceTimer) {
+      clearTimeout(currentDebounceTimer);
+      debounceTimer.current = null;
+    }
+    scorllOffset.current = 0;
+    scrollRef.current?.scrollTo({
+      y: 0,
+      animated: false,
+    });
+  };
+
+  const { handleRightArrow, handleLeftArrow } = useNavigation({
+    isNavigating,
+    setIsNavigating,
+    setIsSaving,
+    scorllOffset,
+    scrollRef,
+    setAngNavigationNumber,
+    setPathPunjabiAng,
+    setPathAng,
+    angsFormat,
+    checkNetwork,
+    isOnline,
+    fetchFromBaniDB,
+  });
 
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
@@ -141,81 +179,22 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }
     }
   };
-  const fetchFromBaniDB = async (angNumber: number) => {
-    aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
-    const pathFromBaniDB = await BaniDB(angNumber);
-    setPathContent(pathFromBaniDB);
-    if (pathFromBaniDB === 'Error') {
-      navigation.replace('Error');
-    }
-    aleartIndicator.current = undefined;
-    const currentDebounceTimer = debounceTimer.current;
-    if (currentDebounceTimer) {
-      clearTimeout(currentDebounceTimer);
-      debounceTimer.current = null;
-    }
-    scorllOffset.current = 0;
-    scrollRef.current?.scrollTo({
-      y: 0,
-      animated: false,
-    });
-  };
   const updatePathAng = (angNumber: number) => {
     setPathAng(angNumber);
-    if (angsFormat.format === 'Punjabi') {
-      setPathPunjabiAng(
-        angNumber
-          .toString()
-          .split('')
-          .map((num: string) => PunjabiNumbers[num])
-          .join('') || '0'
-      );
-    } else {
-      setPathPunjabiAng(angNumber.toString() || '0');
-    }
+    setPathPunjabiAng(convertNumberToFormat(angNumber, angsFormat.format as 'Punjabi' | 'English'));
   };
 
-  const handleGoBack = useCallback(async () => {
-    if (isAngNavigation) {
-      const { pathDataArray } = await fetchFromLocal();
-      const currentMatchedPath = pathDataArray.find((path) => path.pathId === route.params.pathId);
-      const lastSavedAngNumber = currentMatchedPath?.saveData.angNumber || 0;
-
-      if (pathAng !== lastSavedAngNumber) {
-        showSaveProgressAlert({
-          onSaveAndGoBack: () => {
-            handleUpdatePath(
-              route.params.pathId,
-              pathAng,
-              savedPathVerseId,
-              scorllOffset.current,
-              setIsSaved
-            );
-            setIsAngNavigation(false);
-            navigation.push('Home');
-          },
-          onGoBackWithoutSaving: () => {
-            updatePathAng(lastSavedAngNumber);
-            navigation.push('Home');
-          },
-        });
-      } else {
-        navigation.push('Home');
-      }
-    } else {
-      navigation.push('Home');
-    }
-  }, [
+  const { handleGoBack } = usePathNavigation({
     isAngNavigation,
     pathAng,
-    handleUpdatePath,
-    route.params.pathId,
     savedPathVerseId,
+    pathId: route.params.pathId,
     setIsSaved,
     setIsAngNavigation,
+    updatePathAng,
+    scorllOffset,
     navigation,
-    fetchFromLocal,
-  ]);
+  });
 
   useEffect(() => {
     const fetchPath = async () => {
@@ -231,17 +210,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           setSavedPathVerseId(matchedPathData.saveData.verseId);
           setPathAng(pathAngData);
           setAngNavigationNumber(pathAngData);
-          if (angsFormat.format === 'Punjabi') {
-            setPathPunjabiAng(
-              pathAngData
-                ?.toString()
-                .split('')
-                .map((num: string) => PunjabiNumbers[num])
-                .join('') || '0'
-            );
-          } else {
-            setPathPunjabiAng(pathAngData?.toString() || '0');
-          }
+          setPathPunjabiAng(
+            convertNumberToFormat(pathAngData, angsFormat.format as 'Punjabi' | 'English')
+          );
           await fetchFromBaniDB(pathAngData);
         }
       } catch (error) {
@@ -250,86 +221,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     };
     fetchPath();
   }, []);
-
-  const handleRightArrow = async (pageNo: number) => {
-    if (isNavigating) {
-      return;
-    }
-    checkNetwork();
-    if (!isOnline) {
-      return;
-    }
-    if (pageNo >= 1430) {
-      return;
-    }
-    setIsNavigating(true);
-    setIsSaving(false);
-    scorllOffset.current = 0;
-    scrollRef.current?.scrollTo({
-      y: 0,
-      animated: true,
-    });
-
-    try {
-      await fetchFromBaniDB(pageNo + 1);
-      setAngNavigationNumber(pageNo + 1);
-      if (angsFormat.format === 'Punjabi') {
-        setPathPunjabiAng(
-          (pageNo + 1)
-            ?.toString()
-            .split('')
-            .map((num: string) => PunjabiNumbers[num])
-            .join('') || '0'
-        );
-      } else {
-        setPathPunjabiAng((pageNo + 1)?.toString() || '0');
-      }
-      setPathAng(pageNo + 1);
-    } catch (error) {
-      showErrorAlert('Failed to load the next ang. Please try again.');
-    } finally {
-      setIsNavigating(false);
-    }
-  };
-  const handleLeftArrow = async (pageNo: number) => {
-    if (isNavigating) {
-      return;
-    }
-    checkNetwork();
-    if (!isOnline) {
-      return;
-    }
-    if (pageNo <= 1) {
-      return;
-    }
-    setIsNavigating(true);
-    setIsSaving(false);
-    scorllOffset.current = 0;
-    scrollRef.current?.scrollTo({
-      y: 0,
-      animated: true,
-    });
-    try {
-      await fetchFromBaniDB(pageNo - 1);
-      setAngNavigationNumber(pageNo - 1);
-      if (angsFormat.format === 'Punjabi') {
-        setPathPunjabiAng(
-          (pageNo - 1)
-            ?.toString()
-            .split('')
-            .map((num: string) => PunjabiNumbers[num])
-            .join('') || '0'
-        );
-      } else {
-        setPathPunjabiAng((pageNo - 1)?.toString() || '0');
-      }
-      setPathAng(pageNo - 1);
-    } catch (error) {
-      showErrorAlert('Failed to load the previous ang. Please try again.');
-    } finally {
-      setIsNavigating(false);
-    }
-  };
 
   const handleAutoScroll = () => {
     scrollInveral.current = setInterval(() => {
@@ -407,26 +298,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       try {
         const format = await fetchAngsFormat();
         setAngsFormat(format);
-        if (format.format === 'Punjabi') {
-          setPathPunjabiAng(
-            pathAng
-              .toString()
-              .split('')
-              .map((num: string) => PunjabiNumbers[num])
-              .join('') || '0'
-          );
-        } else {
-          setPathPunjabiAng(pathAng.toString() || '0');
-        }
+        setPathPunjabiAng(convertNumberToFormat(pathAng, format.format as 'Punjabi' | 'English'));
       } catch (error) {
         setAngsFormat({ format: 'Punjabi' });
-        setPathPunjabiAng(
-          pathAng
-            .toString()
-            .split('')
-            .map((num: string) => PunjabiNumbers[num])
-            .join('') || '0'
-        );
+        setPathPunjabiAng(convertNumberToFormat(pathAng, 'Punjabi'));
       }
     };
     fetchAngsFormatData();

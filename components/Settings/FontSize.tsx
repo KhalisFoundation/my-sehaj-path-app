@@ -5,8 +5,9 @@ import { NavContent, SimpleText } from '@components';
 import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from '@icons';
 import { useLocal, FontSizeData } from '@hooks/useLocal';
 import { showErrorAlert } from '@utils';
-import { FontSizes, FontSizeStyle } from '@styles';
+import { FontSizeStyle } from '@styles';
 import { ErrorConstants } from '@constants';
+import { FontSizes } from '@constants';
 
 export const FontSize = () => {
   const [isVisible, setIsVisible] = useState<boolean>(false);
