@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
+import { CommonActions, useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
 import { Constants } from '@constants';
 import { StartIcon } from '@icons';
@@ -10,6 +10,7 @@ import { useLocal, PathData } from '@hooks/useLocal';
 import { showErrorAlert } from '@utils';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
+import { ErrorConstants } from '@constants/ErrorConstant';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -18,29 +19,29 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
   const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
 
+  const loadData = useCallback(async () => {
+    try {
+      const { pathDataArray } = await fetchFromLocal(navigation);
+
+      setPathCompleted(
+        pathDataArray.filter(
+          (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
+        )
+      );
+      setPathInProgress(
+        pathDataArray.filter(
+          (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+        )
+      );
+    } catch (error) {
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA, loadData, 'Retry');
+    }
+  }, [fetchFromLocal, navigation]);
+
   useFocusEffect(
     useCallback(() => {
-      const fetch = async () => {
-        try {
-          const { pathDataArray } = await fetchFromLocal();
-
-          setPathCompleted(
-            pathDataArray.filter(
-              (path: PathData) =>
-                path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
-            )
-          );
-          setPathInProgress(
-            pathDataArray.filter(
-              (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
-            )
-          );
-        } catch (error) {
-          showErrorAlert('Failed to load your Sehaj Paths data.');
-        }
-      };
-      fetch();
-    }, [fetchFromLocal])
+      loadData();
+    }, [loadData])
   );
 
   const handleStart = async () => {
@@ -56,7 +57,17 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
       navigation.push('Continue', { pathId: newPathid });
     } catch (error) {
-      showErrorAlert('Failed to start a new Sehaj Path.');
+      showErrorAlert(
+        ErrorConstants.FAILED_TO_START_NEW_SEHAJ_PATH,
+        () =>
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [{ name: 'Home' }],
+            })
+          ),
+        'Retry'
+      );
     }
   };
 
@@ -71,7 +82,6 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
           <View style={HomeScreenStyles.container}>
             <Headline headline={Constants.ITS_FINE_DAY_TO_START_A} />
             <Headline headline={Constants.NEW_SEHAJ_PATH} />
-
             <PrimaryButton
               buttonTitle={Constants.START}
               Icon={<StartIcon />}

@@ -3,6 +3,6 @@ export { MonthConstant } from './MonthConstant';
 export { FontSizes } from './FontSize';
 export { PunjabiNumbers } from './Number';
 export { CalenderDays } from './CalenderConstants';
-export { PrimaryCardConstants } from './PrimaryCardConstants';
+export { UIConstants } from './UIConstants';
 export { ErrorConstants } from './ErrorConstant';
 export { AngsFormatArray } from './Angs';

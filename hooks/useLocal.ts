@@ -17,7 +17,6 @@ export interface DateData {
 }
 export interface PathDate {
   date: string;
-  angs: number;
 }
 export interface FontSizeData {
   fontSize: string;
@@ -27,17 +26,13 @@ export interface AngsFormat {
   format: string;
 }
 export const useLocal = () => {
-  const fetchFromLocal = async () => {
+  const fetchFromLocal = async (navigation?: any) => {
     try {
       const pathFromLocal = await AsyncStorage.getItem('pathDetails');
       let pathFromLocalArray: PathData[] = [];
 
       if (pathFromLocal) {
         pathFromLocalArray = JSON.parse(pathFromLocal);
-        if (!Array.isArray(pathFromLocalArray)) {
-          console.warn('Stored path data is not an array, resetting to empty array');
-          pathFromLocalArray = [];
-        }
       }
 
       const pathDateData = await AsyncStorage.getItem('pathDateDetails');
@@ -45,15 +40,15 @@ export const useLocal = () => {
 
       if (pathDateData) {
         pathDateDataArray = JSON.parse(pathDateData);
-        if (!Array.isArray(pathDateDataArray)) {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_PROGRESS);
-          pathDateDataArray = [];
-        }
       }
 
       return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA);
+      showErrorAlert(
+        ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA,
+        () => navigation.goBack(),
+        'Retry'
+      );
       return { pathDataArray: [], pathDateDataArray: [] };
     }
   };
@@ -85,7 +80,8 @@ export const useLocal = () => {
 
       pathDataArray.push(newPath);
       pathDateDataArray.push(newPathDate);
-
+      await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
+      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
       return { pathDataArray, pathDateDataArray, newPathid };
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
@@ -111,11 +107,6 @@ export const useLocal = () => {
       if (matchedPath && matchedDate) {
         const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
 
-        const lastAngs =
-          cleanMatchedPathDates.length > 0
-            ? cleanMatchedPathDates[cleanMatchedPathDates.length - 1].angs
-            : 0;
-        const lastestAngsDone = angNumber - lastAngs;
         matchedPath.saveData = { angNumber, verseId };
         matchedPath.progress = (angNumber / 1430) * 100;
 
@@ -123,7 +114,6 @@ export const useLocal = () => {
           ...cleanMatchedPathDates,
           {
             date: todayDate,
-            angs: lastestAngsDone,
           },
         ];
 
@@ -141,7 +131,7 @@ export const useLocal = () => {
         await AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate));
         setIsSaved(true);
       } else {
-        console.warn(`Path with ID ${pathId} not found during update operation`);
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
       }
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
@@ -180,14 +170,9 @@ export const useLocal = () => {
       const fontSize = await AsyncStorage.getItem('fontSize');
       if (fontSize) {
         const parsedFontSize = JSON.parse(fontSize);
-        if (
-          parsedFontSize &&
-          typeof parsedFontSize.fontSize === 'string' &&
-          typeof parsedFontSize.number === 'number'
-        ) {
+        if (parsedFontSize) {
           return parsedFontSize;
         } else {
-          console.warn('Invalid font size data structure, using default');
           return { fontSize: 'Small (Default)', number: 18 };
         }
       }
@@ -231,12 +216,7 @@ export const useLocal = () => {
       const angsFormat = await AsyncStorage.getItem('angsFormat');
       if (angsFormat) {
         const parsedAngsFormat = JSON.parse(angsFormat);
-        if (parsedAngsFormat && typeof parsedAngsFormat.format === 'string') {
-          return parsedAngsFormat;
-        } else {
-          console.warn('Invalid angs format data structure, using default');
-          return { format: 'Punjabi' };
-        }
+        return parsedAngsFormat || { format: 'Punjabi' };
       }
       return { format: 'Punjabi' };
     } catch (error) {

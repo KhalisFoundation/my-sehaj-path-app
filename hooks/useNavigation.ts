@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { showErrorAlert, convertNumberToFormat } from '@utils';
+import { ErrorConstants } from '@constants/ErrorConstant';
 
 export interface UseNavigationParams {
   isNavigating: boolean;
@@ -56,7 +57,7 @@ export const useNavigation = ({
         setPathPunjabiAng(convertNumberToFormat(pageNo + 1, angsFormat.format));
         setPathAng(pageNo + 1);
       } catch (error) {
-        showErrorAlert('Failed to load the next ang. Please try again.');
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
       } finally {
         setIsNavigating(false);
       }
@@ -102,7 +103,7 @@ export const useNavigation = ({
         setPathPunjabiAng(convertNumberToFormat(pageNo - 1, angsFormat.format));
         setPathAng(pageNo - 1);
       } catch (error) {
-        showErrorAlert('Failed to load the previous ang. Please try again.');
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
       } finally {
         setIsNavigating(false);
       }

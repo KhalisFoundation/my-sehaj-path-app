@@ -1,8 +1,8 @@
-interface PrimaryCardConstant {
+interface UIConstant {
   [key: string]: any;
 }
 
-export const PrimaryCardConstants: PrimaryCardConstant = {
+export const UIConstants: UIConstant = {
   PROGRESS_CIRCLE_SIZE: 53,
   PROGRESS_CIRCLE_STROKE_WIDTH: 12,
   PROGRESS_CIRCLE_MAX_PROGRESS: 99,

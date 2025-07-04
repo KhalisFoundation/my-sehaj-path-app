@@ -63,15 +63,15 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const fetchPath = useCallback(async () => {
     try {
-      const { pathDataArray } = await fetchFromLocal();
+      const { pathDataArray } = await fetchFromLocal(navigation);
       const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
       setPathData(matchedPath);
       return { matchedPath };
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA);
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA, () => navigation.goBack(), 'Retry');
       return { matchedPath: undefined };
     }
-  }, [fetchFromLocal, pathId]);
+  }, [fetchFromLocal, navigation, pathId]);
 
   const updateTheData = useCallback(async () => {
     try {
@@ -87,9 +87,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         calculatePathCompletion(matchedPath);
       }
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_UPDATE_PATH_DATA);
+      showErrorAlert(ErrorConstants.FAILED_TO_UPDATE_PATH_DATA, () => navigation.goBack(), 'Retry');
     }
-  }, [fetchPath]);
+  }, [fetchPath, navigation]);
 
   useFocusEffect(
     useCallback(() => {
@@ -105,7 +105,11 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       }
       navigation.push('Path', { pathId: pathId });
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+      showErrorAlert(
+        ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION,
+        () => navigation.goBack(),
+        'Retry'
+      );
     }
   };
 

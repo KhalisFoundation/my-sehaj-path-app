@@ -21,6 +21,7 @@ import {
   PathNavigation,
 } from '@components';
 import { RootStackParamList } from '../App';
+import { ErrorConstants } from '@constants/ErrorConstant';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -175,7 +176,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           });
         }, 2000);
       } catch (error) {
-        console.error('Error scrolling to saved path:', error);
+        showErrorAlert(ErrorConstants.ERROR_SCROLLING_TO_SAVED_PATH);
       }
     }
   };
@@ -199,12 +200,16 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   useEffect(() => {
     const fetchPath = async () => {
       try {
-        const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
-        const matchedPathData = pathDataArray.find((path) => path.pathId === route.params.pathId);
-        setMatchedPath(matchedPathData);
-        const matchedDate = pathDateDataArray.find((date) => date.pathid === route.params.pathId);
-        setMatchedPathDate(matchedDate);
+        const { pathDataArray, pathDateDataArray } = await fetchFromLocal(navigation);
+        const matchedPathData = pathDataArray.find(
+          (path: PathData) => path.pathId === route.params.pathId
+        );
+        const matchedPathDateData = pathDateDataArray.find(
+          (pathDate: DateData) => pathDate.pathid === route.params.pathId
+        );
         if (matchedPathData) {
+          setMatchedPath(matchedPathData);
+          setMatchedPathDate(matchedPathDateData);
           const pathAngData =
             matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
           setSavedPathVerseId(matchedPathData.saveData.verseId);
@@ -216,7 +221,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           await fetchFromBaniDB(pathAngData);
         }
       } catch (error) {
-        showErrorAlert('Failed to load path data. Please try again.');
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA_GENERIC, () => fetchPath(), 'Retry');
       }
     };
     fetchPath();
@@ -368,7 +373,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           handleUpdatePath={handleUpdatePath}
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
-          pathId={route.params.pathId || 1}
+          pathId={route.params.pathId}
         />
         {aleartIndicator.current !== undefined ? (
           <Loading alertIndicator={aleartIndicator.current} alertText={alertText.current} />

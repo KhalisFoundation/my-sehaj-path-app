@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Svg, { Circle, Path, LinearGradient, Stop, Defs } from 'react-native-svg';
 import { PathProgressCardStyles } from '@styles';
-import { Constants, PrimaryCardConstants } from '@constants';
+import { Constants, UIConstants } from '@constants';
 
 interface Prop {
   sehajPathName: string;
@@ -12,9 +12,9 @@ interface Prop {
 }
 
 export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Prop) => {
-  progress = progress >= 100 ? PrimaryCardConstants.PROGRESS_CIRCLE_MAX_PROGRESS : progress;
-  const size = PrimaryCardConstants.PROGRESS_CIRCLE_SIZE;
-  const strokeWidth = PrimaryCardConstants.PROGRESS_CIRCLE_STROKE_WIDTH;
+  progress = progress >= 100 ? UIConstants.PROGRESS_CIRCLE_MAX_PROGRESS : progress;
+  const size = UIConstants.PROGRESS_CIRCLE_SIZE;
+  const strokeWidth = UIConstants.PROGRESS_CIRCLE_STROKE_WIDTH;
   const center = size / 2;
   const circleRadius = (size - strokeWidth) / 2;
   const polarToCartesian = (
@@ -42,8 +42,8 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Pro
     const largeArcFlag = endAngle - startAngle <= 180 ? '0' : '1';
     return ['M', start.x, start.y, 'A', radius, radius, 0, largeArcFlag, 0, end.x, end.y].join(' ');
   };
-  const progressAngle = PrimaryCardConstants.PROGRESS_CIRCLE_FULL_ANGLE * (progress / 100);
-  const startAngle = PrimaryCardConstants.PROGRESS_CIRCLE_START_ANGLE;
+  const progressAngle = UIConstants.PROGRESS_CIRCLE_FULL_ANGLE * (progress / 100);
+  const startAngle = UIConstants.PROGRESS_CIRCLE_START_ANGLE;
   const endAngle = progressAngle;
 
   return (
@@ -72,23 +72,23 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Pro
           <Defs>
             <LinearGradient
               id="filledGrad"
-              x1={PrimaryCardConstants.GRADIENT_X1}
-              y1={PrimaryCardConstants.GRADIENT_Y1}
-              x2={PrimaryCardConstants.GRADIENT_X2}
-              y2={PrimaryCardConstants.GRADIENT_Y2}
+              x1={UIConstants.GRADIENT_X1}
+              y1={UIConstants.GRADIENT_Y1}
+              x2={UIConstants.GRADIENT_X2}
+              y2={UIConstants.GRADIENT_Y2}
             >
-              <Stop offset="0%" stopColor={PrimaryCardConstants.PROGRESS_FILLED_COLOR_START} />
-              <Stop offset="100%" stopColor={PrimaryCardConstants.PROGRESS_FILLED_COLOR_END} />
+              <Stop offset="0%" stopColor={UIConstants.PROGRESS_FILLED_COLOR_START} />
+              <Stop offset="100%" stopColor={UIConstants.PROGRESS_FILLED_COLOR_END} />
             </LinearGradient>
             <LinearGradient
               id="unfilledGrad"
-              x1={PrimaryCardConstants.GRADIENT_X1}
-              y1={PrimaryCardConstants.GRADIENT_Y1}
-              x2={PrimaryCardConstants.GRADIENT_X2}
-              y2={PrimaryCardConstants.GRADIENT_Y2}
+              x1={UIConstants.GRADIENT_X1}
+              y1={UIConstants.GRADIENT_Y1}
+              x2={UIConstants.GRADIENT_X2}
+              y2={UIConstants.GRADIENT_Y2}
             >
-              <Stop offset="0%" stopColor={PrimaryCardConstants.PROGRESS_UNFILLED_COLOR} />
-              <Stop offset="100%" stopColor={PrimaryCardConstants.PROGRESS_UNFILLED_COLOR} />
+              <Stop offset="0%" stopColor={UIConstants.PROGRESS_UNFILLED_COLOR} />
+              <Stop offset="100%" stopColor={UIConstants.PROGRESS_UNFILLED_COLOR} />
             </LinearGradient>
           </Defs>
           <Circle
