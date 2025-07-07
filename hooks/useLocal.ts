@@ -235,7 +235,7 @@ export const useLocal = () => {
         try {
           const parsedAngsFormat = JSON.parse(angsFormat);
           if (parsedAngsFormat && typeof parsedAngsFormat === 'object') {
-            return parsedAngsFormat || { format: 'Punjabi' };
+            return parsedAngsFormat;
           }
         } catch (parseError) {
           console.error('Error parsing angsFormat:', parseError);
