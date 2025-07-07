@@ -11,7 +11,7 @@ type SplashProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 export const SplashScreen = ({ navigation }: SplashProps) => {
   const fadeOut = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       Animated.timing(fadeOut, {
         toValue: 0,
         duration: 1500,
@@ -20,6 +20,8 @@ export const SplashScreen = ({ navigation }: SplashProps) => {
         navigation.replace('Home');
       });
     }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [fadeOut, navigation]);
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>

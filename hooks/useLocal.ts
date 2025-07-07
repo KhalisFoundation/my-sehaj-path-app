@@ -32,18 +32,35 @@ export const useLocal = () => {
       let pathFromLocalArray: PathData[] = [];
 
       if (pathFromLocal) {
-        pathFromLocalArray = JSON.parse(pathFromLocal);
+        try {
+          pathFromLocalArray = JSON.parse(pathFromLocal);
+          if (!Array.isArray(pathFromLocalArray)) {
+            pathFromLocalArray = [];
+          }
+        } catch (parseError) {
+          console.error('Error parsing pathDetails:', parseError);
+          pathFromLocalArray = [];
+        }
       }
 
       const pathDateData = await AsyncStorage.getItem('pathDateDetails');
       let pathDateDataArray: DateData[] = [];
 
       if (pathDateData) {
-        pathDateDataArray = JSON.parse(pathDateData);
+        try {
+          pathDateDataArray = JSON.parse(pathDateData);
+          if (!Array.isArray(pathDateDataArray)) {
+            pathDateDataArray = [];
+          }
+        } catch (parseError) {
+          console.error('Error parsing pathDateDetails:', parseError);
+          pathDateDataArray = [];
+        }
       }
 
       return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
     } catch (error) {
+      console.error('Error fetching from local storage:', error);
       return { pathDataArray: [], pathDateDataArray: [] };
     }
   };
@@ -164,10 +181,15 @@ export const useLocal = () => {
     try {
       const fontSize = await AsyncStorage.getItem('fontSize');
       if (fontSize) {
-        const parsedFontSize = JSON.parse(fontSize);
-        if (parsedFontSize) {
-          return parsedFontSize;
-        } else {
+        try {
+          const parsedFontSize = JSON.parse(fontSize);
+          if (parsedFontSize && typeof parsedFontSize === 'object') {
+            return parsedFontSize;
+          } else {
+            return { fontSize: 'Small (Default)', number: 18 };
+          }
+        } catch (parseError) {
+          console.error('Error parsing fontSize:', parseError);
           return { fontSize: 'Small (Default)', number: 18 };
         }
       }
@@ -210,8 +232,14 @@ export const useLocal = () => {
     try {
       const angsFormat = await AsyncStorage.getItem('angsFormat');
       if (angsFormat) {
-        const parsedAngsFormat = JSON.parse(angsFormat);
-        return parsedAngsFormat || { format: 'Punjabi' };
+        try {
+          const parsedAngsFormat = JSON.parse(angsFormat);
+          if (parsedAngsFormat && typeof parsedAngsFormat === 'object') {
+            return parsedAngsFormat || { format: 'Punjabi' };
+          }
+        } catch (parseError) {
+          console.error('Error parsing angsFormat:', parseError);
+        }
       }
       return { format: 'Punjabi' };
     } catch (error) {
