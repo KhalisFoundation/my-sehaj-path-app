@@ -10,7 +10,7 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_LOAD_LARIVAAR: 'Failed to load your larivaar preference. Please try again.',
   FAILED_TO_SAVE_PATH_NAME: 'Failed to save your path name. Please try again.',
   FAILED_TO_LOAD_PATH_NAME: 'Failed to load your path name. Please try again.',
-  FAILED_TO_LOAD_SEHAJ_PATHS_DATA: 'Failed to load your Sehaj Paths data.',
+  FAILED_TO_LOAD_SEHAJ_PATHS_DATA: 'Failed to load your Sehaj Paths data. Please try again.',
   FAILED_TO_CREATE_NEW_SEHAJ_PATH: 'Failed to create a new Sehaj Path. Please try again.',
   FAILED_TO_SAVE_PATH_PROGRESS: 'Failed to save your path progress. Please try again.',
   FAILED_TO_LOAD_PATH_PROGRESS: 'Failed to load your path progress.',

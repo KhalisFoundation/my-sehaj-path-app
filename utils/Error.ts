@@ -20,5 +20,5 @@ export const showErrorAlert = (
     });
   }
 
-  Alert.alert('Error', `${errorMessage}\n\nPlease try again.`, buttons);
+  Alert.alert('Error', `${errorMessage}\n\n.`, buttons);
 };
