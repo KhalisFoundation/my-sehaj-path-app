@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -14,11 +14,20 @@ import { RootStackParamList } from '../App';
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = ({ navigation }: HomeProps) => {
-  const [pathInProgress, setPathInProgress] = useState<PathData[]>([]);
-  const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
+  const [pathDataArrayFromLocal, setPathDataArrayFromLocal] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const errorAlertShownRef = useRef(false);
+
+  const { pathInProgress, pathCompleted } = useMemo(() => {
+    const completed = pathDataArrayFromLocal.filter(
+      (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
+    );
+    const inProgress = pathDataArrayFromLocal.filter(
+      (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+    );
+    return { pathInProgress: inProgress, pathCompleted: completed };
+  }, [pathDataArrayFromLocal]);
 
   const loadData = useCallback(async () => {
     if (isLoading) {
@@ -28,17 +37,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
     errorAlertShownRef.current = false;
     try {
       const { pathDataArray } = await fetchFromLocal();
-
-      setPathCompleted(
-        pathDataArray.filter(
-          (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
-        )
-      );
-      setPathInProgress(
-        pathDataArray.filter(
-          (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
-        )
-      );
+      setPathDataArrayFromLocal(pathDataArray);
     } catch (error) {
       if (!errorAlertShownRef.current) {
         errorAlertShownRef.current = true;
@@ -62,22 +61,45 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
     }, [loadData])
   );
 
-  const handleStart = async () => {
+  const handleStart = useCallback(async () => {
     try {
       const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
-      setPathInProgress(pathDataArray.filter((path: PathData) => path.saveData.angNumber !== 1430));
-      setPathCompleted(
-        pathDataArray.filter(
-          (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
-        )
-      );
+      setPathDataArrayFromLocal(pathDataArray);
       await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
       navigation.push('Continue', { pathId: newPathid });
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
     }
-  };
+  }, [handleNewPath, navigation]);
+
+  const pathInProgressCards = useMemo(
+    () =>
+      pathInProgress?.map((path: PathData) => (
+        <PrimaryCard
+          key={path.pathId}
+          sehajPathName={path.pathName}
+          angNumber={path.saveData.angNumber}
+          progress={path.progress}
+          onPress={() => {
+            navigation.push('Continue', { pathId: path.pathId });
+          }}
+        />
+      )),
+    [pathInProgress, navigation]
+  );
+
+  const pathCompletedCards = useMemo(
+    () =>
+      pathCompleted.map((path: PathData) => (
+        <SecondaryCard
+          key={path.pathId}
+          sehajPathNumber={path.pathId}
+          pathCompletionDate={path.completionDate}
+        />
+      )),
+    [pathCompleted]
+  );
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
@@ -98,35 +120,13 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
             {pathInProgress?.length > 0 ? (
               <View style={HomeScreenStyles.pathInProgressContianer}>
                 <Label label={`${Constants.SEHAJ_PATH_IN_PROGRESS} :`} />
-                <Slider
-                  arrayOfCards={pathInProgress?.map((path: PathData) => (
-                    <PrimaryCard
-                      sehajPathName={path.pathName}
-                      angNumber={path.saveData.angNumber}
-                      progress={path.progress}
-                      onPress={() => {
-                        navigation.push('Continue', { pathId: path.pathId });
-                      }}
-                    />
-                  ))}
-                  widthOfCard={199}
-                  dotsIndicator={true}
-                />
+                <Slider arrayOfCards={pathInProgressCards} widthOfCard={199} dotsIndicator={true} />
               </View>
             ) : undefined}
             {pathCompleted?.length > 0 ? (
               <View style={HomeScreenStyles.pathCompletedContainer}>
                 <Label label={`${Constants.SEHAJ_PATH_COMPLETED} :`} />
-                <Slider
-                  arrayOfCards={pathCompleted.map((path: PathData) => (
-                    <SecondaryCard
-                      sehajPathNumber={path.pathId}
-                      pathCompletionDate={path.completionDate}
-                    />
-                  ))}
-                  widthOfCard={130}
-                  dotsIndicator={false}
-                />
+                <Slider arrayOfCards={pathCompletedCards} widthOfCard={130} dotsIndicator={false} />
               </View>
             ) : undefined}
           </View>

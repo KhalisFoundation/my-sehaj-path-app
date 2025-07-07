@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 import { ScrollView, Animated } from 'react-native';
-import { showErrorAlert } from '../utils';
-import { ErrorConstants } from '../constants';
-import { DateData } from './useLocal';
+import { showErrorAlert } from '@utils';
+import { ErrorConstants } from '@constants';
+import { DateData } from '@hooks';
 
 interface UseScrollToSavedPathProps {
   matchedPathDate: DateData | undefined;

@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import GestureRecognizer from 'react-native-swipe-gestures';
 import { ScrollView } from 'react-native';
 import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
+import { useLocal } from '@hooks';
 
 interface PathReaderProps {
   pathContent: any;
@@ -31,84 +32,102 @@ interface PathReaderProps {
   pathId: number;
 }
 
-export const PathReader = ({
-  pathContent,
-  isLarivaar,
-  isSaving,
-  pressIndex,
-  savedPathVerseId,
-  scrollRef,
-  scorllOffset,
-  isAngNavigation,
-  debouncedScrollSave,
-  handleStopAutoScroll,
-  handleRightArrow,
-  handleLeftArrow,
-  setPressIndex,
-  setSavedPathVerseId,
-  handleUpdatePath,
-  setIsSaving,
-  setIsSaved,
-  pathId,
-}: PathReaderProps) => {
-  return (
-    <GestureRecognizer
-      onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
-      onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
-      onSwipeDown={() => undefined}
-      onSwipeUp={() => undefined}
-      config={{
-        velocityThreshold: 0.8,
-        directionalOffsetThreshold: 80,
-        gestureIsClickThreshold: 10,
-      }}
-    >
-      <ScrollView
-        contentContainerStyle={PathReaderStyles.pathContentContainer}
-        ref={scrollRef}
-        onScroll={(e) => {
-          const scrollY = e.nativeEvent.contentOffset.y;
-          scorllOffset.current = scrollY;
-          if (!isAngNavigation) {
-            debouncedScrollSave();
-          }
+export const PathReader = React.memo(
+  ({
+    pathContent,
+    isLarivaar,
+    isSaving,
+    pressIndex,
+    savedPathVerseId,
+    scrollRef,
+    scorllOffset,
+    isAngNavigation,
+    debouncedScrollSave,
+    handleStopAutoScroll,
+    handleRightArrow,
+    handleLeftArrow,
+    setPressIndex,
+    setSavedPathVerseId,
+    handleUpdatePath,
+    setIsSaving,
+    setIsSaved,
+    pathId,
+  }: PathReaderProps) => {
+    const [fontSize, setFontSize] = useState<number>(18);
+    const { fetchFontSize } = useLocal();
+
+    useEffect(() => {
+      const fetchFont = async () => {
+        try {
+          const fontSizeData = await fetchFontSize();
+          setFontSize(fontSizeData.number);
+        } catch (error) {
+          setFontSize(18);
+        }
+      };
+      fetchFont();
+    }, [fetchFontSize]);
+
+    return (
+      <GestureRecognizer
+        onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
+        onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
+        onSwipeDown={() => undefined}
+        onSwipeUp={() => undefined}
+        config={{
+          velocityThreshold: 0.8,
+          directionalOffsetThreshold: 80,
+          gestureIsClickThreshold: 10,
         }}
-        onTouchStart={() => handleStopAutoScroll()}
-        scrollEventThrottle={16}
       >
-        {pathContent?.page?.map((path: any, index: number) => {
-          return (
-            <SimpleTextForPath
-              key={index}
-              gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
-              onSelection={() => {
-                if (isSaving) {
-                  setPressIndex(index + 1);
-                  setSavedPathVerseId(path.verseId);
+        <ScrollView
+          contentContainerStyle={PathReaderStyles.pathContentContainer}
+          ref={scrollRef}
+          onScroll={(e) => {
+            const scrollY = e.nativeEvent.contentOffset.y;
+            scorllOffset.current = scrollY;
+            if (!isAngNavigation) {
+              debouncedScrollSave();
+            }
+          }}
+          onTouchStart={() => handleStopAutoScroll()}
+          scrollEventThrottle={16}
+        >
+          {pathContent?.page?.map((path: any, index: number) => {
+            return (
+              <SimpleTextForPath
+                key={index}
+                gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
+                onSelection={() => {
+                  if (isSaving) {
+                    setPressIndex(index + 1);
+                    setSavedPathVerseId(path.verseId);
+                  }
+                }}
+                onSave={() =>
+                  handleUpdatePath(
+                    pathId,
+                    path.pageNo,
+                    path.verseId,
+                    scorllOffset.current,
+                    setIsSaved
+                  )
                 }
-              }}
-              onSave={() =>
-                handleUpdatePath(
-                  pathId,
-                  path.pageNo,
-                  path.verseId,
-                  scorllOffset.current,
-                  setIsSaved
-                )
-              }
-              isSaving={isSaving}
-              pressIndex={pressIndex}
-              index={index + 1}
-              verseId={path.verseId}
-              savedPathVerseId={savedPathVerseId}
-              setIsSaving={setIsSaving}
-              setIsSaved={setIsSaved}
-              setPressIndex={setPressIndex}
-              setSavedPathVerseId={setSavedPathVerseId}
-            />
-          );
-        })}
-      </ScrollView>
-    </GestureRecognizer>
-  );
-};
+                isSaving={isSaving}
+                pressIndex={pressIndex}
+                index={index + 1}
+                verseId={path.verseId}
+                savedPathVerseId={savedPathVerseId}
+                fontSize={fontSize}
+                setIsSaving={setIsSaving}
+                setIsSaved={setIsSaved}
+                setPressIndex={setPressIndex}
+                setSavedPathVerseId={setSavedPathVerseId}
+              />
+            );
+          })}
+        </ScrollView>
+      </GestureRecognizer>
+    );
+  }
+);

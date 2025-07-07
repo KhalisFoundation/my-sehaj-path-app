@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
@@ -26,26 +26,35 @@ type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 export const Continue = ({ route, navigation }: ContinueProps) => {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
-  const [pathData, setPathData] = useState<PathData>();
-  const [pathAng, setPathAng] = useState<number>(0);
-  const [pathPercentage, setPathPercentage] = useState<number>(0);
-  const [daysAgo, setDaysAgo] = useState<number>(0);
-  const [averageAngs, setAverageAngs] = useState<number>(0);
-  const [finishDate, setFinishDate] = useState<string>();
-  const [showData, setShowData] = useState<boolean>();
-  const [showPathRename, setShowPathRename] = useState<boolean>(false);
-  const [tabs, setTabs] = useState<string>('progress');
-  const [pathName, setPathName] = useState<string>('');
-  const [streakValue, setStreakValue] = useState<number>(0);
+
+  // Consolidated state to reduce re-renders
+  const [pathState, setPathState] = useState({
+    pathData: undefined as PathData | undefined,
+    pathAng: 0,
+    pathPercentage: 0,
+    daysAgo: 0,
+    averageAngs: 0,
+    finishDate: undefined as string | undefined,
+    showData: false,
+    pathName: '',
+  });
+
+  const [uiState, setUiState] = useState({
+    showPathRename: false,
+    tabs: 'progress' as string,
+    streakValue: 0,
+  });
+
   const streak = useRef<number>(0);
   const { fetchFromLocal } = useLocal();
   const { checkNetwork, updateOnlineStatus } = useInternet();
 
-  const handleStreakUpdate = (newStreakValue: number) => {
-    setStreakValue(newStreakValue);
-  };
+  const handleStreakUpdate = useCallback((newStreakValue: number) => {
+    setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
+  }, []);
 
-  const calculatePathCompletion = (matchedPath: PathData) => {
+  // Memoized calculation to prevent unnecessary recalculations
+  const calculatePathCompletion = useCallback((matchedPath: PathData) => {
     const today = dayjs();
     const startDate = dayjs(matchedPath.startDate, 'D-MMMM-YYYY');
     const days = today.diff(startDate, 'day');
@@ -54,16 +63,18 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     const remainingAngs = 1430 - matchedPath.saveData.angNumber;
     const remainingDays = remainingAngs / (averageMatchedAngs ? averageMatchedAngs : 1);
     const completionDate = today.add(remainingDays, 'day');
-    setFinishDate(dayjs(completionDate).format('D-MMMM-YYYY'));
-    setDaysAgo(today.format('D-MMMM-YYYY') === startDate.format('D-MMMM-YYYY') ? 0 : days);
-    setAverageAngs(averageMatchedAngs === Infinity ? 0 : parseFloat(averageMatchedAngs.toFixed(2)));
-  };
+
+    return {
+      finishDate: dayjs(completionDate).format('D-MMMM-YYYY'),
+      daysAgo: today.format('D-MMMM-YYYY') === startDate.format('D-MMMM-YYYY') ? 0 : days,
+      averageAngs: averageMatchedAngs === Infinity ? 0 : parseFloat(averageMatchedAngs.toFixed(2)),
+    };
+  }, []);
 
   const fetchPath = useCallback(async () => {
     try {
       const { pathDataArray } = await fetchFromLocal();
       const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
-      setPathData(matchedPath);
       return { matchedPath };
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA, () => navigation.goBack(), 'Retry');
@@ -76,18 +87,27 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       const { matchedPath } = await fetchPath();
       if (matchedPath) {
         const show = matchedPath?.saveData.angNumber < 10 ? false : true;
-        setShowData(show);
-        setPathAng(matchedPath?.saveData.angNumber || 0);
-        const matchedPathPercentage = parseFloat(
+        const pathAng = matchedPath?.saveData.angNumber || 0;
+        const pathPercentage = parseFloat(
           (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
         );
-        setPathPercentage(matchedPathPercentage);
-        calculatePathCompletion(matchedPath);
+        const { finishDate, daysAgo, averageAngs } = calculatePathCompletion(matchedPath);
+
+        setPathState({
+          pathData: matchedPath,
+          pathAng,
+          pathPercentage,
+          daysAgo,
+          averageAngs,
+          finishDate,
+          showData: show,
+          pathName: matchedPath.pathName,
+        });
       }
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_UPDATE_PATH_DATA, () => navigation.goBack(), 'Retry');
     }
-  }, [fetchPath, navigation]);
+  }, [fetchPath, navigation, calculatePathCompletion]);
 
   useFocusEffect(
     useCallback(() => {
@@ -95,7 +115,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }, [updateTheData])
   );
 
-  const handleContinue = async () => {
+  const handleContinue = useCallback(async () => {
     try {
       const isConnected = await checkNetwork();
       if (!isConnected) {
@@ -108,7 +128,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
     }
-  };
+  }, [checkNetwork, navigation, pathId]);
 
   useEffect(() => {
     try {
@@ -117,6 +137,51 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
     }
   }, [updateOnlineStatus]);
+
+  // Memoized tab handlers to prevent unnecessary re-renders
+  const handleTabPress = useCallback((tab: string) => {
+    setUiState((prev) => ({ ...prev, tabs: tab }));
+  }, []);
+
+  const handlePathRenamePress = useCallback(() => {
+    setUiState((prev) => ({ ...prev, showPathRename: true }));
+  }, []);
+
+  const handleBackPress = useCallback(() => {
+    navigation.replace('Home');
+  }, [navigation]);
+
+  // Memoized progress text to prevent unnecessary re-renders
+  const progressText = useMemo(
+    () => [
+      Constants.YOU_ARE_ON_ANG_NUMBER,
+      <ImportantText
+        key="ang"
+        importantText={`${pathState.pathAng}`}
+        importantTextStyles={ContinueScreenStyles.impTextContainer}
+      />,
+      Constants.HAVE_COMPLETED,
+      <ImportantText
+        key="percentage"
+        importantText={`${pathState.pathPercentage}%`}
+        importantTextStyles={ContinueScreenStyles.impTextContainer}
+      />,
+      Constants.SRI_SEHAJ_PATH,
+    ],
+    [pathState.pathAng, pathState.pathPercentage]
+  );
+
+  const completionText = useMemo(
+    () => [
+      Constants.STARTED_PATH,
+      <ImportantText key="days" importantText={`${pathState.daysAgo} days `} />,
+      Constants.AVERAGE_ABOUT,
+      <ImportantText key="average" importantText={`${pathState.averageAngs} angs a day. `} />,
+      Constants.COMPLETION_SEHAJ_PATH,
+      <ImportantText key="finish" importantText={`${pathState.finishDate} 🎯 .`} />,
+    ],
+    [pathState.daysAgo, pathState.averageAngs, pathState.finishDate]
+  );
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
@@ -131,50 +196,52 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           <View style={ContinueScreenStyles.container}>
             <Pressable
               style={ContinueScreenStyles.navContainer}
-              onPress={() => navigation.replace('Home')}
+              onPress={handleBackPress}
               accessibilityLabel="Back to home"
               accessibilityRole="button"
               accessibilityHint="Tap to go back to home screen"
             >
-              <NavContent navIcon={<GoBackIcon />} onPress={() => navigation.replace('Home')} />
+              <NavContent navIcon={<GoBackIcon />} onPress={handleBackPress} />
               <NavContent text={Constants.SEE_ALL_PATH} />
             </Pressable>
             <View style={ContinueScreenStyles.tabsContainer}>
               <Pressable
-                style={tabs === 'progress' ? ContinueScreenStyles.tabActive : null}
-                onPress={() => setTabs('progress')}
-                onLongPress={() => setTabs('progress')}
+                style={uiState.tabs === 'progress' ? ContinueScreenStyles.tabActive : null}
+                onPress={() => handleTabPress('progress')}
+                onLongPress={() => handleTabPress('progress')}
                 accessibilityLabel="Progress tab"
                 accessibilityRole="tab"
-                accessibilityState={{ selected: tabs === 'progress' }}
+                accessibilityState={{ selected: uiState.tabs === 'progress' }}
                 accessibilityHint="Tap to view progress information"
               >
                 <Text style={ContinueScreenStyles.tabText}>Progress</Text>
               </Pressable>
               <Pressable
-                style={tabs === 'streak' ? ContinueScreenStyles.tabActive : null}
-                onPress={() => setTabs('streak')}
-                onLongPress={() => setTabs('streak')}
+                style={uiState.tabs === 'streak' ? ContinueScreenStyles.tabActive : null}
+                onPress={() => handleTabPress('streak')}
+                onLongPress={() => handleTabPress('streak')}
                 accessibilityLabel="Streak tab"
                 accessibilityRole="tab"
-                accessibilityState={{ selected: tabs === 'streak' }}
+                accessibilityState={{ selected: uiState.tabs === 'streak' }}
                 accessibilityHint="Tap to view streak information"
               >
                 <Text style={ContinueScreenStyles.tabText}>Streak</Text>
               </Pressable>
             </View>
-            {tabs === 'progress' && (
+            {uiState.tabs === 'progress' && (
               <>
                 <Pressable
                   style={ContinueScreenStyles.sehajHeadingContainer}
-                  onPress={() => setShowPathRename(true)}
-                  onLongPress={() => setShowPathRename(true)}
-                  accessibilityLabel={`Path name: ${pathName || pathData?.pathName}`}
+                  onPress={handlePathRenamePress}
+                  onLongPress={handlePathRenamePress}
+                  accessibilityLabel={`Path name: ${
+                    pathState.pathName || pathState.pathData?.pathName
+                  }`}
                   accessibilityRole="button"
                   accessibilityHint="Tap to rename this path"
                 >
                   <SecondaryHeading
-                    text={pathName || pathData?.pathName}
+                    text={pathState.pathName || pathState.pathData?.pathName}
                     textStyles={ContinueScreenStyles.sehajHeading}
                   />
                 </Pressable>
@@ -185,44 +252,23 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               </>
             )}
 
-            {showData ? (
+            {pathState.showData ? (
               <>
-                {tabs === 'progress' && (
+                {uiState.tabs === 'progress' && (
                   <>
                     <SimpleText
-                      simpleText={[
-                        Constants.YOU_ARE_ON_ANG_NUMBER,
-                        <ImportantText
-                          importantText={`${pathAng}`}
-                          importantTextStyles={ContinueScreenStyles.impTextContainer}
-                        />,
-                        Constants.HAVE_COMPLETED,
-                        <ImportantText
-                          importantText={`${pathPercentage}%`}
-                          importantTextStyles={ContinueScreenStyles.impTextContainer}
-                        />,
-                        Constants.SRI_SEHAJ_PATH,
-                      ]}
+                      simpleText={progressText}
                       simpleTextStyle={ContinueScreenStyles.textStyle}
                     />
-                    <SimpleText
-                      simpleText={[
-                        Constants.STARTED_PATH,
-                        <ImportantText importantText={`${daysAgo} days `} />,
-                        Constants.AVERAGE_ABOUT,
-                        <ImportantText importantText={`${averageAngs} angs a day. `} />,
-                        Constants.COMPLETION_SEHAJ_PATH,
-                        <ImportantText importantText={`${finishDate} 🎯 .`} />,
-                      ]}
-                    />
+                    <SimpleText simpleText={completionText} />
                   </>
                 )}
-                {tabs === 'streak' && (
+                {uiState.tabs === 'streak' && (
                   <>
                     <View style={ContinueScreenStyles.streakContainer}>
                       <View style={ContinueScreenStyles.streakValueContainer}>
                         <SecondaryHeading
-                          text={streakValue}
+                          text={uiState.streakValue}
                           textStyles={ContinueScreenStyles.streakText}
                         />
                         <Image
@@ -245,7 +291,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             )}
 
             <SecondaryButton
-              onPress={() => handleContinue()}
+              onPress={handleContinue}
               buttonText={'Continue'}
               buttonIcon={<ContinueIcon />}
               buttonStyle={ContinueScreenStyles.continueButton}
@@ -253,8 +299,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           </View>
         </ScrollView>
       </ImageBackground>
-      {showPathRename && (
-        <PathRename pathId={pathId} setPathRename={setShowPathRename} setPathName={setPathName} />
+      {uiState.showPathRename && (
+        <PathRename
+          pathId={pathId}
+          setPathRename={(show) => setUiState((prev) => ({ ...prev, showPathRename: show }))}
+          setPathName={(name) => setPathState((prev) => ({ ...prev, pathName: name }))}
+        />
       )}
     </SafeAreaView>
   );
