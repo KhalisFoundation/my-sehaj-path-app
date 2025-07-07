@@ -26,7 +26,6 @@ export const ErrorConstants: ErrorConstant = {
     'We are currently facing the issue while connecting to the BaniDB please try again later.',
   FAILED_TO_LOAD_NEXT_ANG: 'Failed to load the next ang. Please try again.',
   FAILED_TO_LOAD_PREVIOUS_ANG: 'Failed to load the previous ang. Please try again.',
-  FAILED_TO_START_NEW_SEHAJ_PATH: 'Failed to start a new Sehaj Path.',
   FAILED_TO_LOAD_PATH_DATA_GENERIC: 'Failed to load path data. Please try again.',
   ERROR_SCROLLING_TO_SAVED_PATH: 'Error scrolling to saved path:',
 };

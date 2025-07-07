@@ -75,17 +75,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
       navigation.push('Continue', { pathId: newPathid });
     } catch (error) {
-      showErrorAlert(
-        ErrorConstants.FAILED_TO_START_NEW_SEHAJ_PATH,
-        () =>
-          navigation.dispatch(
-            CommonActions.reset({
-              index: 0,
-              routes: [{ name: 'Home' }],
-            })
-          ),
-        'Retry'
-      );
+      showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
     }
   };
 

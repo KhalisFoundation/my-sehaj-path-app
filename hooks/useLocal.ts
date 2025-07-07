@@ -44,7 +44,7 @@ export const useLocal = () => {
 
       return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
     } catch (error) {
-      throw error;
+      return { pathDataArray: [], pathDateDataArray: [] };
     }
   };
 
