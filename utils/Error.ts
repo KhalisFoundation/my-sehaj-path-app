@@ -1,19 +1,24 @@
-import { Alert } from 'react-native';
+import { Alert, AlertButton } from 'react-native';
 
 export const showErrorAlert = (
   errorMessage: string,
   onReload?: () => void,
   reloadButtonText: string = 'Reload Screen'
 ) => {
-  Alert.alert('Error', `${errorMessage}\n\nPlease try again.`, [
+  const buttons: AlertButton[] = [
     {
       text: 'OK',
       style: 'default',
     },
-    {
+  ];
+
+  if (onReload) {
+    buttons.push({
       text: reloadButtonText,
-      style: 'default',
       onPress: onReload,
-    },
-  ]);
+      style: 'default',
+    });
+  }
+
+  Alert.alert('Error', `${errorMessage}\n\nPlease try again.`, buttons);
 };

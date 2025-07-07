@@ -30,7 +30,7 @@ export const Slider = ({
 
   const handleScroll = Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
     useNativeDriver: false,
-    listener: (event: any) => {
+    listener: (event: { nativeEvent: { contentOffset: { x: number } } }) => {
       const offsetX = event.nativeEvent.contentOffset.x;
       const pageWidth = viewPortCards * scrollInterval;
       const index = Math.ceil(offsetX / pageWidth);

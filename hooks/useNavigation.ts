@@ -1,19 +1,19 @@
 import { useCallback } from 'react';
 import { showErrorAlert, convertNumberToFormat } from '@utils';
 import { ErrorConstants } from '@constants/ErrorConstant';
+import { ScrollView } from 'react-native';
 
 export interface UseNavigationParams {
   isNavigating: boolean;
   setIsNavigating: (value: boolean) => void;
   setIsSaving: (value: boolean) => void;
   scorllOffset: React.MutableRefObject<number>;
-  scrollRef: React.MutableRefObject<any>;
+  scrollRef: React.MutableRefObject<ScrollView | null>;
   setAngNavigationNumber: (value: number) => void;
   setPathPunjabiAng: (value: string) => void;
   setPathAng: (value: number) => void;
   angsFormat: { format: string };
-  checkNetwork: () => void;
-  isOnline: boolean;
+  checkNetwork: () => Promise<boolean>;
   fetchFromBaniDB: (angNumber: number) => Promise<void>;
 }
 
@@ -28,7 +28,6 @@ export const useNavigation = ({
   setPathAng,
   angsFormat,
   checkNetwork,
-  isOnline,
   fetchFromBaniDB,
 }: UseNavigationParams) => {
   const handleRightArrow = useCallback(
@@ -36,8 +35,11 @@ export const useNavigation = ({
       if (isNavigating) {
         return;
       }
-      checkNetwork();
-      if (!isOnline) {
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+        );
         return;
       }
       if (pageNo >= 1430) {
@@ -73,7 +75,6 @@ export const useNavigation = ({
       setPathAng,
       angsFormat,
       checkNetwork,
-      isOnline,
       fetchFromBaniDB,
     ]
   );
@@ -83,8 +84,11 @@ export const useNavigation = ({
       if (isNavigating) {
         return;
       }
-      checkNetwork();
-      if (!isOnline) {
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+        );
         return;
       }
       if (pageNo <= 1) {
@@ -119,7 +123,6 @@ export const useNavigation = ({
       setPathAng,
       angsFormat,
       checkNetwork,
-      isOnline,
       fetchFromBaniDB,
     ]
   );

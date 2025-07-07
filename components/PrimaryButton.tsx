@@ -6,7 +6,7 @@ import { PrimaryButtonStyles } from '@styles';
 interface Props {
   buttonTitle: string;
   Icon: React.ReactNode;
-  onPress: () => any;
+  onPress: () => void;
 }
 
 export const PrimaryButton = ({ buttonTitle, Icon, onPress }: Props) => {

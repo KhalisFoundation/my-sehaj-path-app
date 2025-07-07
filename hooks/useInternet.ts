@@ -1,39 +1,42 @@
 import NetInfo from '@react-native-community/netinfo';
-import { Alert } from 'react-native';
-import { useState } from 'react';
-import { ErrorConstants } from '@constants';
+import { useState, useEffect } from 'react';
 
 export const useInternet = () => {
   const [isOnline, setIsOnline] = useState<boolean>(true);
+
   const updateOnlineStatus = async () => {
     try {
       const netInfo = await NetInfo.fetch();
-      setIsOnline(netInfo.isConnected || false);
-      return netInfo.isConnected;
+      const isConnected = Boolean(netInfo.isConnected && netInfo.isInternetReachable);
+      setIsOnline(isConnected);
+      return isConnected;
     } catch (error) {
+      console.error('Error checking network status:', error);
       setIsOnline(false);
       return false;
     }
   };
+
   const checkNetwork = async () => {
     try {
-      const netInfo = await updateOnlineStatus();
-      if (!netInfo) {
-        Alert.alert(ErrorConstants.NO_INTERNET_TITLE, ErrorConstants.NO_INTERNET_MESSAGE, [
-          {
-            text: 'OK',
-            onPress: () => {},
-          },
-        ]);
-      }
+      const isConnected = await updateOnlineStatus();
+      return isConnected;
     } catch (error) {
-      Alert.alert(ErrorConstants.NETWORK_ERROR_TITLE, ErrorConstants.NETWORK_ERROR_MESSAGE, [
-        {
-          text: 'OK',
-          onPress: () => {},
-        },
-      ]);
+      console.error('Error in checkNetwork:', error);
+      return false;
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      const isConnected = Boolean(state.isConnected && state.isInternetReachable);
+      setIsOnline(isConnected);
+    });
+
+    updateOnlineStatus();
+
+    return () => unsubscribe();
+  }, []);
+
   return { checkNetwork, isOnline, updateOnlineStatus };
 };

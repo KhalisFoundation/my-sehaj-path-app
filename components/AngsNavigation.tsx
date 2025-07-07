@@ -3,6 +3,9 @@ import { View, Text, TouchableOpacity, TextInput, Pressable } from 'react-native
 import { BlurView } from '@react-native-community/blur';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
+import { useInternet } from '@hooks';
+import { showErrorAlert } from '@utils';
+import { ErrorConstants } from '@constants';
 
 interface Props {
   setIsAngsNavigationVisible: (isAngsNavigationVisible: boolean) => void;
@@ -29,6 +32,9 @@ export const AngsNavigation = ({
   const [angNumber, setAngNumber] = useState<number>(angNavigationNumber);
   const [inputValue, setInputValue] = useState<string>(angNavigationNumber.toString());
   const [isValid, setIsValid] = useState<boolean>(true);
+  const { checkNetwork } = useInternet();
+
+  const isGoButtonDisabled = !isValid || inputValue === '';
 
   const handleAngNumber = (number: string) => {
     setInputValue(number);
@@ -37,18 +43,53 @@ export const AngsNavigation = ({
       setIsValid(true);
       return;
     }
-
     const parsedNumber = parseInt(number, 10);
     if (isNaN(parsedNumber) || parsedNumber > 1430 || parsedNumber < 1) {
       setIsValid(false);
       return;
     }
-
     setIsValid(true);
     setAngNumber(parsedNumber);
   };
 
-  const isGoButtonDisabled = !isValid || inputValue === '';
+  const handleNavigation = async (navigationFunction: () => void) => {
+    try {
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+        );
+        return;
+      }
+      navigationFunction();
+      setIsAngsNavigationVisible(false);
+    } catch (error) {
+      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+    }
+  };
+
+  const handleGoToAng = async () => {
+    if (isGoButtonDisabled) {
+      return;
+    }
+
+    try {
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+        );
+        return;
+      }
+      fetchAngData(angNumber);
+      setIsAngNavigation(true);
+      setIsAngsNavigationVisible(false);
+      setAngNavigationNumber(angNumber);
+      updatePathAng(angNumber);
+    } catch (error) {
+      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+    }
+  };
 
   return (
     <BlurView
@@ -71,10 +112,7 @@ export const AngsNavigation = ({
           <Text style={AngsNavigationStyle.angsNavigationText}>Angs Navigation:</Text>
           <View style={AngsNavigationStyle.angsNavigationInputContainer}>
             <TouchableOpacity
-              onPress={() => {
-                handleLeftArrow();
-                setIsAngsNavigationVisible(false);
-              }}
+              onPress={() => handleNavigation(handleLeftArrow)}
               accessibilityLabel="Previous ang"
               accessibilityRole="button"
               accessibilityHint="Tap to go to previous ang"
@@ -93,10 +131,7 @@ export const AngsNavigation = ({
               accessibilityHint="Enter an ang number between 1 and 1430"
             />
             <TouchableOpacity
-              onPress={() => {
-                handleRightArrow();
-                setIsAngsNavigationVisible(false);
-              }}
+              onPress={() => handleNavigation(handleRightArrow)}
               accessibilityLabel="Next ang"
               accessibilityRole="button"
               accessibilityHint="Tap to go to next ang"
@@ -114,15 +149,7 @@ export const AngsNavigation = ({
               AngsNavigationStyle.goButton,
               isGoButtonDisabled && AngsNavigationStyle.disabledButton,
             ]}
-            onPress={() => {
-              if (!isGoButtonDisabled) {
-                fetchAngData(angNumber);
-                setIsAngNavigation(true);
-                setIsAngsNavigationVisible(false);
-                setAngNavigationNumber(angNumber);
-                updatePathAng(angNumber);
-              }
-            }}
+            onPress={handleGoToAng}
             disabled={isGoButtonDisabled}
             accessibilityLabel="Go to ang"
             accessibilityRole="button"

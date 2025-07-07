@@ -1,12 +1,13 @@
 import React from 'react';
 import { NavContent } from '@components';
 import { SaveIcon, SettingsIcon, PauseIcon, PlayIcon, HomeIcon } from '@icons';
+import { Animated } from 'react-native';
 
 interface Props {
   handleGoBack: () => void;
   setIsSaving: (isSaving: boolean) => void;
   isSaving: boolean;
-  fadeAnim: any;
+  fadeAnim: React.MutableRefObject<Animated.Value>;
   autoScroll: boolean;
   setAutoScroll: (autoScroll: boolean) => void;
   navigation: any;

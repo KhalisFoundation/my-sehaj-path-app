@@ -37,9 +37,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const [tabs, setTabs] = useState<string>('progress');
   const [pathName, setPathName] = useState<string>('');
   const [streakValue, setStreakValue] = useState<number>(0);
-  const streak = useRef(0);
+  const streak = useRef<number>(0);
   const { fetchFromLocal } = useLocal();
-  const { checkNetwork, isOnline, updateOnlineStatus } = useInternet();
+  const { checkNetwork, updateOnlineStatus } = useInternet();
 
   const handleStreakUpdate = (newStreakValue: number) => {
     setStreakValue(newStreakValue);
@@ -61,7 +61,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const fetchPath = useCallback(async () => {
     try {
-      const { pathDataArray } = await fetchFromLocal(navigation);
+      const { pathDataArray } = await fetchFromLocal();
       const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
       setPathData(matchedPath);
       return { matchedPath };
@@ -97,17 +97,16 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const handleContinue = async () => {
     try {
-      await checkNetwork();
-      if (!isOnline) {
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+        );
         return;
       }
       navigation.push('Path', { pathId: pathId });
     } catch (error) {
-      showErrorAlert(
-        ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION,
-        () => navigation.goBack(),
-        'Retry'
-      );
+      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
     }
   };
 

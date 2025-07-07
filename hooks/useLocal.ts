@@ -26,7 +26,7 @@ export interface AngsFormat {
   format: string;
 }
 export const useLocal = () => {
-  const fetchFromLocal = async (navigation?: any) => {
+  const fetchFromLocal = async () => {
     try {
       const pathFromLocal = await AsyncStorage.getItem('pathDetails');
       let pathFromLocalArray: PathData[] = [];
@@ -44,12 +44,7 @@ export const useLocal = () => {
 
       return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
     } catch (error) {
-      showErrorAlert(
-        ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA,
-        () => navigation.goBack(),
-        'Retry'
-      );
-      return { pathDataArray: [], pathDateDataArray: [] };
+      throw error;
     }
   };
 

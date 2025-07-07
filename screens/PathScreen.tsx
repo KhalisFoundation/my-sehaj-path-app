@@ -50,21 +50,21 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const scrollInveral = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
-  const aleartIndicator = useRef<any>();
+  const aleartIndicator = useRef<React.ReactNode>();
   const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { checkNetwork, isOnline } = useInternet();
+  const { checkNetwork } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
     useLocal();
 
   const fetchFromBaniDB = async (angNumber: number) => {
     aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
     const pathFromBaniDB = await BaniDB(angNumber);
-    setPathContent(pathFromBaniDB);
-    if (pathFromBaniDB === 'Error') {
+    setPathContent(pathFromBaniDB.data);
+    if (pathFromBaniDB.success === false) {
       navigation.replace('Error');
     }
     aleartIndicator.current = undefined;
@@ -91,7 +91,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setPathAng,
     angsFormat,
     checkNetwork,
-    isOnline,
     fetchFromBaniDB,
   });
 
@@ -203,7 +202,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   useEffect(() => {
     const fetchPath = async () => {
       try {
-        const { pathDataArray, pathDateDataArray } = await fetchFromLocal(navigation);
+        const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
         const matchedPathData = pathDataArray.find(
           (path: PathData) => path.pathId === route.params.pathId
         );
@@ -298,7 +297,15 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   });
 
   useEffect(() => {
-    checkNetwork();
+    const checkNetworkStatus = async () => {
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+        );
+      }
+    };
+    checkNetworkStatus();
   }, []);
 
   useFocusEffect(() => {

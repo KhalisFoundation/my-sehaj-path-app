@@ -7,7 +7,7 @@ import { CalenderDays } from '@constants';
 import { DateData, useLocal } from '@hooks';
 
 interface Props {
-  streak: any;
+  streak: React.MutableRefObject<number>;
   pathId: number;
   onStreakUpdate?: (streakValue: number) => void;
 }

@@ -5,8 +5,13 @@ export const BaniDB = async (angNumber: number) => {
 
   try {
     const response = await axios.get(baniDBUrl);
-    return response.data;
+    return {
+      success: true,
+      data: response.data,
+    };
   } catch (error) {
-    return 'Error';
+    return {
+      success: false,
+    };
   }
 };

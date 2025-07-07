@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,10 +17,17 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
   const [pathInProgress, setPathInProgress] = useState<PathData[]>([]);
   const [pathCompleted, setPathCompleted] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const errorAlertShownRef = useRef(false);
 
   const loadData = useCallback(async () => {
+    if (isLoading) {
+      return;
+    }
+    setIsLoading(true);
+    errorAlertShownRef.current = false;
     try {
-      const { pathDataArray } = await fetchFromLocal(navigation);
+      const { pathDataArray } = await fetchFromLocal();
 
       setPathCompleted(
         pathDataArray.filter(
@@ -33,9 +40,21 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
         )
       );
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA, loadData, 'Retry');
+      if (!errorAlertShownRef.current) {
+        errorAlertShownRef.current = true;
+        showErrorAlert(
+          ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA,
+          async () => {
+            errorAlertShownRef.current = false;
+            await loadData();
+          },
+          'Retry'
+        );
+      }
+    } finally {
+      setIsLoading(false);
     }
-  }, [fetchFromLocal, navigation]);
+  }, [fetchFromLocal, isLoading]);
 
   useFocusEffect(
     useCallback(() => {
