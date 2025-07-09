@@ -1,0 +1,38 @@
+interface Constant {
+  [key: string]: any;
+}
+export const Constants: Constant = {
+  SEHAJ_PATH: 'ਸਹਿਜ ਪਾਠ ',
+  BUILDING_THE_HABIT: 'Building the habit',
+  OF_READING_GURBANI: 'of reading Gurbani.',
+  SEHAJ: 'Sehaj',
+  ITS_FINE_DAY_TO_START_A: "It's Fine day to start a",
+  NEW_SEHAJ_PATH: 'new Sehaj Path',
+  START: 'START',
+  SEHAJ_PATH_IN_PROGRESS: 'Sehaj Path in Progress',
+  SEHAJ_PATH_COMPLETED: 'Sehaj Paths Completed',
+  ANG: 'Ang',
+  SEE_ALL_PATH: 'See all paths',
+  PATH: 'Path',
+  WAHEGURU_JI_KA_KHALSA_WAHEGURU_JI_KI_FATEH: 'ਵਾਹਿਗੁਰੂ ਜੀ ਕਾ ਖਾਲਸਾ ॥ ਵਾਹਿਗੁਰੂ ਜੀ ਕੀ ਫਤਿਹ ॥ 🙏🏽 ',
+  YOU_ARE_ON_ANG_NUMBER: 'You are on ang number  ',
+  HAVE_COMPLETED: ' and have completed ',
+  SRI_SEHAJ_PATH: ' of your Sehaj Path. 🎉 ',
+  STARTED_PATH: 'You started this path ',
+  AVERAGE_ABOUT: 'ago. You average about ',
+  COMPLETION_SEHAJ_PATH: 'With your current speed, you will complete this Sehaj Path on ',
+  HERE_YOURS_STREAK_CHART: "Here's your streak chart so far: ⚡",
+  CONTINUE: 'Continue',
+  COMPLETE_10_ANGS:
+    'Awesome, you have starated the sehaj path, once you complete 10 angs you will see more details here.',
+  DISPLAY_OPTIONS: 'Display Options',
+  BANI_OPTIONS: 'Bani Options',
+  SELECT_A_PANKTEE_TO_SAVE_PROGRESS: 'Select a panktee to save progress.',
+  SAVED_THE_HIGHLIGHTED_PANKTEE: 'Saved the highlighted panktee!',
+  LAST_SAVED_PANKTEE_FOUNDED: 'Last saved panktee founded!',
+  SELECT_YOUR_FONT_SIZE: 'Select your font size',
+  LARIVAAR: 'Larivaar',
+  SETTINGS: 'Settings',
+  SELECT_YOUR_ANG_FORMAT: 'Select your ang format',
+  ANGS: 'Angs',
+};
