@@ -1,79 +1,228 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Sehaj Path App
 
-# Getting Started
+A React Native mobile application designed to help users maintain a consistent habit of doing the Sehaj Path daily. The app provides a digital platform for tracking reading progress, managing multiple reading sessions, and maintaining reading streaks.
 
->**Note**: Make sure you have completed the [React Native - Environment Setup](https://reactnative.dev/docs/environment-setup) instructions till "Creating a new application" step, before proceeding.
+## 🎯 Project Overview
 
-## Step 1: Start the Metro Server
+Sehaj Path is a traditional Sikh practice of reading the complete Guru Granth Sahib Ji (the holy scripture) over a period of time. This app digitizes this spiritual practice by providing:
 
-First, you will need to start **Metro**, the JavaScript _bundler_ that ships _with_ React Native.
+- **Progress Tracking**: Monitor your reading progress through 1430 Angs 
+- **Multiple Paths**: Manage multiple reading sessions simultaneously
+- **Reading Analytics**: View completion dates, reading streaks, and progress statistics
+- **Customizable Reading Experience**: Adjustable font sizes, reading formats, and navigation
 
-To start Metro, run the following command from the _root_ of your React Native project:
+## ✨ Features
 
-```bash
-# using npm
-npm start
+### Core Features
+- **Home Dashboard**: Overview of all reading paths with progress indicators
+- **Reading Interface**: Clean, distraction-free reading experience with Gurbani text
+- **Progress Management**: Automatic saving of reading position and progress
+- **Path Navigation**: Easy navigation between different Angs and reading sessions
+- **Completion Tracking**: Automatic detection and celebration of completed paths
 
-# OR using Yarn
-yarn start
+### Reading Experience
+- **Font Size Customization**: Adjustable text size for comfortable reading
+- **Larivaar Support**: Option to read in continuous text format
+- **Punjabi/English Numbers**: Toggle between Punjabi and English number formats
+- **Auto-scroll**: Automated reading progression with pause/resume functionality
+- **Swipe Navigation**: Gesture-based navigation between pages
+
+### Data Management
+- **Local Storage**: All data stored locally using AsyncStorage
+- **Progress Persistence**: Automatic saving of reading position and progress
+- **Path Renaming**: Customize path names for better organization
+- **Reading History**: Track daily reading progress and completion dates
+
+## 🏗️ Architecture
+
+### Project Structure
+```
+my-sehaj-path-app/
+├── android/               # Android-specific configuration
+├── ios/                   # iOS-specific configuration
+├── assets/                # Images, fonts, and static resources
+├── components/            # Reusable UI components
+│   ├── Settings/          # Settings-specific components
+│   └── index.ts           # Component exports
+├── constants/             # Application constants and configurations
+├── hooks/                 # Custom React hooks
+├── icons/                 # SVG icons and graphics
+├── screens/               # Main application screens
+├── styles/                # Component-specific styling
+├── utils/                 # Utility functions and database helpers
+├── __tests__/             # Test files
+├── App.tsx                # Main application component
+├── index.ts               # Application entry point
+└── package.json           # Dependencies and scripts
 ```
 
-## Step 2: Start your Application
+### Key Components
 
-Let Metro Bundler run in its _own_ terminal. Open a _new_ terminal from the _root_ of your React Native project. Run the following command to start your _Android_ or _iOS_ app:
+#### Screens
+- **SplashScreen**: Initial loading screen
+- **HomeScreen**: Main dashboard showing all reading paths
+- **ContinueScreen**: Resume reading from saved position
+- **PathScreen**: Main reading interface with Gurbani text
+- **Settings**: App configuration and preferences
+- **Error**: Error handling screen
 
-### For Android
+#### Components
+- **AngsNavigation**: Navigation between different Angs
+- **Calendar**: Reading streak and progress visualization
+- **PrimaryCard/SecondaryCard**: Path display cards
+- **Slider**: Horizontal scrolling for multiple paths
+- **PrimaryButton/SecondaryButton**: Action buttons
+- **Text Components**: Various text display components (Headline, Label, etc.)
 
+#### Hooks
+- **useLocal**: Local storage management and data persistence
+- **useInternet**: Network connectivity monitoring
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js >= 18
+- React Native development environment
+- Android Studio (for Android development)
+- Xcode (for iOS development, macOS only)
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd my-sehaj-path-app
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
+
+3. **iOS Setup** (macOS only)
+   ```bash
+   cd ios
+   pod install
+   cd ..
+   ```
+
+4. **Start Metro bundler**
+   ```bash
+   npm start
+   # or
+   yarn start
+   ```
+
+5. **Run the application**
+
+   **For Android:**
+   ```bash
+   npm run android
+   # or
+   yarn android
+   ```
+
+   **For iOS:**
+   ```bash
+   npm run ios
+   # or
+   yarn ios
+   ```
+
+## 📱 Usage Guide
+
+### Starting a New Path
+1. Open the app and tap "START" on the home screen
+2. A new reading path will be created automatically
+3. You'll be taken to the reading interface starting from Ang 1
+
+### Continuing a Path
+1. On the home screen, you'll see "Sehaj Path in Progress" section
+2. Tap on any path card to resume reading from your last position
+3. Your progress is automatically saved as you read
+
+### Reading Interface
+- **Navigation**: Use left/right arrow buttons to move between Angs
+- **Auto-scroll**: Enable auto-scroll for continuous reading
+- **Font Size**: Adjust text size in Settings for comfortable reading
+- **Larivaar**: Toggle between regular and continuous text format
+- **Progress**: View your current Ang number and completion percentage
+
+### Managing Multiple Paths
+- Start multiple reading sessions simultaneously
+- Each path tracks progress independently
+- Rename paths for better organization
+- View completion dates for finished paths
+
+### Settings
+- **Font Size**: Choose from Small, Medium, Large, or Extra Large
+- **Number Format**: Switch between Punjabi and English numbers
+- **Larivaar**: Enable/disable continuous text format
+- **Path Management**: Rename existing paths
+
+## 🔧 Configuration
+
+### Environment Setup
+The app uses several key dependencies:
+- **React Navigation**: For screen navigation
+- **AsyncStorage**: For local data persistence
+- **React Native Elements**: For UI components
+- **Axios**: For network requests
+- **Day.js**: For date manipulation
+
+### Key Constants
+- **Total Angs**: 1430 (complete Guru Granth Sahib Ji)
+- **Default Font Size**: 18px
+- **Default Number Format**: Punjabi
+
+## 🧪 Testing
+
+Run the test suite:
 ```bash
-# using npm
-npm run android
-
-# OR using Yarn
-yarn android
+npm test
+# or
+yarn test
 ```
 
-### For iOS
+## 📦 Build
 
+### Android
 ```bash
-# using npm
-npm run ios
-
-# OR using Yarn
-yarn ios
+cd android
+./gradlew assembleRelease
 ```
 
-If everything is set up _correctly_, you should see your new app running in your _Android Emulator_ or _iOS Simulator_ shortly provided you have set up your emulator/simulator correctly.
+### iOS
+```bash
+cd ios
+xcodebuild -workspace SehajPathApp.xcworkspace -scheme SehajPathApp -configuration Release
+```
 
-This is one way to run your app — you can also run it directly from within Android Studio and Xcode respectively.
+## 🤝 Contributing
 
-## Step 3: Modifying your App
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-Now that you have successfully run the app, let's modify it.
+## 📄 License
 
-1. Open `App.tsx` in your text editor of choice and edit some lines.
-2. For **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Developer Menu** (<kbd>Ctrl</kbd> + <kbd>M</kbd> (on Window and Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (on macOS)) to see your changes!
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-   For **iOS**: Hit <kbd>Cmd ⌘</kbd> + <kbd>R</kbd> in your iOS Simulator to reload the app and see your changes!
+## 🙏 Acknowledgments
 
-## Congratulations! :tada:
+- Built with React Native
+- Gurbani database integration
+- Sikh community feedback and testing
+- Open source contributors
 
-You've successfully run and modified your React Native App. :partying_face:
+## 📞 Support
 
-### Now what?
+For support, questions, or feature requests, please open an issue in the repository.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [Introduction to React Native](https://reactnative.dev/docs/getting-started).
+---
 
-# Troubleshooting
-
-If you can't get this to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+**Waheguru Ji Ka Khalsa, Waheguru Ji Ki Fateh** 🙏🏽
