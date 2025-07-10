@@ -94,7 +94,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       pathCompleted.map((path: PathData) => (
         <SecondaryCard
           key={path.pathId}
-          sehajPathNumber={path.pathId}
+          pathName={path.pathName}
           pathCompletionDate={path.completionDate}
         />
       )),
