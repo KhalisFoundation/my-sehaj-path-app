@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Text, Pressable } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocal } from '@hooks';
@@ -37,19 +37,41 @@ export const SimpleTextForPath = ({
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [isLongPressing, setIsLongPressing] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { fetchFontSize } = useLocal();
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
+
   useFocusEffect(() => {
     const fetch = async () => {
-      const fontSizeData = await fetchFontSize();
-      setFontSize(fontSizeData.number);
+      try {
+        const fontSizeData = await fetchFontSize();
+        setFontSize(fontSizeData.number);
+      } catch (error) {
+        console.error('Error fetching font size:', error);
+        setFontSize(18);
+      }
     };
     fetch();
   });
+
   const handleLongPress = () => {
     if (isLongPressing) {
       return;
     }
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     onSelection();
     setIsLongPressing(true);
     setIsSaving(true);
@@ -57,6 +79,11 @@ export const SimpleTextForPath = ({
     setPressIndex(index);
     setSavedPathVerseId(verseId);
     onSave();
+
+    timeoutRef.current = setTimeout(() => {
+      setIsLongPressing(false);
+      timeoutRef.current = null;
+    }, 100);
   };
 
   const isSelected = verseId === savedPathVerseId || (isSaving && pressIndex === index);
