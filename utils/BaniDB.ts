@@ -1,7 +1,8 @@
+import { API_URL } from '@constants/API';
 import axios from 'axios';
 
 export const BaniDB = async (angNumber: number) => {
-  const baniDBUrl = `https://api.banidb.com/v2/angs/${angNumber}`;
+  const baniDBUrl = `${API_URL}${angNumber}`;
 
   try {
     const response = await axios.get(baniDBUrl);
