@@ -25,7 +25,7 @@ import {
   PathNavigation,
 } from '@components';
 import { RootStackParamList } from '../App';
-import { ErrorConstants, Constants } from '@constants';
+import { ErrorConstants, Constants, Routes } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -66,7 +66,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     const pathFromBaniDB = await BaniDB(angNumber);
     setPathContent(pathFromBaniDB.data);
     if (pathFromBaniDB.success === false) {
-      navigation.replace('Error');
+      navigation.replace(Routes.Error);
     }
     aleartIndicator.current = undefined;
     const currentDebounceTimer = debounceTimer.current;

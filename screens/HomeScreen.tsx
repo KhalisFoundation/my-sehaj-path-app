@@ -4,7 +4,7 @@ import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
-import { Constants, ErrorConstants } from '@constants';
+import { Constants, ErrorConstants, Routes } from '@constants';
 import { StartIcon } from '@icons';
 import { PathData, useLocal } from '@hooks';
 import { showErrorAlert } from '@utils';
@@ -67,7 +67,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       setPathDataArrayFromLocal(pathDataArray);
       await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
-      navigation.push('Continue', { pathId: newPathid });
+      navigation.push(Routes.Continue, { pathId: newPathid });
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
     }
@@ -82,7 +82,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
           angNumber={path.saveData.angNumber}
           progress={path.progress}
           onPress={() => {
-            navigation.push('Continue', { pathId: path.pathId });
+            navigation.push(Routes.Continue, { pathId: path.pathId });
           }}
         />
       )),

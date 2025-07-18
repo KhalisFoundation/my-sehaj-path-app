@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, ImageBackground, Animated } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Constants } from '@constants';
+import { Constants, Routes } from '@constants';
 import { SplashScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 
@@ -17,7 +17,7 @@ export const SplashScreen = ({ navigation }: SplashProps) => {
         duration: 1500,
         useNativeDriver: true,
       }).start(() => {
-        navigation.replace('Home');
+        navigation.replace(Routes.Home);
       });
     }, 500);
 

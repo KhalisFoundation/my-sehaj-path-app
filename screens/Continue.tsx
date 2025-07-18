@@ -14,7 +14,7 @@ import {
   PathRename,
   Calender,
 } from '@components';
-import { Constants, ErrorConstants } from '@constants';
+import { Constants, ErrorConstants, Routes } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
 import { PathData, useLocal, useInternet } from '@hooks';
 import { showErrorAlert } from '@utils';
@@ -27,7 +27,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
 
-  // Consolidated state to reduce re-renders
   const [pathState, setPathState] = useState({
     pathData: undefined as PathData | undefined,
     pathAng: 0,
@@ -138,7 +137,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
   }, [updateOnlineStatus]);
 
-  // Memoized tab handlers to prevent unnecessary re-renders
   const handleTabPress = useCallback((tab: string) => {
     setUiState((prev) => ({ ...prev, tabs: tab }));
   }, []);
@@ -148,10 +146,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }, []);
 
   const handleBackPress = useCallback(() => {
-    navigation.replace('Home');
+    navigation.replace(Routes.Home);
   }, [navigation]);
 
-  // Memoized progress text to prevent unnecessary re-renders
   const progressText = useMemo(
     () => [
       Constants.YOU_ARE_ON_ANG_NUMBER,
