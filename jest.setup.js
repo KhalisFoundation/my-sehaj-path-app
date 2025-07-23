@@ -1,8 +1,10 @@
-/* eslint-disable no-undef*/
-jest.mock('@react-navigation/native', () => {
-  const actualNav = jest.requireActual('@react-navigation/native');
-  return {
-    ...actualNav,
-    useNavigation: () => ({ navigate: jest.fn() }),
-  };
-});
+import { jest } from '@jest/globals';
+
+jest.mock('@react-navigation/native-stack', () => ({
+  createNativeStackNavigator: jest.fn(() => ({
+    Navigator: ({ children }) => children,
+    Screen: ({ children }) => children,
+  })),
+  NativeStackScreenProps: jest.fn(),
+  NativeStackNavigationProp: jest.fn(),
+}));

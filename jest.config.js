@@ -11,6 +11,7 @@ module.exports = {
     '^@icons/(.*)$': '<rootDir>/icons/$1',
     '^@hooks/(.*)$': '<rootDir>/hooks/$1',
     'react-native-linear-gradient': '<rootDir>/__mocks__/react-native-linear-gradient.js',
+    'react-native-safe-area-context': '<rootDir>/__mocks__/react-native-safe-area-context.js',
     'react-native-svg': '<rootDir>/__mocks__/react-native-svg.js',
     'react-native-swipe-gestures': '<rootDir>/__mocks__/react-native-swipe-gestures.js',
     '@react-native-async-storage/async-storage': '<rootDir>/__mocks__/async-storage.js',
