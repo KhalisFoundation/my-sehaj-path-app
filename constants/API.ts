@@ -1,1 +1,1 @@
-export const API_URL = 'https://api.banidb.com/v2/angs/';
+export const BANIDB_API = 'https://api.banidb.com/v2/angs/';
