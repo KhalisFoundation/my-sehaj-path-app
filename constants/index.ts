@@ -6,3 +6,5 @@ export { CalenderDays } from './CalenderConstants';
 export { UIConstants } from './UIConstants';
 export { ErrorConstants } from './ErrorConstant';
 export { AngsFormatArray } from './Angs';
+export { BANIDB_API } from './API';
+export { Routes } from './Routes';

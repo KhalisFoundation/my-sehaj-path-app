@@ -5,7 +5,7 @@ import { SimpleText, NavContent } from '@components';
 import { GoBackIcon, HomeIcon } from '@icons';
 import { ErrorScreenStyles } from '@styles';
 import { RootStackParamList } from '../App';
-import { ErrorConstants } from '@constants';
+import { ErrorConstants, Routes } from '@constants';
 
 export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Error'>) => {
   return (
@@ -29,7 +29,7 @@ export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList,
           <NavContent
             navIcon={<HomeIcon />}
             onPress={() => {
-              navigation.replace('Home');
+              navigation.replace(Routes.Home);
             }}
           />
         </View>
