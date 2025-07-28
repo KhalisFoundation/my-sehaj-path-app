@@ -15,10 +15,10 @@ interface Props {
   onSave: () => void;
   verseId?: number;
   savedPathVerseId?: number;
-  setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsSaved: React.Dispatch<React.SetStateAction<boolean>>;
-  setPressIndex: React.Dispatch<React.SetStateAction<number>>;
-  setSavedPathVerseId: React.Dispatch<React.SetStateAction<number | undefined>>;
+  setIsSaving: (value: boolean) => void;
+  setIsSaved: (value: boolean) => void;
+  setPressIndex: (value: number) => void;
+  setSavedPathVerseId: (value: number) => void;
 }
 
 export const SimpleTextForPath = ({
@@ -77,7 +77,7 @@ export const SimpleTextForPath = ({
     setIsSaving(true);
     setIsSaved(false);
     setPressIndex(index);
-    setSavedPathVerseId(verseId);
+    setSavedPathVerseId(verseId as number);
     onSave();
 
     timeoutRef.current = setTimeout(() => {

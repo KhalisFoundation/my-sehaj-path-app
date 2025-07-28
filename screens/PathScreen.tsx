@@ -54,7 +54,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const aleartIndicator = useRef<React.ReactNode>();
   const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1));
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { checkNetwork } = useInternet();
@@ -117,7 +117,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     scrolledToSavedPath,
     scrollRef,
     scorllOffset,
-    fadeAnim,
+    fadeAnim: fadeAnim.current,
     setFound,
     setIsSaving,
     setIsSaved,
@@ -201,9 +201,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useEffect(() => {
     if (isSaved || found) {
-      fadeAnim.setValue(1);
+      fadeAnim.current.setValue(1);
       const timeoutId = setTimeout(() => {
-        Animated.timing(fadeAnim, {
+        Animated.timing(fadeAnim.current, {
           toValue: 0,
           duration: 2500,
           useNativeDriver: true,
@@ -352,10 +352,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
                 ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
                 : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE
             }
-            fadeAnim={fadeAnim}
+            fadeAnim={fadeAnim.current}
           />
         )}
-        {found && <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim} />}
+        {found && (
+          <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim.current} />
+        )}
         {isAngsNavigationVisible && (
           <AngsNavigation
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}
