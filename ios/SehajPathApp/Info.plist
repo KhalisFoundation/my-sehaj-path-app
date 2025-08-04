@@ -26,7 +26,6 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-	  <!-- Do not change NSAllowsArbitraryLoads to true, or you will risk app rejection! -->
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
 		<key>NSAllowsLocalNetworking</key>
@@ -48,5 +47,27 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Brandon-Grotesque-Bold-Italic.otf</string>
+		<string>BrandonGrotesque-Black.otf</string>
+		<string>BrandonGrotesque-BlackItalic.otf</string>
+		<string>BrandonGrotesque-Bold.otf</string>
+		<string>BrandonGrotesque-BoldItalic.otf</string>
+		<string>BrandonGrotesque-Light.otf</string>
+		<string>BrandonGrotesque-LightItalic.otf</string>
+		<string>BrandonGrotesque-Medium.otf</string>
+		<string>BrandonGrotesque-MediumItalic.otf</string>
+		<string>BrandonGrotesque-Regular.otf</string>
+		<string>BrandonGrotesque-RegularItalic.otf</string>
+		<string>BrandonGrotesque-Thin.otf</string>
+		<string>BrandonGrotesque-ThinItalic.otf</string>
+		<string>BalooPaaji2-Bold.ttf</string>
+		<string>BalooPaaji2-ExtraBold.ttf</string>
+		<string>BalooPaaji2-Medium.ttf</string>
+		<string>BalooPaaji2-Regular.ttf</string>
+		<string>BalooPaaji2-SemiBold.ttf</string>
+		<string>Recoleta-RegularDEMO.otf</string>
+	</array>
 </dict>
 </plist>
