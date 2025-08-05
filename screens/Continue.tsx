@@ -241,7 +241,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   accessibilityHint="Tap to rename this path"
                 >
                   <SecondaryHeading
-                    text={pathState.pathName || pathState.pathData?.pathName}
+                    text={pathState.pathName || pathState.pathData?.pathName || ''}
                     textStyles={ContinueScreenStyles.sehajHeading}
                   />
                 </Pressable>
@@ -268,7 +268,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                     <View style={ContinueScreenStyles.streakContainer}>
                       <View style={ContinueScreenStyles.streakValueContainer}>
                         <SecondaryHeading
-                          text={uiState.streakValue}
+                          text={uiState.streakValue.toString()}
                           textStyles={ContinueScreenStyles.streakText}
                         />
                         <Image

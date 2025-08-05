@@ -14,6 +14,6 @@ export const convertNumberToFormat = (number: number, format: 'Punjabi' | 'Engli
   if (format === 'Punjabi') {
     return convertToPunjabiNumber(number);
   } else {
-    return number.toString() || '0';
+    return number.toString();
   }
 };

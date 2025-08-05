@@ -56,7 +56,9 @@ export const useNavigation = ({
       try {
         await fetchFromBaniDB(pageNo + 1);
         setAngNavigationNumber(pageNo + 1);
-        setPathPunjabiAng(convertNumberToFormat(pageNo + 1, angsFormat.format));
+        setPathPunjabiAng(
+          convertNumberToFormat(pageNo + 1, angsFormat.format as 'Punjabi' | 'English')
+        );
         setPathAng(pageNo + 1);
       } catch (error) {
         showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
@@ -104,7 +106,9 @@ export const useNavigation = ({
       try {
         await fetchFromBaniDB(pageNo - 1);
         setAngNavigationNumber(pageNo - 1);
-        setPathPunjabiAng(convertNumberToFormat(pageNo - 1, angsFormat.format));
+        setPathPunjabiAng(
+          convertNumberToFormat(pageNo - 1, angsFormat.format as 'Punjabi' | 'English')
+        );
         setPathAng(pageNo - 1);
       } catch (error) {
         showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
