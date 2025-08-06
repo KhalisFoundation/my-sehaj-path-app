@@ -13,8 +13,8 @@ interface Props {
   pressIndex: number;
   index: number;
   onSave: () => void;
-  verseId?: number;
-  savedPathVerseId?: number;
+  verseId: number;
+  savedPathVerseId: number;
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
   setPressIndex: (value: number) => void;
@@ -77,7 +77,7 @@ export const SimpleTextForPath = ({
     setIsSaving(true);
     setIsSaved(false);
     setPressIndex(index);
-    setSavedPathVerseId(verseId as number);
+    setSavedPathVerseId(verseId);
     onSave();
 
     timeoutRef.current = setTimeout(() => {

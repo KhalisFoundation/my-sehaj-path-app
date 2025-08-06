@@ -68,7 +68,7 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
   }, [currentMonth]);
 
   useEffect(() => {
-    setDays(daysArray as string[]);
+    setDays(daysArray);
   }, [daysArray]);
 
   useEffect(() => {

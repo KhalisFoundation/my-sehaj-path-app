@@ -27,21 +27,27 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
 
-  // Consolidated state to reduce re-renders
   const [pathState, setPathState] = useState({
-    pathData: undefined as PathData | undefined,
+    pathData: {
+      pathId: 0,
+      saveData: { angNumber: 0, verseId: 0 },
+      progress: 0,
+      startDate: '',
+      completionDate: '',
+      pathName: '',
+    },
     pathAng: 0,
     pathPercentage: 0,
     daysAgo: 0,
     averageAngs: 0,
-    finishDate: undefined as string | undefined,
+    finishDate: '',
     showData: false,
     pathName: '',
   });
 
   const [uiState, setUiState] = useState({
     showPathRename: false,
-    tabs: 'progress' as string,
+    tabs: 'progress',
     streakValue: 0,
   });
 
@@ -53,7 +59,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
   }, []);
 
-  // Memoized calculation to prevent unnecessary recalculations
   const calculatePathCompletion = useCallback((matchedPath: PathData) => {
     const today = dayjs();
     const startDate = dayjs(matchedPath.startDate, 'D-MMMM-YYYY');
@@ -138,7 +143,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
   }, [updateOnlineStatus]);
 
-  // Memoized tab handlers to prevent unnecessary re-renders
   const handleTabPress = useCallback((tab: string) => {
     setUiState((prev) => ({ ...prev, tabs: tab }));
   }, []);
@@ -151,7 +155,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     navigation.replace('Home');
   }, [navigation]);
 
-  // Memoized progress text to prevent unnecessary re-renders
   const progressText = useMemo(
     () => [
       Constants.YOU_ARE_ON_ANG_NUMBER,

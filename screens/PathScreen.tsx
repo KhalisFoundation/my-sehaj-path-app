@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BaniDB, showErrorAlert, convertNumberToFormat } from '@utils';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
-  AngsFormat,
   DateData,
   PathData,
   useLocal,
@@ -15,6 +14,7 @@ import {
   useNavigation,
   usePathNavigation,
   useScrollToSavedPath,
+  AngsFormat,
 } from '@hooks';
 import {
   AngsNavigation,
@@ -127,7 +127,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   const updatePathAng = (angNumber: number) => {
     setPathAng(angNumber);
-    setPathPunjabiAng(convertNumberToFormat(angNumber, angsFormat.format as 'Punjabi' | 'English'));
+    setPathPunjabiAng(
+      convertNumberToFormat({
+        number: angNumber,
+        format: angsFormat.format,
+      })
+    );
   };
 
   const { handleGoBack } = usePathNavigation({
@@ -161,7 +166,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           setPathAng(pathAngData);
           setAngNavigationNumber(pathAngData);
           setPathPunjabiAng(
-            convertNumberToFormat(pathAngData, angsFormat.format as 'Punjabi' | 'English')
+            convertNumberToFormat({
+              number: pathAngData,
+              format: angsFormat.format,
+            })
           );
           await fetchFromBaniDB(pathAngData);
         }
@@ -256,10 +264,15 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       try {
         const format = await fetchAngsFormat();
         setAngsFormat(format);
-        setPathPunjabiAng(convertNumberToFormat(pathAng, format.format as 'Punjabi' | 'English'));
+        setPathPunjabiAng(
+          convertNumberToFormat({
+            number: pathAng,
+            format: format.format,
+          })
+        );
       } catch (error) {
         setAngsFormat({ format: 'Punjabi' });
-        setPathPunjabiAng(convertNumberToFormat(pathAng, 'Punjabi'));
+        setPathPunjabiAng(convertNumberToFormat({ number: pathAng, format: 'Punjabi' }));
       }
     };
     fetchAngsFormatData();

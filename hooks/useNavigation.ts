@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { showErrorAlert, convertNumberToFormat } from '@utils';
 import { ErrorConstants } from '@constants/ErrorConstant';
 import { ScrollView } from 'react-native';
+import { AngsFormat } from './useLocal';
 
 export interface UseNavigationParams {
   isNavigating: boolean;
@@ -12,7 +13,7 @@ export interface UseNavigationParams {
   setAngNavigationNumber: (value: number) => void;
   setPathPunjabiAng: (value: string) => void;
   setPathAng: (value: number) => void;
-  angsFormat: { format: string };
+  angsFormat: AngsFormat;
   checkNetwork: () => Promise<boolean>;
   fetchFromBaniDB: (angNumber: number) => Promise<void>;
 }
@@ -57,7 +58,10 @@ export const useNavigation = ({
         await fetchFromBaniDB(pageNo + 1);
         setAngNavigationNumber(pageNo + 1);
         setPathPunjabiAng(
-          convertNumberToFormat(pageNo + 1, angsFormat.format as 'Punjabi' | 'English')
+          convertNumberToFormat({
+            number: pageNo + 1,
+            format: angsFormat.format,
+          })
         );
         setPathAng(pageNo + 1);
       } catch (error) {
@@ -107,7 +111,10 @@ export const useNavigation = ({
         await fetchFromBaniDB(pageNo - 1);
         setAngNavigationNumber(pageNo - 1);
         setPathPunjabiAng(
-          convertNumberToFormat(pageNo - 1, angsFormat.format as 'Punjabi' | 'English')
+          convertNumberToFormat({
+            number: pageNo - 1,
+            format: angsFormat.format,
+          })
         );
         setPathAng(pageNo - 1);
       } catch (error) {

@@ -23,7 +23,7 @@ export interface FontSizeData {
   number: number;
 }
 export interface AngsFormat {
-  format: string;
+  format: 'Punjabi' | 'English';
 }
 export const useLocal = () => {
   const fetchFromLocal = async () => {
