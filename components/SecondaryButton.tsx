@@ -8,9 +8,16 @@ interface Props {
   buttonText: string;
   buttonIcon: React.ReactNode;
   buttonStyle?: StyleProp<ViewStyle>;
+  buttonIconStyle?: StyleProp<ViewStyle>;
 }
 
-export const SecondaryButton = ({ onPress, buttonIcon, buttonText, buttonStyle }: Props) => {
+export const SecondaryButton = ({
+  onPress,
+  buttonIcon,
+  buttonText,
+  buttonIconStyle,
+  buttonStyle,
+}: Props) => {
   return (
     <TouchableOpacity
       onPress={() => {
@@ -26,7 +33,7 @@ export const SecondaryButton = ({ onPress, buttonIcon, buttonText, buttonStyle }
         end={{ x: 1, y: 0 }}
         style={[SecondaryButtonStyles.secondaryButton, buttonStyle]}
       >
-        <View>{buttonIcon}</View>
+        <View style={buttonIconStyle}>{buttonIcon}</View>
         <Text style={SecondaryButtonStyles.secondaryButtonContent}>{buttonText}</Text>
       </LinearGradient>
     </TouchableOpacity>
