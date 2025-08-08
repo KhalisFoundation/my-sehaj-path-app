@@ -210,18 +210,17 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   useEffect(() => {
     if (isSaved || found) {
       fadeAnim.current.setValue(1);
-      const timeoutId = setTimeout(() => {
-        Animated.timing(fadeAnim.current, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }).start(() => {
-          setIsSaving(false);
-          setIsSaved(false);
-        });
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
+      Animated.timing(fadeAnim.current, {
+        toValue: 0,
+        duration: 3000,
+        useNativeDriver: true,
+      }).start(() => {
+        setIsSaving(false);
+        setIsSaved(false);
+        if (found) {
+          setFound(false);
+        }
+      });
     }
   }, [isSaved, found]);
 
