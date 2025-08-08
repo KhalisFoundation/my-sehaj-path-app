@@ -1,5 +1,10 @@
 import { PunjabiNumbers } from '../constants/Number';
 
+export interface NumberFormat {
+  number: number;
+  format: 'Punjabi' | 'English';
+}
+
 export const convertToPunjabiNumber = (number: number): string => {
   return (
     number
@@ -10,10 +15,10 @@ export const convertToPunjabiNumber = (number: number): string => {
   );
 };
 
-export const convertNumberToFormat = (number: number, format: 'Punjabi' | 'English'): string => {
-  if (format === 'Punjabi') {
-    return convertToPunjabiNumber(number);
+export const convertNumberToFormat = (numberFormat: NumberFormat): string => {
+  if (numberFormat.format === 'Punjabi') {
+    return convertToPunjabiNumber(numberFormat.number);
   } else {
-    return number.toString() || '0';
+    return numberFormat.number.toString();
   }
 };

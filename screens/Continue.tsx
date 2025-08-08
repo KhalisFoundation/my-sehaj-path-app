@@ -28,19 +28,26 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   dayjs.extend(customParseFormat);
 
   const [pathState, setPathState] = useState({
-    pathData: undefined as PathData | undefined,
+    pathData: {
+      pathId: 0,
+      saveData: { angNumber: 0, verseId: 0 },
+      progress: 0,
+      startDate: '',
+      completionDate: '',
+      pathName: '',
+    },
     pathAng: 0,
     pathPercentage: 0,
     daysAgo: 0,
     averageAngs: 0,
-    finishDate: undefined as string | undefined,
+    finishDate: '',
     showData: false,
     pathName: '',
   });
 
   const [uiState, setUiState] = useState({
     showPathRename: false,
-    tabs: 'progress' as string,
+    tabs: 'progress',
     streakValue: 0,
   });
 
@@ -52,7 +59,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
   }, []);
 
-  // Memoized calculation to prevent unnecessary recalculations
   const calculatePathCompletion = useCallback((matchedPath: PathData) => {
     const today = dayjs();
     const startDate = dayjs(matchedPath.startDate, 'D-MMMM-YYYY');
@@ -238,7 +244,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   accessibilityHint="Tap to rename this path"
                 >
                   <SecondaryHeading
-                    text={pathState.pathName || pathState.pathData?.pathName}
+                    text={pathState.pathName || pathState.pathData?.pathName || ''}
                     textStyles={ContinueScreenStyles.sehajHeading}
                   />
                 </Pressable>
@@ -265,7 +271,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                     <View style={ContinueScreenStyles.streakContainer}>
                       <View style={ContinueScreenStyles.streakValueContainer}>
                         <SecondaryHeading
-                          text={uiState.streakValue}
+                          text={uiState.streakValue.toString()}
                           textStyles={ContinueScreenStyles.streakText}
                         />
                         <Image

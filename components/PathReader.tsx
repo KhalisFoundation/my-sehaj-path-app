@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import GestureRecognizer from 'react-native-swipe-gestures';
 import { ScrollView } from 'react-native';
 import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
-import { useLocal } from '@hooks';
 
 interface PathReaderProps {
   pathContent: any;
@@ -53,21 +52,6 @@ export const PathReader = React.memo(
     setIsSaved,
     pathId,
   }: PathReaderProps) => {
-    const [fontSize, setFontSize] = useState<number>(18);
-    const { fetchFontSize } = useLocal();
-
-    useEffect(() => {
-      const fetchFont = async () => {
-        try {
-          const fontSizeData = await fetchFontSize();
-          setFontSize(fontSizeData.number);
-        } catch (error) {
-          setFontSize(18);
-        }
-      };
-      fetchFont();
-    }, [fetchFontSize]);
-
     return (
       <GestureRecognizer
         onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
@@ -118,7 +102,6 @@ export const PathReader = React.memo(
                 index={index + 1}
                 verseId={path.verseId}
                 savedPathVerseId={savedPathVerseId}
-                fontSize={fontSize}
                 setIsSaving={setIsSaving}
                 setIsSaved={setIsSaved}
                 setPressIndex={setPressIndex}
