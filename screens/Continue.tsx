@@ -298,6 +298,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               buttonText={'Continue'}
               buttonIcon={<ContinueIcon />}
               buttonStyle={ContinueScreenStyles.continueButton}
+              buttonIconStyle={ContinueScreenStyles.continueButtonIcon}
             />
           </View>
         </ScrollView>

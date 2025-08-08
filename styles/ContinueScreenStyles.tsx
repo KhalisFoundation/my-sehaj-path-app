@@ -75,8 +75,11 @@ export const ContinueScreenStyles = StyleSheet.create({
     fontSize: 24,
   },
   continueButton: {
-    width: 'auto',
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  continueButtonIcon: {
+    paddingLeft: 11,
   },
   streakContainer: {
     alignItems: 'center',
