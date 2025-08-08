@@ -28,7 +28,7 @@ export const PathControls = ({
         navIcon={<SaveIcon />}
         onPress={() => {
           setIsSaving(!isSaving);
-          fadeAnim.setValue(1);
+          fadeAnim.current.setValue(1);
         }}
       />
       <NavContent

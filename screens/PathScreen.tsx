@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BaniDB, showErrorAlert, convertNumberToFormat } from '@utils';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
-  AngsFormat,
   DateData,
   PathData,
   useLocal,
@@ -15,6 +14,7 @@ import {
   useNavigation,
   usePathNavigation,
   useScrollToSavedPath,
+  AngsFormat,
 } from '@hooks';
 import {
   AngsNavigation,
@@ -54,7 +54,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const aleartIndicator = useRef<React.ReactNode>();
   const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const fadeAnim = useRef(new Animated.Value(1));
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { checkNetwork } = useInternet();
@@ -117,7 +117,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     scrolledToSavedPath,
     scrollRef,
     scorllOffset,
-    fadeAnim,
+    fadeAnim: fadeAnim.current,
     setFound,
     setIsSaving,
     setIsSaved,
@@ -127,7 +127,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   const updatePathAng = (angNumber: number) => {
     setPathAng(angNumber);
-    setPathPunjabiAng(convertNumberToFormat(angNumber, angsFormat.format as 'Punjabi' | 'English'));
+    setPathPunjabiAng(
+      convertNumberToFormat({
+        number: angNumber,
+        format: angsFormat.format,
+      })
+    );
   };
 
   const { handleGoBack } = usePathNavigation({
@@ -161,7 +166,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           setPathAng(pathAngData);
           setAngNavigationNumber(pathAngData);
           setPathPunjabiAng(
-            convertNumberToFormat(pathAngData, angsFormat.format as 'Punjabi' | 'English')
+            convertNumberToFormat({
+              number: pathAngData,
+              format: angsFormat.format,
+            })
           );
           await fetchFromBaniDB(pathAngData);
         }
@@ -201,9 +209,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useEffect(() => {
     if (isSaved || found) {
-      fadeAnim.setValue(1);
+      fadeAnim.current.setValue(1);
       const timeoutId = setTimeout(() => {
-        Animated.timing(fadeAnim, {
+        Animated.timing(fadeAnim.current, {
           toValue: 0,
           duration: 2500,
           useNativeDriver: true,
@@ -256,10 +264,15 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       try {
         const format = await fetchAngsFormat();
         setAngsFormat(format);
-        setPathPunjabiAng(convertNumberToFormat(pathAng, format.format as 'Punjabi' | 'English'));
+        setPathPunjabiAng(
+          convertNumberToFormat({
+            number: pathAng,
+            format: format.format,
+          })
+        );
       } catch (error) {
         setAngsFormat({ format: 'Punjabi' });
-        setPathPunjabiAng(convertNumberToFormat(pathAng, 'Punjabi'));
+        setPathPunjabiAng(convertNumberToFormat({ number: pathAng, format: 'Punjabi' }));
       }
     };
     fetchAngsFormatData();
@@ -352,10 +365,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
                 ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
                 : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE
             }
-            fadeAnim={fadeAnim}
+            fadeAnim={fadeAnim.current}
           />
         )}
-        {found && <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim} />}
+        {found && (
+          <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim.current} />
+        )}
         {isAngsNavigationVisible && (
           <AngsNavigation
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}

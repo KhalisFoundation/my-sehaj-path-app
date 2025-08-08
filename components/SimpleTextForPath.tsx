@@ -13,12 +13,12 @@ interface Props {
   pressIndex: number;
   index: number;
   onSave: () => void;
-  verseId?: number;
-  savedPathVerseId?: number;
-  setIsSaving: React.Dispatch<React.SetStateAction<boolean>>;
-  setIsSaved: React.Dispatch<React.SetStateAction<boolean>>;
-  setPressIndex: React.Dispatch<React.SetStateAction<number>>;
-  setSavedPathVerseId: React.Dispatch<React.SetStateAction<number | undefined>>;
+  verseId: number;
+  savedPathVerseId: number;
+  setIsSaving: (value: boolean) => void;
+  setIsSaved: (value: boolean) => void;
+  setPressIndex: (value: number) => void;
+  setSavedPathVerseId: (value: number) => void;
 }
 
 export const SimpleTextForPath = ({
