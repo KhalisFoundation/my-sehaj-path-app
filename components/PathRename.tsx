@@ -22,12 +22,13 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
   };
 
   return (
-    <BlurView
-      blurType="light"
-      blurAmount={1}
-      reducedTransparencyFallbackColor="grey"
-      style={PathRenameStyle.blurView}
-    >
+    <View style={PathRenameStyle.blurView}>
+      <BlurView
+        blurType="light"
+        blurAmount={2}
+        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
+        style={PathRenameStyle.blurOverlay}
+      />
       <View style={PathRenameStyle.overlayContainer}>
         <View style={PathRenameStyle.renameContainer}>
           <Pressable
@@ -61,6 +62,6 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
           </TouchableOpacity>
         </View>
       </View>
-    </BlurView>
+    </View>
   );
 };

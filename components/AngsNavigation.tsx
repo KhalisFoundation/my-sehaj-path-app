@@ -92,12 +92,13 @@ export const AngsNavigation = ({
   };
 
   return (
-    <BlurView
-      blurType="light"
-      blurAmount={1}
-      reducedTransparencyFallbackColor="grey"
-      style={AngsNavigationStyle.blurView}
-    >
+    <View style={AngsNavigationStyle.blurView}>
+      <BlurView
+        blurType="light"
+        blurAmount={2}
+        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
+        style={AngsNavigationStyle.blurOverlay}
+      />
       <View style={AngsNavigationStyle.overlayContainer}>
         <View style={AngsNavigationStyle.angsNavigationContainer}>
           <Pressable
@@ -167,6 +168,6 @@ export const AngsNavigation = ({
           </TouchableOpacity>
         </View>
       </View>
-    </BlurView>
+    </View>
   );
 };
