@@ -52,20 +52,21 @@ export const AngsNavigation = ({
     setAngNumber(parsedNumber);
   };
 
-  const handleNavigation = async (navigationFunction: () => void) => {
-    try {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
-      navigationFunction();
-      setIsAngsNavigationVisible(false);
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
+  const handleNavigation = (navigationFunction: () => void) => {
+    checkNetwork()
+      .then((isConnected) => {
+        if (!isConnected) {
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+          return;
+        }
+        navigationFunction();
+        setIsAngsNavigationVisible(false);
+      })
+      .catch((_error) => {
+        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+      });
   };
 
   const handleGoToAng = async () => {
@@ -73,22 +74,23 @@ export const AngsNavigation = ({
       return;
     }
 
-    try {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
-      fetchAngData(angNumber);
-      setIsAngNavigation(true);
-      setIsAngsNavigationVisible(false);
-      setAngNavigationNumber(angNumber);
-      updatePathAng(angNumber);
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
+    checkNetwork()
+      .then((isConnected) => {
+        if (!isConnected) {
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+          return;
+        }
+        fetchAngData(angNumber);
+        setIsAngNavigation(true);
+        setIsAngsNavigationVisible(false);
+        setAngNavigationNumber(angNumber);
+        updatePathAng(angNumber);
+      })
+      .catch((_error) => {
+        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+      });
   };
 
   return (

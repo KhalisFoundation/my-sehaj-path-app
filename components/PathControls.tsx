@@ -33,7 +33,10 @@ export const PathControls = ({
       />
       <NavContent
         navIcon={autoScroll ? <PauseIcon /> : <PlayIcon />}
-        onPress={() => setAutoScroll(!autoScroll)}
+        onPress={() => {
+          console.log('Auto-scroll button pressed, current state:', autoScroll);
+          setAutoScroll(!autoScroll);
+        }}
       />
       <NavContent navIcon={<SettingsIcon />} onPress={() => navigation.push('Setting')} />
     </>

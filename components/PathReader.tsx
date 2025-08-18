@@ -29,6 +29,7 @@ interface PathReaderProps {
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
   pathId: number;
+  setContentHeight: (height: number) => void;
 }
 
 export const PathReader = React.memo(
@@ -51,6 +52,7 @@ export const PathReader = React.memo(
     setIsSaving,
     setIsSaved,
     pathId,
+    setContentHeight,
   }: PathReaderProps) => {
     return (
       <GestureRecognizer
@@ -74,8 +76,15 @@ export const PathReader = React.memo(
               debouncedScrollSave();
             }
           }}
-          onTouchStart={() => handleStopAutoScroll()}
-          scrollEventThrottle={16}
+          onContentSizeChange={(_, height) => {
+            setContentHeight(height);
+          }}
+          scrollEventThrottle={64}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+          decelerationRate="fast"
+          onScrollBeginDrag={() => handleStopAutoScroll()}
+          removeClippedSubviews={true}
         >
           {pathContent?.page?.map((path: any, index: number) => {
             return (

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
@@ -47,8 +48,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [angNavigationNumber, setAngNavigationNumber] = useState<number>(0);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [contentHeight, setContentHeight] = useState<number>(0);
   const scrolledToSavedPath = useRef(false);
-  const scrollInveral = useRef<NodeJS.Timeout | null>(null);
+  const scrollInterval = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const aleartIndicator = useRef<React.ReactNode>();
@@ -93,6 +95,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     angsFormat,
     checkNetwork,
     fetchFromBaniDB,
+    setAutoScroll,
   });
 
   const debouncedScrollSave = useCallback(() => {
@@ -107,8 +110,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         scorllOffset.current,
         setIsSaved
       );
-    }, 300);
-  }, [handleUpdatePath]);
+    }, 200);
+  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate,
@@ -122,7 +125,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setIsSaving,
     setIsSaved,
     fetchFontSize,
-    scrollTimeoutRef,
   });
 
   const updatePathAng = (angNumber: number) => {
@@ -171,6 +173,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
               format: angsFormat.format,
             })
           );
+
+          scrolledToSavedPath.current = false;
           await fetchFromBaniDB(pathAngData);
         }
       } catch (error) {
@@ -178,22 +182,21 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }
     };
     fetchPath();
-  }, []);
+  }, [route.params.pathId]);
 
   const handleAutoScroll = () => {
-    scrollInveral.current = setInterval(() => {
-      scorllOffset.current += 1;
-      scrollRef.current?.scrollTo({
-        y: scorllOffset.current,
-        animated: false,
-      });
-    }, 50);
+    const id = setInterval(() => {
+      scorllOffset.current += 5;
+      scrollRef.current?.scrollTo({ y: scorllOffset.current, animated: true });
+    }, 250);
+    scrollInterval.current = id;
+    return () => clearInterval(id);
   };
 
   const handleStopAutoScroll = () => {
-    if (scrollInveral.current) {
-      clearInterval(scrollInveral.current);
-      scrollInveral.current = null;
+    if (scrollInterval.current) {
+      clearInterval(scrollInterval.current);
+      scrollInterval.current = null;
       setAutoScroll(false);
     }
   };
@@ -226,11 +229,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useEffect(() => {
     if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
-      const timeoutId = setTimeout(() => {
-        scrollToSavedPathData();
-      }, 800);
-
-      return () => clearTimeout(timeoutId);
+      if (autoScroll) {
+        setAutoScroll(false);
+      }
+      scrollToSavedPathData();
     }
   }, [matchedPath, pathAng, pathContent]);
 
@@ -247,13 +249,14 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   });
 
   useEffect(() => {
-    const checkNetworkStatus = async () => {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-      }
+    const checkNetworkStatus = () => {
+      checkNetwork().then((isConnected) => {
+        if (!isConnected) {
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+        }
+      });
     };
     checkNetworkStatus();
   }, []);
@@ -292,9 +295,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useEffect(() => {
     return () => {
-      if (scrollInveral.current) {
-        clearInterval(scrollInveral.current);
-        scrollInveral.current = null;
+      if (scrollInterval.current) {
+        clearInterval(scrollInterval.current);
+        scrollInterval.current = null;
       }
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
@@ -339,6 +342,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
           pathId={route.params.pathId}
+          setContentHeight={setContentHeight}
         />
         {aleartIndicator.current !== undefined ? (
           <Loading alertIndicator={aleartIndicator.current} alertText={alertText.current} />

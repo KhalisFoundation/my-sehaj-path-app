@@ -16,7 +16,6 @@ interface UseScrollToSavedPathProps {
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
   fetchFontSize: () => Promise<{ number: number }>;
-  scrollTimeoutRef: React.MutableRefObject<NodeJS.Timeout | null>;
 }
 
 export const useScrollToSavedPath = ({
@@ -31,36 +30,37 @@ export const useScrollToSavedPath = ({
   setIsSaving,
   setIsSaved,
   fetchFontSize,
-  scrollTimeoutRef,
 }: UseScrollToSavedPathProps) => {
+  const runFadeSequence = useCallback(() => {
+    setFound(true);
+
+    Animated.sequence([
+      Animated.delay(2000),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 2500,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setFound(false);
+      setIsSaving(false);
+      setIsSaved(false);
+    });
+  }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
+
   const scrollToSavedPathData = useCallback(async () => {
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-      scrollTimeoutRef.current = null;
-    }
-
     if (matchedPathDate && !scrolledToSavedPath.current) {
-      setFound(true);
-      const scrollY = matchedPathDate.scrollPosition;
-      scorllOffset.current = scrollY;
-      scrollRef.current?.scrollTo({
-        y: scorllOffset.current,
-        animated: true,
-      });
-      scrolledToSavedPath.current = true;
-
-      scrollTimeoutRef.current = setTimeout(() => {
-        setFound(false);
-        fadeAnim.setValue(1);
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }).start(() => {
-          setIsSaving(false);
-          setIsSaved(false);
+      scorllOffset.current = matchedPathDate.scrollPosition;
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({
+          y: scorllOffset.current,
+          animated: true,
         });
-      }, 2000);
+      }
+      console.log('scrolledToSavedPath', scorllOffset.current);
+      scrolledToSavedPath.current = true;
+      fadeAnim.setValue(1);
+      runFadeSequence();
     }
 
     if (pathContent && !scrolledToSavedPath.current) {
@@ -81,27 +81,18 @@ export const useScrollToSavedPath = ({
           scrollHeight = 150;
         }
         if (scrollIndex !== -1) {
-          const scrollY = scrollIndex * scrollHeight;
-          setFound(true);
-          scorllOffset.current = scrollY;
-          scrollRef.current?.scrollTo({
-            y: scorllOffset.current,
-            animated: true,
-          });
+          scorllOffset.current = scrollIndex * scrollHeight;
+          if (scrollRef.current) {
+            scrollRef.current.scrollTo({
+              y: scorllOffset.current,
+              animated: true,
+            });
+          }
+          console.log('scrolledToSavedPath', scorllOffset.current);
           scrolledToSavedPath.current = true;
-        }
-        scrollTimeoutRef.current = setTimeout(() => {
-          setFound(false);
           fadeAnim.setValue(1);
-          Animated.timing(fadeAnim, {
-            toValue: 0,
-            duration: 2500,
-            useNativeDriver: true,
-          }).start(() => {
-            setIsSaving(false);
-            setIsSaved(false);
-          });
-        }, 2000);
+          runFadeSequence();
+        }
       } catch (error) {
         showErrorAlert(ErrorConstants.ERROR_SCROLLING_TO_SAVED_PATH);
       }
@@ -114,11 +105,8 @@ export const useScrollToSavedPath = ({
     scrollRef,
     scorllOffset,
     fadeAnim,
-    setFound,
-    setIsSaving,
-    setIsSaved,
+    runFadeSequence,
     fetchFontSize,
-    scrollTimeoutRef,
   ]);
 
   return { scrollToSavedPathData };

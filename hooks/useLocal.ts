@@ -109,6 +109,8 @@ export const useLocal = () => {
     setIsSaved: (value: boolean) => void
   ) => {
     try {
+      console.log('Saving path progress:', { pathId, angNumber, verseId, scrollPosition });
+
       const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
       const date = new Date();
       const todayDate = `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
@@ -138,14 +140,19 @@ export const useLocal = () => {
         if (angNumber === 1430 && verseId === 60403) {
           matchedPath.completionDate = todayDate;
         }
+        await Promise.all([
+          AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray)),
+          AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate)),
+        ]);
 
-        await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
-        await AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate));
+        console.log('Path progress saved successfully');
         setIsSaved(true);
       } else {
+        console.error('Failed to find matched path or date');
         showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
       }
     } catch (error) {
+      console.error('Error saving path progress:', error);
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
     }
   };

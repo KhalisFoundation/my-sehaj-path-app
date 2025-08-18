@@ -120,19 +120,20 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }, [updateTheData])
   );
 
-  const handleContinue = useCallback(async () => {
-    try {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
-      navigation.push('Path', { pathId: pathId });
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
+  const handleContinue = useCallback(() => {
+    checkNetwork()
+      .then((isConnected) => {
+        if (!isConnected) {
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+          return;
+        }
+        navigation.push('Path', { pathId: pathId });
+      })
+      .catch((_error) => {
+        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+      });
   }, [checkNetwork, navigation, pathId]);
 
   useEffect(() => {
@@ -185,7 +186,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     ],
     [pathState.daysAgo, pathState.averageAngs, pathState.finishDate]
   );
-
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <ImageBackground

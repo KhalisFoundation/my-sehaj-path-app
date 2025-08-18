@@ -4,27 +4,33 @@ import { useState, useEffect } from 'react';
 export const useInternet = () => {
   const [isOnline, setIsOnline] = useState<boolean>(true);
 
-  const updateOnlineStatus = async () => {
-    try {
-      const netInfo = await NetInfo.fetch();
-      const isConnected = Boolean(netInfo.isConnected && netInfo.isInternetReachable);
-      setIsOnline(isConnected);
-      return isConnected;
-    } catch (error) {
-      console.error('Error checking network status:', error);
-      setIsOnline(false);
-      return false;
-    }
+  const updateOnlineStatus = () => {
+    return new Promise<boolean>((resolve) => {
+      NetInfo.fetch()
+        .then((netInfo) => {
+          const isConnected = Boolean(netInfo.isConnected && netInfo.isInternetReachable);
+          setIsOnline(isConnected);
+          resolve(isConnected);
+        })
+        .catch((error) => {
+          console.error('Error checking network status:', error);
+          setIsOnline(false);
+          resolve(false);
+        });
+    });
   };
 
-  const checkNetwork = async () => {
-    try {
-      const isConnected = await updateOnlineStatus();
-      return isConnected;
-    } catch (error) {
-      console.error('Error in checkNetwork:', error);
-      return false;
-    }
+  const checkNetwork = () => {
+    return new Promise<boolean>((resolve) => {
+      updateOnlineStatus()
+        .then((isConnected) => {
+          resolve(isConnected);
+        })
+        .catch((error) => {
+          console.error('Error in checkNetwork:', error);
+          resolve(false);
+        });
+    });
   };
 
   useEffect(() => {
