@@ -38,43 +38,41 @@ export const useNavigation = ({
       if (isNavigating) {
         return;
       }
-      checkNetwork().then((isConnected) => {
+      if (pageNo >= 1430) {
+        return;
+      }
+
+      setIsNavigating(true);
+      setIsSaving(false);
+      setAutoScroll?.(false);
+      scorllOffset.current = 0;
+      scrollRef.current?.scrollTo({
+        y: 0,
+        animated: true,
+      });
+
+      try {
+        await fetchFromBaniDB(pageNo + 1);
+        setAngNavigationNumber(pageNo + 1);
+        setPathPunjabiAng(
+          convertNumberToFormat({
+            number: pageNo + 1,
+            format: angsFormat.format,
+          })
+        );
+        setPathAng(pageNo + 1);
+      } catch (error) {
+        const isConnected = await checkNetwork();
         if (!isConnected) {
           showErrorAlert(
             ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
           );
-          return;
+        } else {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
         }
-        if (pageNo >= 1430) {
-          return;
-        }
-        setIsNavigating(true);
-        setIsSaving(false);
-        setAutoScroll?.(false);
-        scorllOffset.current = 0;
-        scrollRef.current?.scrollTo({
-          y: 0,
-          animated: true,
-        });
-
-        fetchFromBaniDB(pageNo + 1)
-          .then(() => {
-            setAngNavigationNumber(pageNo + 1);
-            setPathPunjabiAng(
-              convertNumberToFormat({
-                number: pageNo + 1,
-                format: angsFormat.format,
-              })
-            );
-            setPathAng(pageNo + 1);
-          })
-          .catch((_error) => {
-            showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
-          })
-          .finally(() => {
-            setIsNavigating(false);
-          });
-      });
+      } finally {
+        setIsNavigating(false);
+      }
     },
     [
       isNavigating,
@@ -97,42 +95,41 @@ export const useNavigation = ({
       if (isNavigating) {
         return;
       }
-      checkNetwork().then((isConnected) => {
+      if (pageNo <= 1) {
+        return;
+      }
+
+      setIsNavigating(true);
+      setIsSaving(false);
+      setAutoScroll?.(false);
+      scorllOffset.current = 0;
+      scrollRef.current?.scrollTo({
+        y: 0,
+        animated: true,
+      });
+
+      try {
+        await fetchFromBaniDB(pageNo - 1);
+        setAngNavigationNumber(pageNo - 1);
+        setPathPunjabiAng(
+          convertNumberToFormat({
+            number: pageNo - 1,
+            format: angsFormat.format,
+          })
+        );
+        setPathAng(pageNo - 1);
+      } catch (error) {
+        const isConnected = await checkNetwork();
         if (!isConnected) {
           showErrorAlert(
             ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
           );
-          return;
+        } else {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
         }
-        if (pageNo <= 1) {
-          return;
-        }
-        setIsNavigating(true);
-        setIsSaving(false);
-        setAutoScroll?.(false);
-        scorllOffset.current = 0;
-        scrollRef.current?.scrollTo({
-          y: 0,
-          animated: true,
-        });
-        fetchFromBaniDB(pageNo - 1)
-          .then(() => {
-            setAngNavigationNumber(pageNo - 1);
-            setPathPunjabiAng(
-              convertNumberToFormat({
-                number: pageNo - 1,
-                format: angsFormat.format,
-              })
-            );
-            setPathAng(pageNo - 1);
-          })
-          .catch((_error) => {
-            showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
-          })
-          .finally(() => {
-            setIsNavigating(false);
-          });
-      });
+      } finally {
+        setIsNavigating(false);
+      }
     },
     [
       isNavigating,

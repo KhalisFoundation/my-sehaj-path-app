@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
@@ -16,7 +16,7 @@ import {
 } from '@components';
 import { Constants, ErrorConstants, Routes } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { PathData, useLocal, useInternet } from '@hooks';
+import { PathData, useLocal } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { GoBackIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
@@ -53,7 +53,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const streak = useRef<number>(0);
   const { fetchFromLocal } = useLocal();
-  const { checkNetwork, updateOnlineStatus } = useInternet();
 
   const handleStreakUpdate = useCallback((newStreakValue: number) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
@@ -121,28 +120,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   );
 
   const handleContinue = useCallback(() => {
-    checkNetwork()
-      .then((isConnected) => {
-        if (!isConnected) {
-          showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-          );
-          return;
-        }
-        navigation.push('Path', { pathId: pathId });
-      })
-      .catch((_error) => {
-        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-      });
-  }, [checkNetwork, navigation, pathId]);
-
-  useEffect(() => {
-    try {
-      updateOnlineStatus();
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
-  }, [updateOnlineStatus]);
+    navigation.push('Path', { pathId: pathId });
+  }, [navigation, pathId]);
 
   const handleTabPress = useCallback((tab: string) => {
     setUiState((prev) => ({ ...prev, tabs: tab }));

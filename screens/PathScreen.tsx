@@ -49,6 +49,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [angNavigationNumber, setAngNavigationNumber] = useState<number>(0);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [contentHeight, setContentHeight] = useState<number>(0);
+  const [needsRetry, setNeedsRetry] = useState<boolean>(false);
+  const [lastFailedAng, setLastFailedAng] = useState<number | null>(null);
   const scrolledToSavedPath = useRef(false);
   const scrollInterval = useRef<NodeJS.Timeout | null>(null);
   const scorllOffset = useRef<number>(0);
@@ -59,7 +61,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const fadeAnim = useRef(new Animated.Value(1));
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { checkNetwork } = useInternet();
+  const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
     useLocal();
 
@@ -67,8 +69,22 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
     const pathFromBaniDB = await BaniDB(angNumber);
     setPathContent(pathFromBaniDB.data);
+    setNeedsRetry(false);
+    setLastFailedAng(null);
     if (pathFromBaniDB.success === false) {
-      navigation.replace(Routes.Error);
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        setNeedsRetry(true);
+        setLastFailedAng(angNumber);
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE,
+          () => fetchFromBaniDB(angNumber),
+          'Reload'
+        );
+      } else {
+        navigation.replace(Routes.Error);
+        return;
+      }
     }
     aleartIndicator.current = undefined;
     const currentDebounceTimer = debounceTimer.current;
@@ -248,19 +264,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     fetchLarivaarData();
   });
 
-  useEffect(() => {
-    const checkNetworkStatus = () => {
-      checkNetwork().then((isConnected) => {
-        if (!isConnected) {
-          showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-          );
-        }
-      });
-    };
-    checkNetworkStatus();
-  }, []);
-
   useFocusEffect(() => {
     const fetchAngsFormatData = async () => {
       try {
@@ -310,6 +313,13 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (isOnline && needsRetry && lastFailedAng !== null) {
+      setNeedsRetry(false);
+      fetchFromBaniDB(lastFailedAng);
+    }
+  }, [isOnline, needsRetry, lastFailedAng]);
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
