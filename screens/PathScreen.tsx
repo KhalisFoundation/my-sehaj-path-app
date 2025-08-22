@@ -77,9 +77,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         setNeedsRetry(true);
         setLastFailedAng(angNumber);
         showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE,
-          () => fetchFromBaniDB(angNumber),
-          'Reload'
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
         );
       } else {
         navigation.replace(Routes.Error);
@@ -119,15 +117,15 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       clearTimeout(debounceTimer.current);
     }
     debounceTimer.current = setTimeout(() => {
-      handleUpdatePath(
-        route.params.pathId,
-        pathAng,
-        savedPathVerseId,
-        scorllOffset.current,
-        setIsSaved
-      );
+      // handleUpdatePath(
+      //   route.params.pathId,
+      //   pathAng,
+      //   savedPathVerseId,
+      //   scorllOffset.current,
+      //   setIsSaved
+      // );
     }, 200);
-  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
+  }, [handleUpdatePath]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate,
@@ -343,7 +341,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           scorllOffset={scorllOffset}
           isAngNavigation={isAngNavigation}
           debouncedScrollSave={debouncedScrollSave}
-          handleStopAutoScroll={handleStopAutoScroll}
           handleRightArrow={handleRightArrow}
           handleLeftArrow={handleLeftArrow}
           setPressIndex={setPressIndex}

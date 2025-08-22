@@ -8,7 +8,7 @@ export const useInternet = () => {
     return new Promise<boolean>((resolve) => {
       NetInfo.fetch()
         .then((netInfo) => {
-          const isConnected = Boolean(netInfo.isConnected && netInfo.isInternetReachable);
+          const isConnected = Boolean(netInfo.isConnected);
           setIsOnline(isConnected);
           resolve(isConnected);
         })
@@ -22,13 +22,33 @@ export const useInternet = () => {
 
   const checkNetwork = () => {
     return new Promise<boolean>((resolve) => {
-      updateOnlineStatus()
-        .then((isConnected) => {
+      if (isOnline) {
+        resolve(true);
+        return;
+      }
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 500);
+
+      NetInfo.fetch()
+        .then((netInfo) => {
+          clearTimeout(timeout);
+          const isConnected = Boolean(netInfo.isConnected);
+          setIsOnline(isConnected);
           resolve(isConnected);
         })
         .catch((error) => {
+          clearTimeout(timeout);
           console.error('Error in checkNetwork:', error);
-          resolve(false);
+          NetInfo.fetch()
+            .then((netInfo) => {
+              const fallbackConnected = Boolean(netInfo.isConnected);
+              setIsOnline(fallbackConnected);
+              resolve(fallbackConnected);
+            })
+            .catch(() => {
+              resolve(false);
+            });
         });
     });
   };

@@ -14,7 +14,6 @@ interface PathReaderProps {
   scorllOffset: React.MutableRefObject<number>;
   isAngNavigation: boolean;
   debouncedScrollSave: () => void;
-  handleStopAutoScroll: () => void;
   handleRightArrow: (pageNo: number) => void;
   handleLeftArrow: (pageNo: number) => void;
   setPressIndex: (index: number) => void;
@@ -43,7 +42,6 @@ export const PathReader = React.memo(
     scorllOffset,
     isAngNavigation,
     debouncedScrollSave,
-    handleStopAutoScroll,
     handleRightArrow,
     handleLeftArrow,
     setPressIndex,
@@ -79,12 +77,8 @@ export const PathReader = React.memo(
           onContentSizeChange={(_, height) => {
             setContentHeight(height);
           }}
-          scrollEventThrottle={64}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
+          scrollEventThrottle={16}
           decelerationRate="fast"
-          onScrollBeginDrag={() => handleStopAutoScroll()}
-          removeClippedSubviews={true}
         >
           {pathContent?.page?.map((path: any, index: number) => {
             return (

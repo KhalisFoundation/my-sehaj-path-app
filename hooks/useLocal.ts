@@ -110,6 +110,7 @@ export const useLocal = () => {
   ) => {
     try {
       console.log('Saving path progress:', { pathId, angNumber, verseId, scrollPosition });
+      console.log('Current saved verseId:', verseId);
 
       const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
       const date = new Date();

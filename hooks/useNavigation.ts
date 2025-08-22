@@ -52,6 +52,15 @@ export const useNavigation = ({
       });
 
       try {
+        const isConnected = await checkNetwork();
+        console.log('isConnected', isConnected);
+        if (!isConnected) {
+          console.log('showErrorAlert');
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+          return;
+        }
         await fetchFromBaniDB(pageNo + 1);
         setAngNavigationNumber(pageNo + 1);
         setPathPunjabiAng(
@@ -67,6 +76,7 @@ export const useNavigation = ({
           showErrorAlert(
             ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
           );
+          return;
         } else {
           showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
         }
@@ -109,6 +119,12 @@ export const useNavigation = ({
       });
 
       try {
+        const isConnected = await checkNetwork();
+        if (!isConnected) {
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+        }
         await fetchFromBaniDB(pageNo - 1);
         setAngNavigationNumber(pageNo - 1);
         setPathPunjabiAng(
