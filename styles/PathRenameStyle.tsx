@@ -11,13 +11,6 @@ export const PathRenameStyle = StyleSheet.create({
     bottom: 0,
     elevation: 1,
   },
-  blurOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
   overlayContainer: {
     padding: 15,
     width: '100%',

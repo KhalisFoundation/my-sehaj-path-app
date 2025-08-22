@@ -10,13 +10,7 @@ export const AngsNavigationStyle = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  blurOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
+
   overlayContainer: {
     padding: 15,
     width: '100%',
@@ -25,7 +19,6 @@ export const AngsNavigationStyle = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   angsNavigationContainer: {
     backgroundColor: '#EBF0F8',
     position: 'relative',
