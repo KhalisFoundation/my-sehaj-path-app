@@ -3,7 +3,6 @@ import font from '@utils/font';
 
 export const AngsNavigationStyle = StyleSheet.create({
   blurView: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 999,
     position: 'absolute',
     top: 0,
@@ -11,6 +10,7 @@ export const AngsNavigationStyle = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+
   overlayContainer: {
     padding: 15,
     width: '100%',
@@ -19,7 +19,6 @@ export const AngsNavigationStyle = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
   angsNavigationContainer: {
     backgroundColor: '#EBF0F8',
     position: 'relative',
@@ -30,6 +29,14 @@ export const AngsNavigationStyle = StyleSheet.create({
     alignItems: 'center',
     gap: 15,
     borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   angsNavigationText: {
     fontSize: 18,
