@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
@@ -94,12 +94,13 @@ export const AngsNavigation = ({
   };
 
   return (
-    <BlurView
-      blurType="light"
-      blurAmount={1}
-      reducedTransparencyFallbackColor="grey"
-      style={AngsNavigationStyle.blurView}
-    >
+    <View style={AngsNavigationStyle.blurView}>
+      <BlurView
+        blurType="light"
+        blurAmount={2}
+        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
+        style={StyleSheet.absoluteFillObject}
+      />
       <View style={AngsNavigationStyle.overlayContainer}>
         <View style={AngsNavigationStyle.angsNavigationContainer}>
           <Pressable
@@ -169,6 +170,6 @@ export const AngsNavigation = ({
           </TouchableOpacity>
         </View>
       </View>
-    </BlurView>
+    </View>
   );
 };
