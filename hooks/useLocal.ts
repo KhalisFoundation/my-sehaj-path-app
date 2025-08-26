@@ -109,9 +109,6 @@ export const useLocal = () => {
     setIsSaved: (value: boolean) => void
   ) => {
     try {
-      console.log('Saving path progress:', { pathId, angNumber, verseId, scrollPosition });
-      console.log('Current saved verseId:', verseId);
-
       const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
       const date = new Date();
       const todayDate = `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
@@ -146,7 +143,6 @@ export const useLocal = () => {
           AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate)),
         ]);
 
-        console.log('Path progress saved successfully');
         setIsSaved(true);
       } else {
         console.error('Failed to find matched path or date');

@@ -35,21 +35,21 @@ export const useScrollToSavedPath = ({
     setFound(true);
 
     Animated.sequence([
-      Animated.delay(2000),
+      Animated.delay(2500),
       Animated.timing(fadeAnim, {
         toValue: 0,
         duration: 2500,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setFound(false);
       setIsSaving(false);
       setIsSaved(false);
+      setFound(false);
     });
   }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
 
   const scrollToSavedPathData = useCallback(async () => {
-    if (matchedPathDate && !scrolledToSavedPath.current) {
+    if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
       scorllOffset.current = matchedPathDate.scrollPosition;
       if (scrollRef.current) {
         scrollRef.current.scrollTo({
@@ -57,7 +57,6 @@ export const useScrollToSavedPath = ({
           animated: true,
         });
       }
-      console.log('scrolledToSavedPath', scorllOffset.current);
       scrolledToSavedPath.current = true;
       fadeAnim.setValue(1);
       runFadeSequence();
@@ -88,7 +87,6 @@ export const useScrollToSavedPath = ({
               animated: true,
             });
           }
-          console.log('scrolledToSavedPath', scorllOffset.current);
           scrolledToSavedPath.current = true;
           fadeAnim.setValue(1);
           runFadeSequence();

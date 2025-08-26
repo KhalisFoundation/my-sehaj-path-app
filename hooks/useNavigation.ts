@@ -53,7 +53,6 @@ export const useNavigation = ({
 
       try {
         const isConnected = await checkNetwork();
-        console.log('isConnected', isConnected);
         if (!isConnected) {
           console.log('showErrorAlert');
           showErrorAlert(

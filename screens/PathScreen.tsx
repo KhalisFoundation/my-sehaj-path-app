@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Animated, BackHandler, Easing } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,18 +48,17 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [angNavigationNumber, setAngNavigationNumber] = useState<number>(0);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
-  const [contentHeight, setContentHeight] = useState<number>(0);
   const [needsRetry, setNeedsRetry] = useState<boolean>(false);
   const [lastFailedAng, setLastFailedAng] = useState<number | null>(null);
-  const scrolledToSavedPath = useRef(false);
-  const scrollInterval = useRef<NodeJS.Timeout | null>(null);
+  const scrolledToSavedPath = useRef<boolean>(false);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const aleartIndicator = useRef<React.ReactNode>();
   const alertText = useRef<string>('Loading ... ');
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const debounceTimer = useRef<NodeJS.Timeout | void | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoScrollRef = useRef<boolean>(false);
 
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
@@ -116,15 +115,15 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    debounceTimer.current = setTimeout(() => {
-      // handleUpdatePath(
-      //   route.params.pathId,
-      //   pathAng,
-      //   savedPathVerseId,
-      //   scorllOffset.current,
-      //   setIsSaved
-      // );
-    }, 200);
+    debounceTimer.current = Animated.timing(new Animated.Value(0), {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      handleUpdatePath(route.params.pathId, pathAng, savedPathVerseId, scorllOffset.current, () => {
+        setIsSaved(false);
+      });
+    });
   }, [handleUpdatePath]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
@@ -164,6 +163,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   });
 
   useEffect(() => {
+    scrolledToSavedPath.current = false;
     const fetchPath = async () => {
       try {
         const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
@@ -199,29 +199,33 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   }, [route.params.pathId]);
 
   const handleAutoScroll = () => {
-    const id = setInterval(() => {
-      scorllOffset.current += 5;
+    if (!autoScrollRef.current) {
+      return;
+    }
+    const animation = new Animated.Value(0);
+    Animated.timing(animation, {
+      toValue: 1,
+      duration: 110,
+      useNativeDriver: true,
+    }).start(() => {
+      scorllOffset.current += 3;
       scrollRef.current?.scrollTo({ y: scorllOffset.current, animated: true });
-    }, 250);
-    scrollInterval.current = id;
-    return () => clearInterval(id);
+      if (autoScrollRef.current) {
+        handleAutoScroll();
+      }
+    });
   };
 
   const handleStopAutoScroll = () => {
-    if (scrollInterval.current) {
-      clearInterval(scrollInterval.current);
-      scrollInterval.current = null;
-      setAutoScroll(false);
-    }
+    setAutoScroll(false);
+    autoScrollRef.current = false;
   };
 
   useEffect(() => {
+    autoScrollRef.current = autoScroll;
     if (autoScroll) {
       handleAutoScroll();
-    } else {
-      handleStopAutoScroll();
     }
-    return () => handleStopAutoScroll();
   }, [autoScroll]);
 
   useEffect(() => {
@@ -229,14 +233,18 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       fadeAnim.current.setValue(1);
       Animated.timing(fadeAnim.current, {
         toValue: 0,
-        duration: 3000,
+        duration: 2500,
         useNativeDriver: true,
       }).start(() => {
-        setIsSaving(false);
         setIsSaved(false);
-        if (found) {
+        setIsSaving(false);
+        Animated.timing(new Animated.Value(0), {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }).start(() => {
           setFound(false);
-        }
+        });
       });
     }
   }, [isSaved, found]);
@@ -246,7 +254,13 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       if (autoScroll) {
         setAutoScroll(false);
       }
-      scrollToSavedPathData();
+      Animated.timing(new Animated.Value(0), {
+        toValue: 1,
+        duration: 10,
+        useNativeDriver: true,
+      }).start(() => {
+        scrollToSavedPathData();
+      });
     }
   }, [matchedPath, pathAng, pathContent]);
 
@@ -296,10 +310,6 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useEffect(() => {
     return () => {
-      if (scrollInterval.current) {
-        clearInterval(scrollInterval.current);
-        scrollInterval.current = null;
-      }
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
         debounceTimer.current = null;
@@ -349,7 +359,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
           pathId={route.params.pathId}
-          setContentHeight={setContentHeight}
+          stopAutoScroll={handleStopAutoScroll}
         />
         {aleartIndicator.current !== undefined ? (
           <Loading alertIndicator={aleartIndicator.current} alertText={alertText.current} />
@@ -360,11 +370,11 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             <PathControls
               handleGoBack={handleGoBack}
               setIsSaving={setIsSaving}
-              isSaving={isSaving}
               fadeAnim={fadeAnim}
               autoScroll={autoScroll}
               setAutoScroll={setAutoScroll}
               navigation={navigation}
+              stopAutoScroll={handleStopAutoScroll}
             />
           </View>
         ) : undefined}
