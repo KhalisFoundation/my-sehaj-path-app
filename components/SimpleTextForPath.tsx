@@ -115,7 +115,9 @@ export const SimpleTextForPath = ({
       >
         {gurbaniLine}
         {(verseId === savedPathVerseId || (isSaving && pressIndex === index)) && (
-          <NavContent navIcon={<SaveIcon color="#0D2346" />} />
+          <NavContent
+            navIcon={<SaveIcon color="#0D2346" width={fontSize * 1.2} height={fontSize * 1.2} />}
+          />
         )}
       </Text>
     </Pressable>
