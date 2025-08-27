@@ -25,23 +25,21 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
 
     const sortedDates = dates
       .map((dateStr) => dayjs(dateStr, 'D-MMMM-YYYY'))
-      .sort((a, b) => a.diff(b, 'day'));
+      .sort((a, b) => b.diff(a, 'day'));
 
     let currentStreak = 1;
-    let maxStreak = 1;
 
-    for (let i = 1; i < sortedDates.length; i++) {
-      const prevDate = sortedDates[i - 1];
+    for (let i = 0; i < sortedDates.length - 1; i++) {
       const currentDate = sortedDates[i];
-      if (currentDate.diff(prevDate, 'day') === 1) {
+      const nextDate = sortedDates[i + 1];
+      if (currentDate.diff(nextDate, 'day') === 1) {
         currentStreak++;
-        maxStreak = Math.max(maxStreak, currentStreak);
       } else {
-        currentStreak = 1;
+        break;
       }
     }
 
-    return maxStreak;
+    return currentStreak;
   }, []);
 
   const currentStreak = useMemo(() => {
