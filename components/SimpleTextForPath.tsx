@@ -5,6 +5,8 @@ import { useLocal } from '@hooks';
 import { NavContent } from '@components';
 import { SaveIcon } from '@icons';
 import { SimpleTextForPathStyles } from '@styles';
+import { showErrorAlert } from '@utils/Error';
+import { ErrorConstants } from '@constants/ErrorConstant';
 
 interface Props {
   gurbaniLine: string;
@@ -47,8 +49,8 @@ export const SimpleTextForPath = ({
       try {
         const fontSizeData = await fetchFontSize();
         setFontSize(fontSizeData.number);
-      } catch (error) {
-        console.error('Error fetching font size:', error);
+      } catch (e) {
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
         setFontSize(18);
       }
     };

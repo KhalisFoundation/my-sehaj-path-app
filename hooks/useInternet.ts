@@ -12,8 +12,7 @@ export const useInternet = () => {
           setIsOnline(isConnected);
           resolve(isConnected);
         })
-        .catch((error) => {
-          console.error('Error checking network status:', error);
+        .catch(() => {
           setIsOnline(false);
           resolve(false);
         });
@@ -37,9 +36,8 @@ export const useInternet = () => {
           setIsOnline(isConnected);
           resolve(isConnected);
         })
-        .catch((error) => {
+        .catch(() => {
           clearTimeout(timeout);
-          console.error('Error in checkNetwork:', error);
           NetInfo.fetch()
             .then((netInfo) => {
               const fallbackConnected = Boolean(netInfo.isConnected);

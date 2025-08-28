@@ -53,7 +53,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
   const scrolledToSavedPath = useRef<boolean>(false);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
-  const aleartIndicator = useRef<React.ReactNode>();
+  const alertIndicator = useRef<React.ReactNode>();
   const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<NodeJS.Timeout | void | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
@@ -65,7 +65,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     useLocal();
 
   const fetchFromBaniDB = async (angNumber: number) => {
-    aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+    alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
     const pathFromBaniDB = await BaniDB(angNumber);
     setPathContent(pathFromBaniDB.data);
     setNeedsRetry(false);
@@ -83,7 +83,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         return;
       }
     }
-    aleartIndicator.current = undefined;
+    alertIndicator.current = undefined;
     const currentDebounceTimer = debounceTimer.current;
     if (currentDebounceTimer) {
       clearTimeout(currentDebounceTimer);
@@ -361,8 +361,8 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           pathId={route.params.pathId}
           stopAutoScroll={handleStopAutoScroll}
         />
-        {aleartIndicator.current !== undefined ? (
-          <Loading alertIndicator={aleartIndicator.current} alertText={alertText.current} />
+        {alertIndicator.current !== undefined ? (
+          <Loading alertIndicator={alertIndicator.current} alertText={alertText.current} />
         ) : null}
 
         {!isSaving && !found ? (

@@ -38,7 +38,6 @@ export const useLocal = () => {
             pathFromLocalArray = [];
           }
         } catch (parseError) {
-          console.error('Error parsing pathDetails:', parseError);
           pathFromLocalArray = [];
         }
       }
@@ -53,14 +52,13 @@ export const useLocal = () => {
             pathDateDataArray = [];
           }
         } catch (parseError) {
-          console.error('Error parsing pathDateDetails:', parseError);
           pathDateDataArray = [];
         }
       }
 
       return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
     } catch (error) {
-      console.error('Error fetching from local storage:', error);
+      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA);
       return { pathDataArray: [], pathDateDataArray: [] };
     }
   };
@@ -145,11 +143,9 @@ export const useLocal = () => {
 
         setIsSaved(true);
       } else {
-        console.error('Failed to find matched path or date');
         showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
       }
     } catch (error) {
-      console.error('Error saving path progress:', error);
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
     }
   };
@@ -193,7 +189,6 @@ export const useLocal = () => {
             return { fontSize: 'Small (Default)', number: 18 };
           }
         } catch (parseError) {
-          console.error('Error parsing fontSize:', parseError);
           return { fontSize: 'Small (Default)', number: 18 };
         }
       }
@@ -242,7 +237,7 @@ export const useLocal = () => {
             return parsedAngsFormat;
           }
         } catch (parseError) {
-          console.error('Error parsing angsFormat:', parseError);
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_ANG_FORMAT);
         }
       }
       return { format: 'Punjabi' };

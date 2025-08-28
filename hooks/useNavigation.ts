@@ -54,9 +54,8 @@ export const useNavigation = ({
       try {
         const isConnected = await checkNetwork();
         if (!isConnected) {
-          console.log('showErrorAlert');
           showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
           );
           return;
         }
@@ -73,7 +72,7 @@ export const useNavigation = ({
         const isConnected = await checkNetwork();
         if (!isConnected) {
           showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
           );
           return;
         } else {
@@ -121,7 +120,7 @@ export const useNavigation = ({
         const isConnected = await checkNetwork();
         if (!isConnected) {
           showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
           );
         }
         await fetchFromBaniDB(pageNo - 1);
@@ -137,7 +136,7 @@ export const useNavigation = ({
         const isConnected = await checkNetwork();
         if (!isConnected) {
           showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
           );
         } else {
           showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);

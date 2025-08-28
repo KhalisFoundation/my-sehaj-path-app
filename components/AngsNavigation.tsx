@@ -57,7 +57,7 @@ export const AngsNavigation = ({
       .then((isConnected) => {
         if (!isConnected) {
           showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
           );
           return;
         }
@@ -78,7 +78,7 @@ export const AngsNavigation = ({
       .then((isConnected) => {
         if (!isConnected) {
           showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
           );
           return;
         }
