@@ -16,6 +16,7 @@ export interface UseNavigationParams {
   angsFormat: AngsFormat;
   checkNetwork: () => Promise<boolean>;
   fetchFromBaniDB: (angNumber: number) => Promise<void>;
+  setAutoScroll?: (value: boolean) => void;
 }
 
 export const useNavigation = ({
@@ -30,24 +31,20 @@ export const useNavigation = ({
   angsFormat,
   checkNetwork,
   fetchFromBaniDB,
+  setAutoScroll,
 }: UseNavigationParams) => {
   const handleRightArrow = useCallback(
     async (pageNo: number) => {
       if (isNavigating) {
         return;
       }
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
       if (pageNo >= 1430) {
         return;
       }
+
       setIsNavigating(true);
       setIsSaving(false);
+      setAutoScroll?.(false);
       scorllOffset.current = 0;
       scrollRef.current?.scrollTo({
         y: 0,
@@ -55,6 +52,13 @@ export const useNavigation = ({
       });
 
       try {
+        const isConnected = await checkNetwork();
+        if (!isConnected) {
+          showErrorAlert(
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
+          );
+          return;
+        }
         await fetchFromBaniDB(pageNo + 1);
         setAngNavigationNumber(pageNo + 1);
         setPathPunjabiAng(
@@ -65,23 +69,32 @@ export const useNavigation = ({
         );
         setPathAng(pageNo + 1);
       } catch (error) {
-        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
+        const isConnected = await checkNetwork();
+        if (!isConnected) {
+          showErrorAlert(
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
+          );
+          return;
+        } else {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
+        }
       } finally {
         setIsNavigating(false);
       }
     },
     [
       isNavigating,
+      checkNetwork,
       setIsNavigating,
       setIsSaving,
+      setAutoScroll,
       scorllOffset,
       scrollRef,
+      fetchFromBaniDB,
       setAngNavigationNumber,
       setPathPunjabiAng,
+      angsFormat.format,
       setPathAng,
-      angsFormat,
-      checkNetwork,
-      fetchFromBaniDB,
     ]
   );
 
@@ -90,24 +103,26 @@ export const useNavigation = ({
       if (isNavigating) {
         return;
       }
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
       if (pageNo <= 1) {
         return;
       }
+
       setIsNavigating(true);
       setIsSaving(false);
+      setAutoScroll?.(false);
       scorllOffset.current = 0;
       scrollRef.current?.scrollTo({
         y: 0,
         animated: true,
       });
+
       try {
+        const isConnected = await checkNetwork();
+        if (!isConnected) {
+          showErrorAlert(
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
+          );
+        }
         await fetchFromBaniDB(pageNo - 1);
         setAngNavigationNumber(pageNo - 1);
         setPathPunjabiAng(
@@ -118,7 +133,14 @@ export const useNavigation = ({
         );
         setPathAng(pageNo - 1);
       } catch (error) {
-        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
+        const isConnected = await checkNetwork();
+        if (!isConnected) {
+          showErrorAlert(
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
+          );
+        } else {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
+        }
       } finally {
         setIsNavigating(false);
       }
@@ -135,6 +157,7 @@ export const useNavigation = ({
       angsFormat,
       checkNetwork,
       fetchFromBaniDB,
+      setAutoScroll,
     ]
   );
 
