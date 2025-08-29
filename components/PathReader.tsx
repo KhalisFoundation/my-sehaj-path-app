@@ -14,7 +14,6 @@ interface PathReaderProps {
   scorllOffset: React.MutableRefObject<number>;
   isAngNavigation: boolean;
   debouncedScrollSave: () => void;
-  handleStopAutoScroll: () => void;
   handleRightArrow: (pageNo: number) => void;
   handleLeftArrow: (pageNo: number) => void;
   setPressIndex: (index: number) => void;
@@ -29,6 +28,7 @@ interface PathReaderProps {
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
   pathId: number;
+  stopAutoScroll: () => void;
 }
 
 export const PathReader = React.memo(
@@ -42,7 +42,6 @@ export const PathReader = React.memo(
     scorllOffset,
     isAngNavigation,
     debouncedScrollSave,
-    handleStopAutoScroll,
     handleRightArrow,
     handleLeftArrow,
     setPressIndex,
@@ -51,6 +50,7 @@ export const PathReader = React.memo(
     setIsSaving,
     setIsSaved,
     pathId,
+    stopAutoScroll,
   }: PathReaderProps) => {
     return (
       <GestureRecognizer
@@ -74,8 +74,11 @@ export const PathReader = React.memo(
               debouncedScrollSave();
             }
           }}
-          onTouchStart={() => handleStopAutoScroll()}
+          onScrollBeginDrag={() => {
+            stopAutoScroll();
+          }}
           scrollEventThrottle={16}
+          decelerationRate="fast"
         >
           {pathContent?.page?.map((path: any, index: number) => {
             return (
@@ -106,6 +109,7 @@ export const PathReader = React.memo(
                 setIsSaved={setIsSaved}
                 setPressIndex={setPressIndex}
                 setSavedPathVerseId={setSavedPathVerseId}
+                stopAutoScroll={stopAutoScroll}
               />
             );
           })}

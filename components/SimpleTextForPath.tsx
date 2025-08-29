@@ -1,10 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Text, Pressable } from 'react-native';
+import React, { useState } from 'react';
+import { Text, Pressable, Animated } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocal } from '@hooks';
 import { NavContent } from '@components';
 import { SaveIcon } from '@icons';
 import { SimpleTextForPathStyles } from '@styles';
+import { showErrorAlert } from '@utils/Error';
+import { ErrorConstants } from '@constants/ErrorConstant';
 
 interface Props {
   gurbaniLine: string;
@@ -19,6 +21,7 @@ interface Props {
   setIsSaved: (value: boolean) => void;
   setPressIndex: (value: number) => void;
   setSavedPathVerseId: (value: number) => void;
+  stopAutoScroll: () => void;
 }
 
 export const SimpleTextForPath = ({
@@ -34,29 +37,20 @@ export const SimpleTextForPath = ({
   setIsSaving,
   setPressIndex,
   setSavedPathVerseId,
+  stopAutoScroll,
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [isLongPressing, setIsLongPressing] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { fetchFontSize } = useLocal();
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
-  }, []);
 
   useFocusEffect(() => {
     const fetch = async () => {
       try {
         const fontSizeData = await fetchFontSize();
         setFontSize(fontSizeData.number);
-      } catch (error) {
-        console.error('Error fetching font size:', error);
+      } catch (e) {
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
         setFontSize(18);
       }
     };
@@ -68,22 +62,21 @@ export const SimpleTextForPath = ({
       return;
     }
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    onSelection();
-    setIsLongPressing(true);
-    setIsSaving(true);
-    setIsSaved(false);
-    setPressIndex(index);
-    setSavedPathVerseId(verseId);
-    onSave();
-
-    timeoutRef.current = setTimeout(() => {
+    Animated.timing(new Animated.Value(0), {
+      toValue: 1,
+      duration: 100,
+      useNativeDriver: true,
+    }).start(() => {
+      onSelection();
+      setIsLongPressing(true);
+      setIsSaving(true);
+      setIsSaved(true);
+      setPressIndex(index);
+      setSavedPathVerseId(verseId);
+      stopAutoScroll();
+      onSave();
       setIsLongPressing(false);
-      timeoutRef.current = null;
-    }, 100);
+    });
   };
 
   const isSelected = verseId === savedPathVerseId || (isSaving && pressIndex === index);
@@ -107,6 +100,7 @@ export const SimpleTextForPath = ({
           handleLongPress();
         }}
         onPress={() => {
+          stopAutoScroll();
           if (isSaving) {
             onSelection();
             onSave();
