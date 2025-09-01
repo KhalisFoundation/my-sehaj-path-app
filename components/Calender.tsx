@@ -25,7 +25,7 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
 
     const sortedDates = dates
       .map((dateStr) => dayjs(dateStr, 'D-MMMM-YYYY'))
-      .sort((a, b) => b.diff(a, 'day'));
+      .sort((firstDate, secondDate) => firstDate.diff(secondDate, 'day'));
 
     let currentStreak = 1;
 
