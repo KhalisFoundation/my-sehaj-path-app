@@ -12,7 +12,10 @@ interface Props {
 export const Message = ({ message, fadeAnim }: Props) => {
   return (
     <>
-      <Animated.View style={{ ...MessageStyles.saveContainer, opacity: fadeAnim }}>
+      <Animated.View
+        pointerEvents="none"
+        style={[MessageStyles.saveContainer, { opacity: fadeAnim }]}
+      >
         <NavContent navIcon={<SaveIcon />} />
         <Text style={MessageStyles.saveText} allowFontScaling={false}>
           {message}

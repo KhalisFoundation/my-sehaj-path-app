@@ -3,15 +3,13 @@ import font from '@utils/font';
 
 export const SecondaryButtonStyles = StyleSheet.create({
   secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    padding: 11,
+    alignSelf: 'flex-start',
     borderRadius: 5,
   },
   secondaryButtonContent: {
     fontFamily: font.Baloo_Paaji_2_Medium,
     color: 'white',
+    padding: 11,
     fontSize: 16,
   },
 });

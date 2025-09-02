@@ -9,11 +9,30 @@
 /* Begin PBXBuildFile section */
 		00E356F31AD99517003FC87E /* SehajPathAppTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* SehajPathAppTests.m */; };
 		0C80B921A6F3F58F76C31292 /* libPods-SehajPathApp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-SehajPathApp.a */; };
+		0D9A028F177A44BAA8316286 /* BrandonGrotesque-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
+		1A01F1A6F6774A77A07FF862 /* BrandonGrotesque-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */; };
+		1D2DD3253B524FFEB7485125 /* BrandonGrotesque-BlackItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */; };
+		21C39197FD014DA6B1BE35CE /* BrandonGrotesque-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */; };
+		2EFB72CC094141C896D050EE /* BrandonGrotesque-RegularItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */; };
+		4B03546C4C814DDA8350D70A /* BalooPaaji2-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */; };
 		7699B88040F8A987B510C191 /* libPods-SehajPathApp-SehajPathAppTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-SehajPathApp-SehajPathAppTests.a */; };
+		7DE83A1E107669805AFD1E19 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
+		80C02B58B31D49FFAF412660 /* BrandonGrotesque-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		8CADD610462B4E5385B92D89 /* BalooPaaji2-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */; };
+		9493EE1A2685417780AA4FC4 /* BrandonGrotesque-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */; };
+		9EB71E63A42C410583F10A08 /* BalooPaaji2-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */; };
+		A29E9893D1F24A309DB9D394 /* BrandonGrotesque-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = D941C8315010498088B65B70 /* BrandonGrotesque-Thin.otf */; };
+		C08A2D8982C542159B45C3F2 /* BrandonGrotesque-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 98287716EC594885A6AE1B7A /* BrandonGrotesque-Bold.otf */; };
+		C1F501B894BB4B2D8173CB50 /* BrandonGrotesque-Black.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */; };
+		C52C1E20C845497B8BC373A2 /* BalooPaaji2-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */; };
+		C69CCFD2BC344C4FB46E0CBC /* BalooPaaji2-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */; };
+		CEA811B0CD6A4AE996456955 /* BrandonGrotesque-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */; };
+		DFB9BC4FDB5548198E8AE4A2 /* BrandonGrotesque-BoldItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */; };
+		ACB58F33A62C443EB3B3A7E0 /* Recoleta-RegularDEMO.otf in Resources */ = {isa = PBXBuildFile; fileRef = 78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,13 +57,31 @@
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = SehajPathApp/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = SehajPathApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-SehajPathApp-SehajPathAppTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SehajPathApp-SehajPathAppTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-RegularItalic.otf"; path = "../assets/fonts/BrandonGrotesque-RegularItalic.otf"; sourceTree = "<group>"; };
+		1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Medium.ttf"; path = "../assets/fonts/BalooPaaji2-Medium.ttf"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-SehajPathApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp.debug.xcconfig"; path = "Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp.debug.xcconfig"; sourceTree = "<group>"; };
+		4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Black.otf"; path = "../assets/fonts/BrandonGrotesque-Black.otf"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-SehajPathApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp.release.xcconfig"; path = "Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp.release.xcconfig"; sourceTree = "<group>"; };
 		5B7EB9410499542E8C5724F5 /* Pods-SehajPathApp-SehajPathAppTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp-SehajPathAppTests.debug.xcconfig"; path = "Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests.debug.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-SehajPathApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SehajPathApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BoldItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BoldItalic.otf"; sourceTree = "<group>"; };
+		7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-LightItalic.otf"; path = "../assets/fonts/BrandonGrotesque-LightItalic.otf"; sourceTree = "<group>"; };
+		76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Bold.ttf"; path = "../assets/fonts/BalooPaaji2-Bold.ttf"; sourceTree = "<group>"; };
+		7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Light.otf"; path = "../assets/fonts/BrandonGrotesque-Light.otf"; sourceTree = "<group>"; };
+		7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-SemiBold.ttf"; path = "../assets/fonts/BalooPaaji2-SemiBold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = SehajPathApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-SehajPathApp-SehajPathAppTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp-SehajPathAppTests.release.xcconfig"; path = "Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests.release.xcconfig"; sourceTree = "<group>"; };
+		98287716EC594885A6AE1B7A /* BrandonGrotesque-Bold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Bold.otf"; path = "../assets/fonts/BrandonGrotesque-Bold.otf"; sourceTree = "<group>"; };
+		98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-ExtraBold.ttf"; path = "../assets/fonts/BalooPaaji2-ExtraBold.ttf"; sourceTree = "<group>"; };
+		9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-ThinItalic.otf"; path = "../assets/fonts/BrandonGrotesque-ThinItalic.otf"; sourceTree = "<group>"; };
+		9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Medium.otf"; path = "../assets/fonts/BrandonGrotesque-Medium.otf"; sourceTree = "<group>"; };
+		AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Regular.otf"; path = "../assets/fonts/BrandonGrotesque-Regular.otf"; sourceTree = "<group>"; };
+		D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Regular.ttf"; path = "../assets/fonts/BalooPaaji2-Regular.ttf"; sourceTree = "<group>"; };
+		D941C8315010498088B65B70 /* BrandonGrotesque-Thin.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Thin.otf"; path = "../assets/fonts/BrandonGrotesque-Thin.otf"; sourceTree = "<group>"; };
+		DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-MediumItalic.otf"; path = "../assets/fonts/BrandonGrotesque-MediumItalic.otf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BlackItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BlackItalic.otf"; sourceTree = "<group>"; };
+		78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */ = {isa = PBXFileReference; name = "Recoleta-RegularDEMO.otf"; path = "../assets/fonts/Recoleta-RegularDEMO.otf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -108,6 +145,32 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		7ED8A433BA8740ED86B5BA2B /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */,
+				F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */,
+				98287716EC594885A6AE1B7A /* BrandonGrotesque-Bold.otf */,
+				5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */,
+				7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */,
+				7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */,
+				9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */,
+				DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */,
+				AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */,
+				1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */,
+				D941C8315010498088B65B70 /* BrandonGrotesque-Thin.otf */,
+				9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */,
+				76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */,
+				98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */,
+				1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */,
+				D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */,
+				7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */,
+				78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */,
+			);
+			name = Resources;
+			path = "";
+			sourceTree = "<group>";
+		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
@@ -124,6 +187,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				7ED8A433BA8740ED86B5BA2B /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -245,6 +309,25 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				7DE83A1E107669805AFD1E19 /* PrivacyInfo.xcprivacy in Resources */,
+				C1F501B894BB4B2D8173CB50 /* BrandonGrotesque-Black.otf in Resources */,
+				1D2DD3253B524FFEB7485125 /* BrandonGrotesque-BlackItalic.otf in Resources */,
+				C08A2D8982C542159B45C3F2 /* BrandonGrotesque-Bold.otf in Resources */,
+				DFB9BC4FDB5548198E8AE4A2 /* BrandonGrotesque-BoldItalic.otf in Resources */,
+				0D9A028F177A44BAA8316286 /* BrandonGrotesque-Light.otf in Resources */,
+				80C02B58B31D49FFAF412660 /* BrandonGrotesque-LightItalic.otf in Resources */,
+				1A01F1A6F6774A77A07FF862 /* BrandonGrotesque-Medium.otf in Resources */,
+				CEA811B0CD6A4AE996456955 /* BrandonGrotesque-MediumItalic.otf in Resources */,
+				21C39197FD014DA6B1BE35CE /* BrandonGrotesque-Regular.otf in Resources */,
+				2EFB72CC094141C896D050EE /* BrandonGrotesque-RegularItalic.otf in Resources */,
+				A29E9893D1F24A309DB9D394 /* BrandonGrotesque-Thin.otf in Resources */,
+				9493EE1A2685417780AA4FC4 /* BrandonGrotesque-ThinItalic.otf in Resources */,
+				4B03546C4C814DDA8350D70A /* BalooPaaji2-Bold.ttf in Resources */,
+				9EB71E63A42C410583F10A08 /* BalooPaaji2-ExtraBold.ttf in Resources */,
+				8CADD610462B4E5385B92D89 /* BalooPaaji2-Medium.ttf in Resources */,
+				C52C1E20C845497B8BC373A2 /* BalooPaaji2-Regular.ttf in Resources */,
+				C69CCFD2BC344C4FB46E0CBC /* BalooPaaji2-SemiBold.ttf in Resources */,
+				ACB58F33A62C443EB3B3A7E0 /* Recoleta-RegularDEMO.otf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -584,7 +667,14 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
+				USE_HERMES = true;
 			};
 			name = Debug;
 		};
@@ -649,7 +739,13 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
+				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
+				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

@@ -1,8 +1,8 @@
 export default {
-  Baloo_Paaji_2_Extra_Bold: 'BalooPaaji2ExtraBold',
-  Baloo_Paaji_2_Medium: 'BalooPaaji2Medium',
-  Baloo_Paaji_2_Regular: 'BalooPaaji2Regular',
-  Recoleta_Regular: 'Recoleta-Regular',
+  Baloo_Paaji_2_Extra_Bold: 'BalooPaaji2-ExtraBold',
+  Baloo_Paaji_2_Medium: 'BalooPaaji2-Medium',
+  Baloo_Paaji_2_Regular: 'BalooPaaji2-Regular',
+  Recoleta_Regular: 'Recoleta-RegularDEMO',
   Brandon_Grotesque_Black: 'BrandonGrotesque-Black',
   Brandon_Grotesque_Black_Italic: 'BrandonGrotesque-BlackItalic',
   Brandon_Grotesque_Light: 'BrandonGrotesque-Light',

@@ -23,7 +23,7 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_UPDATE_PATH_DATA: 'Failed to update your path data. Please try again.',
   FAILED_TO_CHECK_NETWORK_CONNECTION: 'Failed to check network connection. Please try again.',
   WE_ARE_CURRENTLY_FACING_ISSUE_BANIDB:
-    'We are currently facing the issue while connecting to the BaniDB please try again later.',
+    'We are currently facing the issue while connecting to the BaniDB please try again later. Please check your internet connection.',
   FAILED_TO_LOAD_NEXT_ANG: 'Failed to load the next ang. Please try again.',
   FAILED_TO_LOAD_PREVIOUS_ANG: 'Failed to load the previous ang. Please try again.',
   FAILED_TO_LOAD_PATH_DATA_GENERIC: 'Failed to load path data. Please try again.',

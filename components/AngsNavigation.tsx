@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Pressable } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
@@ -52,20 +52,21 @@ export const AngsNavigation = ({
     setAngNumber(parsedNumber);
   };
 
-  const handleNavigation = async (navigationFunction: () => void) => {
-    try {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
-      navigationFunction();
-      setIsAngsNavigationVisible(false);
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
+  const handleNavigation = (navigationFunction: () => void) => {
+    checkNetwork()
+      .then((isConnected) => {
+        if (!isConnected) {
+          showErrorAlert(
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
+          );
+          return;
+        }
+        navigationFunction();
+        setIsAngsNavigationVisible(false);
+      })
+      .catch((_error) => {
+        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+      });
   };
 
   const handleGoToAng = async () => {
@@ -73,31 +74,33 @@ export const AngsNavigation = ({
       return;
     }
 
-    try {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
-      fetchAngData(angNumber);
-      setIsAngNavigation(true);
-      setIsAngsNavigationVisible(false);
-      setAngNavigationNumber(angNumber);
-      updatePathAng(angNumber);
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
+    checkNetwork()
+      .then((isConnected) => {
+        if (!isConnected) {
+          showErrorAlert(
+            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
+          );
+          return;
+        }
+        fetchAngData(angNumber);
+        setIsAngNavigation(true);
+        setIsAngsNavigationVisible(false);
+        setAngNavigationNumber(angNumber);
+        updatePathAng(angNumber);
+      })
+      .catch((_error) => {
+        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+      });
   };
 
   return (
-    <BlurView
-      blurType="light"
-      blurAmount={1}
-      reducedTransparencyFallbackColor="grey"
-      style={AngsNavigationStyle.blurView}
-    >
+    <View style={AngsNavigationStyle.blurView}>
+      <BlurView
+        blurType="light"
+        blurAmount={2}
+        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
+        style={StyleSheet.absoluteFillObject}
+      />
       <View style={AngsNavigationStyle.overlayContainer}>
         <View style={AngsNavigationStyle.angsNavigationContainer}>
           <Pressable
@@ -167,6 +170,6 @@ export const AngsNavigation = ({
           </TouchableOpacity>
         </View>
       </View>
-    </BlurView>
+    </View>
   );
 };

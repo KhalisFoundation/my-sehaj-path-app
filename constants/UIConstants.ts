@@ -15,4 +15,5 @@ export const UIConstants: UIConstant = {
   GRADIENT_Y1: '85.35%',
   GRADIENT_X2: '85.35%',
   GRADIENT_Y2: '16.15%',
+  SAVE_ICON_COLOR: '#0D2346',
 };
