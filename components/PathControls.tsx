@@ -6,20 +6,20 @@ import { Animated } from 'react-native';
 interface Props {
   handleGoBack: () => void;
   setIsSaving: (isSaving: boolean) => void;
-  isSaving: boolean;
   fadeAnim: React.MutableRefObject<Animated.Value>;
   autoScroll: boolean;
   setAutoScroll: (autoScroll: boolean) => void;
   navigation: any;
+  stopAutoScroll: () => void;
 }
 export const PathControls = ({
   handleGoBack,
   setIsSaving,
-  isSaving,
   fadeAnim,
   autoScroll,
   setAutoScroll,
   navigation,
+  stopAutoScroll,
 }: Props) => {
   return (
     <>
@@ -27,13 +27,16 @@ export const PathControls = ({
       <NavContent
         navIcon={<SaveIcon />}
         onPress={() => {
-          setIsSaving(!isSaving);
+          stopAutoScroll();
+          setIsSaving(true);
           fadeAnim.current.setValue(1);
         }}
       />
       <NavContent
         navIcon={autoScroll ? <PauseIcon /> : <PlayIcon />}
-        onPress={() => setAutoScroll(!autoScroll)}
+        onPress={() => {
+          setAutoScroll(!autoScroll);
+        }}
       />
       <NavContent navIcon={<SettingsIcon />} onPress={() => navigation.push('Setting')} />
     </>
