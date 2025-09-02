@@ -6,7 +6,7 @@ import { NavContent } from '@components';
 import { SaveIcon } from '@icons';
 import { SimpleTextForPathStyles } from '@styles';
 import { showErrorAlert } from '@utils/Error';
-import { ErrorConstants } from '@constants/ErrorConstant';
+import { ErrorConstants, UIConstants } from '@constants';
 
 interface Props {
   gurbaniLine: string;
@@ -109,7 +109,15 @@ export const SimpleTextForPath = ({
       >
         {gurbaniLine}
         {(verseId === savedPathVerseId || (isSaving && pressIndex === index)) && (
-          <NavContent navIcon={<SaveIcon color="#0D2346" />} />
+          <NavContent
+            navIcon={
+              <SaveIcon
+                color={UIConstants.SAVE_ICON_COLOR}
+                width={fontSize * 1.2}
+                height={fontSize * 1.2}
+              />
+            }
+          />
         )}
       </Text>
     </Pressable>
