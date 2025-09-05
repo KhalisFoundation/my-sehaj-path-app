@@ -65,6 +65,7 @@ local.properties
 .cxx/
 *.keystore
 !debug.keystore
+release/
 
 # CocoaPods
 /ios/Pods/
