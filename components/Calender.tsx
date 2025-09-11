@@ -22,6 +22,12 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
     if (!dates || dates.length === 0) {
       return 0;
     }
+    const today = dayjs();
+    const todayString = today.format('D-MMMM-YYYY');
+
+    if (!dates.includes(todayString)) {
+      return 0;
+    }
 
     const sortedDates = dates
       .map((dateStr) => dayjs(dateStr, 'D-MMMM-YYYY'))
