@@ -91,6 +91,7 @@ export const SimpleTextForPath = ({
       accessibilityHint="Tap to select, long press to save this line"
     >
       <Text
+        suppressHighlighting={true}
         style={{
           ...SimpleTextForPathStyles.text,
           fontSize,
