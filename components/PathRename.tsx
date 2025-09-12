@@ -18,11 +18,7 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
 
   const handleNameChange = (text: string) => {
     setNewName(text);
-    if (text.trim() === '') {
-      setIsValid(false);
-    } else {
-      setIsValid(true);
-    }
+    setIsValid(text.trim() !== '');
   };
 
   const isUpdateButtonDisabled = !isValid || newName.trim() === '';
@@ -31,7 +27,6 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
     if (isUpdateButtonDisabled) {
       return;
     }
-
     renamePath(pathId, newName);
     setPathRename(false);
     setPathName(newName);
@@ -68,9 +63,7 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
             accessibilityHint="Enter a new name for your Sehaj Path"
           />
           {!isValid && newName !== '' && (
-            <Text style={PathRenameStyle.warningText}>
-              Name cannot be empty
-            </Text>
+            <Text style={PathRenameStyle.warningText}>Name cannot be empty</Text>
           )}
           <TouchableOpacity
             style={[
