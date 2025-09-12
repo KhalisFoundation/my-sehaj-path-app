@@ -72,4 +72,18 @@ export const PathRenameStyle = StyleSheet.create({
     right: 10,
     zIndex: 999,
   },
+  warningText: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    textAlign: 'center',
+    marginTop: -5,
+  },
+  disabledButton: {
+    backgroundColor: '#CCCCCC',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#888888',
+  },
 });

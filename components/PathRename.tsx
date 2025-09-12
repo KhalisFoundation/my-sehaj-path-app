@@ -14,8 +14,19 @@ interface Props {
 export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
   const { renamePath } = useLocal();
   const [newName, setNewName] = useState<string>('');
+  const [isValid, setIsValid] = useState<boolean>(true);
+
+  const handleNameChange = (text: string) => {
+    setNewName(text);
+    setIsValid(text.trim() !== '');
+  };
+
+  const isUpdateButtonDisabled = !isValid || newName.trim() === '';
 
   const handleRename = () => {
+    if (isUpdateButtonDisabled) {
+      return;
+    }
     renamePath(pathId, newName);
     setPathRename(false);
     setPathName(newName);
@@ -47,18 +58,33 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
             placeholderTextColor={'grey'}
             autoFocus={false}
             value={newName}
-            onChangeText={setNewName}
+            onChangeText={handleNameChange}
             accessibilityLabel="Path name input field"
             accessibilityHint="Enter a new name for your Sehaj Path"
           />
+          {!isValid && newName !== '' && (
+            <Text style={PathRenameStyle.warningText}>Name cannot be empty</Text>
+          )}
           <TouchableOpacity
-            style={PathRenameStyle.updateButton}
+            style={[
+              PathRenameStyle.updateButton,
+              isUpdateButtonDisabled && PathRenameStyle.disabledButton,
+            ]}
             onPress={handleRename}
+            disabled={isUpdateButtonDisabled}
             accessibilityLabel="Update path name"
             accessibilityRole="button"
             accessibilityHint="Tap to save the new path name"
+            accessibilityState={{ disabled: isUpdateButtonDisabled }}
           >
-            <Text style={PathRenameStyle.buttonText}>Update</Text>
+            <Text
+              style={[
+                PathRenameStyle.buttonText,
+                isUpdateButtonDisabled && PathRenameStyle.disabledButtonText,
+              ]}
+            >
+              Update
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
