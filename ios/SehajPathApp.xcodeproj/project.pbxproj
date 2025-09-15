@@ -26,13 +26,13 @@
 		9493EE1A2685417780AA4FC4 /* BrandonGrotesque-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */; };
 		9EB71E63A42C410583F10A08 /* BalooPaaji2-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */; };
 		A29E9893D1F24A309DB9D394 /* BrandonGrotesque-Thin.otf in Resources */ = {isa = PBXBuildFile; fileRef = D941C8315010498088B65B70 /* BrandonGrotesque-Thin.otf */; };
+		ACB58F33A62C443EB3B3A7E0 /* Recoleta-RegularDEMO.otf in Resources */ = {isa = PBXBuildFile; fileRef = 78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */; };
 		C08A2D8982C542159B45C3F2 /* BrandonGrotesque-Bold.otf in Resources */ = {isa = PBXBuildFile; fileRef = 98287716EC594885A6AE1B7A /* BrandonGrotesque-Bold.otf */; };
 		C1F501B894BB4B2D8173CB50 /* BrandonGrotesque-Black.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */; };
 		C52C1E20C845497B8BC373A2 /* BalooPaaji2-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */; };
 		C69CCFD2BC344C4FB46E0CBC /* BalooPaaji2-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */; };
 		CEA811B0CD6A4AE996456955 /* BrandonGrotesque-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */; };
 		DFB9BC4FDB5548198E8AE4A2 /* BrandonGrotesque-BoldItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */; };
-		ACB58F33A62C443EB3B3A7E0 /* Recoleta-RegularDEMO.otf in Resources */ = {isa = PBXBuildFile; fileRef = 78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,31 +57,31 @@
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = SehajPathApp/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = SehajPathApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		19F6CBCC0A4E27FBF8BF4A61 /* libPods-SehajPathApp-SehajPathAppTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SehajPathApp-SehajPathAppTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-RegularItalic.otf"; path = "../assets/fonts/BrandonGrotesque-RegularItalic.otf"; sourceTree = "<group>"; };
-		1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Medium.ttf"; path = "../assets/fonts/BalooPaaji2-Medium.ttf"; sourceTree = "<group>"; };
+		1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-RegularItalic.otf"; path = "../assets/fonts/BrandonGrotesque-RegularItalic.otf"; sourceTree = "<group>"; };
+		1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Medium.ttf"; path = "../assets/fonts/BalooPaaji2-Medium.ttf"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-SehajPathApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp.debug.xcconfig"; path = "Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp.debug.xcconfig"; sourceTree = "<group>"; };
-		4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Black.otf"; path = "../assets/fonts/BrandonGrotesque-Black.otf"; sourceTree = "<group>"; };
+		4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Black.otf"; path = "../assets/fonts/BrandonGrotesque-Black.otf"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-SehajPathApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp.release.xcconfig"; path = "Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp.release.xcconfig"; sourceTree = "<group>"; };
 		5B7EB9410499542E8C5724F5 /* Pods-SehajPathApp-SehajPathAppTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp-SehajPathAppTests.debug.xcconfig"; path = "Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests.debug.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-SehajPathApp.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-SehajPathApp.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BoldItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BoldItalic.otf"; sourceTree = "<group>"; };
-		7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-LightItalic.otf"; path = "../assets/fonts/BrandonGrotesque-LightItalic.otf"; sourceTree = "<group>"; };
-		76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Bold.ttf"; path = "../assets/fonts/BalooPaaji2-Bold.ttf"; sourceTree = "<group>"; };
-		7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Light.otf"; path = "../assets/fonts/BrandonGrotesque-Light.otf"; sourceTree = "<group>"; };
-		7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-SemiBold.ttf"; path = "../assets/fonts/BalooPaaji2-SemiBold.ttf"; sourceTree = "<group>"; };
+		5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BoldItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BoldItalic.otf"; sourceTree = "<group>"; };
+		7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-LightItalic.otf"; path = "../assets/fonts/BrandonGrotesque-LightItalic.otf"; sourceTree = "<group>"; };
+		76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Bold.ttf"; path = "../assets/fonts/BalooPaaji2-Bold.ttf"; sourceTree = "<group>"; };
+		78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Recoleta-RegularDEMO.otf"; path = "../assets/fonts/Recoleta-RegularDEMO.otf"; sourceTree = "<group>"; };
+		7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Light.otf"; path = "../assets/fonts/BrandonGrotesque-Light.otf"; sourceTree = "<group>"; };
+		7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-SemiBold.ttf"; path = "../assets/fonts/BalooPaaji2-SemiBold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = SehajPathApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-SehajPathApp-SehajPathAppTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SehajPathApp-SehajPathAppTests.release.xcconfig"; path = "Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests.release.xcconfig"; sourceTree = "<group>"; };
-		98287716EC594885A6AE1B7A /* BrandonGrotesque-Bold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Bold.otf"; path = "../assets/fonts/BrandonGrotesque-Bold.otf"; sourceTree = "<group>"; };
-		98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-ExtraBold.ttf"; path = "../assets/fonts/BalooPaaji2-ExtraBold.ttf"; sourceTree = "<group>"; };
-		9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-ThinItalic.otf"; path = "../assets/fonts/BrandonGrotesque-ThinItalic.otf"; sourceTree = "<group>"; };
-		9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Medium.otf"; path = "../assets/fonts/BrandonGrotesque-Medium.otf"; sourceTree = "<group>"; };
-		AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Regular.otf"; path = "../assets/fonts/BrandonGrotesque-Regular.otf"; sourceTree = "<group>"; };
-		D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Regular.ttf"; path = "../assets/fonts/BalooPaaji2-Regular.ttf"; sourceTree = "<group>"; };
-		D941C8315010498088B65B70 /* BrandonGrotesque-Thin.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Thin.otf"; path = "../assets/fonts/BrandonGrotesque-Thin.otf"; sourceTree = "<group>"; };
-		DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-MediumItalic.otf"; path = "../assets/fonts/BrandonGrotesque-MediumItalic.otf"; sourceTree = "<group>"; };
+		98287716EC594885A6AE1B7A /* BrandonGrotesque-Bold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Bold.otf"; path = "../assets/fonts/BrandonGrotesque-Bold.otf"; sourceTree = "<group>"; };
+		98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-ExtraBold.ttf"; path = "../assets/fonts/BalooPaaji2-ExtraBold.ttf"; sourceTree = "<group>"; };
+		9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-ThinItalic.otf"; path = "../assets/fonts/BrandonGrotesque-ThinItalic.otf"; sourceTree = "<group>"; };
+		9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Medium.otf"; path = "../assets/fonts/BrandonGrotesque-Medium.otf"; sourceTree = "<group>"; };
+		AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Regular.otf"; path = "../assets/fonts/BrandonGrotesque-Regular.otf"; sourceTree = "<group>"; };
+		D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Regular.ttf"; path = "../assets/fonts/BalooPaaji2-Regular.ttf"; sourceTree = "<group>"; };
+		D941C8315010498088B65B70 /* BrandonGrotesque-Thin.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Thin.otf"; path = "../assets/fonts/BrandonGrotesque-Thin.otf"; sourceTree = "<group>"; };
+		DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-MediumItalic.otf"; path = "../assets/fonts/BrandonGrotesque-MediumItalic.otf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BlackItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BlackItalic.otf"; sourceTree = "<group>"; };
-		78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */ = {isa = PBXFileReference; name = "Recoleta-RegularDEMO.otf"; path = "../assets/fonts/Recoleta-RegularDEMO.otf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BlackItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BlackItalic.otf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -168,7 +168,6 @@
 				78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */,
 			);
 			name = Resources;
-			path = "";
 			sourceTree = "<group>";
 		};
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
@@ -358,9 +357,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -419,9 +422,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -436,9 +443,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp/Pods-SehajPathApp-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -453,9 +464,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-SehajPathApp-SehajPathAppTests/Pods-SehajPathApp-SehajPathAppTests-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -667,10 +682,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -739,10 +751,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
