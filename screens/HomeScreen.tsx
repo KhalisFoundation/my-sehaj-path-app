@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
+import { View, ImageBackground, ScrollView, SafeAreaView, BackHandler } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
@@ -59,6 +59,19 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
     useCallback(() => {
       loadData();
     }, [loadData])
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        setTimeout(() => {
+          BackHandler.exitApp();
+        }, 100);
+        return true;
+      });
+
+      return () => backHandler.remove();
+    }, [])
   );
 
   const handleStart = useCallback(async () => {

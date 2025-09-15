@@ -1,7 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, ScrollView, ActivityIndicator, Animated, BackHandler, Easing } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -226,6 +225,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     if (autoScroll) {
       handleAutoScroll();
     }
+
+    return () => {
+      autoScrollRef.current = false;
+    };
   }, [autoScroll]);
 
   useEffect(() => {
@@ -247,21 +250,31 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         });
       });
     }
+    return () => {
+      fadeAnim.current.stopAnimation();
+    };
   }, [isSaved, found]);
 
   useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
     if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
       if (autoScroll) {
         setAutoScroll(false);
       }
-      Animated.timing(new Animated.Value(0), {
+      animation = Animated.timing(new Animated.Value(0), {
         toValue: 1,
         duration: 10,
         useNativeDriver: true,
-      }).start(() => {
+      });
+      animation.start(() => {
         scrollToSavedPathData();
       });
     }
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+    };
   }, [matchedPath, pathAng, pathContent]);
 
   useFocusEffect(() => {
@@ -319,6 +332,9 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         clearTimeout(scrollTimeoutRef.current);
         scrollTimeoutRef.current = null;
       }
+
+      fadeAnim.current.stopAnimation();
+      autoScrollRef.current = false;
     };
   }, []);
 

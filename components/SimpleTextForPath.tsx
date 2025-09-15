@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Text, Pressable, Animated } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocal } from '@hooks';
@@ -42,31 +42,36 @@ export const SimpleTextForPath = ({
   const [fontSize, setFontSize] = useState<number>(18);
   const [isLongPressing, setIsLongPressing] = useState(false);
 
+  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const { fetchFontSize } = useLocal();
 
-  useFocusEffect(() => {
-    const fetch = async () => {
-      try {
-        const fontSizeData = await fetchFontSize();
-        setFontSize(fontSizeData.number);
-      } catch (e) {
-        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
-        setFontSize(18);
-      }
-    };
-    fetch();
-  });
+  useFocusEffect(
+    useCallback(() => {
+      const fetch = async () => {
+        try {
+          const fontSizeData = await fetchFontSize();
+          setFontSize(fontSizeData.number);
+        } catch (e) {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
+          setFontSize(18);
+        }
+      };
+      fetch();
+    }, [fetchFontSize])
+  );
 
   const handleLongPress = () => {
     if (isLongPressing) {
       return;
     }
 
-    Animated.timing(new Animated.Value(0), {
+    animationRef.current = Animated.timing(new Animated.Value(0), {
       toValue: 1,
       duration: 100,
       useNativeDriver: true,
-    }).start(() => {
+    });
+
+    animationRef.current.start(() => {
       onSelection();
       setIsLongPressing(true);
       setIsSaving(true);
@@ -76,8 +81,17 @@ export const SimpleTextForPath = ({
       stopAutoScroll();
       onSave();
       setIsLongPressing(false);
+      animationRef.current = null;
     });
   };
+
+  useEffect(() => {
+    return () => {
+      if (animationRef.current) {
+        animationRef.current.stop();
+      }
+    };
+  }, []);
 
   const isSelected = verseId === savedPathVerseId || (isSaving && pressIndex === index);
   const accessibilityLabel = `Gurbani line ${index + 1}${isSelected ? ', selected' : ''}`;

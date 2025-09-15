@@ -21,7 +21,15 @@ const App = () => {
   return (
     <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
       <NavigationContainer>
-        <Stack.Navigator initialRouteName={Routes.Splash} screenOptions={{ headerShown: false }}>
+        <Stack.Navigator
+          initialRouteName={Routes.Splash}
+          screenOptions={{
+            animation: 'default',
+            headerShown: false,
+            animationDuration: 250,
+            gestureDirection: 'horizontal',
+          }}
+        >
           <Stack.Screen name={Routes.Splash} component={SplashScreen} />
           <Stack.Screen name={Routes.Home} component={HomeScreen} />
           <Stack.Screen name={Routes.Continue} component={Continue} />
