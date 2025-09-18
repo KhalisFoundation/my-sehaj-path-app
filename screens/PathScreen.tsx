@@ -405,7 +405,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           />
         )}
         {found && (
-          <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim.current} />
+          <Message message={Constants.RESUMING_SAVED_PROGRESS} fadeAnim={fadeAnim.current} />
         )}
         {isAngsNavigationVisible && (
           <AngsNavigation
