@@ -2,7 +2,7 @@
   "name": "sehajpathapp",
   "version": "0.0.1",
   "private": true,
-  "main": "index.ts",
+  "main": "index.js",
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
@@ -25,7 +25,7 @@
     "react-native": "0.76.6",
     "react-native-linear-gradient": "^2.8.3",
     "react-native-safe-area-context": "^4.14.1",
-    "react-native-screens": "^4.10.0",
+    "react-native-screens": "4.9.0",
     "react-native-svg": "^15.11.2",
     "react-native-swipe-gestures": "^1.0.5"
   },
