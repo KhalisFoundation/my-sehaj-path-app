@@ -47,7 +47,10 @@ export const Angs = () => {
         accessibilityRole="button"
         accessibilityHint="Tap to change angs format"
       >
-        <SimpleText simpleText={Constants.ANG} simpleTextStyle={AngsFormatStyles.angsText} />
+        <SimpleText
+          simpleText={Constants.ANG_NUMBERING}
+          simpleTextStyle={AngsFormatStyles.angsText}
+        />
         <View style={AngsFormatStyles.angsContainer}>
           <SimpleText simpleText={angsFormat.format} simpleTextStyle={AngsFormatStyles.text} />
           <RightChevronIcon />
