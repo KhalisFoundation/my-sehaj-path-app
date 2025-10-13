@@ -29,7 +29,7 @@ import { ErrorConstants, Constants, Routes } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
-export const PathScreen = ({ navigation, route }: PathScreenProps) => {
+export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) => {
   const [pathPujabiAng, setPathPunjabiAng] = useState<string>('0');
   const [pathAng, setPathAng] = useState<number>(0);
   const [pathContent, setPathContent] = useState<any>();
@@ -69,6 +69,10 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setPathContent(pathFromBaniDB.data);
     setNeedsRetry(false);
     setLastFailedAng(null);
+    setIsSaving(false);
+    setIsSaved(false);
+    setPressIndex(0);
+    setFound(false);
     if (pathFromBaniDB.success === false) {
       const isConnected = await checkNetwork();
       if (!isConnected) {
@@ -139,15 +143,22 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     fetchFontSize,
   });
 
-  const updatePathAng = (angNumber: number) => {
-    setPathAng(angNumber);
-    setPathPunjabiAng(
-      convertNumberToFormat({
-        number: angNumber,
-        format: angsFormat.format,
-      })
-    );
-  };
+  const updatePathAng = useCallback(
+    (angNumber: number) => {
+      setPathAng(angNumber);
+      setPathPunjabiAng(
+        convertNumberToFormat({
+          number: angNumber,
+          format: angsFormat.format,
+        })
+      );
+      setIsSaving(false);
+      setIsSaved(false);
+      setPressIndex(0);
+      setFound(false);
+    },
+    [angsFormat.format]
+  );
 
   const { handleGoBack } = usePathNavigation({
     isAngNavigation,
@@ -197,7 +208,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     fetchPath();
   }, [route.params.pathId]);
 
-  const handleAutoScroll = () => {
+  const handleAutoScroll = useCallback(() => {
     if (!autoScrollRef.current) {
       return;
     }
@@ -213,12 +224,12 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
         handleAutoScroll();
       }
     });
-  };
+  }, []);
 
-  const handleStopAutoScroll = () => {
+  const handleStopAutoScroll = useCallback(() => {
     setAutoScroll(false);
     autoScrollRef.current = false;
-  };
+  }, []);
 
   useEffect(() => {
     autoScrollRef.current = autoScroll;
@@ -405,7 +416,7 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           />
         )}
         {found && (
-          <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim.current} />
+          <Message message={Constants.RESUMING_SAVED_PROGRESS} fadeAnim={fadeAnim.current} />
         )}
         {isAngsNavigationVisible && (
           <AngsNavigation
@@ -423,4 +434,4 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       </View>
     </SafeAreaView>
   );
-};
+});

@@ -13,11 +13,11 @@ import { RootStackParamList } from '../App';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-export const HomeScreen = ({ navigation }: HomeProps) => {
+export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const [pathDataArrayFromLocal, setPathDataArrayFromLocal] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const errorAlertShownRef = useRef(false);
+  const isLoadingRef = useRef(false);
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
     const completed = pathDataArrayFromLocal.filter(
@@ -30,10 +30,10 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
   }, [pathDataArrayFromLocal]);
 
   const loadData = useCallback(async () => {
-    if (isLoading) {
+    if (isLoadingRef.current) {
       return;
     }
-    setIsLoading(true);
+    isLoadingRef.current = true;
     errorAlertShownRef.current = false;
     try {
       const { pathDataArray } = await fetchFromLocal();
@@ -51,9 +51,9 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
         );
       }
     } finally {
-      setIsLoading(false);
+      isLoadingRef.current = false;
     }
-  }, [fetchFromLocal, isLoading]);
+  }, [fetchFromLocal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -63,14 +63,21 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
 
   useFocusEffect(
     useCallback(() => {
+      let timeoutId: NodeJS.Timeout | null = null;
+
       const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
           BackHandler.exitApp();
         }, 100);
         return true;
       });
 
-      return () => backHandler.remove();
+      return () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        backHandler.remove();
+      };
     }, [])
   );
 
@@ -147,4 +154,4 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       </ImageBackground>
     </SafeAreaView>
   );
-};
+});
