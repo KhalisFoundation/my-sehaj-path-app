@@ -129,18 +129,18 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
       >
         <ScrollView contentContainerStyle={HomeScreenStyles.scrollContainer}>
           <View style={HomeScreenStyles.container}>
-            <Headline headline={Constants.ITS_FINE_DAY_TO_CONTINUE} />
-            <Headline headline={Constants.YOUR_SEHAJ_PATH} />
+            <Headline headline={Constants.ITS_FINE_DAY_FOR} />
+            <Headline headline={Constants.SEHAJ_PATH_ENGLISH} />
             {pathInProgress?.length > 0 ? (
               <View style={HomeScreenStyles.pathInProgressContianer}>
-                <Label label={`${Constants.SEHAJ_PATH_IN_PROGRESS} :`} />
+                <Label label={Constants.SEHAJ_PATH_IN_PROGRESS} />
                 <Slider arrayOfCards={pathInProgressCards} widthOfCard={199} dotsIndicator={true} />
               </View>
             ) : undefined}
             <PrimaryButton buttonTitle={Constants.START_NEW} onPress={handleStart} />
             {pathCompleted?.length > 0 ? (
               <View style={HomeScreenStyles.pathCompletedContainer}>
-                <Label label={`${Constants.SEHAJ_PATH_COMPLETED} :`} />
+                <Label label={Constants.SEHAJ_PATH_COMPLETED} />
                 <Slider arrayOfCards={pathCompletedCards} widthOfCard={130} dotsIndicator={false} />
               </View>
             ) : undefined}
