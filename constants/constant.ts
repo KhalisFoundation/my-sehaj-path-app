@@ -9,7 +9,7 @@ export const Constants: Constant = {
   ITS_FINE_DAY_FOR: "It's a Fine Day for",
   SEHAJ_PATH_ENGLISH: 'Sehaj Path',
   START_NEW: 'Start New',
-  SEHAJ_PATH_IN_PROGRESS: 'Sehaj Path in Progress',
+  SEHAJ_PATH_IN_PROGRESS: 'Sehaj Paths in Progress',
   SEHAJ_PATH_COMPLETED: 'Sehaj Paths Completed',
   ANG: 'Ang',
   SEE_ALL_PATH: 'See all paths',
