@@ -1,18 +1,18 @@
 import React from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { PrimaryButtonStyles } from '@styles';
+import { UIConstants } from '@constants/UIConstants';
 
 interface Props {
   buttonTitle: string;
-  Icon: React.ReactNode;
   onPress: () => void;
 }
 
-export const PrimaryButton = ({ buttonTitle, Icon, onPress }: Props) => {
+export const PrimaryButton = ({ buttonTitle, onPress }: Props) => {
   return (
     <LinearGradient
-      colors={['#11336A', '#0D2346']}
+      colors={UIConstants.PRIMARY_BUTTON_GRADIENT_COLORS}
       start={{ x: 0.1, y: 0.1 }}
       end={{ x: 1, y: 0 }}
       style={PrimaryButtonStyles.container}
@@ -24,7 +24,6 @@ export const PrimaryButton = ({ buttonTitle, Icon, onPress }: Props) => {
         accessibilityRole="button"
         accessibilityHint={`Tap to ${buttonTitle.toLowerCase()}`}
       >
-        <View>{Icon}</View>
         <Text style={PrimaryButtonStyles.text}>{buttonTitle}</Text>
       </TouchableOpacity>
     </LinearGradient>

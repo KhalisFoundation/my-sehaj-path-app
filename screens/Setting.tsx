@@ -1,5 +1,5 @@
 import React from 'react';
-import { SafeAreaView, View } from 'react-native';
+import { SafeAreaView, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavContent, SimpleText, FontSize, Larivaar, Angs } from '@components';
 import { GoBackIcon } from '@icons';
@@ -14,8 +14,16 @@ export const Settings = ({ navigation }: SettingProps) => {
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={SettingScreenStyle.container}>
         <View style={SettingScreenStyle.navContainer}>
-          <NavContent navIcon={<GoBackIcon />} onPress={() => navigation.goBack()} />
-          <NavContent text={Constants.SETTINGS} />
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={SettingScreenStyle.backButton}
+            accessibilityLabel="Back"
+            accessibilityRole="button"
+            accessibilityHint="Tap to go back"
+          >
+            <NavContent navIcon={<GoBackIcon />} />
+            <NavContent text={Constants.SETTINGS} />
+          </TouchableOpacity>
         </View>
         <View style={SettingScreenStyle.settingContainer}>
           <View>

@@ -16,4 +16,10 @@ export const SettingScreenStyle = StyleSheet.create({
   settingContainer: {
     marginTop: 15,
   },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
+  },
 });

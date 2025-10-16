@@ -16,4 +16,7 @@ export const UIConstants: UIConstant = {
   GRADIENT_X2: '85.35%',
   GRADIENT_Y2: '16.15%',
   SAVE_ICON_COLOR: '#0D2346',
+  PRIMARY_BUTTON_GRADIENT_COLORS: ['#FFFFFF', '#E8F0FC'],
+  PADDING: 12,
+  RHYTHM: 12,
 };

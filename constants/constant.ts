@@ -6,9 +6,9 @@ export const Constants: Constant = {
   BUILDING_THE_HABIT: 'Building the habit',
   OF_READING_GURBANI: 'of reading Gurbani.',
   SEHAJ: 'Sehaj',
-  ITS_FINE_DAY_TO_START_A: "It's a Fine day for",
-  NEW_SEHAJ_PATH: 'Sehaj Path',
-  START: 'START',
+  ITS_FINE_DAY_TO_CONTINUE: "It's a Fine day to continue",
+  YOUR_SEHAJ_PATH: 'Your Sehaj Path',
+  START_NEW: 'Start New',
   SEHAJ_PATH_IN_PROGRESS: 'Sehaj Path in Progress',
   SEHAJ_PATH_COMPLETED: 'Sehaj Paths Completed',
   ANG: 'Ang',
@@ -36,4 +36,5 @@ export const Constants: Constant = {
   SELECT_YOUR_ANG_FORMAT: 'Select your ang format',
   ANGS: 'Angs',
   ANG_NUMBERING: 'Ang Numbering',
+  GO_TO_NEXT_ANG: 'Go To Next Ang',
 };

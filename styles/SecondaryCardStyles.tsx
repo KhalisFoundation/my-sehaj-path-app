@@ -11,10 +11,10 @@ export const CompletedPathCardStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#11336A',
-    shadowOffset: { width: 15, height: 15 },
+    shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 45,
-    elevation: 5,
+    shadowRadius: 2,
+    elevation: 2,
     marginRight: 16,
   },
   sehajText: {

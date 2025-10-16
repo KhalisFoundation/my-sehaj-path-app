@@ -3,6 +3,7 @@ import GestureRecognizer from 'react-native-swipe-gestures';
 import { ScrollView } from 'react-native';
 import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
+import { PathNextAng } from './PathNextAng';
 
 interface PathReaderProps {
   pathContent: any;
@@ -28,7 +29,7 @@ interface PathReaderProps {
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
   pathId: number;
-  stopAutoScroll: () => void;
+  isNavigating: boolean;
 }
 
 export const PathReader = React.memo(
@@ -50,7 +51,7 @@ export const PathReader = React.memo(
     setIsSaving,
     setIsSaved,
     pathId,
-    stopAutoScroll,
+    isNavigating,
   }: PathReaderProps) => {
     return (
       <GestureRecognizer
@@ -73,9 +74,6 @@ export const PathReader = React.memo(
             if (!isAngNavigation) {
               debouncedScrollSave();
             }
-          }}
-          onScrollBeginDrag={() => {
-            stopAutoScroll();
           }}
           scrollEventThrottle={16}
           decelerationRate="fast"
@@ -109,10 +107,15 @@ export const PathReader = React.memo(
                 setIsSaved={setIsSaved}
                 setPressIndex={setPressIndex}
                 setSavedPathVerseId={setSavedPathVerseId}
-                stopAutoScroll={stopAutoScroll}
               />
             );
           })}
+          {pathContent?.source?.pageNo <= 1430 && !isNavigating && (
+            <PathNextAng
+              pathAng={pathContent?.source?.pageNo}
+              handleRightArrow={() => handleRightArrow(pathContent?.source?.pageNo)}
+            />
+          )}
         </ScrollView>
       </GestureRecognizer>
     );

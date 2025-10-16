@@ -21,16 +21,39 @@ export const PathNavigation = ({
 }: PathNavigationProps) => {
   return (
     <View style={PathNavigationStyles.navContainer}>
-      <NavContent navIcon={<LeftArrowIcon />} onPress={() => handleLeftArrow(pathAng)} />
       <TouchableOpacity
+        style={PathNavigationStyles.arrowButton}
+        onPress={() => handleLeftArrow(pathAng)}
+        accessibilityLabel={`Previous ang: ${pathPujabiAng}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to go to previous ang"
+      >
+        <NavContent
+          navIcon={<LeftArrowIcon color="#fff" />}
+          onPress={() => handleLeftArrow(pathAng)}
+        />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={PathNavigationStyles.angs}
         onPress={() => setIsAngsNavigationVisible(true)}
         accessibilityLabel={`Current ang: ${pathPujabiAng}`}
         accessibilityRole="button"
         accessibilityHint="Tap to open angs navigation"
       >
-        <NavContent text={pathPujabiAng} />
+        <NavContent text={pathPujabiAng} contentStyle={PathNavigationStyles.navText} />
       </TouchableOpacity>
-      <NavContent navIcon={<RightArrowIcon />} onPress={() => handleRightArrow(pathAng)} />
+      <TouchableOpacity
+        style={[PathNavigationStyles.arrowButton, PathNavigationStyles.arrowButtonRight]}
+        onPress={() => handleRightArrow(pathAng)}
+        accessibilityLabel={`Next ang: ${pathPujabiAng}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to go to next ang"
+      >
+        <NavContent
+          navIcon={<RightArrowIcon color="#fff" />}
+          onPress={() => handleRightArrow(pathAng)}
+        />
+      </TouchableOpacity>
     </View>
   );
 };
