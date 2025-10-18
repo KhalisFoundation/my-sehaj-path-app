@@ -33,7 +33,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [pathPujabiAng, setPathPunjabiAng] = useState<string>('0');
   const [pathAng, setPathAng] = useState<number>(0);
   const [pathContent, setPathContent] = useState<any>();
-  const [autoScroll, setAutoScroll] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [savedPathVerseId, setSavedPathVerseId] = useState<number>(0);
@@ -57,7 +56,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const debounceTimer = useRef<NodeJS.Timeout | void | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const autoScrollRef = useRef<boolean>(false);
 
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
@@ -111,7 +109,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     angsFormat,
     checkNetwork,
     fetchFromBaniDB,
-    setAutoScroll,
   });
 
   const debouncedScrollSave = useCallback(() => {
@@ -208,40 +205,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchPath();
   }, [route.params.pathId]);
 
-  const handleAutoScroll = useCallback(() => {
-    if (!autoScrollRef.current) {
-      return;
-    }
-    const animation = new Animated.Value(0);
-    Animated.timing(animation, {
-      toValue: 1,
-      duration: 110,
-      useNativeDriver: true,
-    }).start(() => {
-      scorllOffset.current += 3;
-      scrollRef.current?.scrollTo({ y: scorllOffset.current, animated: true });
-      if (autoScrollRef.current) {
-        handleAutoScroll();
-      }
-    });
-  }, []);
-
-  const handleStopAutoScroll = useCallback(() => {
-    setAutoScroll(false);
-    autoScrollRef.current = false;
-  }, []);
-
-  useEffect(() => {
-    autoScrollRef.current = autoScroll;
-    if (autoScroll) {
-      handleAutoScroll();
-    }
-
-    return () => {
-      autoScrollRef.current = false;
-    };
-  }, [autoScroll]);
-
   useEffect(() => {
     if (isSaved || found) {
       fadeAnim.current.setValue(1);
@@ -269,9 +232,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   useEffect(() => {
     let animation: Animated.CompositeAnimation | null = null;
     if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
-      if (autoScroll) {
-        setAutoScroll(false);
-      }
       animation = Animated.timing(new Animated.Value(0), {
         toValue: 1,
         duration: 10,
@@ -345,7 +305,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       }
 
       fadeAnim.current.stopAnimation();
-      autoScrollRef.current = false;
     };
   }, []);
 
@@ -359,7 +318,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={PathScreenStyles.container}>
-        <View style={PathScreenStyles.navContainer}>
+        <View>
           <PathNavigation
             pathPujabiAng={pathPujabiAng}
             pathAng={pathAng}
@@ -386,7 +345,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
           pathId={route.params.pathId}
-          stopAutoScroll={handleStopAutoScroll}
+          isNavigating={isNavigating}
         />
         {alertIndicator.current !== undefined ? (
           <Loading alertIndicator={alertIndicator.current} alertText={alertText.current} />
@@ -398,10 +357,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
               handleGoBack={handleGoBack}
               setIsSaving={setIsSaving}
               fadeAnim={fadeAnim}
-              autoScroll={autoScroll}
-              setAutoScroll={setAutoScroll}
               navigation={navigation}
-              stopAutoScroll={handleStopAutoScroll}
             />
           </View>
         ) : undefined}

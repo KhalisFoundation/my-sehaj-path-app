@@ -21,7 +21,6 @@ interface Props {
   setIsSaved: (value: boolean) => void;
   setPressIndex: (value: number) => void;
   setSavedPathVerseId: (value: number) => void;
-  stopAutoScroll: () => void;
 }
 
 export const SimpleTextForPath = ({
@@ -37,7 +36,6 @@ export const SimpleTextForPath = ({
   setIsSaving,
   setPressIndex,
   setSavedPathVerseId,
-  stopAutoScroll,
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [isLongPressing, setIsLongPressing] = useState(false);
@@ -78,7 +76,6 @@ export const SimpleTextForPath = ({
       setIsSaved(true);
       setPressIndex(index);
       setSavedPathVerseId(verseId);
-      stopAutoScroll();
       onSave();
       setIsLongPressing(false);
       animationRef.current = null;
@@ -115,7 +112,6 @@ export const SimpleTextForPath = ({
           handleLongPress();
         }}
         onPress={() => {
-          stopAutoScroll();
           if (isSaving) {
             onSelection();
             onSave();

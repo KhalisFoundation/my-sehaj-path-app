@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { UIConstants } from '@constants/UIConstants';
 
 export const HomeScreenStyles = StyleSheet.create({
   backgroundImage: {
@@ -8,8 +9,7 @@ export const HomeScreenStyles = StyleSheet.create({
     backgroundColor: 'rgba(245, 245, 245,0.89)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 15,
-    paddingTop: 59,
+    padding: UIConstants.PADDING,
     height: '100%',
     borderWidth: 4,
     borderRightWidth: 5,
@@ -18,14 +18,13 @@ export const HomeScreenStyles = StyleSheet.create({
   scrollContainer: {
     minHeight: '100%',
   },
-
   pathInProgressContianer: {
-    marginTop: 41,
+    marginTop: UIConstants.RHYTHM * 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
   pathCompletedContainer: {
-    marginTop: 30,
+    marginTop: UIConstants.RHYTHM * 2,
     justifyContent: 'center',
     alignItems: 'center',
   },

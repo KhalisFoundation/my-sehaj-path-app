@@ -5,7 +5,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
 import { Constants, ErrorConstants, Routes } from '@constants';
-import { StartIcon } from '@icons';
 import { PathData, useLocal } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
@@ -130,22 +129,18 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
       >
         <ScrollView contentContainerStyle={HomeScreenStyles.scrollContainer}>
           <View style={HomeScreenStyles.container}>
-            <Headline headline={Constants.ITS_FINE_DAY_TO_START_A} />
-            <Headline headline={Constants.NEW_SEHAJ_PATH} />
-            <PrimaryButton
-              buttonTitle={Constants.START}
-              Icon={<StartIcon />}
-              onPress={handleStart}
-            />
+            <Headline headline={Constants.ITS_FINE_DAY_FOR} />
+            <Headline headline={Constants.SEHAJ_PATH_ENGLISH} />
             {pathInProgress?.length > 0 ? (
               <View style={HomeScreenStyles.pathInProgressContianer}>
-                <Label label={`${Constants.SEHAJ_PATH_IN_PROGRESS} :`} />
+                <Label label={Constants.SEHAJ_PATH_IN_PROGRESS} />
                 <Slider arrayOfCards={pathInProgressCards} widthOfCard={199} dotsIndicator={true} />
               </View>
             ) : undefined}
+            <PrimaryButton buttonTitle={Constants.START_NEW} onPress={handleStart} />
             {pathCompleted?.length > 0 ? (
               <View style={HomeScreenStyles.pathCompletedContainer}>
-                <Label label={`${Constants.SEHAJ_PATH_COMPLETED} :`} />
+                <Label label={Constants.SEHAJ_PATH_COMPLETED} />
                 <Slider arrayOfCards={pathCompletedCards} widthOfCard={130} dotsIndicator={false} />
               </View>
             ) : undefined}

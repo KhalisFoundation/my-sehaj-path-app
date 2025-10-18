@@ -16,7 +16,6 @@ export interface UseNavigationParams {
   angsFormat: AngsFormat;
   checkNetwork: () => Promise<boolean>;
   fetchFromBaniDB: (angNumber: number) => Promise<void>;
-  setAutoScroll?: (value: boolean) => void;
 }
 
 export const useNavigation = ({
@@ -31,7 +30,6 @@ export const useNavigation = ({
   angsFormat,
   checkNetwork,
   fetchFromBaniDB,
-  setAutoScroll,
 }: UseNavigationParams) => {
   const handleRightArrow = useCallback(
     async (pageNo: number) => {
@@ -44,11 +42,10 @@ export const useNavigation = ({
 
       setIsNavigating(true);
       setIsSaving(false);
-      setAutoScroll?.(false);
       scorllOffset.current = 0;
       scrollRef.current?.scrollTo({
         y: 0,
-        animated: true,
+        animated: false,
       });
 
       try {
@@ -87,7 +84,6 @@ export const useNavigation = ({
       checkNetwork,
       setIsNavigating,
       setIsSaving,
-      setAutoScroll,
       scorllOffset,
       scrollRef,
       fetchFromBaniDB,
@@ -109,11 +105,10 @@ export const useNavigation = ({
 
       setIsNavigating(true);
       setIsSaving(false);
-      setAutoScroll?.(false);
       scorllOffset.current = 0;
       scrollRef.current?.scrollTo({
         y: 0,
-        animated: true,
+        animated: false,
       });
 
       try {
@@ -157,7 +152,6 @@ export const useNavigation = ({
       angsFormat,
       checkNetwork,
       fetchFromBaniDB,
-      setAutoScroll,
     ]
   );
 

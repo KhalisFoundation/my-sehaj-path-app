@@ -3,9 +3,6 @@ import { StyleSheet } from 'react-native';
 export const SettingScreenStyle = StyleSheet.create({
   container: {
     flex: 1,
-    borderWidth: 4,
-    borderRightWidth: 5,
-    borderColor: 'rgba(253, 198, 6, 0.3)',
     padding: 15,
   },
   navContainer: {
@@ -15,5 +12,11 @@ export const SettingScreenStyle = StyleSheet.create({
   },
   settingContainer: {
     marginTop: 15,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '100%',
   },
 });
