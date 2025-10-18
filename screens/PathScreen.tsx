@@ -205,40 +205,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchPath();
   }, [route.params.pathId]);
 
-  // const handleAutoScroll = useCallback(() => {
-  //   if (!autoScrollRef.current) {
-  //     return;
-  //   }
-  //   const animation = new Animated.Value(0);
-  //   Animated.timing(animation, {
-  //     toValue: 1,
-  //     duration: 110,
-  //     useNativeDriver: true,
-  //   }).start(() => {
-  //     scorllOffset.current += 3;
-  //     scrollRef.current?.scrollTo({ y: scorllOffset.current, animated: true });
-  //     if (autoScrollRef.current) {
-  //       handleAutoScroll();
-  //     }
-  //   });
-  // }, []);
-
-  // const handleStopAutoScroll = useCallback(() => {
-  //   setAutoScroll(false);
-  //   autoScrollRef.current = false;
-  // }, []);
-
-  // useEffect(() => {
-  //   autoScrollRef.current = autoScroll;
-  //   if (autoScroll) {
-  //     handleAutoScroll();
-  //   }
-
-  //   return () => {
-  //     autoScrollRef.current = false;
-  //   };
-  // }, [autoScroll]);
-
   useEffect(() => {
     if (isSaved || found) {
       fadeAnim.current.setValue(1);
