@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import font from '@utils/font';
+import { UIConstants } from '@constants/UIConstants';
 
 export const CompletedPathCardStyles = StyleSheet.create({
   container: {
@@ -7,7 +8,7 @@ export const CompletedPathCardStyles = StyleSheet.create({
     height: 107,
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: 15,
+    padding: UIConstants.RHYTHM * 1.1,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#11336A',
