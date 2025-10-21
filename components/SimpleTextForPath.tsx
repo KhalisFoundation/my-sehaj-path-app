@@ -21,6 +21,8 @@ interface Props {
   setIsSaved: (value: boolean) => void;
   setPressIndex: (value: number) => void;
   setSavedPathVerseId: (value: number) => void;
+  found: boolean;
+  setFound: (value: boolean) => void;
 }
 
 export const SimpleTextForPath = ({
@@ -36,6 +38,8 @@ export const SimpleTextForPath = ({
   setIsSaving,
   setPressIndex,
   setSavedPathVerseId,
+  found,
+  setFound,
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
   const [isLongPressing, setIsLongPressing] = useState(false);
@@ -62,7 +66,11 @@ export const SimpleTextForPath = ({
     if (isLongPressing) {
       return;
     }
-
+    if (found) {
+      setFound(false);
+    }
+    setIsSaving(false);
+    setIsSaved(false);
     animationRef.current = Animated.timing(new Animated.Value(0), {
       toValue: 1,
       duration: 100,

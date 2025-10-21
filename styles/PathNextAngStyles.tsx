@@ -5,7 +5,7 @@ import { StyleSheet } from 'react-native';
 export const PathNextAngStyles = StyleSheet.create({
   nextAngContainer: {
     gap: UIConstants.RHYTHM * 5,
-    marginBottom: UIConstants.RHYTHM * 10,
+    marginBottom: UIConstants.RHYTHM * 2,
   },
   container: {
     flexDirection: 'row',
