@@ -1,17 +1,18 @@
 import React from 'react';
-import { SafeAreaView, TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavContent, SimpleText, FontSize, Larivaar, Angs } from '@components';
-import { GoBackIcon } from '@icons';
+import { LeftArrowIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
-import { Constants } from '@constants';
+import { Constants, EDGES_ALL_SIDES } from '@constants';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 
 export const Settings = ({ navigation }: SettingProps) => {
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <View style={SettingScreenStyle.container}>
         <View style={SettingScreenStyle.navContainer}>
           <TouchableOpacity
@@ -21,8 +22,11 @@ export const Settings = ({ navigation }: SettingProps) => {
             accessibilityRole="button"
             accessibilityHint="Tap to go back"
           >
-            <NavContent navIcon={<GoBackIcon />} />
-            <NavContent text={Constants.SETTINGS} />
+            <NavContent
+              navIcon={<LeftArrowIcon color="#fff" />}
+              onPress={() => navigation.goBack()}
+            />
+            <NavContent text={Constants.SETTINGS} contentStyle={SettingScreenStyle.navText} />
           </TouchableOpacity>
         </View>
         <View style={SettingScreenStyle.settingContainer}>

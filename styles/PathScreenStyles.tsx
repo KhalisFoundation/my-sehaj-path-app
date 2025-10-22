@@ -18,7 +18,7 @@ export const PathScreenStyles = StyleSheet.create({
     width: '100%',
     maxWidth: 200,
     backgroundColor: '#11336A',
-    padding: UIConstants.RHYTHM,
+    padding: UIConstants.RHYTHM * 0.9,
     height: 48,
     alignItems: 'center',
     justifyContent: 'space-around',

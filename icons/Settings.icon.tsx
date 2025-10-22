@@ -4,7 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 export const SettingsIcon = () => {
   return (
     <>
-      <Svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+      <Svg width="26" height="26" viewBox="0 0 24 24" fill="none">
         <Path
           d="M12 9.5C13.3807 9.5 14.5 10.6193 14.5 12C14.5 13.3807 13.3807 14.5 12 14.5C10.6193 14.5 9.5 13.3807 9.5 12C9.5 10.6193 10.6193 9.5 12 9.5Z"
           stroke="white"

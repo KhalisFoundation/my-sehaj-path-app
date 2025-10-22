@@ -25,7 +25,7 @@ import {
   PathNavigation,
 } from '@components';
 import { RootStackParamList } from '../App';
-import { ErrorConstants, Constants, Routes } from '@constants';
+import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -316,7 +316,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   }, [isOnline, needsRetry, lastFailedAng]);
 
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <View style={PathScreenStyles.container}>
         <View>
           <PathNavigation

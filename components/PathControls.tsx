@@ -14,7 +14,7 @@ export const PathControls = ({ handleGoBack, setIsSaving, fadeAnim, navigation }
     <>
       <NavContent navIcon={<HomeIcon />} onPress={() => handleGoBack()} />
       <NavContent
-        navIcon={<SaveIcon />}
+        navIcon={<SaveIcon width={26} height={26} />}
         onPress={() => {
           setIsSaving(true);
           fadeAnim.current.setValue(1);

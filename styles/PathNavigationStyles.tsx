@@ -8,7 +8,7 @@ export const PathNavigationStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: UIConstants.RHYTHM * 1,
-    paddingHorizontal: UIConstants.RHYTHM * 2,
+    paddingHorizontal: 0,
     backgroundColor: '#0D2346',
   },
   navText: {
@@ -18,6 +18,7 @@ export const PathNavigationStyles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'flex-start',
+    paddingHorizontal: UIConstants.RHYTHM * 2,
   },
   arrowButtonRight: {
     alignItems: 'flex-end',
