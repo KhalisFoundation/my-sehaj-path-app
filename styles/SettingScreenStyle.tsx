@@ -10,8 +10,6 @@ export const SettingScreenStyle = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     backgroundColor: '#0D2346',
-    padding: UIConstants.RHYTHM * 1.5,
-    paddingHorizontal: 0,
   },
   navText: {
     color: '#fff',
@@ -25,7 +23,7 @@ export const SettingScreenStyle = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    width: '100%',
-    paddingLeft: UIConstants.RHYTHM * 1.5,
+    width: '50%',
+    padding: UIConstants.RHYTHM * 1.5,
   },
 });
