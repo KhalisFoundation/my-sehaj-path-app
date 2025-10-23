@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:667964848647:android:21c2efa49eb36f75cf88a2",
+        "mobilesdk_app_id": "1:667964848647:android:db82ebd29122ff02cf88a2",
         "android_client_info": {
-          "package_name": "com.sehajpathapp"
+          "package_name": "com.khalis.sehajpathapp"
         }
       },
       "oauth_client": [],
