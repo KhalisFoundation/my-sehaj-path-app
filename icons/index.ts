@@ -1,6 +1,5 @@
 export { CheckMarkIcon } from './Checkmark.icon';
 export { ContinueIcon } from './Continue.icon';
-export { GoBackIcon } from './GoBack.icon';
 export { PauseIcon } from './Pause.icon';
 export { PlayIcon } from './Play.icon';
 export { SaveIcon } from './Save.icon';

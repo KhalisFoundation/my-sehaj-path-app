@@ -20,3 +20,5 @@ export const UIConstants: UIConstant = {
   PADDING: 12,
   RHYTHM: 12,
 };
+
+export const EDGES_ALL_SIDES = ['top', 'bottom', 'left', 'right'] as const;

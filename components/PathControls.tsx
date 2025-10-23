@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavContent } from '@components';
 import { SaveIcon, SettingsIcon, HomeIcon } from '@icons';
-import { Animated } from 'react-native';
+import { Animated, TouchableOpacity, View } from 'react-native';
+import { PathScreenStyles } from '@styles';
 
 interface Props {
   handleGoBack: () => void;
@@ -12,15 +13,32 @@ interface Props {
 export const PathControls = ({ handleGoBack, setIsSaving, fadeAnim, navigation }: Props) => {
   return (
     <>
-      <NavContent navIcon={<HomeIcon />} onPress={() => handleGoBack()} />
-      <NavContent
-        navIcon={<SaveIcon />}
-        onPress={() => {
-          setIsSaving(true);
-          fadeAnim.current.setValue(1);
-        }}
-      />
-      <NavContent navIcon={<SettingsIcon />} onPress={() => navigation.push('Setting')} />
+      <View style={PathScreenStyles.controlsContainer}>
+        <TouchableOpacity style={PathScreenStyles.controlItem} onPress={() => handleGoBack()}>
+          <NavContent navIcon={<HomeIcon />} onPress={() => handleGoBack()} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={PathScreenStyles.controlItem}
+          onPress={() => {
+            setIsSaving(true);
+            fadeAnim.current.setValue(1);
+          }}
+        >
+          <NavContent
+            navIcon={<SaveIcon width={26} height={26} />}
+            onPress={() => {
+              setIsSaving(true);
+              fadeAnim.current.setValue(1);
+            }}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={PathScreenStyles.controlItem}
+          onPress={() => navigation.push('Setting')}
+        >
+          <NavContent navIcon={<SettingsIcon />} onPress={() => navigation.push('Setting')} />
+        </TouchableOpacity>
+      </View>
     </>
   );
 };
