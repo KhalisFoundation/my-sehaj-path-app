@@ -1,0 +1,32 @@
+{
+  "project_info": {
+    "project_number": "667964848647",
+    "project_id": "khalis-sehaj-path",
+    "storage_bucket": "khalis-sehaj-path.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:667964848647:android:21c2efa49eb36f75cf88a2",
+        "android_client_info": {
+          "package_name": "com.sehajpathapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCH6dOxf7LI3kTvGrou4MRqS9sPjNL6IdI"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

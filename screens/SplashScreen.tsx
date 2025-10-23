@@ -5,11 +5,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Constants, Routes } from '@constants';
 import { SplashScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
+import { useScreenAnalytics } from '@hooks';
 
 type SplashProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 export const SplashScreen = ({ navigation }: SplashProps) => {
   const fadeOut = useRef(new Animated.Value(1)).current;
+  useScreenAnalytics('SplashScreen', 'SplashScreen');
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       Animated.timing(fadeOut, {

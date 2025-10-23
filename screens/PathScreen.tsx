@@ -26,6 +26,7 @@ import {
 } from '@components';
 import { RootStackParamList } from '../App';
 import { ErrorConstants, Constants, Routes } from '@constants';
+import { useScreenAnalytics } from '@hooks';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -60,6 +61,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
     useLocal();
+
+  useScreenAnalytics('PathScreen', 'PathScreen');
 
   const fetchFromBaniDB = async (angNumber: number) => {
     alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;

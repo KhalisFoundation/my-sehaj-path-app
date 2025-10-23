@@ -4,6 +4,7 @@ import { BlurView } from '@react-native-community/blur';
 import { useLocal } from '@hooks';
 import { CrossIcon } from '@icons';
 import { PathRenameStyle } from '@styles';
+import { trackPathRenameEvent } from '@utils';
 
 interface Props {
   pathId: number;
@@ -27,6 +28,7 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
     if (isUpdateButtonDisabled) {
       return;
     }
+    trackPathRenameEvent('click', `rename path ${newName}`);
     renamePath(pathId, newName);
     setPathRename(false);
     setPathName(newName);

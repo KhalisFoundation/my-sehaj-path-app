@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
 import { Routes } from '@constants';
+import { allowTracking } from '@utils';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -18,6 +19,9 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App = () => {
+  useEffect(() => {
+    allowTracking();
+  }, []);
   return (
     <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
       <NavigationContainer>

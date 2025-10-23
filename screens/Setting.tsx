@@ -6,10 +6,12 @@ import { GoBackIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { Constants } from '@constants';
+import { useScreenAnalytics } from '@hooks';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 
 export const Settings = ({ navigation }: SettingProps) => {
+  useScreenAnalytics('Settings', 'Settings');
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView}>
       <View style={SettingScreenStyle.container}>

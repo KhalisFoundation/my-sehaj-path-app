@@ -4,6 +4,7 @@ import { SafeAreaView, ScrollView } from 'react-native';
 import { SimpleTextForPath } from '@components';
 import { PathReaderStyles, SafeAreaStyle } from '@styles';
 import { PathNextAng } from './PathNextAng';
+import { trackAngsByBottomNavEvent } from '@utils/analytics';
 
 interface PathReaderProps {
   pathContent: any;
@@ -57,6 +58,11 @@ export const PathReader = React.memo(
     found,
     setFound,
   }: PathReaderProps) => {
+    const handleAngChange = () => {
+      trackAngsByBottomNavEvent('click', 'next ang from bottom nav');
+      handleRightArrow(pathContent?.source?.pageNo);
+    };
+
     return (
       <SafeAreaView style={SafeAreaStyle.safeAreaView}>
         <GestureRecognizer
@@ -120,7 +126,7 @@ export const PathReader = React.memo(
             {pathContent?.source?.pageNo < 1430 && !isNavigating && (
               <PathNextAng
                 pathAng={pathContent?.source?.pageNo}
-                handleRightArrow={() => handleRightArrow(pathContent?.source?.pageNo)}
+                handleRightArrow={handleAngChange}
               />
             )}
           </ScrollView>

@@ -16,8 +16,8 @@ import {
 } from '@components';
 import { Constants, ErrorConstants, Routes } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { PathData, useLocal } from '@hooks';
-import { showErrorAlert } from '@utils';
+import { PathData, useLocal, useScreenAnalytics } from '@hooks';
+import { showErrorAlert, trackTabSwitchEvent } from '@utils';
 import { GoBackIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
 
@@ -26,7 +26,7 @@ type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 export const Continue = ({ route, navigation }: ContinueProps) => {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
-
+  useScreenAnalytics('Continue', 'Continue');
   const [pathState, setPathState] = useState({
     pathData: {
       pathId: 0,
@@ -124,6 +124,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }, [navigation, pathId]);
 
   const handleTabPress = useCallback((tab: string) => {
+    trackTabSwitchEvent('click', `switch to ${tab} tab`);
     setUiState((prev) => ({ ...prev, tabs: tab }));
   }, []);
 
