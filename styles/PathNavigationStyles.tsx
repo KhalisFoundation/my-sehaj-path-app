@@ -4,11 +4,9 @@ import { UIConstants } from '@constants/UIConstants';
 export const PathNavigationStyles = StyleSheet.create({
   navContainer: {
     flexDirection: 'row',
-    gap: UIConstants.RHYTHM,
+    gap: UIConstants.RHYTHM * 5,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: UIConstants.RHYTHM * 1,
-    paddingHorizontal: UIConstants.RHYTHM * 2,
+    justifyContent: 'space-around',
     backgroundColor: '#0D2346',
   },
   navText: {
@@ -16,8 +14,11 @@ export const PathNavigationStyles = StyleSheet.create({
   },
   arrowButton: {
     flex: 1,
+    width: '100%',
+    maxWidth: 100,
     justifyContent: 'center',
     alignItems: 'flex-start',
+    padding: UIConstants.RHYTHM * 2,
   },
   arrowButtonRight: {
     alignItems: 'flex-end',

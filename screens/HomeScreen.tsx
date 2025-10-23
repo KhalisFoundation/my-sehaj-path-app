@@ -1,10 +1,11 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ImageBackground, ScrollView, SafeAreaView, BackHandler } from 'react-native';
+import { View, ImageBackground, ScrollView, BackHandler } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
-import { Constants, ErrorConstants, Routes } from '@constants';
+import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { PathData, useLocal } from '@hooks';
 import { showErrorAlert } from '@utils';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
@@ -121,7 +122,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   );
 
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <ImageBackground
         source={require('../assets/Images/HomeScreenBg.png')}
         resizeMode="cover"

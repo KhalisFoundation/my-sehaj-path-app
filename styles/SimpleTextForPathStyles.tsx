@@ -26,4 +26,8 @@ export const SimpleTextForPathStyles = StyleSheet.create({
     padding: 2,
     borderRadius: 5,
   },
+  saveIconContainer: {
+    position: 'relative',
+    top: 2,
+  },
 });

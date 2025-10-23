@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleProp, TextStyle } from 'react-native';
+import { View, Text, TouchableOpacity, StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { NavContentStyles } from '@styles';
 
 interface Props {
@@ -7,8 +7,9 @@ interface Props {
   navIcon?: React.ReactNode;
   onPress?: () => void;
   contentStyle?: StyleProp<TextStyle>;
+  iconsStyle?: StyleProp<ViewStyle>;
 }
-export const NavContent = ({ text, navIcon, onPress, contentStyle }: Props) => {
+export const NavContent = ({ text, navIcon, onPress, contentStyle, iconsStyle }: Props) => {
   return (
     <View style={NavContentStyles.container}>
       {text ? (
@@ -19,6 +20,7 @@ export const NavContent = ({ text, navIcon, onPress, contentStyle }: Props) => {
           accessibilityLabel="Navigation button"
           accessibilityRole="button"
           accessibilityHint="Tap to navigate"
+          style={iconsStyle}
         >
           {navIcon}
         </TouchableOpacity>
