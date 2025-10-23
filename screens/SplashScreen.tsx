@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, ImageBackground, Animated } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Constants, Routes } from '@constants';
+import { Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { SplashScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
@@ -26,7 +26,7 @@ export const SplashScreen = ({ navigation }: SplashProps) => {
     return () => clearTimeout(timeoutId);
   }, [fadeOut, navigation]);
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <Animated.View style={{ opacity: fadeOut }}>
         <ImageBackground
           source={require('../assets/Images/SplashScreenBg.png')}

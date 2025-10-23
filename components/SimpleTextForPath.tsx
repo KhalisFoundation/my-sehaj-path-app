@@ -136,6 +136,7 @@ export const SimpleTextForPath = ({
                 height={fontSize * 1.2}
               />
             }
+            iconsStyle={SimpleTextForPathStyles.saveIconContainer}
           />
         )}
       </Text>

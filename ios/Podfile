@@ -17,7 +17,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'SehajPathApp' do
+target 'KhalisSehajPathApp' do
   config = use_native_modules!
 
   use_react_native!(
@@ -26,7 +26,7 @@ target 'SehajPathApp' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  target 'SehajPathAppTests' do
+  target 'KhalisSehajPathAppTests' do
     inherit! :complete
     # Pods for testing
   end

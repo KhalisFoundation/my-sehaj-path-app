@@ -14,11 +14,11 @@ import {
   PathRename,
   Calender,
 } from '@components';
-import { Constants, ErrorConstants, Routes } from '@constants';
+import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
 import { PathData, useLocal, useScreenAnalytics } from '@hooks';
 import { showErrorAlert, trackTabSwitchEvent } from '@utils';
-import { GoBackIcon, ContinueIcon } from '@icons';
+import { LeftArrowIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
@@ -167,7 +167,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     [pathState.daysAgo, pathState.averageAngs, pathState.finishDate]
   );
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <ImageBackground
         source={require('../assets/Images/ContinueScreenBg.png')}
         style={ContinueScreenStyles.backgroundImage}
@@ -184,7 +184,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               accessibilityRole="button"
               accessibilityHint="Tap to go back to home screen"
             >
-              <NavContent navIcon={<GoBackIcon />} onPress={handleBackPress} />
+              <NavContent navIcon={<LeftArrowIcon />} onPress={handleBackPress} />
               <NavContent text={Constants.SEE_ALL_PATH} />
             </Pressable>
             <View style={ContinueScreenStyles.tabsContainer}>

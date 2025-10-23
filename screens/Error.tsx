@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ScrollView, Image } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SimpleText, NavContent } from '@components';
-import { GoBackIcon, HomeIcon } from '@icons';
+import { HomeIcon, LeftArrowIcon } from '@icons';
 import { ErrorScreenStyles } from '@styles';
 import { RootStackParamList } from '../App';
 import { ErrorConstants, Routes } from '@constants';
@@ -22,7 +22,7 @@ export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       />
       <View style={ErrorScreenStyles.navContainer}>
         <NavContent
-          navIcon={<GoBackIcon />}
+          navIcon={<LeftArrowIcon />}
           onPress={() => {
             navigation.goBack();
           }}
