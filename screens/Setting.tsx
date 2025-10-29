@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { NavContent, SimpleText, FontSize, Larivaar, Angs } from '@components';
+import { NavContent, SimpleText, FontSize, Larivaar, Angs, Analytics } from '@components';
 import { LeftArrowIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
@@ -45,6 +45,10 @@ export const Settings = ({ navigation }: SettingProps) => {
             </View>
             <Larivaar />
           </View>
+          <View>
+            <SimpleText simpleText={'Other Settings'} />
+          </View>
+          <Analytics />
         </View>
       </View>
     </SafeAreaView>

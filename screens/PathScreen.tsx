@@ -123,11 +123,21 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       duration: 200,
       useNativeDriver: true,
     }).start(() => {
-      handleUpdatePath(route.params.pathId, pathAng, savedPathVerseId, scorllOffset.current, () => {
-        setIsSaved(false);
-      });
+      try {
+        handleUpdatePath(
+          route.params.pathId,
+          pathAng,
+          savedPathVerseId,
+          scorllOffset.current,
+          () => {
+            setIsSaved(false);
+          }
+        );
+      } catch (error) {
+        console.warn('Error in debouncedScrollSave:', error);
+      }
     });
-  }, [handleUpdatePath]);
+  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate,

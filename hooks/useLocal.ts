@@ -94,7 +94,6 @@ export const useLocal = () => {
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
       return { pathDataArray, pathDateDataArray, newPathid };
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
       throw error;
     }
   };
@@ -144,10 +143,12 @@ export const useLocal = () => {
 
         setIsSaved(true);
       } else {
-        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+        // showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+        throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
       }
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      // showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      throw error;
     }
   };
 
@@ -247,7 +248,22 @@ export const useLocal = () => {
       return { format: 'Punjabi' };
     }
   };
+  const saveConsent = async (consent: boolean) => {
+    try {
+      await AsyncStorage.setItem('consent', consent.toString());
+    } catch (error) {
+      throw error;
+    }
+  };
 
+  const fetchConsent = async () => {
+    try {
+      const consent = await AsyncStorage.getItem('consent');
+      return consent === null ? true : consent === 'true';
+    } catch (error) {
+      return true;
+    }
+  };
   return {
     fetchFromLocal,
     handleNewPath,
@@ -259,5 +275,7 @@ export const useLocal = () => {
     renamePath,
     saveAngsFormat,
     fetchAngsFormat,
+    saveConsent,
+    fetchConsent,
   };
 };
