@@ -134,7 +134,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           }
         );
       } catch (error) {
-        console.warn('Error in debouncedScrollSave:', error);
+        // Silently handle error to prevent infinite loop in debounced function
+        // Error is already handled at the UI level where user initiated the action
       }
     });
   }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);

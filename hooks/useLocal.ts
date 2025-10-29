@@ -27,75 +27,64 @@ export interface AngsFormat {
 }
 export const useLocal = () => {
   const fetchFromLocal = async () => {
-    try {
-      const pathFromLocal = await AsyncStorage.getItem('pathDetails');
-      let pathFromLocalArray: PathData[] = [];
-
-      if (pathFromLocal) {
-        try {
-          pathFromLocalArray = JSON.parse(pathFromLocal);
-          if (!Array.isArray(pathFromLocalArray)) {
-            pathFromLocalArray = [];
-          }
-        } catch (parseError) {
+    const pathFromLocal = await AsyncStorage.getItem('pathDetails');
+    let pathFromLocalArray: PathData[] = [];
+    if (pathFromLocal) {
+      try {
+        pathFromLocalArray = JSON.parse(pathFromLocal);
+        if (!Array.isArray(pathFromLocalArray)) {
           pathFromLocalArray = [];
         }
+      } catch (parseError) {
+        pathFromLocalArray = [];
       }
+    }
 
-      const pathDateData = await AsyncStorage.getItem('pathDateDetails');
-      let pathDateDataArray: DateData[] = [];
+    const pathDateData = await AsyncStorage.getItem('pathDateDetails');
+    let pathDateDataArray: DateData[] = [];
 
-      if (pathDateData) {
-        try {
-          pathDateDataArray = JSON.parse(pathDateData);
-          if (!Array.isArray(pathDateDataArray)) {
-            pathDateDataArray = [];
-          }
-        } catch (parseError) {
+    if (pathDateData) {
+      try {
+        pathDateDataArray = JSON.parse(pathDateData);
+        if (!Array.isArray(pathDateDataArray)) {
           pathDateDataArray = [];
         }
+      } catch (parseError) {
+        pathDateDataArray = [];
       }
-
-      return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA);
-      return { pathDataArray: [], pathDateDataArray: [] };
     }
+
+    return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
   };
 
   const handleNewPath = async () => {
-    try {
-      const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
-      let pathid = pathDataArray.length > 0 ? pathDataArray.length : 0;
-      let newPathid = pathid + 1;
-      const date = new Date();
-      const startNewPathDate = `${date.getDate()}-${
-        MonthConstant[date.getMonth()]
-      }-${date.getFullYear()}`;
+    const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+    let pathid = pathDataArray.length > 0 ? pathDataArray.length : 0;
+    let newPathid = pathid + 1;
+    const date = new Date();
+    const startNewPathDate = `${date.getDate()}-${
+      MonthConstant[date.getMonth()]
+    }-${date.getFullYear()}`;
 
-      const newPath: PathData = {
-        pathId: newPathid,
-        progress: 1,
-        saveData: { angNumber: 0, verseId: 0 },
-        startDate: startNewPathDate,
-        completionDate: '',
-        pathName: `Path #${newPathid}`,
-      };
+    const newPath: PathData = {
+      pathId: newPathid,
+      progress: 1,
+      saveData: { angNumber: 0, verseId: 0 },
+      startDate: startNewPathDate,
+      completionDate: '',
+      pathName: `Path #${newPathid}`,
+    };
 
-      const newPathDate: DateData = {
-        pathid: newPathid,
-        dates: [],
-        scrollPosition: 0,
-      };
-
-      pathDataArray.push(newPath);
-      pathDateDataArray.push(newPathDate);
-      await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
-      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
-      return { pathDataArray, pathDateDataArray, newPathid };
-    } catch (error) {
-      throw error;
-    }
+    const newPathDate: DateData = {
+      pathid: newPathid,
+      dates: [],
+      scrollPosition: 0,
+    };
+    pathDataArray.push(newPath);
+    pathDateDataArray.push(newPathDate);
+    await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
+    await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
+    return { pathDataArray, pathDateDataArray, newPathid };
   };
 
   const handleUpdatePath = async (
@@ -105,50 +94,43 @@ export const useLocal = () => {
     scrollPosition: number,
     setIsSaved: (value: boolean) => void
   ) => {
-    try {
-      const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
-      const date = new Date();
-      const todayDate = `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
-      const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
-      const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
-      const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
+    const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+    const date = new Date();
+    const todayDate = `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
+    const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
+    const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
+    const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
+    if (matchedPath && matchedDate) {
+      const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
 
-      if (matchedPath && matchedDate) {
-        const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
+      matchedPath.saveData = { angNumber, verseId };
+      matchedPath.progress = (angNumber / 1430) * 100;
 
-        matchedPath.saveData = { angNumber, verseId };
-        matchedPath.progress = (angNumber / 1430) * 100;
+      const updatedDates = [
+        ...cleanMatchedPathDates,
+        {
+          date: todayDate,
+        },
+      ];
 
-        const updatedDates = [
-          ...cleanMatchedPathDates,
-          {
-            date: todayDate,
-          },
-        ];
+      updatedPathDate.push({
+        pathid: pathId,
+        dates: updatedDates,
+        scrollPosition: scrollPosition,
+      });
 
-        updatedPathDate.push({
-          pathid: pathId,
-          dates: updatedDates,
-          scrollPosition: scrollPosition,
-        });
-
-        if (angNumber === 1430 && verseId === 60403) {
-          pathCompletedEvent('completed', `path ${matchedPath.pathName} completed`);
-          matchedPath.completionDate = todayDate;
-        }
-        await Promise.all([
-          AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray)),
-          AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate)),
-        ]);
-
-        setIsSaved(true);
-      } else {
-        // showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
-        throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      if (angNumber === 1430 && verseId === 60403) {
+        pathCompletedEvent('completed', `path ${matchedPath.pathName} completed`);
+        matchedPath.completionDate = todayDate;
       }
-    } catch (error) {
-      // showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
-      throw error;
+      await Promise.all([
+        AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray)),
+        AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate)),
+      ]);
+
+      setIsSaved(true);
+    } else {
+      throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
     }
   };
 
@@ -171,12 +153,7 @@ export const useLocal = () => {
   };
 
   const saveFontSize = async (fontSize: FontSizeData) => {
-    try {
-      await AsyncStorage.setItem('fontSize', JSON.stringify(fontSize));
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
-      throw error;
-    }
+    await AsyncStorage.setItem('fontSize', JSON.stringify(fontSize));
   };
 
   const fetchFontSize = async () => {
@@ -196,18 +173,12 @@ export const useLocal = () => {
       }
       return { fontSize: 'Small (Default)', number: 18 };
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
       return { fontSize: 'Small (Default)', number: 18 };
     }
   };
 
   const saveLarivaar = async (larivaar: boolean) => {
-    try {
-      await AsyncStorage.setItem('larivaar', larivaar.toString());
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_LARIVAAR);
-      throw error;
-    }
+    await AsyncStorage.setItem('larivaar', larivaar.toString());
   };
 
   const fetchLarivaar = async () => {
@@ -215,18 +186,12 @@ export const useLocal = () => {
       const larivaar = await AsyncStorage.getItem('larivaar');
       return larivaar === 'true';
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_LARIVAAR);
       return false;
     }
   };
 
   const saveAngsFormat = async (angsFormat: AngsFormat) => {
-    try {
-      await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_ANG_FORMAT);
-      throw error;
-    }
+    await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
   };
 
   const fetchAngsFormat = async () => {
@@ -244,16 +209,11 @@ export const useLocal = () => {
       }
       return { format: 'Punjabi' };
     } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_LOAD_ANG_FORMAT);
       return { format: 'Punjabi' };
     }
   };
   const saveConsent = async (consent: boolean) => {
-    try {
-      await AsyncStorage.setItem('consent', consent.toString());
-    } catch (error) {
-      throw error;
-    }
+    await AsyncStorage.setItem('consent', consent.toString());
   };
 
   const fetchConsent = async () => {

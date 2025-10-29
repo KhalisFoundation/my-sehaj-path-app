@@ -11,11 +11,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 let analytics: ReturnType<typeof getAnalytics> | null = null;
 try {
   const app = getApp();
-  console.log('app');
   analytics = getAnalytics(app);
-  console.log('analytics');
 } catch (error) {
-  console.warn('[Analytics] Firebase not initialized:', error);
+  // Analytics initialization failed - app will continue without analytics
 }
 const sanitize = (value?: string): string =>
   typeof value === 'string' && value.trim().length > 0 ? value.trim() : 'undefined';
@@ -41,7 +39,7 @@ const allowTracking = async () => {
       await setAnalyticsCollectionEnabled(analytics!, true);
     }
   } catch (error) {
-    console.warn('[Analytics] allowTracking failed:', error);
+    // Analytics tracking setup failed - continue without analytics
   }
 };
 const safeLogEvent = async (category: string, action: string, label: string) => {
@@ -60,7 +58,7 @@ const safeLogEvent = async (category: string, action: string, label: string) => 
   try {
     await logEvent(analytics!, c, { [a]: l });
   } catch (error) {
-    console.warn(`[Analytics] Failed to log ${c}:`, error);
+    // Failed to log event - continue without analytics
   }
 };
 
@@ -89,7 +87,7 @@ const trackScreenView = async (screenName: string, screenClass = screenName) => 
       screen_class: sanitize(screenClass.replace(/\s+/g, '')),
     });
   } catch (error) {
-    console.warn('[Analytics] Failed to log screen view:', error);
+    // Failed to log screen view - continue without analytics
   }
 };
 
