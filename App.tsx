@@ -6,6 +6,7 @@ import { SafeAreaStyle } from '@styles';
 import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
 import { Routes } from '@constants';
 import { allowTracking } from '@utils';
+import { useLocal } from '@hooks';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -19,9 +20,21 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App = () => {
+  const { initConsentIfMissing, fetchConsent } = useLocal();
   useEffect(() => {
-    allowTracking();
-  }, []);
+    const initAnalyticsConsent = async () => {
+      try {
+        await initConsentIfMissing();
+        const consent = await fetchConsent();
+        if (consent) {
+          allowTracking();
+        }
+      } catch (_e) {
+        // ignore initialization errors; app works without analytics
+      }
+    };
+    initAnalyticsConsent();
+  }, [initConsentIfMissing, fetchConsent]);
   return (
     <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
       <NavigationContainer>

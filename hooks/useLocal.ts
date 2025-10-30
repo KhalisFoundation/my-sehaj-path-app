@@ -219,9 +219,22 @@ export const useLocal = () => {
   const fetchConsent = async () => {
     try {
       const consent = await AsyncStorage.getItem('consent');
-      return consent === null ? true : consent === 'true';
+      return consent === 'true';
     } catch (error) {
-      return true;
+      return false;
+    }
+  };
+
+  const initConsentIfMissing = async () => {
+    try {
+      const consent = await AsyncStorage.getItem('consent');
+      if (consent === null) {
+        await AsyncStorage.setItem('consent', 'true');
+        return true;
+      }
+      return consent === 'true';
+    } catch (_error) {
+      return false;
     }
   };
   return {
@@ -237,5 +250,6 @@ export const useLocal = () => {
     fetchAngsFormat,
     saveConsent,
     fetchConsent,
+    initConsentIfMissing,
   };
 };

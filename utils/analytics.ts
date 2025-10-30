@@ -23,9 +23,9 @@ const isAnalyticsReady = (): boolean => !!analytics;
 const checkConsent = async (): Promise<boolean> => {
   try {
     const consent = await AsyncStorage.getItem('consent');
-    return consent === null ? true : consent === 'true';
+    return consent === 'true';
   } catch (error) {
-    return true;
+    return false;
   }
 };
 
