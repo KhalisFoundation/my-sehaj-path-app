@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
 import { useLocal } from '@hooks';
-import { showErrorAlert, trackSettingEvent } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { LarivaarStyles } from '@styles';
 import { ErrorConstants } from '@constants';
 
@@ -14,7 +14,8 @@ export const Analytics = () => {
   const handleAnalytics = async (analytics: boolean) => {
     try {
       if (isAnalytics) {
-        trackSettingEvent(
+        trackEvent(
+          'Settings',
           'click',
           `changed collect analytics to ${analytics ? 'enabled' : 'disabled'}`
         );

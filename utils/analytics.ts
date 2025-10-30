@@ -16,7 +16,7 @@ try {
   // Analytics initialization failed - app will continue without analytics
 }
 const sanitize = (value?: string): string =>
-  typeof value === 'string' && value.trim().length > 0 ? value.trim() : 'undefined';
+  typeof value === 'string' && value.trim().length > 0 ? value.trim() : 'unknown';
 
 const isAnalyticsReady = (): boolean => !!analytics;
 
@@ -51,26 +51,21 @@ const safeLogEvent = async (category: string, action: string, label: string) => 
   if (!hasConsent) {
     return;
   }
-  const c = sanitize(category);
-  const a = sanitize(action);
-  const l = sanitize(label);
+  const categorySanitized = sanitize(category);
+  const actionSanitized = sanitize(action);
+  const labelSanitized = sanitize(label);
 
   try {
-    await logEvent(analytics!, c, { [a]: l });
+    await logEvent(analytics!, categorySanitized, { [actionSanitized]: labelSanitized });
   } catch (error) {
     // Failed to log event - continue without analytics
   }
 };
 
-const trackPathCreatedEvent = (action: string, label: string) => {
-  safeLogEvent('pathCreated', action, label);
+const trackEvent = (category: string, action: string, label: string) => {
+  safeLogEvent(category, action, label);
 };
-const pathCompletedEvent = (action: string, label: string) => {
-  safeLogEvent('pathCompleted', action, label);
-};
-const trackSettingEvent = (action: string, label: string) => {
-  safeLogEvent('setting', action, label);
-};
+
 const trackScreenView = async (screenName: string, screenClass = screenName) => {
   if (!isAnalyticsReady()) {
     return;
@@ -91,35 +86,4 @@ const trackScreenView = async (screenName: string, screenClass = screenName) => 
   }
 };
 
-const trackNextAngsByTopNavEvent = (action: string, label: string) => {
-  safeLogEvent('nextAngsByTopNav', action, label);
-};
-const trackPreviousAngsByTopNavEvent = (action: string, label: string) => {
-  safeLogEvent('previousAngsByTopNav', action, label);
-};
-const trackAngsByAngsNavigationEvent = (action: string, label: string) => {
-  safeLogEvent('angsByAngsNavigation', action, label);
-};
-const trackAngsByBottomNavEvent = (action: string, label: string) => {
-  safeLogEvent('angsByBottomNav', action, label);
-};
-const trackTabSwitchEvent = (action: string, label: string) => {
-  safeLogEvent('tabSwitch', action, label);
-};
-const trackPathRenameEvent = (action: string, label: string) => {
-  safeLogEvent('pathRename', action, label);
-};
-
-export {
-  allowTracking,
-  trackSettingEvent,
-  trackScreenView,
-  trackTabSwitchEvent,
-  trackPathCreatedEvent,
-  pathCompletedEvent,
-  trackNextAngsByTopNavEvent,
-  trackPreviousAngsByTopNavEvent,
-  trackAngsByBottomNavEvent,
-  trackPathRenameEvent,
-  trackAngsByAngsNavigationEvent,
-};
+export { allowTracking, trackEvent, trackScreenView };

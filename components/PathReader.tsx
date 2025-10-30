@@ -4,7 +4,7 @@ import { ScrollView } from 'react-native';
 import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
-import { trackAngsByBottomNavEvent } from '@utils/analytics';
+import { trackEvent } from '@utils/analytics';
 import { showErrorAlert } from '@utils';
 import { ErrorConstants } from '@constants';
 
@@ -61,7 +61,7 @@ export const PathReader = React.memo(
     setFound,
   }: PathReaderProps) => {
     const handleAngChange = () => {
-      trackAngsByBottomNavEvent('click', 'next ang from bottom nav');
+      trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
       handleRightArrow(pathContent?.source?.pageNo);
     };
     const handleSave = async () => {

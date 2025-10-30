@@ -6,7 +6,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
 import { PathData, useLocal, useScreenAnalytics } from '@hooks';
-import { showErrorAlert, trackPathCreatedEvent } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
@@ -82,7 +82,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   );
 
   const handleStart = useCallback(async () => {
-    trackPathCreatedEvent('click', 'start new path');
+    trackEvent('PathCreated', 'click', 'start new path');
     try {
       const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
       setPathDataArrayFromLocal(pathDataArray);

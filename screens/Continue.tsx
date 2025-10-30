@@ -17,7 +17,7 @@ import {
 import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
 import { PathData, useLocal, useScreenAnalytics } from '@hooks';
-import { showErrorAlert, trackTabSwitchEvent } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { LeftArrowIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
 
@@ -124,7 +124,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }, [navigation, pathId]);
 
   const handleTabPress = useCallback((tab: string) => {
-    trackTabSwitchEvent('click', `switch to ${tab} tab`);
+    trackEvent('TabSwitch', 'click', `switch to ${tab} tab`);
     setUiState((prev) => ({ ...prev, tabs: tab }));
   }, []);
 

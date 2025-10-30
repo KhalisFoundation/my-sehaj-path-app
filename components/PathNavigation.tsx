@@ -3,11 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { NavContent } from '@components';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
 import { PathNavigationStyles } from '@styles';
-import {
-  trackAngsByAngsNavigationEvent,
-  trackNextAngsByTopNavEvent,
-  trackPreviousAngsByTopNavEvent,
-} from '@utils';
+import { trackEvent } from '@utils';
 
 interface PathNavigationProps {
   pathPujabiAng: string;
@@ -25,15 +21,15 @@ export const PathNavigation = ({
   setIsAngsNavigationVisible,
 }: PathNavigationProps) => {
   const handleLeftArrowPress = () => {
-    trackPreviousAngsByTopNavEvent('click', 'previous ang from top nav');
+    trackEvent('PreviousAngsByTopNav', 'click', 'previous ang from top nav');
     handleLeftArrow(pathAng);
   };
   const handleRightArrowPress = () => {
-    trackNextAngsByTopNavEvent('click', 'next ang from top nav');
+    trackEvent('NextAngsByTopNav', 'click', 'next ang from top nav');
     handleRightArrow(pathAng);
   };
   const handleAngsNavigationPress = () => {
-    trackAngsByAngsNavigationEvent('click', 'opened angs navigation');
+    trackEvent('AngsByAngsNavigation', 'click', 'opened angs navigation');
     setIsAngsNavigationVisible(true);
   };
   return (

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MonthConstant, ErrorConstants } from '@constants';
-import { pathCompletedEvent, showErrorAlert } from '@utils';
+import { trackEvent, showErrorAlert } from '@utils';
 
 export interface PathData {
   pathId: number;
@@ -120,7 +120,7 @@ export const useLocal = () => {
       });
 
       if (angNumber === 1430 && verseId === 60403) {
-        pathCompletedEvent('completed', `path ${matchedPath.pathName} completed`);
+        trackEvent('PathCompleted', 'completed', `path completed`);
         matchedPath.completionDate = todayDate;
       }
       await Promise.all([

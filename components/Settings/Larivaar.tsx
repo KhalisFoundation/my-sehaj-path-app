@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
 import { useLocal } from '@hooks';
-import { showErrorAlert, trackSettingEvent } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { LarivaarStyles } from '@styles';
 import { ErrorConstants, Constants } from '@constants';
 
@@ -14,7 +14,7 @@ export const Larivaar = () => {
   const handleLarivaar = async (larivaar: boolean) => {
     try {
       setIsLarivaar(larivaar);
-      trackSettingEvent('click', `changed larivaar to ${larivaar ? 'enabled' : 'disabled'}`);
+      trackEvent('Settings', 'click', `changed larivaar to ${larivaar ? 'enabled' : 'disabled'}`);
       await saveLarivaar(larivaar);
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_LARIVAAR);
