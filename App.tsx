@@ -20,11 +20,11 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App = () => {
-  const { initConsentIfMissing, fetchConsent } = useLocal();
+  const { fetchConsent } = useLocal();
   useEffect(() => {
     const initAnalyticsConsent = async () => {
       try {
-        await initConsentIfMissing();
+        await fetchConsent();
         const consent = await fetchConsent();
         if (consent) {
           allowTracking();
@@ -34,7 +34,7 @@ const App = () => {
       }
     };
     initAnalyticsConsent();
-  }, [initConsentIfMissing, fetchConsent]);
+  }, [fetchConsent]);
   return (
     <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
       <NavigationContainer>
