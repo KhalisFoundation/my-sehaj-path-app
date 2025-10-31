@@ -4,6 +4,9 @@ import { ScrollView } from 'react-native';
 import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
+import { trackEvent } from '@utils/analytics';
+import { showErrorAlert } from '@utils';
+import { ErrorConstants } from '@constants';
 
 interface PathReaderProps {
   pathContent: any;
@@ -57,6 +60,25 @@ export const PathReader = React.memo(
     found,
     setFound,
   }: PathReaderProps) => {
+    const handleAngChange = () => {
+      trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
+      handleRightArrow(pathContent?.source?.pageNo);
+    };
+    const handleSave = async () => {
+      try {
+        await handleUpdatePath(
+          pathId,
+          pathContent?.source?.pageNo,
+          savedPathVerseId,
+          scorllOffset.current,
+          setIsSaved
+        );
+      } catch (error) {
+        setIsSaving(false);
+        setIsSaved(false);
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      }
+    };
     return (
       <GestureRecognizer
         onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
@@ -93,15 +115,7 @@ export const PathReader = React.memo(
                     setSavedPathVerseId(path.verseId);
                   }
                 }}
-                onSave={() =>
-                  handleUpdatePath(
-                    pathId,
-                    path.pageNo,
-                    path.verseId,
-                    scorllOffset.current,
-                    setIsSaved
-                  )
-                }
+                onSave={handleSave}
                 isSaving={isSaving}
                 pressIndex={pressIndex}
                 index={index + 1}
@@ -117,10 +131,7 @@ export const PathReader = React.memo(
             );
           })}
           {pathContent?.source?.pageNo < 1430 && !isNavigating && (
-            <PathNextAng
-              pathAng={pathContent?.source?.pageNo}
-              handleRightArrow={() => handleRightArrow(pathContent?.source?.pageNo)}
-            />
+            <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
           )}
         </ScrollView>
       </GestureRecognizer>

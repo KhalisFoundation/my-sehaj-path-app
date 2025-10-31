@@ -3,6 +3,7 @@ import { View, TouchableOpacity } from 'react-native';
 import { NavContent } from '@components';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
 import { PathNavigationStyles } from '@styles';
+import { trackEvent } from '@utils';
 
 interface PathNavigationProps {
   pathPujabiAng: string;
@@ -19,23 +20,32 @@ export const PathNavigation = ({
   handleRightArrow,
   setIsAngsNavigationVisible,
 }: PathNavigationProps) => {
+  const handleLeftArrowPress = () => {
+    trackEvent('PreviousAngsByTopNav', 'click', 'previous ang from top nav');
+    handleLeftArrow(pathAng);
+  };
+  const handleRightArrowPress = () => {
+    trackEvent('NextAngsByTopNav', 'click', 'next ang from top nav');
+    handleRightArrow(pathAng);
+  };
+  const handleAngsNavigationPress = () => {
+    trackEvent('AngsByAngsNavigation', 'click', 'opened angs navigation');
+    setIsAngsNavigationVisible(true);
+  };
   return (
     <View style={PathNavigationStyles.navContainer}>
       <TouchableOpacity
         style={PathNavigationStyles.arrowButton}
-        onPress={() => handleLeftArrow(pathAng)}
+        onPress={handleLeftArrowPress}
         accessibilityLabel={`Previous ang: ${pathPujabiAng}`}
         accessibilityRole="button"
         accessibilityHint="Tap to go to previous ang"
       >
-        <NavContent
-          navIcon={<LeftArrowIcon color="#fff" />}
-          onPress={() => handleLeftArrow(pathAng)}
-        />
+        <NavContent navIcon={<LeftArrowIcon color="#fff" />} onPress={handleLeftArrowPress} />
       </TouchableOpacity>
       <TouchableOpacity
         style={PathNavigationStyles.angs}
-        onPress={() => setIsAngsNavigationVisible(true)}
+        onPress={handleAngsNavigationPress}
         accessibilityLabel={`Current ang: ${pathPujabiAng}`}
         accessibilityRole="button"
         accessibilityHint="Tap to open angs navigation"
@@ -44,15 +54,12 @@ export const PathNavigation = ({
       </TouchableOpacity>
       <TouchableOpacity
         style={[PathNavigationStyles.arrowButton, PathNavigationStyles.arrowButtonRight]}
-        onPress={() => handleRightArrow(pathAng)}
+        onPress={handleRightArrowPress}
         accessibilityLabel={`Next ang: ${pathPujabiAng}`}
         accessibilityRole="button"
         accessibilityHint="Tap to go to next ang"
       >
-        <NavContent
-          navIcon={<RightArrowIcon color="#fff" />}
-          onPress={() => handleRightArrow(pathAng)}
-        />
+        <NavContent navIcon={<RightArrowIcon color="#fff" />} onPress={handleRightArrowPress} />
       </TouchableOpacity>
     </View>
   );

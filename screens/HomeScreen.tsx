@@ -5,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
+import { PathData, useLocal, useScreenAnalytics } from '@hooks';
+import { showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
-import { PathData, useLocal } from '@hooks';
-import { showErrorAlert } from '@utils';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 
@@ -18,7 +18,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const { fetchFromLocal, handleNewPath } = useLocal();
   const errorAlertShownRef = useRef(false);
   const isLoadingRef = useRef(false);
-
+  useScreenAnalytics('HomeScreen', 'HomeScreen');
   const { pathInProgress, pathCompleted } = useMemo(() => {
     const completed = pathDataArrayFromLocal.filter(
       (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
@@ -82,6 +82,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   );
 
   const handleStart = useCallback(async () => {
+    trackEvent('PathCreated', 'click', 'start new path');
     try {
       const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
       setPathDataArrayFromLocal(pathDataArray);

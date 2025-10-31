@@ -10,7 +10,7 @@ export { PrimaryCard } from './PrimaryCard';
 export { Label } from './Label';
 export { ImportantText } from './ImportantText';
 export { Headline } from './Headline';
-export { Larivaar, FontSize, Angs } from './Settings';
+export { Larivaar, FontSize, Angs, Analytics } from './Settings';
 export { PathRename } from './PathRename';
 export { Calender } from './Calender';
 export { PathReader } from './PathReader';

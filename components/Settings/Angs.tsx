@@ -6,7 +6,7 @@ import { AngsFormatArray } from '@constants';
 import { AngsFormat, useLocal } from '@hooks';
 import { LeftArrowIcon, RightChevronIcon } from '@icons';
 import { AngsFormatStyles } from '@styles';
-import { showErrorAlert } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { ErrorConstants, Constants } from '@constants';
 
 export const Angs = () => {
@@ -18,6 +18,7 @@ export const Angs = () => {
   const handleAngsFormat = async (format: AngsFormat) => {
     try {
       setAngsFormat(format);
+      trackEvent('Settings', 'click', `changed angs format to ${format.format}`);
       handleToggle();
       await saveAngsFormat(format);
     } catch (error) {

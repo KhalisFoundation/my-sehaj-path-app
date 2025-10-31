@@ -1,16 +1,18 @@
 import React from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { NavContent, SimpleText, FontSize, Larivaar, Angs } from '@components';
+import { NavContent, SimpleText, FontSize, Larivaar, Angs, Analytics } from '@components';
 import { LeftArrowIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
+import { useScreenAnalytics } from '@hooks';
 import { Constants, EDGES_ALL_SIDES } from '@constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 
 export const Settings = ({ navigation }: SettingProps) => {
+  useScreenAnalytics('Settings', 'Settings');
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <View style={SettingScreenStyle.container}>
@@ -43,6 +45,10 @@ export const Settings = ({ navigation }: SettingProps) => {
             </View>
             <Larivaar />
           </View>
+          <View>
+            <SimpleText simpleText={'Other Settings'} />
+          </View>
+          <Analytics />
         </View>
       </View>
     </SafeAreaView>
