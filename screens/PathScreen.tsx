@@ -25,6 +25,7 @@ import {
   PathNavigation,
 } from '@components';
 import { RootStackParamList } from '../App';
+import { useScreenAnalytics } from '@hooks';
 import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
@@ -60,6 +61,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const { checkNetwork, isOnline } = useInternet();
   const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
     useLocal();
+
+  useScreenAnalytics('PathScreen', 'PathScreen');
 
   const fetchFromBaniDB = async (angNumber: number) => {
     alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
@@ -120,11 +123,22 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       duration: 200,
       useNativeDriver: true,
     }).start(() => {
-      handleUpdatePath(route.params.pathId, pathAng, savedPathVerseId, scorllOffset.current, () => {
-        setIsSaved(false);
-      });
+      try {
+        handleUpdatePath(
+          route.params.pathId,
+          pathAng,
+          savedPathVerseId,
+          scorllOffset.current,
+          () => {
+            setIsSaved(false);
+          }
+        );
+      } catch (error) {
+        // Silently handle error to prevent infinite loop in debounced function
+        // Error is already handled at the UI level where user initiated the action
+      }
     });
-  }, [handleUpdatePath]);
+  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate,

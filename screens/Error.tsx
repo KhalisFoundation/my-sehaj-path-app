@@ -6,8 +6,10 @@ import { HomeIcon, LeftArrowIcon } from '@icons';
 import { ErrorScreenStyles } from '@styles';
 import { RootStackParamList } from '../App';
 import { ErrorConstants, Routes } from '@constants';
+import { useScreenAnalytics } from '@hooks/useScreenAnalytics';
 
 export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Error'>) => {
+  useScreenAnalytics('Error', 'Error');
   return (
     <ScrollView contentContainerStyle={ErrorScreenStyles.container}>
       <Image
