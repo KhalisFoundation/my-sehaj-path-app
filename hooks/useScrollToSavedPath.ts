@@ -42,9 +42,11 @@ export const useScrollToSavedPath = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setIsSaving(false);
-      setIsSaved(false);
-      setFound(false);
+      requestAnimationFrame(() => {
+        setIsSaving(false);
+        setIsSaved(false);
+        setFound(false);
+      });
     });
   }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
 

@@ -52,15 +52,21 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const scrolledToSavedPath = useRef<boolean>(false);
   const scorllOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
-  const alertIndicator = useRef<React.ReactNode>();
+  const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
   const alertText = useRef<string>('Loading ... ');
-  const debounceTimer = useRef<NodeJS.Timeout | void | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | void | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { checkNetwork, isOnline } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
-    useLocal();
+  const {
+    fetchFromLocal,
+    handleUpdatePathWithErrorHandling,
+    handleUpdatePath,
+    fetchLarivaar,
+    fetchFontSize,
+    fetchAngsFormat,
+  } = useLocal();
 
   useScreenAnalytics('PathScreen', 'PathScreen');
 
@@ -227,14 +233,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         duration: 2500,
         useNativeDriver: true,
       }).start(() => {
-        setIsSaved(false);
-        setIsSaving(false);
-        Animated.timing(new Animated.Value(0), {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start(() => {
-          setFound(false);
+        Promise.resolve().then(() => {
+          setIsSaved(false);
+          setIsSaving(false);
+          Animated.timing(new Animated.Value(0), {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start(() => {
+            Promise.resolve().then(() => {
+              setFound(false);
+            });
+          });
         });
       });
     }
@@ -355,7 +365,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           handleLeftArrow={handleLeftArrow}
           setPressIndex={setPressIndex}
           setSavedPathVerseId={setSavedPathVerseId}
-          handleUpdatePath={handleUpdatePath}
+          handleUpdatePathWithErrorHandling={handleUpdatePathWithErrorHandling}
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
           pathId={route.params.pathId}

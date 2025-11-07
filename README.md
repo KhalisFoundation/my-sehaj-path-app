@@ -96,8 +96,6 @@ my-sehaj-path-app/
 
 2. **Install dependencies**
    ```bash
-   npm install
-   # or
    yarn install
    ```
 
@@ -110,8 +108,6 @@ my-sehaj-path-app/
 
 4. **Start Metro bundler**
    ```bash
-   npm start
-   # or
    yarn start
    ```
 
@@ -119,14 +115,14 @@ my-sehaj-path-app/
 
    **For Android:**
    ```bash
-   npm run android
+   npx react-native run-android
    # or
    yarn android
    ```
 
    **For iOS:**
    ```bash
-   npm run ios
+   npx react-native run-ios
    # or
    yarn ios
    ```
@@ -181,8 +177,6 @@ The app uses several key dependencies:
 
 Run the test suite:
 ```bash
-npm test
-# or
 yarn test
 ```
 

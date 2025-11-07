@@ -5,8 +5,6 @@ import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { trackEvent } from '@utils/analytics';
-import { showErrorAlert } from '@utils';
-import { ErrorConstants } from '@constants';
 
 interface PathReaderProps {
   pathContent: any;
@@ -14,15 +12,15 @@ interface PathReaderProps {
   isSaving: boolean;
   pressIndex: number;
   savedPathVerseId: number;
-  scrollRef: React.RefObject<ScrollView>;
-  scorllOffset: React.MutableRefObject<number>;
+  scrollRef: React.RefObject<ScrollView | null>;
+  scorllOffset: React.RefObject<number>;
   isAngNavigation: boolean;
   debouncedScrollSave: () => void;
   handleRightArrow: (pageNo: number) => void;
   handleLeftArrow: (pageNo: number) => void;
   setPressIndex: (index: number) => void;
   setSavedPathVerseId: (verseId: number) => void;
-  handleUpdatePath: (
+  handleUpdatePathWithErrorHandling: (
     pathId: number,
     pageNo: number,
     verseId: number,
@@ -52,7 +50,7 @@ export const PathReader = React.memo(
     handleLeftArrow,
     setPressIndex,
     setSavedPathVerseId,
-    handleUpdatePath,
+    handleUpdatePathWithErrorHandling,
     setIsSaving,
     setIsSaved,
     pathId,
@@ -63,21 +61,6 @@ export const PathReader = React.memo(
     const handleAngChange = () => {
       trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
       handleRightArrow(pathContent?.source?.pageNo);
-    };
-    const handleSave = async () => {
-      try {
-        await handleUpdatePath(
-          pathId,
-          pathContent?.source?.pageNo,
-          savedPathVerseId,
-          scorllOffset.current,
-          setIsSaved
-        );
-      } catch (error) {
-        setIsSaving(false);
-        setIsSaved(false);
-        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
-      }
     };
     return (
       <GestureRecognizer
@@ -115,7 +98,15 @@ export const PathReader = React.memo(
                     setSavedPathVerseId(path.verseId);
                   }
                 }}
-                onSave={handleSave}
+                onSave={() =>
+                  handleUpdatePathWithErrorHandling(
+                    pathId,
+                    pathContent?.source?.pageNo,
+                    path.verseId,
+                    scorllOffset.current,
+                    setIsSaved
+                  )
+                }
                 isSaving={isSaving}
                 pressIndex={pressIndex}
                 index={index + 1}
