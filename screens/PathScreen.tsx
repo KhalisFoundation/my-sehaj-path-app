@@ -50,7 +50,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [needsRetry, setNeedsRetry] = useState<boolean>(false);
   const [lastFailedAng, setLastFailedAng] = useState<number | null>(null);
   const scrolledToSavedPath = useRef<boolean>(false);
-  const scorllOffset = useRef<number>(0);
+  const scrollOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
   const alertText = useRef<string>('Loading ... ');
@@ -99,7 +99,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       clearTimeout(currentDebounceTimer);
       debounceTimer.current = null;
     }
-    scorllOffset.current = 0;
+    scrollOffset.current = 0;
     scrollRef.current?.scrollTo({
       y: 0,
       animated: false,
@@ -110,7 +110,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     isNavigating,
     setIsNavigating,
     setIsSaving,
-    scorllOffset,
+    scrollOffset,
     scrollRef,
     setAngNavigationNumber,
     setPathPunjabiAng,
@@ -134,7 +134,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           route.params.pathId,
           pathAng,
           savedPathVerseId,
-          scorllOffset.current,
+          scrollOffset.current,
           () => {
             setIsSaved(false);
           }
@@ -152,7 +152,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     savedPathVerseId,
     scrolledToSavedPath,
     scrollRef,
-    scorllOffset,
+    scrollOffset,
     fadeAnim: fadeAnim.current,
     setFound,
     setIsSaving,
@@ -185,7 +185,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setIsSaved,
     setIsAngNavigation,
     updatePathAng,
-    scorllOffset,
+    scrollOffset,
     navigation,
   });
 
@@ -358,7 +358,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           pressIndex={pressIndex}
           savedPathVerseId={savedPathVerseId}
           scrollRef={scrollRef}
-          scorllOffset={scorllOffset}
+          scrollOffset={scrollOffset}
           isAngNavigation={isAngNavigation}
           debouncedScrollSave={debouncedScrollSave}
           handleRightArrow={handleRightArrow}

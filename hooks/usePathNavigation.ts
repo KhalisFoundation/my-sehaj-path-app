@@ -14,7 +14,7 @@ interface UsePathNavigationProps {
   setIsSaved: (value: boolean) => void;
   setIsAngNavigation: (value: boolean) => void;
   updatePathAng: (angNumber: number) => void;
-  scorllOffset: React.MutableRefObject<number>;
+  scrollOffset: React.MutableRefObject<number>;
   navigation: NavigationProp;
 }
 
@@ -26,7 +26,7 @@ export const usePathNavigation = ({
   setIsSaved,
   setIsAngNavigation,
   updatePathAng,
-  scorllOffset,
+  scrollOffset,
   navigation,
 }: UsePathNavigationProps) => {
   const { fetchFromLocal, handleUpdatePath } = useLocal();
@@ -40,7 +40,7 @@ export const usePathNavigation = ({
       if (pathAng !== lastSavedAngNumber) {
         showSaveProgressAlert({
           onSaveAndGoBack: () => {
-            handleUpdatePath(pathId, pathAng, savedPathVerseId, scorllOffset.current, setIsSaved);
+            handleUpdatePath(pathId, pathAng, savedPathVerseId, scrollOffset.current, setIsSaved);
             setIsAngNavigation(false);
             navigation.push('Home');
           },
@@ -66,7 +66,7 @@ export const usePathNavigation = ({
     navigation,
     fetchFromLocal,
     updatePathAng,
-    scorllOffset,
+    scrollOffset,
   ]);
 
   return { handleGoBack };

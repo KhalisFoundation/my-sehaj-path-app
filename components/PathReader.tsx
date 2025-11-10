@@ -13,7 +13,7 @@ interface PathReaderProps {
   pressIndex: number;
   savedPathVerseId: number;
   scrollRef: React.RefObject<ScrollView | null>;
-  scorllOffset: React.RefObject<number>;
+  scrollOffset: React.RefObject<number>;
   isAngNavigation: boolean;
   debouncedScrollSave: () => void;
   handleRightArrow: (pageNo: number) => void;
@@ -43,7 +43,7 @@ export const PathReader = React.memo(
     pressIndex,
     savedPathVerseId,
     scrollRef,
-    scorllOffset,
+    scrollOffset,
     isAngNavigation,
     debouncedScrollSave,
     handleRightArrow,
@@ -79,7 +79,7 @@ export const PathReader = React.memo(
           ref={scrollRef}
           onScroll={(e) => {
             const scrollY = e.nativeEvent.contentOffset.y;
-            scorllOffset.current = scrollY;
+            scrollOffset.current = scrollY;
             if (!isAngNavigation) {
               debouncedScrollSave();
             }
@@ -103,7 +103,7 @@ export const PathReader = React.memo(
                     pathId,
                     pathContent?.source?.pageNo,
                     path.verseId,
-                    scorllOffset.current,
+                    scrollOffset.current,
                     setIsSaved
                   )
                 }
