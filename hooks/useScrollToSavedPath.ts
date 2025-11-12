@@ -10,7 +10,7 @@ interface UseScrollToSavedPathProps {
   savedPathVerseId: number;
   scrolledToSavedPath: React.MutableRefObject<boolean>;
   scrollRef: React.MutableRefObject<ScrollView | null>;
-  scorllOffset: React.MutableRefObject<number>;
+  scrollOffset: React.MutableRefObject<number>;
   fadeAnim: Animated.Value;
   setFound: (value: boolean) => void;
   setIsSaving: (value: boolean) => void;
@@ -24,7 +24,7 @@ export const useScrollToSavedPath = ({
   savedPathVerseId,
   scrolledToSavedPath,
   scrollRef,
-  scorllOffset,
+  scrollOffset,
   fadeAnim,
   setFound,
   setIsSaving,
@@ -42,18 +42,20 @@ export const useScrollToSavedPath = ({
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setIsSaving(false);
-      setIsSaved(false);
-      setFound(false);
+      requestAnimationFrame(() => {
+        setIsSaving(false);
+        setIsSaved(false);
+        setFound(false);
+      });
     });
   }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
 
   const scrollToSavedPathData = useCallback(async () => {
     if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
-      scorllOffset.current = matchedPathDate.scrollPosition;
+      scrollOffset.current = matchedPathDate.scrollPosition;
       if (scrollRef.current) {
         scrollRef.current.scrollTo({
-          y: scorllOffset.current,
+          y: scrollOffset.current,
           animated: true,
         });
       }
@@ -80,10 +82,10 @@ export const useScrollToSavedPath = ({
           scrollHeight = 150;
         }
         if (scrollIndex !== -1) {
-          scorllOffset.current = scrollIndex * scrollHeight;
+          scrollOffset.current = scrollIndex * scrollHeight;
           if (scrollRef.current) {
             scrollRef.current.scrollTo({
-              y: scorllOffset.current,
+              y: scrollOffset.current,
               animated: true,
             });
           }
@@ -101,7 +103,7 @@ export const useScrollToSavedPath = ({
     savedPathVerseId,
     scrolledToSavedPath,
     scrollRef,
-    scorllOffset,
+    scrollOffset,
     fadeAnim,
     runFadeSequence,
     fetchFontSize,

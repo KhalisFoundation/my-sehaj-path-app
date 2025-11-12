@@ -50,17 +50,23 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [needsRetry, setNeedsRetry] = useState<boolean>(false);
   const [lastFailedAng, setLastFailedAng] = useState<number | null>(null);
   const scrolledToSavedPath = useRef<boolean>(false);
-  const scorllOffset = useRef<number>(0);
+  const scrollOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
-  const alertIndicator = useRef<React.ReactNode>();
+  const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
   const alertText = useRef<string>('Loading ... ');
-  const debounceTimer = useRef<NodeJS.Timeout | void | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | void | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { checkNetwork, isOnline } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
-    useLocal();
+  const {
+    fetchFromLocal,
+    handleUpdatePathWithErrorHandling,
+    handleUpdatePath,
+    fetchLarivaar,
+    fetchFontSize,
+    fetchAngsFormat,
+  } = useLocal();
 
   useScreenAnalytics('PathScreen', 'PathScreen');
 
@@ -93,7 +99,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       clearTimeout(currentDebounceTimer);
       debounceTimer.current = null;
     }
-    scorllOffset.current = 0;
+    scrollOffset.current = 0;
     scrollRef.current?.scrollTo({
       y: 0,
       animated: false,
@@ -104,7 +110,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     isNavigating,
     setIsNavigating,
     setIsSaving,
-    scorllOffset,
+    scrollOffset,
     scrollRef,
     setAngNavigationNumber,
     setPathPunjabiAng,
@@ -128,7 +134,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           route.params.pathId,
           pathAng,
           savedPathVerseId,
-          scorllOffset.current,
+          scrollOffset.current,
           () => {
             setIsSaved(false);
           }
@@ -146,7 +152,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     savedPathVerseId,
     scrolledToSavedPath,
     scrollRef,
-    scorllOffset,
+    scrollOffset,
     fadeAnim: fadeAnim.current,
     setFound,
     setIsSaving,
@@ -179,7 +185,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setIsSaved,
     setIsAngNavigation,
     updatePathAng,
-    scorllOffset,
+    scrollOffset,
     navigation,
   });
 
@@ -227,14 +233,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         duration: 2500,
         useNativeDriver: true,
       }).start(() => {
-        setIsSaved(false);
-        setIsSaving(false);
-        Animated.timing(new Animated.Value(0), {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }).start(() => {
-          setFound(false);
+        Promise.resolve().then(() => {
+          setIsSaved(false);
+          setIsSaving(false);
+          Animated.timing(new Animated.Value(0), {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start(() => {
+            Promise.resolve().then(() => {
+              setFound(false);
+            });
+          });
         });
       });
     }
@@ -348,14 +358,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           pressIndex={pressIndex}
           savedPathVerseId={savedPathVerseId}
           scrollRef={scrollRef}
-          scorllOffset={scorllOffset}
+          scrollOffset={scrollOffset}
           isAngNavigation={isAngNavigation}
           debouncedScrollSave={debouncedScrollSave}
           handleRightArrow={handleRightArrow}
           handleLeftArrow={handleLeftArrow}
           setPressIndex={setPressIndex}
           setSavedPathVerseId={setSavedPathVerseId}
-          handleUpdatePath={handleUpdatePath}
+          handleUpdatePathWithErrorHandling={handleUpdatePathWithErrorHandling}
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
           pathId={route.params.pathId}

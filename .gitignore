@@ -3,11 +3,6 @@
 # dependencies
 node_modules/
 
-# Expo
-.expo/
-dist/
-web-build/
-
 # Native
 *.orig.*
 *.jks
@@ -34,7 +29,6 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-*.lock
 # Xcode
 #
 build/
@@ -66,6 +60,7 @@ local.properties
 *.keystore
 !debug.keystore
 release/
+.kotlin/
 
 # CocoaPods
 /ios/Pods/

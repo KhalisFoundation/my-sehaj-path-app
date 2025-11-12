@@ -133,6 +133,19 @@ export const useLocal = () => {
       throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
     }
   };
+  const handleUpdatePathWithErrorHandling = async (
+    pathId: number,
+    angNumber: number,
+    verseId: number,
+    scrollPosition: number,
+    setIsSaved: (value: boolean) => void
+  ) => {
+    try {
+      await handleUpdatePath(pathId, angNumber, verseId, scrollPosition, setIsSaved);
+    } catch (error) {
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+    }
+  };
 
   const renamePath = async (pathId: number, pathName: string) => {
     try {
@@ -242,5 +255,6 @@ export const useLocal = () => {
     fetchAngsFormat,
     saveConsent,
     fetchConsent,
+    handleUpdatePathWithErrorHandling,
   };
 };

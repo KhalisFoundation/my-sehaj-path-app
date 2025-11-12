@@ -7,11 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00E356F31AD99517003FC87E /* KhalisSehajPathAppTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* KhalisSehajPathAppTests.m */; };
 		0D9A028F177A44BAA8316286 /* BrandonGrotesque-Light.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */; };
-		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
-		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
 		1A01F1A6F6774A77A07FF862 /* BrandonGrotesque-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */; };
 		1D2DD3253B524FFEB7485125 /* BrandonGrotesque-BlackItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */; };
 		21C39197FD014DA6B1BE35CE /* BrandonGrotesque-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */; };
@@ -19,10 +16,10 @@
 		389A992A994513AFAB5C031D /* Pods_KhalisSehajPathApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = EB13008E9013AD20A6773322 /* Pods_KhalisSehajPathApp.framework */; };
 		4B03546C4C814DDA8350D70A /* BalooPaaji2-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */; };
 		6FED06782EAAD4B6002C9687 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6FED06772EAAD4B6002C9687 /* GoogleService-Info.plist */; };
+		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7DE83A1E107669805AFD1E19 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		80C02B58B31D49FFAF412660 /* BrandonGrotesque-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		8A724016B718D615415AF588 /* Pods_KhalisSehajPathApp_KhalisSehajPathAppTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3790D066EBF16D3914343D91 /* Pods_KhalisSehajPathApp_KhalisSehajPathAppTests.framework */; };
 		8CADD610462B4E5385B92D89 /* BalooPaaji2-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */; };
 		9493EE1A2685417780AA4FC4 /* BrandonGrotesque-ThinItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */; };
 		9EB71E63A42C410583F10A08 /* BalooPaaji2-ExtraBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */; };
@@ -36,26 +33,10 @@
 		DFB9BC4FDB5548198E8AE4A2 /* BrandonGrotesque-BoldItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXContainerItemProxy section */
-		00E356F41AD99517003FC87E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 13B07F861A680F5B00A75B9A;
-			remoteInfo = KhalisSehajPathApp;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
-		00E356EE1AD99517003FC87E /* KhalisSehajPathAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = KhalisSehajPathAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		00E356F21AD99517003FC87E /* KhalisSehajPathAppTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = KhalisSehajPathAppTests.m; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* KhalisSehajPathApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KhalisSehajPathApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = KhalisSehajPathApp/AppDelegate.h; sourceTree = "<group>"; };
-		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = KhalisSehajPathApp/AppDelegate.mm; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = KhalisSehajPathApp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = KhalisSehajPathApp/Info.plist; sourceTree = "<group>"; };
-		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = KhalisSehajPathApp/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = KhalisSehajPathApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-RegularItalic.otf"; path = "../assets/fonts/BrandonGrotesque-RegularItalic.otf"; sourceTree = "<group>"; };
 		1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Medium.ttf"; path = "../assets/fonts/BalooPaaji2-Medium.ttf"; sourceTree = "<group>"; };
@@ -63,16 +44,15 @@
 		3B4392A12AC88292D35C810B /* Pods-KhalisSehajPathApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp.debug.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp.debug.xcconfig"; sourceTree = "<group>"; };
 		4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Black.otf"; path = "../assets/fonts/BrandonGrotesque-Black.otf"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-KhalisSehajPathApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp.release.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp.release.xcconfig"; sourceTree = "<group>"; };
-		5B7EB9410499542E8C5724F5 /* Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.debug.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.debug.xcconfig"; sourceTree = "<group>"; };
 		5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BoldItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BoldItalic.otf"; sourceTree = "<group>"; };
 		6FED06772EAAD4B6002C9687 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-LightItalic.otf"; path = "../assets/fonts/BrandonGrotesque-LightItalic.otf"; sourceTree = "<group>"; };
+		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = KhalisSehajPathApp/AppDelegate.swift; sourceTree = "<group>"; };
 		76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Bold.ttf"; path = "../assets/fonts/BalooPaaji2-Bold.ttf"; sourceTree = "<group>"; };
 		78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Recoleta-RegularDEMO.otf"; path = "../assets/fonts/Recoleta-RegularDEMO.otf"; sourceTree = "<group>"; };
 		7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Light.otf"; path = "../assets/fonts/BrandonGrotesque-Light.otf"; sourceTree = "<group>"; };
 		7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-SemiBold.ttf"; path = "../assets/fonts/BalooPaaji2-SemiBold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = KhalisSehajPathApp/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		89C6BE57DB24E9ADA2F236DE /* Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.release.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.release.xcconfig"; sourceTree = "<group>"; };
 		98287716EC594885A6AE1B7A /* BrandonGrotesque-Bold.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Bold.otf"; path = "../assets/fonts/BrandonGrotesque-Bold.otf"; sourceTree = "<group>"; };
 		98DD8ACBEE4D4E5285C76DA5 /* BalooPaaji2-ExtraBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-ExtraBold.ttf"; path = "../assets/fonts/BalooPaaji2-ExtraBold.ttf"; sourceTree = "<group>"; };
 		9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-ThinItalic.otf"; path = "../assets/fonts/BrandonGrotesque-ThinItalic.otf"; sourceTree = "<group>"; };
@@ -87,14 +67,6 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		00E356EB1AD99517003FC87E /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				8A724016B718D615415AF588 /* Pods_KhalisSehajPathApp_KhalisSehajPathAppTests.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -106,32 +78,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		00E356EF1AD99517003FC87E /* KhalisSehajPathAppTests */ = {
-			isa = PBXGroup;
-			children = (
-				00E356F21AD99517003FC87E /* KhalisSehajPathAppTests.m */,
-				00E356F01AD99517003FC87E /* Supporting Files */,
-			);
-			path = KhalisSehajPathAppTests;
-			sourceTree = "<group>";
-		};
-		00E356F01AD99517003FC87E /* Supporting Files */ = {
-			isa = PBXGroup;
-			children = (
-				00E356F11AD99517003FC87E /* Info.plist */,
-			);
-			name = "Supporting Files";
-			sourceTree = "<group>";
-		};
 		13B07FAE1A68108700A75B9A /* KhalisSehajPathApp */ = {
 			isa = PBXGroup;
 			children = (
-				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
-				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
+				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
-				13B07FB71A68108700A75B9A /* main.m */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 			);
 			name = KhalisSehajPathApp;
@@ -185,7 +138,6 @@
 				6FED06772EAAD4B6002C9687 /* GoogleService-Info.plist */,
 				13B07FAE1A68108700A75B9A /* KhalisSehajPathApp */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
-				00E356EF1AD99517003FC87E /* KhalisSehajPathAppTests */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
@@ -200,7 +152,6 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* KhalisSehajPathApp.app */,
-				00E356EE1AD99517003FC87E /* KhalisSehajPathAppTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -210,8 +161,6 @@
 			children = (
 				3B4392A12AC88292D35C810B /* Pods-KhalisSehajPathApp.debug.xcconfig */,
 				5709B34CF0A7D63546082F79 /* Pods-KhalisSehajPathApp.release.xcconfig */,
-				5B7EB9410499542E8C5724F5 /* Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.debug.xcconfig */,
-				89C6BE57DB24E9ADA2F236DE /* Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -219,27 +168,6 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		00E356ED1AD99517003FC87E /* KhalisSehajPathAppTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "KhalisSehajPathAppTests" */;
-			buildPhases = (
-				680C6E2EAD4141ABAF978157 /* [CP] Check Pods Manifest.lock */,
-				00E356EA1AD99517003FC87E /* Sources */,
-				00E356EB1AD99517003FC87E /* Frameworks */,
-				00E356EC1AD99517003FC87E /* Resources */,
-				68442158D75632A0E6E79226 /* [CP] Embed Pods Frameworks */,
-				5657E96A13CBF489132234D0 /* [CP] Copy Pods Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				00E356F51AD99517003FC87E /* PBXTargetDependency */,
-			);
-			name = KhalisSehajPathAppTests;
-			productName = KhalisSehajPathAppTests;
-			productReference = 00E356EE1AD99517003FC87E /* KhalisSehajPathAppTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 		13B07F861A680F5B00A75B9A /* KhalisSehajPathApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "KhalisSehajPathApp" */;
@@ -270,10 +198,6 @@
 			attributes = {
 				LastUpgradeCheck = 1210;
 				TargetAttributes = {
-					00E356ED1AD99517003FC87E = {
-						CreatedOnToolsVersion = 6.2;
-						TestTargetID = 13B07F861A680F5B00A75B9A;
-					};
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1120;
 					};
@@ -293,19 +217,11 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* KhalisSehajPathApp */,
-				00E356ED1AD99517003FC87E /* KhalisSehajPathAppTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		00E356EC1AD99517003FC87E /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		13B07F8E1A680F5B00A75B9A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -353,62 +269,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"$WITH_ENVIRONMENT $REACT_NATIVE_XCODE\"\n";
-		};
-		5657E96A13CBF489132234D0 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
-		680C6E2EAD4141ABAF978157 /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
-		68442158D75632A0E6E79226 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests/Pods-KhalisSehajPathApp-KhalisSehajPathAppTests-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
 		};
 		93C1F8D5F2D2CF7A6BF24344 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -483,85 +343,17 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		00E356EA1AD99517003FC87E /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				00E356F31AD99517003FC87E /* KhalisSehajPathAppTests.m in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		13B07F871A680F5B00A75B9A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
-				13B07FC11A68108700A75B9A /* main.m in Sources */,
+				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin PBXTargetDependency section */
-		00E356F51AD99517003FC87E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 13B07F861A680F5B00A75B9A /* KhalisSehajPathApp */;
-			targetProxy = 00E356F41AD99517003FC87E /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
 /* Begin XCBuildConfiguration section */
-		00E356F61AD99517003FC87E /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5B7EB9410499542E8C5724F5 /* Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.debug.xcconfig */;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				INFOPLIST_FILE = KhalisSehajPathAppTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@loader_path/Frameworks",
-				);
-				OTHER_LDFLAGS = (
-					"-ObjC",
-					"-lc++",
-					"$(inherited)",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/KhalisSehajPathApp.app/KhalisSehajPathApp";
-			};
-			name = Debug;
-		};
-		00E356F71AD99517003FC87E /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = 89C6BE57DB24E9ADA2F236DE /* Pods-KhalisSehajPathApp-KhalisSehajPathAppTests.release.xcconfig */;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				COPY_PHASE_STRIP = NO;
-				INFOPLIST_FILE = KhalisSehajPathAppTests/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@loader_path/Frameworks",
-				);
-				OTHER_LDFLAGS = (
-					"-ObjC",
-					"-lc++",
-					"$(inherited)",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/KhalisSehajPathApp.app/KhalisSehajPathApp";
-			};
-			name = Release;
-		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3B4392A12AC88292D35C810B /* Pods-KhalisSehajPathApp.debug.xcconfig */;
@@ -797,15 +589,6 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "KhalisSehajPathAppTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				00E356F61AD99517003FC87E /* Debug */,
-				00E356F71AD99517003FC87E /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "KhalisSehajPathApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

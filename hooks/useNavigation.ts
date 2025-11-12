@@ -8,7 +8,7 @@ export interface UseNavigationParams {
   isNavigating: boolean;
   setIsNavigating: (value: boolean) => void;
   setIsSaving: (value: boolean) => void;
-  scorllOffset: React.MutableRefObject<number>;
+  scrollOffset: React.MutableRefObject<number>;
   scrollRef: React.MutableRefObject<ScrollView | null>;
   setAngNavigationNumber: (value: number) => void;
   setPathPunjabiAng: (value: string) => void;
@@ -22,7 +22,7 @@ export const useNavigation = ({
   isNavigating,
   setIsNavigating,
   setIsSaving,
-  scorllOffset,
+  scrollOffset,
   scrollRef,
   setAngNavigationNumber,
   setPathPunjabiAng,
@@ -42,7 +42,7 @@ export const useNavigation = ({
 
       setIsNavigating(true);
       setIsSaving(false);
-      scorllOffset.current = 0;
+      scrollOffset.current = 0;
       scrollRef.current?.scrollTo({
         y: 0,
         animated: false,
@@ -84,7 +84,7 @@ export const useNavigation = ({
       checkNetwork,
       setIsNavigating,
       setIsSaving,
-      scorllOffset,
+      scrollOffset,
       scrollRef,
       fetchFromBaniDB,
       setAngNavigationNumber,
@@ -105,7 +105,7 @@ export const useNavigation = ({
 
       setIsNavigating(true);
       setIsSaving(false);
-      scorllOffset.current = 0;
+      scrollOffset.current = 0;
       scrollRef.current?.scrollTo({
         y: 0,
         animated: false,
@@ -144,7 +144,7 @@ export const useNavigation = ({
       isNavigating,
       setIsNavigating,
       setIsSaving,
-      scorllOffset,
+      scrollOffset,
       scrollRef,
       setAngNavigationNumber,
       setPathPunjabiAng,

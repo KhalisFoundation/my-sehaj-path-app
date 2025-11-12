@@ -1,10 +1,9 @@
 import React from 'react';
-import { it, describe } from '@jest/globals';
-import { render } from '@testing-library/react-native';
+import ReactTestRenderer from 'react-test-renderer';
 import App from '../App';
 
-describe('App', () => {
-  it('renders without crashing', () => {
-    render(<App />);
+test('renders correctly', async () => {
+  await ReactTestRenderer.act(() => {
+    ReactTestRenderer.create(<App />);
   });
 });

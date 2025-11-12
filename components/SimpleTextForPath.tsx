@@ -14,7 +14,7 @@ interface Props {
   isSaving: boolean;
   pressIndex: number;
   index: number;
-  onSave: () => Promise<void>;
+  onSave: () => void;
   verseId: number;
   savedPathVerseId: number;
   setIsSaving: (value: boolean) => void;
@@ -77,22 +77,18 @@ export const SimpleTextForPath = ({
       useNativeDriver: true,
     });
 
-    animationRef.current.start(async () => {
-      onSelection();
-      setIsLongPressing(true);
-      setIsSaving(true);
-      setIsSaved(true);
-      setPressIndex(index);
-      setSavedPathVerseId(verseId);
-      try {
-        await onSave();
-      } catch (error) {
-        setIsSaving(false);
-        setIsSaved(false);
-        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
-      }
-      setIsLongPressing(false);
-      animationRef.current = null;
+    animationRef.current.start(() => {
+      requestAnimationFrame(() => {
+        onSelection();
+        setIsLongPressing(true);
+        setIsSaving(true);
+        setIsSaved(true);
+        setPressIndex(index);
+        setSavedPathVerseId(verseId);
+        onSave();
+        setIsLongPressing(false);
+        animationRef.current = null;
+      });
     });
   };
 
@@ -125,16 +121,10 @@ export const SimpleTextForPath = ({
         onLongPress={() => {
           handleLongPress();
         }}
-        onPress={async () => {
+        onPress={() => {
           if (isSaving) {
             onSelection();
-            try {
-              await onSave();
-            } catch (error) {
-              setIsSaving(false);
-              setIsSaved(false);
-              showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
-            }
+            onSave();
           }
         }}
       >
