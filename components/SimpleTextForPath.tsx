@@ -1,8 +1,7 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Text, Pressable, Animated } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Text, Pressable, Animated, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocal } from '@hooks';
-import { NavContent } from '@components';
 import { SaveIcon } from '@icons';
 import { SimpleTextForPathStyles } from '@styles';
 import { showErrorAlert } from '@utils/Error';
@@ -25,7 +24,7 @@ interface Props {
   setFound: (value: boolean) => void;
 }
 
-export const SimpleTextForPath = ({
+const SimpleTextForPathComponent = ({
   gurbaniLine,
   onSelection,
   isSaving,
@@ -42,8 +41,8 @@ export const SimpleTextForPath = ({
   setFound,
 }: Props) => {
   const [fontSize, setFontSize] = useState<number>(18);
-  const [isLongPressing, setIsLongPressing] = useState(false);
-
+  const isLongPressingRef = useRef<boolean>(false);
+  const animationValueRef = useRef(new Animated.Value(0));
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
   const { fetchFontSize } = useLocal();
 
@@ -62,35 +61,52 @@ export const SimpleTextForPath = ({
     }, [fetchFontSize])
   );
 
-  const handleLongPress = () => {
-    if (isLongPressing) {
+  const handleLongPress = useCallback(() => {
+    if (isLongPressingRef.current) {
       return;
     }
+    isLongPressingRef.current = true;
     if (found) {
       setFound(false);
     }
-    setIsSaving(false);
-    setIsSaved(false);
-    animationRef.current = Animated.timing(new Animated.Value(0), {
+    if (animationRef.current) {
+      animationRef.current.stop();
+    }
+    animationValueRef.current.setValue(0);
+    animationRef.current = Animated.timing(animationValueRef.current, {
       toValue: 1,
-      duration: 100,
+      duration: 50,
       useNativeDriver: true,
     });
 
     animationRef.current.start(() => {
       requestAnimationFrame(() => {
+        setIsSaving(false);
+        setIsSaved(false);
         onSelection();
-        setIsLongPressing(true);
         setIsSaving(true);
         setIsSaved(true);
         setPressIndex(index);
         setSavedPathVerseId(verseId);
         onSave();
-        setIsLongPressing(false);
-        animationRef.current = null;
+        setTimeout(() => {
+          isLongPressingRef.current = false;
+          animationRef.current = null;
+        }, 100);
       });
     });
-  };
+  }, [
+    found,
+    setFound,
+    setIsSaving,
+    setIsSaved,
+    onSelection,
+    setPressIndex,
+    index,
+    setSavedPathVerseId,
+    verseId,
+    onSave,
+  ]);
 
   useEffect(() => {
     return () => {
@@ -100,48 +116,68 @@ export const SimpleTextForPath = ({
     };
   }, []);
 
-  const isSelected = verseId === savedPathVerseId || (isSaving && pressIndex === index);
-  const accessibilityLabel = `Gurbani line ${index + 1}${isSelected ? ', selected' : ''}`;
+  const isSelected = useMemo(
+    () => verseId === savedPathVerseId || (isSaving && pressIndex === index),
+    [verseId, savedPathVerseId, isSaving, pressIndex, index]
+  );
+
+  const accessibilityLabel = useMemo(
+    () => `Gurbani line ${index + 1}${isSelected ? ', selected' : ''}`,
+    [index, isSelected]
+  );
+
+  const textStyle = useMemo(
+    () => ({
+      ...SimpleTextForPathStyles.text,
+      fontSize,
+      lineHeight: fontSize * 2.2,
+    }),
+    [fontSize]
+  );
+
+  const containerStyle = useMemo(
+    () => (isSelected ? SimpleTextForPathStyles.coloredContainer : undefined),
+    [isSelected]
+  );
 
   return (
     <Pressable
-      onPress={onSelection}
-      style={isSelected && SimpleTextForPathStyles.coloredContainer}
+      onPress={() => {
+        if (isSaving) {
+          onSelection();
+          onSave();
+        }
+      }}
+      style={containerStyle}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      onLongPress={handleLongPress}
+      delayLongPress={Platform.OS === 'ios' ? 150 : 500}
+      pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
       accessibilityHint="Tap to select, long press to save this line"
     >
-      <Text
-        suppressHighlighting={true}
-        style={{
-          ...SimpleTextForPathStyles.text,
-          fontSize,
-          lineHeight: fontSize * 2.2,
-        }}
-        onLongPress={() => {
-          handleLongPress();
-        }}
-        onPress={() => {
-          if (isSaving) {
-            onSelection();
-            onSave();
-          }
-        }}
-      >
+      <Text suppressHighlighting={true} style={textStyle}>
         {gurbaniLine}
-        {(verseId === savedPathVerseId || (isSaving && pressIndex === index)) && (
-          <NavContent
-            navIcon={
-              <SaveIcon
-                color={UIConstants.SAVE_ICON_COLOR}
-                width={fontSize * 1.2}
-                height={fontSize * 1.2}
-              />
-            }
-            iconsStyle={SimpleTextForPathStyles.saveIconContainer}
+        {isSelected && (
+          <SaveIcon
+            color={UIConstants.SAVE_ICON_COLOR}
+            width={fontSize * 1.2}
+            height={fontSize * 1.2}
           />
         )}
       </Text>
     </Pressable>
   );
 };
+
+export const SimpleTextForPath = React.memo(SimpleTextForPathComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.gurbaniLine === nextProps.gurbaniLine &&
+    prevProps.isSaving === nextProps.isSaving &&
+    prevProps.pressIndex === nextProps.pressIndex &&
+    prevProps.index === nextProps.index &&
+    prevProps.verseId === nextProps.verseId &&
+    prevProps.savedPathVerseId === nextProps.savedPathVerseId &&
+    prevProps.found === nextProps.found
+  );
+});

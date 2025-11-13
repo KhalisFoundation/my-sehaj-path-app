@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import GestureRecognizer from 'react-native-swipe-gestures';
 import { ScrollView } from 'react-native';
 import { SimpleTextForPath } from '@components';
@@ -35,97 +35,157 @@ interface PathReaderProps {
   setFound: (value: boolean) => void;
 }
 
-export const PathReader = React.memo(
-  ({
-    pathContent,
+const PathReaderComponent = ({
+  pathContent,
+  isLarivaar,
+  isSaving,
+  pressIndex,
+  savedPathVerseId,
+  scrollRef,
+  scrollOffset,
+  isAngNavigation,
+  debouncedScrollSave,
+  handleRightArrow,
+  handleLeftArrow,
+  setPressIndex,
+  setSavedPathVerseId,
+  handleUpdatePathWithErrorHandling,
+  setIsSaving,
+  setIsSaved,
+  pathId,
+  isNavigating,
+  found,
+  setFound,
+}: PathReaderProps) => {
+  const handleAngChange = useCallback(() => {
+    trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
+    handleRightArrow(pathContent?.source?.pageNo);
+  }, [handleRightArrow, pathContent?.source?.pageNo]);
+
+  const handleSwipeLeft = useCallback(() => {
+    handleRightArrow(pathContent?.source?.pageNo);
+  }, [handleRightArrow, pathContent?.source?.pageNo]);
+
+  const handleSwipeRight = useCallback(() => {
+    handleLeftArrow(pathContent?.source?.pageNo);
+  }, [handleLeftArrow, pathContent?.source?.pageNo]);
+
+  const handleScroll = useCallback(
+    (e: any) => {
+      const scrollY = e.nativeEvent.contentOffset.y;
+      scrollOffset.current = scrollY;
+      if (!isAngNavigation) {
+        debouncedScrollSave();
+      }
+    },
+    [isAngNavigation, debouncedScrollSave, scrollOffset]
+  );
+
+  const gestureConfig = useMemo(
+    () => ({
+      velocityThreshold: 0.8,
+      directionalOffsetThreshold: 80,
+      gestureIsClickThreshold: 10,
+    }),
+    []
+  );
+
+  const createSelectionHandler = useCallback(
+    (index: number, verseId: number) => () => {
+      if (isSaving) {
+        setPressIndex(index + 1);
+        setSavedPathVerseId(verseId);
+      }
+    },
+    [isSaving, setPressIndex, setSavedPathVerseId]
+  );
+
+  const createSaveHandler = useCallback(
+    (verseId: number) => () => {
+      handleUpdatePathWithErrorHandling(
+        pathId,
+        pathContent?.source?.pageNo,
+        verseId,
+        scrollOffset.current,
+        setIsSaved
+      );
+    },
+    [
+      pathId,
+      pathContent?.source?.pageNo,
+      scrollOffset,
+      handleUpdatePathWithErrorHandling,
+      setIsSaved,
+    ]
+  );
+
+  const pageContent = useMemo(() => {
+    return pathContent?.page?.map((path: any, index: number) => {
+      const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
+
+      return (
+        <SimpleTextForPath
+          key={`${path.verseId}-${index}`}
+          gurbaniLine={gurbaniLine}
+          onSelection={createSelectionHandler(index, path.verseId)}
+          onSave={createSaveHandler(path.verseId)}
+          isSaving={isSaving}
+          pressIndex={pressIndex}
+          index={index + 1}
+          verseId={path.verseId}
+          savedPathVerseId={savedPathVerseId}
+          setIsSaving={setIsSaving}
+          setIsSaved={setIsSaved}
+          setPressIndex={setPressIndex}
+          setSavedPathVerseId={setSavedPathVerseId}
+          found={found}
+          setFound={setFound}
+        />
+      );
+    });
+  }, [
+    pathContent?.page,
     isLarivaar,
     isSaving,
     pressIndex,
     savedPathVerseId,
-    scrollRef,
-    scrollOffset,
-    isAngNavigation,
-    debouncedScrollSave,
-    handleRightArrow,
-    handleLeftArrow,
-    setPressIndex,
-    setSavedPathVerseId,
-    handleUpdatePathWithErrorHandling,
+    createSelectionHandler,
+    createSaveHandler,
     setIsSaving,
     setIsSaved,
-    pathId,
-    isNavigating,
+    setPressIndex,
+    setSavedPathVerseId,
     found,
     setFound,
-  }: PathReaderProps) => {
-    const handleAngChange = () => {
-      trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
-      handleRightArrow(pathContent?.source?.pageNo);
-    };
-    return (
-      <GestureRecognizer
-        onSwipeLeft={() => handleRightArrow(pathContent?.source?.pageNo)}
-        onSwipeRight={() => handleLeftArrow(pathContent?.source?.pageNo)}
-        onSwipeDown={() => undefined}
-        onSwipeUp={() => undefined}
-        config={{
-          velocityThreshold: 0.8,
-          directionalOffsetThreshold: 80,
-          gestureIsClickThreshold: 10,
-        }}
+  ]);
+
+  return (
+    <GestureRecognizer
+      onSwipeLeft={handleSwipeLeft}
+      onSwipeRight={handleSwipeRight}
+      onSwipeDown={() => undefined}
+      onSwipeUp={() => undefined}
+      config={gestureConfig}
+    >
+      <ScrollView
+        contentContainerStyle={PathReaderStyles.pathContentContainer}
+        ref={scrollRef}
+        nestedScrollEnabled={false}
+        keyboardShouldPersistTaps="handled"
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        decelerationRate="fast"
+        onStartShouldSetResponder={() => false}
+        onMoveShouldSetResponder={() => false}
+        removeClippedSubviews={true}
       >
-        <ScrollView
-          contentContainerStyle={PathReaderStyles.pathContentContainer}
-          ref={scrollRef}
-          onScroll={(e) => {
-            const scrollY = e.nativeEvent.contentOffset.y;
-            scrollOffset.current = scrollY;
-            if (!isAngNavigation) {
-              debouncedScrollSave();
-            }
-          }}
-          scrollEventThrottle={16}
-          decelerationRate="fast"
-        >
-          {pathContent?.page?.map((path: any, index: number) => {
-            return (
-              <SimpleTextForPath
-                key={index}
-                gurbaniLine={isLarivaar ? path.larivaar.unicode : path.verse.unicode}
-                onSelection={() => {
-                  if (isSaving) {
-                    setPressIndex(index + 1);
-                    setSavedPathVerseId(path.verseId);
-                  }
-                }}
-                onSave={() =>
-                  handleUpdatePathWithErrorHandling(
-                    pathId,
-                    pathContent?.source?.pageNo,
-                    path.verseId,
-                    scrollOffset.current,
-                    setIsSaved
-                  )
-                }
-                isSaving={isSaving}
-                pressIndex={pressIndex}
-                index={index + 1}
-                verseId={path.verseId}
-                savedPathVerseId={savedPathVerseId}
-                setIsSaving={setIsSaving}
-                setIsSaved={setIsSaved}
-                setPressIndex={setPressIndex}
-                setSavedPathVerseId={setSavedPathVerseId}
-                found={found}
-                setFound={setFound}
-              />
-            );
-          })}
-          {pathContent?.source?.pageNo < 1430 && !isNavigating && (
-            <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
-          )}
-        </ScrollView>
-      </GestureRecognizer>
-    );
-  }
-);
+        {pageContent}
+        {pathContent?.source?.pageNo < 1430 && !isNavigating && (
+          <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
+        )}
+      </ScrollView>
+    </GestureRecognizer>
+  );
+};
+
+export const PathReader = React.memo(PathReaderComponent);
