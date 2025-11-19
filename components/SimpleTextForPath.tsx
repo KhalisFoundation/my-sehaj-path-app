@@ -1,11 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Text, Pressable, Animated, Platform } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { useLocal } from '@hooks';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+import { Text, Pressable, Platform, unstable_batchedUpdates } from 'react-native';
 import { SaveIcon } from '@icons';
 import { SimpleTextForPathStyles } from '@styles';
-import { showErrorAlert } from '@utils/Error';
-import { ErrorConstants, UIConstants } from '@constants';
+import { UIConstants } from '@constants';
 
 interface Props {
   gurbaniLine: string;
@@ -22,6 +19,7 @@ interface Props {
   setSavedPathVerseId: (value: number) => void;
   found: boolean;
   setFound: (value: boolean) => void;
+  fontSize: number;
 }
 
 const SimpleTextForPathComponent = ({
@@ -39,27 +37,10 @@ const SimpleTextForPathComponent = ({
   setSavedPathVerseId,
   found,
   setFound,
+  fontSize,
 }: Props) => {
-  const [fontSize, setFontSize] = useState<number>(18);
   const isLongPressingRef = useRef<boolean>(false);
-  const animationValueRef = useRef(new Animated.Value(0));
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
-  const { fetchFontSize } = useLocal();
-
-  useFocusEffect(
-    useCallback(() => {
-      const fetch = async () => {
-        try {
-          const fontSizeData = await fetchFontSize();
-          setFontSize(fontSizeData.number);
-        } catch (e) {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
-          setFontSize(18);
-        }
-      };
-      fetch();
-    }, [fetchFontSize])
-  );
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleLongPress = useCallback(() => {
     if (isLongPressingRef.current) {
@@ -69,49 +50,39 @@ const SimpleTextForPathComponent = ({
     if (found) {
       setFound(false);
     }
-    if (animationRef.current) {
-      animationRef.current.stop();
-    }
-    animationValueRef.current.setValue(0);
-    animationRef.current = Animated.timing(animationValueRef.current, {
-      toValue: 1,
-      duration: 50,
-      useNativeDriver: true,
+
+    unstable_batchedUpdates(() => {
+      setPressIndex(index);
+      setSavedPathVerseId(verseId);
+      setIsSaving(true);
+      setIsSaved(true);
     });
 
-    animationRef.current.start(() => {
-      requestAnimationFrame(() => {
-        setIsSaving(false);
-        setIsSaved(false);
-        onSelection();
-        setIsSaving(true);
-        setIsSaved(true);
-        setPressIndex(index);
-        setSavedPathVerseId(verseId);
-        onSave();
-        setTimeout(() => {
-          isLongPressingRef.current = false;
-          animationRef.current = null;
-        }, 100);
-      });
-    });
+    onSelection();
+    onSave();
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    isLongPressingRef.current = false;
+    timeoutRef.current = null;
   }, [
+    index,
+    verseId,
     found,
+    onSave,
+    onSelection,
     setFound,
+    setPressIndex,
+    setSavedPathVerseId,
     setIsSaving,
     setIsSaved,
-    onSelection,
-    setPressIndex,
-    index,
-    setSavedPathVerseId,
-    verseId,
-    onSave,
   ]);
 
   useEffect(() => {
     return () => {
-      if (animationRef.current) {
-        animationRef.current.stop();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
   }, []);
@@ -152,7 +123,7 @@ const SimpleTextForPathComponent = ({
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       onLongPress={handleLongPress}
-      delayLongPress={Platform.OS === 'ios' ? 150 : 500}
+      delayLongPress={Platform.OS === 'ios' ? 350 : 500}
       pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
       accessibilityHint="Tap to select, long press to save this line"
     >
@@ -178,6 +149,7 @@ export const SimpleTextForPath = React.memo(SimpleTextForPathComponent, (prevPro
     prevProps.index === nextProps.index &&
     prevProps.verseId === nextProps.verseId &&
     prevProps.savedPathVerseId === nextProps.savedPathVerseId &&
-    prevProps.found === nextProps.found
+    prevProps.found === nextProps.found &&
+    prevProps.fontSize === nextProps.fontSize
   );
 });

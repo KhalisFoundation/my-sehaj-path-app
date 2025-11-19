@@ -33,6 +33,7 @@ interface PathReaderProps {
   isNavigating: boolean;
   found: boolean;
   setFound: (value: boolean) => void;
+  fontSize: number;
 }
 
 const PathReaderComponent = ({
@@ -56,6 +57,7 @@ const PathReaderComponent = ({
   isNavigating,
   found,
   setFound,
+  fontSize,
 }: PathReaderProps) => {
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -140,6 +142,7 @@ const PathReaderComponent = ({
           setSavedPathVerseId={setSavedPathVerseId}
           found={found}
           setFound={setFound}
+          fontSize={fontSize}
         />
       );
     });
@@ -157,6 +160,7 @@ const PathReaderComponent = ({
     setSavedPathVerseId,
     found,
     setFound,
+    fontSize,
   ]);
 
   return (

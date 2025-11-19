@@ -58,6 +58,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const fadeAnim = useRef(new Animated.Value(1));
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debounceAnimValueRef = useRef(new Animated.Value(0));
+  const [fontSize, setFontSize] = useState<number>(18);
 
   const { checkNetwork, isOnline } = useInternet();
   const {
@@ -316,7 +317,20 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       fetchData();
     }, [fetchLarivaar, fetchAngsFormat, pathAng])
   );
-
+  useFocusEffect(
+    useCallback(() => {
+      const fetch = async () => {
+        try {
+          const fontSizeData = await fetchFontSize();
+          setFontSize(fontSizeData.number);
+        } catch (e) {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
+          setFontSize(18);
+        }
+      };
+      fetch();
+    }, [fetchFontSize])
+  );
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -386,6 +400,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           isNavigating={isNavigating}
           found={found}
           setFound={setFound}
+          fontSize={fontSize}
         />
         {alertIndicator.current !== undefined ? (
           <Loading alertIndicator={alertIndicator.current} alertText={alertText.current} />
