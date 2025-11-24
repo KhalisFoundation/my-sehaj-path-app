@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -57,6 +57,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | void | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
   const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debounceAnimValueRef = useRef(new Animated.Value(0));
+  const [fontSize, setFontSize] = useState<number>(18);
 
   const { checkNetwork, isOnline } = useInternet();
   const {
@@ -70,41 +72,44 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
   useScreenAnalytics('PathScreen', 'PathScreen');
 
-  const fetchFromBaniDB = async (angNumber: number) => {
-    alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
-    const pathFromBaniDB = await BaniDB(angNumber);
-    setPathContent(pathFromBaniDB.data);
-    setNeedsRetry(false);
-    setLastFailedAng(null);
-    setIsSaving(false);
-    setIsSaved(false);
-    setPressIndex(0);
-    setFound(false);
-    if (pathFromBaniDB.success === false) {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        setNeedsRetry(true);
-        setLastFailedAng(angNumber);
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-      } else {
-        navigation.replace(Routes.Error);
-        return;
+  const fetchFromBaniDB = useCallback(
+    async (angNumber: number) => {
+      alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+      const pathFromBaniDB = await BaniDB(angNumber);
+      setPathContent(pathFromBaniDB.data);
+      setNeedsRetry(false);
+      setLastFailedAng(null);
+      setIsSaving(false);
+      setIsSaved(false);
+      setPressIndex(0);
+      setFound(false);
+      if (pathFromBaniDB.success === false) {
+        const isConnected = await checkNetwork();
+        if (!isConnected) {
+          setNeedsRetry(true);
+          setLastFailedAng(angNumber);
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+        } else {
+          navigation.replace(Routes.Error);
+          return;
+        }
       }
-    }
-    alertIndicator.current = undefined;
-    const currentDebounceTimer = debounceTimer.current;
-    if (currentDebounceTimer) {
-      clearTimeout(currentDebounceTimer);
-      debounceTimer.current = null;
-    }
-    scrollOffset.current = 0;
-    scrollRef.current?.scrollTo({
-      y: 0,
-      animated: false,
-    });
-  };
+      alertIndicator.current = undefined;
+      const currentDebounceTimer = debounceTimer.current;
+      if (currentDebounceTimer) {
+        clearTimeout(currentDebounceTimer);
+        debounceTimer.current = null;
+      }
+      scrollOffset.current = 0;
+      scrollRef.current?.scrollTo({
+        y: 0,
+        animated: false,
+      });
+    },
+    [checkNetwork, navigation]
+  );
 
   const { handleRightArrow, handleLeftArrow } = useNavigation({
     isNavigating,
@@ -124,7 +129,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    debounceTimer.current = Animated.timing(new Animated.Value(0), {
+    debounceAnimValueRef.current.setValue(0);
+    debounceTimer.current = Animated.timing(debounceAnimValueRef.current, {
       toValue: 1,
       duration: 200,
       useNativeDriver: true,
@@ -188,6 +194,20 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     scrollOffset,
     navigation,
   });
+  const handleAngsRightArrow = useCallback(() => {
+    handleRightArrow(pathAng);
+  }, [handleRightArrow, pathAng]);
+
+  const handleAngsLeftArrow = useCallback(() => {
+    handleLeftArrow(pathAng);
+  }, [handleLeftArrow, pathAng]);
+  const savingMessage = useMemo(
+    () =>
+      !isSaved
+        ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
+        : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE,
+    [isSaved]
+  );
 
   useEffect(() => {
     scrolledToSavedPath.current = false;
@@ -253,10 +273,13 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     };
   }, [isSaved, found]);
 
+  const scrollAnimValueRef = useRef(new Animated.Value(0));
+
   useEffect(() => {
     let animation: Animated.CompositeAnimation | null = null;
     if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
-      animation = Animated.timing(new Animated.Value(0), {
+      scrollAnimValueRef.current.setValue(0);
+      animation = Animated.timing(scrollAnimValueRef.current, {
         toValue: 1,
         duration: 10,
         useNativeDriver: true,
@@ -270,39 +293,44 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         animation.stop();
       }
     };
-  }, [matchedPath, pathAng, pathContent]);
+  }, [matchedPath, pathAng, pathContent, scrollToSavedPathData]);
 
-  useFocusEffect(() => {
-    const fetchLarivaarData = async () => {
-      try {
-        const larivaar = await fetchLarivaar();
-        setIsLarivaar(larivaar || false);
-      } catch (error) {
-        setIsLarivaar(false);
-      }
-    };
-    fetchLarivaarData();
-  });
-
-  useFocusEffect(() => {
-    const fetchAngsFormatData = async () => {
-      try {
-        const format = await fetchAngsFormat();
-        setAngsFormat(format);
-        setPathPunjabiAng(
-          convertNumberToFormat({
-            number: pathAng,
-            format: format.format,
-          })
-        );
-      } catch (error) {
-        setAngsFormat({ format: 'Punjabi' });
-        setPathPunjabiAng(convertNumberToFormat({ number: pathAng, format: 'Punjabi' }));
-      }
-    };
-    fetchAngsFormatData();
-  });
-
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        try {
+          const [larivaar, format] = await Promise.all([fetchLarivaar(), fetchAngsFormat()]);
+          setIsLarivaar(larivaar || false);
+          setAngsFormat(format);
+          setPathPunjabiAng(
+            convertNumberToFormat({
+              number: pathAng,
+              format: format.format,
+            })
+          );
+        } catch (error) {
+          setIsLarivaar(false);
+          setAngsFormat({ format: 'Punjabi' });
+          setPathPunjabiAng(convertNumberToFormat({ number: pathAng, format: 'Punjabi' }));
+        }
+      };
+      fetchData();
+    }, [fetchLarivaar, fetchAngsFormat, pathAng])
+  );
+  useFocusEffect(
+    useCallback(() => {
+      const fetch = async () => {
+        try {
+          const fontSizeData = await fetchFontSize();
+          setFontSize(fontSizeData.number);
+        } catch (e) {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
+          setFontSize(18);
+        }
+      };
+      fetch();
+    }, [fetchFontSize])
+  );
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -372,6 +400,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           isNavigating={isNavigating}
           found={found}
           setFound={setFound}
+          fontSize={fontSize}
         />
         {alertIndicator.current !== undefined ? (
           <Loading alertIndicator={alertIndicator.current} alertText={alertText.current} />
@@ -387,24 +416,15 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             />
           </View>
         ) : undefined}
-        {isSaving && (
-          <Message
-            message={
-              !isSaved
-                ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
-                : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE
-            }
-            fadeAnim={fadeAnim.current}
-          />
-        )}
+        {isSaving && <Message message={savingMessage} fadeAnim={fadeAnim.current} />}
         {found && (
           <Message message={Constants.RESUMING_SAVED_PROGRESS} fadeAnim={fadeAnim.current} />
         )}
         {isAngsNavigationVisible && (
           <AngsNavigation
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}
-            handleRightArrow={() => handleRightArrow(pathAng)}
-            handleLeftArrow={() => handleLeftArrow(pathAng)}
+            handleRightArrow={handleAngsRightArrow}
+            handleLeftArrow={handleAngsLeftArrow}
             angNavigationNumber={angNavigationNumber}
             setAngNavigationNumber={setAngNavigationNumber}
             isAngNavigation={isAngNavigation}

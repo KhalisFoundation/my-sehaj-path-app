@@ -63,7 +63,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
 
   useFocusEffect(
     useCallback(() => {
-      let timeoutId: NodeJS.Timeout | null = null;
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
       const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
         timeoutId = setTimeout(() => {

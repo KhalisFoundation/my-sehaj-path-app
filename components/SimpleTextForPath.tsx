@@ -1,12 +1,8 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Text, Pressable, Animated } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { useLocal } from '@hooks';
-import { NavContent } from '@components';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+import { Text, Pressable, Platform, unstable_batchedUpdates } from 'react-native';
 import { SaveIcon } from '@icons';
 import { SimpleTextForPathStyles } from '@styles';
-import { showErrorAlert } from '@utils/Error';
-import { ErrorConstants, UIConstants } from '@constants';
+import { UIConstants } from '@constants';
 
 interface Props {
   gurbaniLine: string;
@@ -23,9 +19,10 @@ interface Props {
   setSavedPathVerseId: (value: number) => void;
   found: boolean;
   setFound: (value: boolean) => void;
+  fontSize: number;
 }
 
-export const SimpleTextForPath = ({
+const SimpleTextForPathComponent = ({
   gurbaniLine,
   onSelection,
   isSaving,
@@ -40,108 +37,119 @@ export const SimpleTextForPath = ({
   setSavedPathVerseId,
   found,
   setFound,
+  fontSize,
 }: Props) => {
-  const [fontSize, setFontSize] = useState<number>(18);
-  const [isLongPressing, setIsLongPressing] = useState(false);
+  const isLongPressingRef = useRef<boolean>(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
-  const { fetchFontSize } = useLocal();
-
-  useFocusEffect(
-    useCallback(() => {
-      const fetch = async () => {
-        try {
-          const fontSizeData = await fetchFontSize();
-          setFontSize(fontSizeData.number);
-        } catch (e) {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
-          setFontSize(18);
-        }
-      };
-      fetch();
-    }, [fetchFontSize])
-  );
-
-  const handleLongPress = () => {
-    if (isLongPressing) {
+  const handleLongPress = useCallback(() => {
+    if (isLongPressingRef.current) {
       return;
     }
+    isLongPressingRef.current = true;
     if (found) {
       setFound(false);
     }
-    setIsSaving(false);
-    setIsSaved(false);
-    animationRef.current = Animated.timing(new Animated.Value(0), {
-      toValue: 1,
-      duration: 100,
-      useNativeDriver: true,
+
+    unstable_batchedUpdates(() => {
+      setPressIndex(index);
+      setSavedPathVerseId(verseId);
+      setIsSaving(true);
+      setIsSaved(true);
     });
 
-    animationRef.current.start(() => {
-      requestAnimationFrame(() => {
-        onSelection();
-        setIsLongPressing(true);
-        setIsSaving(true);
-        setIsSaved(true);
-        setPressIndex(index);
-        setSavedPathVerseId(verseId);
-        onSave();
-        setIsLongPressing(false);
-        animationRef.current = null;
-      });
-    });
-  };
+    onSelection();
+    onSave();
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    isLongPressingRef.current = false;
+    timeoutRef.current = null;
+  }, [
+    index,
+    verseId,
+    found,
+    onSave,
+    onSelection,
+    setFound,
+    setPressIndex,
+    setSavedPathVerseId,
+    setIsSaving,
+    setIsSaved,
+  ]);
 
   useEffect(() => {
     return () => {
-      if (animationRef.current) {
-        animationRef.current.stop();
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
   }, []);
 
-  const isSelected = verseId === savedPathVerseId || (isSaving && pressIndex === index);
-  const accessibilityLabel = `Gurbani line ${index + 1}${isSelected ? ', selected' : ''}`;
+  const isSelected = useMemo(
+    () => verseId === savedPathVerseId || (isSaving && pressIndex === index),
+    [verseId, savedPathVerseId, isSaving, pressIndex, index]
+  );
+
+  const accessibilityLabel = useMemo(
+    () => `Gurbani line ${index + 1}${isSelected ? ', selected' : ''}`,
+    [index, isSelected]
+  );
+
+  const textStyle = useMemo(
+    () => ({
+      ...SimpleTextForPathStyles.text,
+      fontSize,
+      lineHeight: fontSize * 2.2,
+    }),
+    [fontSize]
+  );
+
+  const containerStyle = useMemo(
+    () => (isSelected ? SimpleTextForPathStyles.coloredContainer : undefined),
+    [isSelected]
+  );
 
   return (
     <Pressable
-      onPress={onSelection}
-      style={isSelected && SimpleTextForPathStyles.coloredContainer}
+      onPress={() => {
+        if (isSaving) {
+          onSelection();
+          onSave();
+        }
+      }}
+      style={containerStyle}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      onLongPress={handleLongPress}
+      delayLongPress={Platform.OS === 'ios' ? 350 : 500}
+      pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
       accessibilityHint="Tap to select, long press to save this line"
     >
-      <Text
-        suppressHighlighting={true}
-        style={{
-          ...SimpleTextForPathStyles.text,
-          fontSize,
-          lineHeight: fontSize * 2.2,
-        }}
-        onLongPress={() => {
-          handleLongPress();
-        }}
-        onPress={() => {
-          if (isSaving) {
-            onSelection();
-            onSave();
-          }
-        }}
-      >
+      <Text suppressHighlighting={true} style={textStyle}>
         {gurbaniLine}
-        {(verseId === savedPathVerseId || (isSaving && pressIndex === index)) && (
-          <NavContent
-            navIcon={
-              <SaveIcon
-                color={UIConstants.SAVE_ICON_COLOR}
-                width={fontSize * 1.2}
-                height={fontSize * 1.2}
-              />
-            }
-            iconsStyle={SimpleTextForPathStyles.saveIconContainer}
+        {isSelected && (
+          <SaveIcon
+            color={UIConstants.SAVE_ICON_COLOR}
+            width={fontSize * 1.2}
+            height={fontSize * 1.2}
           />
         )}
       </Text>
     </Pressable>
   );
 };
+
+export const SimpleTextForPath = React.memo(SimpleTextForPathComponent, (prevProps, nextProps) => {
+  return (
+    prevProps.gurbaniLine === nextProps.gurbaniLine &&
+    prevProps.isSaving === nextProps.isSaving &&
+    prevProps.pressIndex === nextProps.pressIndex &&
+    prevProps.index === nextProps.index &&
+    prevProps.verseId === nextProps.verseId &&
+    prevProps.savedPathVerseId === nextProps.savedPathVerseId &&
+    prevProps.found === nextProps.found &&
+    prevProps.fontSize === nextProps.fontSize
+  );
+});
