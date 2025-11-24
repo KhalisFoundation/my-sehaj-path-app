@@ -9,7 +9,7 @@ interface Props {
 
 export const Loading = ({ alertIndicator, alertText }: Props) => {
   return (
-    <View style={LoadingStyles.alertContainer}>
+    <View style={LoadingStyles.alertContainer} pointerEvents="none">
       {alertIndicator}
       <Text style={LoadingStyles.alertText}>{alertText}</Text>
     </View>

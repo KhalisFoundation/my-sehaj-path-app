@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { NavContent } from '@components';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
@@ -13,25 +13,36 @@ interface PathNavigationProps {
   setIsAngsNavigationVisible: (isVisible: boolean) => void;
 }
 
-export const PathNavigation = ({
+const PathNavigationComponent = ({
   pathPujabiAng,
   pathAng,
   handleLeftArrow,
   handleRightArrow,
   setIsAngsNavigationVisible,
 }: PathNavigationProps) => {
-  const handleLeftArrowPress = () => {
+  const handleLeftArrowPress = useCallback(() => {
     trackEvent('PreviousAngsByTopNav', 'click', 'previous ang from top nav');
     handleLeftArrow(pathAng);
-  };
-  const handleRightArrowPress = () => {
+  }, [handleLeftArrow, pathAng]);
+
+  const handleRightArrowPress = useCallback(() => {
     trackEvent('NextAngsByTopNav', 'click', 'next ang from top nav');
     handleRightArrow(pathAng);
-  };
-  const handleAngsNavigationPress = () => {
+  }, [handleRightArrow, pathAng]);
+
+  const handleAngsNavigationPress = useCallback(() => {
     trackEvent('AngsByAngsNavigation', 'click', 'opened angs navigation');
     setIsAngsNavigationVisible(true);
-  };
+  }, [setIsAngsNavigationVisible]);
+
+  const leftArrowIcon = useMemo(() => <LeftArrowIcon color="#fff" />, []);
+  const rightArrowIcon = useMemo(() => <RightArrowIcon color="#fff" />, []);
+
+  const arrowButtonRightStyle = useMemo(
+    () => [PathNavigationStyles.arrowButton, PathNavigationStyles.arrowButtonRight],
+    []
+  );
+
   return (
     <View style={PathNavigationStyles.navContainer}>
       <TouchableOpacity
@@ -41,7 +52,7 @@ export const PathNavigation = ({
         accessibilityRole="button"
         accessibilityHint="Tap to go to previous ang"
       >
-        <NavContent navIcon={<LeftArrowIcon color="#fff" />} onPress={handleLeftArrowPress} />
+        <NavContent navIcon={leftArrowIcon} onPress={handleLeftArrowPress} />
       </TouchableOpacity>
       <TouchableOpacity
         style={PathNavigationStyles.angs}
@@ -53,14 +64,16 @@ export const PathNavigation = ({
         <NavContent text={pathPujabiAng} contentStyle={PathNavigationStyles.navText} />
       </TouchableOpacity>
       <TouchableOpacity
-        style={[PathNavigationStyles.arrowButton, PathNavigationStyles.arrowButtonRight]}
+        style={arrowButtonRightStyle}
         onPress={handleRightArrowPress}
         accessibilityLabel={`Next ang: ${pathPujabiAng}`}
         accessibilityRole="button"
         accessibilityHint="Tap to go to next ang"
       >
-        <NavContent navIcon={<RightArrowIcon color="#fff" />} onPress={handleRightArrowPress} />
+        <NavContent navIcon={rightArrowIcon} onPress={handleRightArrowPress} />
       </TouchableOpacity>
     </View>
   );
 };
+
+export const PathNavigation = React.memo(PathNavigationComponent);
