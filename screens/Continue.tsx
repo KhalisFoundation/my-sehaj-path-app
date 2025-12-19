@@ -16,7 +16,7 @@ import {
 } from '@components';
 import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { PathData, useLocal, useScreenAnalytics } from '@hooks';
+import { PathData, useLocal, useScreenAnalytics, useInternet } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
 import { LeftArrowIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
@@ -53,6 +53,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const streak = useRef<number>(0);
   const { fetchFromLocal } = useLocal();
+  const { checkNetwork } = useInternet();
 
   const handleStreakUpdate = useCallback((newStreakValue: number) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
@@ -119,9 +120,20 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }, [updateTheData])
   );
 
-  const handleContinue = useCallback(() => {
-    navigation.push('Path', { pathId: pathId });
-  }, [navigation, pathId]);
+  const handleContinue = useCallback(async () => {
+    try {
+      const isConnected = await checkNetwork();
+      if (!isConnected) {
+        showErrorAlert(
+          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+        );
+        return;
+      }
+      navigation.push('Path', { pathId: pathId });
+    } catch (error) {
+      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
+    }
+  }, [navigation, pathId, checkNetwork]);
 
   const handleTabPress = useCallback((tab: string) => {
     trackEvent('TabSwitch', 'click', `switch to ${tab} tab`);

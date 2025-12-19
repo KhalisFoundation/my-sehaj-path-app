@@ -31,7 +31,6 @@ import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
 export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) => {
-  const [pathPujabiAng, setPathPunjabiAng] = useState<string>('0');
   const [pathAng, setPathAng] = useState<number>(0);
   const [pathContent, setPathContent] = useState<any>();
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -40,25 +39,36 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [pressIndex, setPressIndex] = useState<number>(0);
   const [found, setFound] = useState<boolean>(false);
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
-  const [matchedPath, setMatchedPath] = useState<PathData>();
-  const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
+  const matchedPath = useRef<PathData | undefined>(undefined);
+  const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
-  const [angNavigationNumber, setAngNavigationNumber] = useState<number>(0);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
-  const [needsRetry, setNeedsRetry] = useState<boolean>(false);
-  const [lastFailedAng, setLastFailedAng] = useState<number | null>(null);
+  const [retryState, setRetryState] = useState<{
+    needsRetry: boolean;
+    lastFailedAng: number | null;
+  }>({
+    needsRetry: false,
+    lastFailedAng: null,
+  });
   const scrolledToSavedPath = useRef<boolean>(false);
   const scrollOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
-  const alertText = useRef<string>('Loading ... ');
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | void | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
-  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debounceAnimValueRef = useRef(new Animated.Value(0));
   const [fontSize, setFontSize] = useState<number>(18);
+
+  const pathPujabiAng = useMemo(
+    () =>
+      convertNumberToFormat({
+        number: pathAng,
+        format: angsFormat.format,
+      }),
+    [pathAng, angsFormat.format]
+  );
 
   const { checkNetwork, isOnline } = useInternet();
   const {
@@ -77,8 +87,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
       const pathFromBaniDB = await BaniDB(angNumber);
       setPathContent(pathFromBaniDB.data);
-      setNeedsRetry(false);
-      setLastFailedAng(null);
+      setRetryState({ needsRetry: false, lastFailedAng: null });
       setIsSaving(false);
       setIsSaved(false);
       setPressIndex(0);
@@ -86,8 +95,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       if (pathFromBaniDB.success === false) {
         const isConnected = await checkNetwork();
         if (!isConnected) {
-          setNeedsRetry(true);
-          setLastFailedAng(angNumber);
+          setRetryState({ needsRetry: true, lastFailedAng: angNumber });
           showErrorAlert(
             ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
           );
@@ -117,10 +125,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setIsSaving,
     scrollOffset,
     scrollRef,
-    setAngNavigationNumber,
-    setPathPunjabiAng,
     setPathAng,
-    angsFormat,
     checkNetwork,
     fetchFromBaniDB,
   });
@@ -153,7 +158,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
-    matchedPathDate,
+    matchedPathDate: matchedPathDate.current,
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,
@@ -166,22 +171,13 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFontSize,
   });
 
-  const updatePathAng = useCallback(
-    (angNumber: number) => {
-      setPathAng(angNumber);
-      setPathPunjabiAng(
-        convertNumberToFormat({
-          number: angNumber,
-          format: angsFormat.format,
-        })
-      );
-      setIsSaving(false);
-      setIsSaved(false);
-      setPressIndex(0);
-      setFound(false);
-    },
-    [angsFormat.format]
-  );
+  const updatePathAng = useCallback((angNumber: number) => {
+    setPathAng(angNumber);
+    setIsSaving(false);
+    setIsSaved(false);
+    setPressIndex(0);
+    setFound(false);
+  }, []);
 
   const { handleGoBack } = usePathNavigation({
     isAngNavigation,
@@ -221,19 +217,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           (pathDate: DateData) => pathDate.pathid === route.params.pathId
         );
         if (matchedPathData) {
-          setMatchedPath(matchedPathData);
-          setMatchedPathDate(matchedPathDateData);
+          matchedPath.current = matchedPathData;
+          matchedPathDate.current = matchedPathDateData;
           const pathAngData =
             matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
           setSavedPathVerseId(matchedPathData.saveData.verseId);
           setPathAng(pathAngData);
-          setAngNavigationNumber(pathAngData);
-          setPathPunjabiAng(
-            convertNumberToFormat({
-              number: pathAngData,
-              format: angsFormat.format,
-            })
-          );
 
           scrolledToSavedPath.current = false;
           await fetchFromBaniDB(pathAngData);
@@ -277,7 +266,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
   useEffect(() => {
     let animation: Animated.CompositeAnimation | null = null;
-    if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
+    if (pathAng === matchedPath.current?.saveData.angNumber && pathContent) {
       scrollAnimValueRef.current.setValue(0);
       animation = Animated.timing(scrollAnimValueRef.current, {
         toValue: 1,
@@ -293,7 +282,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         animation.stop();
       }
     };
-  }, [matchedPath, pathAng, pathContent, scrollToSavedPathData]);
+  }, [pathAng, pathContent, scrollToSavedPathData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -302,16 +291,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           const [larivaar, format] = await Promise.all([fetchLarivaar(), fetchAngsFormat()]);
           setIsLarivaar(larivaar || false);
           setAngsFormat(format);
-          setPathPunjabiAng(
-            convertNumberToFormat({
-              number: pathAng,
-              format: format.format,
-            })
-          );
         } catch (error) {
           setIsLarivaar(false);
           setAngsFormat({ format: 'Punjabi' });
-          setPathPunjabiAng(convertNumberToFormat({ number: pathAng, format: 'Punjabi' }));
         }
       };
       fetchData();
@@ -351,21 +333,21 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         debounceTimer.current = null;
       }
 
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-        scrollTimeoutRef.current = null;
-      }
-
       fadeAnim.current.stopAnimation();
     };
   }, []);
 
   useEffect(() => {
-    if (isOnline && needsRetry && lastFailedAng !== null) {
-      setNeedsRetry(false);
-      fetchFromBaniDB(lastFailedAng);
+    if (isOnline && retryState.needsRetry && retryState.lastFailedAng !== null) {
+      setRetryState({ needsRetry: false, lastFailedAng: null });
+      // Ensure states are reset before retry to prevent blocking interactions
+      setIsSaving(false);
+      setIsSaved(false);
+      fadeAnim.current.stopAnimation();
+      fadeAnim.current.setValue(0);
+      fetchFromBaniDB(retryState.lastFailedAng);
     }
-  }, [isOnline, needsRetry, lastFailedAng]);
+  }, [isOnline, retryState, fetchFromBaniDB]);
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
@@ -404,7 +386,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           isSaved={isSaved}
         />
         {alertIndicator.current !== undefined ? (
-          <Loading alertIndicator={alertIndicator.current} alertText={alertText.current} />
+          <Loading
+            alertIndicator={alertIndicator.current}
+            alertText={Constants.ALERT_TEXT_LOADING}
+          />
         ) : null}
 
         {!isSaving && !found ? (
@@ -426,8 +411,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}
             handleRightArrow={handleAngsRightArrow}
             handleLeftArrow={handleAngsLeftArrow}
-            angNavigationNumber={angNavigationNumber}
-            setAngNavigationNumber={setAngNavigationNumber}
+            pathAng={pathAng}
             isAngNavigation={isAngNavigation}
             setIsAngNavigation={setIsAngNavigation}
             fetchAngData={fetchFromBaniDB}

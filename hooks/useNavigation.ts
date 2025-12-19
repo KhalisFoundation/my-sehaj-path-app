@@ -1,8 +1,7 @@
 import { useCallback } from 'react';
-import { showErrorAlert, convertNumberToFormat } from '@utils';
+import { showErrorAlert } from '@utils';
 import { ErrorConstants } from '@constants/ErrorConstant';
 import { ScrollView } from 'react-native';
-import { AngsFormat } from './useLocal';
 
 export interface UseNavigationParams {
   isNavigating: boolean;
@@ -10,10 +9,7 @@ export interface UseNavigationParams {
   setIsSaving: (value: boolean) => void;
   scrollOffset: React.MutableRefObject<number>;
   scrollRef: React.MutableRefObject<ScrollView | null>;
-  setAngNavigationNumber: (value: number) => void;
-  setPathPunjabiAng: (value: string) => void;
   setPathAng: (value: number) => void;
-  angsFormat: AngsFormat;
   checkNetwork: () => Promise<boolean>;
   fetchFromBaniDB: (angNumber: number) => Promise<void>;
 }
@@ -24,10 +20,7 @@ export const useNavigation = ({
   setIsSaving,
   scrollOffset,
   scrollRef,
-  setAngNavigationNumber,
-  setPathPunjabiAng,
   setPathAng,
-  angsFormat,
   checkNetwork,
   fetchFromBaniDB,
 }: UseNavigationParams) => {
@@ -57,13 +50,6 @@ export const useNavigation = ({
           return;
         }
         await fetchFromBaniDB(pageNo + 1);
-        setAngNavigationNumber(pageNo + 1);
-        setPathPunjabiAng(
-          convertNumberToFormat({
-            number: pageNo + 1,
-            format: angsFormat.format,
-          })
-        );
         setPathAng(pageNo + 1);
       } catch (error) {
         const isConnected = await checkNetwork();
@@ -87,9 +73,6 @@ export const useNavigation = ({
       scrollOffset,
       scrollRef,
       fetchFromBaniDB,
-      setAngNavigationNumber,
-      setPathPunjabiAng,
-      angsFormat.format,
       setPathAng,
     ]
   );
@@ -117,15 +100,9 @@ export const useNavigation = ({
           showErrorAlert(
             `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
           );
+          return;
         }
         await fetchFromBaniDB(pageNo - 1);
-        setAngNavigationNumber(pageNo - 1);
-        setPathPunjabiAng(
-          convertNumberToFormat({
-            number: pageNo - 1,
-            format: angsFormat.format,
-          })
-        );
         setPathAng(pageNo - 1);
       } catch (error) {
         const isConnected = await checkNetwork();
@@ -146,10 +123,7 @@ export const useNavigation = ({
       setIsSaving,
       scrollOffset,
       scrollRef,
-      setAngNavigationNumber,
-      setPathPunjabiAng,
       setPathAng,
-      angsFormat,
       checkNetwork,
       fetchFromBaniDB,
     ]
