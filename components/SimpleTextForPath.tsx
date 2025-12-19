@@ -20,6 +20,7 @@ interface Props {
   found: boolean;
   setFound: (value: boolean) => void;
   fontSize: number;
+  isSaved: boolean;
 }
 
 const SimpleTextForPathComponent = ({
@@ -38,6 +39,7 @@ const SimpleTextForPathComponent = ({
   found,
   setFound,
   fontSize,
+  isSaved,
 }: Props) => {
   const isLongPressingRef = useRef<boolean>(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -126,6 +128,7 @@ const SimpleTextForPathComponent = ({
       delayLongPress={Platform.OS === 'ios' ? 350 : 500}
       pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
       accessibilityHint="Tap to select, long press to save this line"
+      disabled={isSaved || found}
     >
       <Text suppressHighlighting={true} style={textStyle}>
         {gurbaniLine}
@@ -134,6 +137,7 @@ const SimpleTextForPathComponent = ({
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
+            style={{ transform: [{ translateY: fontSize * 0.2 }] }}
           />
         )}
       </Text>

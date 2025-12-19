@@ -37,4 +37,5 @@ export const Constants: Constant = {
   ANGS: 'Angs',
   ANG_NUMBERING: 'Ang Numbering',
   GO_TO_NEXT_ANG: 'Go To Next Ang',
+  ALERT_TEXT_LOADING: 'Loading ... ',
 };

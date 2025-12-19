@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
@@ -11,8 +11,7 @@ interface Props {
   setIsAngsNavigationVisible: (isAngsNavigationVisible: boolean) => void;
   handleRightArrow: () => void;
   handleLeftArrow: () => void;
-  angNavigationNumber: number;
-  setAngNavigationNumber: (angNavigationNumber: number) => void;
+  pathAng: number;
   isAngNavigation: boolean;
   setIsAngNavigation: (isAngNavigation: boolean) => void;
   fetchAngData: (angNumber: number) => void;
@@ -23,16 +22,20 @@ export const AngsNavigation = ({
   setIsAngsNavigationVisible,
   handleRightArrow,
   handleLeftArrow,
-  angNavigationNumber,
-  setAngNavigationNumber,
+  pathAng,
   setIsAngNavigation,
   fetchAngData,
   updatePathAng,
 }: Props) => {
-  const [angNumber, setAngNumber] = useState<number>(angNavigationNumber);
-  const [inputValue, setInputValue] = useState<string>(angNavigationNumber.toString());
+  const [angNumber, setAngNumber] = useState<number>(pathAng);
+  const [inputValue, setInputValue] = useState<string>(pathAng.toString());
   const [isValid, setIsValid] = useState<boolean>(true);
   const { checkNetwork } = useInternet();
+
+  useEffect(() => {
+    setAngNumber(pathAng);
+    setInputValue(pathAng.toString());
+  }, [pathAng]);
 
   const isGoButtonDisabled = !isValid || inputValue === '';
 
@@ -85,7 +88,6 @@ export const AngsNavigation = ({
         fetchAngData(angNumber);
         setIsAngNavigation(true);
         setIsAngsNavigationVisible(false);
-        setAngNavigationNumber(angNumber);
         updatePathAng(angNumber);
       })
       .catch((_error) => {
