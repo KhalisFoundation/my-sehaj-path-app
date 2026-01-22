@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { NavContent } from '@components';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
 import { PathNavigationStyles } from '@styles';
+import { trackEvent } from '@utils';
 
 interface PathNavigationProps {
   pathPujabiAng: string;
@@ -12,25 +13,67 @@ interface PathNavigationProps {
   setIsAngsNavigationVisible: (isVisible: boolean) => void;
 }
 
-export const PathNavigation = ({
+const PathNavigationComponent = ({
   pathPujabiAng,
   pathAng,
   handleLeftArrow,
   handleRightArrow,
   setIsAngsNavigationVisible,
 }: PathNavigationProps) => {
+  const handleLeftArrowPress = useCallback(() => {
+    trackEvent('PreviousAngsByTopNav', 'click', 'previous ang from top nav');
+    handleLeftArrow(pathAng);
+  }, [handleLeftArrow, pathAng]);
+
+  const handleRightArrowPress = useCallback(() => {
+    trackEvent('NextAngsByTopNav', 'click', 'next ang from top nav');
+    handleRightArrow(pathAng);
+  }, [handleRightArrow, pathAng]);
+
+  const handleAngsNavigationPress = useCallback(() => {
+    trackEvent('AngsByAngsNavigation', 'click', 'opened angs navigation');
+    setIsAngsNavigationVisible(true);
+  }, [setIsAngsNavigationVisible]);
+
+  const leftArrowIcon = useMemo(() => <LeftArrowIcon color="#fff" />, []);
+  const rightArrowIcon = useMemo(() => <RightArrowIcon color="#fff" />, []);
+
+  const arrowButtonRightStyle = useMemo(
+    () => [PathNavigationStyles.arrowButton, PathNavigationStyles.arrowButtonRight],
+    []
+  );
+
   return (
     <View style={PathNavigationStyles.navContainer}>
-      <NavContent navIcon={<LeftArrowIcon />} onPress={() => handleLeftArrow(pathAng)} />
       <TouchableOpacity
-        onPress={() => setIsAngsNavigationVisible(true)}
+        style={PathNavigationStyles.arrowButton}
+        onPress={handleLeftArrowPress}
+        accessibilityLabel={`Previous ang: ${pathPujabiAng}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to go to previous ang"
+      >
+        <NavContent navIcon={leftArrowIcon} onPress={handleLeftArrowPress} />
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={PathNavigationStyles.angs}
+        onPress={handleAngsNavigationPress}
         accessibilityLabel={`Current ang: ${pathPujabiAng}`}
         accessibilityRole="button"
         accessibilityHint="Tap to open angs navigation"
       >
-        <NavContent text={pathPujabiAng} />
+        <NavContent text={pathPujabiAng} contentStyle={PathNavigationStyles.navText} />
       </TouchableOpacity>
-      <NavContent navIcon={<RightArrowIcon />} onPress={() => handleRightArrow(pathAng)} />
+      <TouchableOpacity
+        style={arrowButtonRightStyle}
+        onPress={handleRightArrowPress}
+        accessibilityLabel={`Next ang: ${pathPujabiAng}`}
+        accessibilityRole="button"
+        accessibilityHint="Tap to go to next ang"
+      >
+        <NavContent navIcon={rightArrowIcon} onPress={handleRightArrowPress} />
+      </TouchableOpacity>
     </View>
   );
 };
+
+export const PathNavigation = React.memo(PathNavigationComponent);

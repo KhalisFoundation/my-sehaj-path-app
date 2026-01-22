@@ -22,26 +22,30 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
     if (!dates || dates.length === 0) {
       return 0;
     }
+    const today = dayjs();
+    const todayString = today.format('D-MMMM-YYYY');
+
+    if (!dates.includes(todayString)) {
+      return 0;
+    }
 
     const sortedDates = dates
       .map((dateStr) => dayjs(dateStr, 'D-MMMM-YYYY'))
-      .sort((a, b) => a.diff(b, 'day'));
+      .sort((firstDate, secondDate) => secondDate.diff(firstDate, 'day'));
 
     let currentStreak = 1;
-    let maxStreak = 1;
 
-    for (let i = 1; i < sortedDates.length; i++) {
-      const prevDate = sortedDates[i - 1];
+    for (let i = 0; i < sortedDates.length - 1; i++) {
       const currentDate = sortedDates[i];
-      if (currentDate.diff(prevDate, 'day') === 1) {
+      const nextDate = sortedDates[i + 1];
+      if (currentDate.diff(nextDate, 'day') === 1) {
         currentStreak++;
-        maxStreak = Math.max(maxStreak, currentStreak);
       } else {
-        currentStreak = 1;
+        break;
       }
     }
 
-    return maxStreak;
+    return currentStreak;
   }, []);
 
   const currentStreak = useMemo(() => {
@@ -68,7 +72,7 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
   }, [currentMonth]);
 
   useEffect(() => {
-    setDays(daysArray as string[]);
+    setDays(daysArray);
   }, [daysArray]);
 
   useEffect(() => {

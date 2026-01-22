@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BaniDB, showErrorAlert, convertNumberToFormat } from '@utils';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
-  AngsFormat,
   DateData,
   PathData,
   useLocal,
@@ -15,6 +14,7 @@ import {
   useNavigation,
   usePathNavigation,
   useScrollToSavedPath,
+  AngsFormat,
 } from '@hooks';
 import {
   AngsNavigation,
@@ -25,72 +25,107 @@ import {
   PathNavigation,
 } from '@components';
 import { RootStackParamList } from '../App';
-import { ErrorConstants, Constants } from '@constants';
+import { useScreenAnalytics } from '@hooks';
+import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
-export const PathScreen = ({ navigation, route }: PathScreenProps) => {
-  const [pathPujabiAng, setPathPunjabiAng] = useState<string>('0');
+export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) => {
   const [pathAng, setPathAng] = useState<number>(0);
   const [pathContent, setPathContent] = useState<any>();
-  const [autoScroll, setAutoScroll] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [savedPathVerseId, setSavedPathVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
   const [found, setFound] = useState<boolean>(false);
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
-  const [matchedPath, setMatchedPath] = useState<PathData>();
-  const [matchedPathDate, setMatchedPathDate] = useState<DateData>();
+  const matchedPath = useRef<PathData | undefined>(undefined);
+  const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
-  const [angNavigationNumber, setAngNavigationNumber] = useState<number>(0);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
-  const scrolledToSavedPath = useRef(false);
-  const scrollInveral = useRef<NodeJS.Timeout | null>(null);
-  const scorllOffset = useRef<number>(0);
+  const [retryState, setRetryState] = useState<{
+    needsRetry: boolean;
+    lastFailedAng: number | null;
+  }>({
+    needsRetry: false,
+    lastFailedAng: null,
+  });
+  const scrolledToSavedPath = useRef<boolean>(false);
+  const scrollOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
-  const aleartIndicator = useRef<React.ReactNode>();
-  const alertText = useRef<string>('Loading ... ');
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-  const fadeAnim = useRef(new Animated.Value(1)).current;
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | void | null>(null);
+  const fadeAnim = useRef(new Animated.Value(1));
+  const debounceAnimValueRef = useRef(new Animated.Value(0));
+  const [fontSize, setFontSize] = useState<number>(18);
 
-  const { checkNetwork } = useInternet();
-  const { fetchFromLocal, handleUpdatePath, fetchLarivaar, fetchFontSize, fetchAngsFormat } =
-    useLocal();
+  const pathPujabiAng = useMemo(
+    () =>
+      convertNumberToFormat({
+        number: pathAng,
+        format: angsFormat.format,
+      }),
+    [pathAng, angsFormat.format]
+  );
 
-  const fetchFromBaniDB = async (angNumber: number) => {
-    aleartIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
-    const pathFromBaniDB = await BaniDB(angNumber);
-    setPathContent(pathFromBaniDB.data);
-    if (pathFromBaniDB.success === false) {
-      navigation.replace('Error');
-    }
-    aleartIndicator.current = undefined;
-    const currentDebounceTimer = debounceTimer.current;
-    if (currentDebounceTimer) {
-      clearTimeout(currentDebounceTimer);
-      debounceTimer.current = null;
-    }
-    scorllOffset.current = 0;
-    scrollRef.current?.scrollTo({
-      y: 0,
-      animated: false,
-    });
-  };
+  const { checkNetwork, isOnline } = useInternet();
+  const {
+    fetchFromLocal,
+    handleUpdatePathWithErrorHandling,
+    handleUpdatePath,
+    fetchLarivaar,
+    fetchFontSize,
+    fetchAngsFormat,
+  } = useLocal();
+
+  useScreenAnalytics('PathScreen', 'PathScreen');
+
+  const fetchFromBaniDB = useCallback(
+    async (angNumber: number) => {
+      alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+      const pathFromBaniDB = await BaniDB(angNumber);
+      setPathContent(pathFromBaniDB.data);
+      setRetryState({ needsRetry: false, lastFailedAng: null });
+      setIsSaving(false);
+      setIsSaved(false);
+      setPressIndex(0);
+      setFound(false);
+      if (pathFromBaniDB.success === false) {
+        const isConnected = await checkNetwork();
+        if (!isConnected) {
+          setRetryState({ needsRetry: true, lastFailedAng: angNumber });
+          showErrorAlert(
+            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          );
+        } else {
+          navigation.replace(Routes.Error);
+          return;
+        }
+      }
+      alertIndicator.current = undefined;
+      const currentDebounceTimer = debounceTimer.current;
+      if (currentDebounceTimer) {
+        clearTimeout(currentDebounceTimer);
+        debounceTimer.current = null;
+      }
+      scrollOffset.current = 0;
+      scrollRef.current?.scrollTo({
+        y: 0,
+        animated: false,
+      });
+    },
+    [checkNetwork, navigation]
+  );
 
   const { handleRightArrow, handleLeftArrow } = useNavigation({
     isNavigating,
     setIsNavigating,
     setIsSaving,
-    scorllOffset,
+    scrollOffset,
     scrollRef,
-    setAngNavigationNumber,
-    setPathPunjabiAng,
     setPathAng,
-    angsFormat,
     checkNetwork,
     fetchFromBaniDB,
   });
@@ -99,36 +134,50 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    debounceTimer.current = setTimeout(() => {
-      handleUpdatePath(
-        route.params.pathId,
-        pathAng,
-        savedPathVerseId,
-        scorllOffset.current,
-        setIsSaved
-      );
-    }, 300);
-  }, [handleUpdatePath]);
+    debounceAnimValueRef.current.setValue(0);
+    debounceTimer.current = Animated.timing(debounceAnimValueRef.current, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      try {
+        handleUpdatePath(
+          route.params.pathId,
+          pathAng,
+          savedPathVerseId,
+          scrollOffset.current,
+          () => {
+            setIsSaved(false);
+          }
+        );
+      } catch (error) {
+        // Silently handle error to prevent infinite loop in debounced function
+        // Error is already handled at the UI level where user initiated the action
+      }
+    });
+  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
-    matchedPathDate,
+    matchedPathDate: matchedPathDate.current,
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,
     scrollRef,
-    scorllOffset,
-    fadeAnim,
+    scrollOffset,
+    fadeAnim: fadeAnim.current,
     setFound,
     setIsSaving,
     setIsSaved,
     fetchFontSize,
-    scrollTimeoutRef,
   });
 
-  const updatePathAng = (angNumber: number) => {
+  const updatePathAng = useCallback((angNumber: number) => {
     setPathAng(angNumber);
-    setPathPunjabiAng(convertNumberToFormat(angNumber, angsFormat.format as 'Punjabi' | 'English'));
-  };
+    setIsSaving(false);
+    setIsSaved(false);
+    setPressIndex(0);
+    setFound(false);
+  }, []);
 
   const { handleGoBack } = usePathNavigation({
     isAngNavigation,
@@ -138,11 +187,26 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
     setIsSaved,
     setIsAngNavigation,
     updatePathAng,
-    scorllOffset,
+    scrollOffset,
     navigation,
   });
+  const handleAngsRightArrow = useCallback(() => {
+    handleRightArrow(pathAng);
+  }, [handleRightArrow, pathAng]);
+
+  const handleAngsLeftArrow = useCallback(() => {
+    handleLeftArrow(pathAng);
+  }, [handleLeftArrow, pathAng]);
+  const savingMessage = useMemo(
+    () =>
+      !isSaved
+        ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
+        : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE,
+    [isSaved]
+  );
 
   useEffect(() => {
+    scrolledToSavedPath.current = false;
     const fetchPath = async () => {
       try {
         const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
@@ -153,16 +217,14 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           (pathDate: DateData) => pathDate.pathid === route.params.pathId
         );
         if (matchedPathData) {
-          setMatchedPath(matchedPathData);
-          setMatchedPathDate(matchedPathDateData);
+          matchedPath.current = matchedPathData;
+          matchedPathDate.current = matchedPathDateData;
           const pathAngData =
             matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
           setSavedPathVerseId(matchedPathData.saveData.verseId);
           setPathAng(pathAngData);
-          setAngNavigationNumber(pathAngData);
-          setPathPunjabiAng(
-            convertNumberToFormat(pathAngData, angsFormat.format as 'Punjabi' | 'English')
-          );
+
+          scrolledToSavedPath.current = false;
           await fetchFromBaniDB(pathAngData);
         }
       } catch (error) {
@@ -170,101 +232,87 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       }
     };
     fetchPath();
-  }, []);
-
-  const handleAutoScroll = () => {
-    scrollInveral.current = setInterval(() => {
-      scorllOffset.current += 1;
-      scrollRef.current?.scrollTo({
-        y: scorllOffset.current,
-        animated: false,
-      });
-    }, 50);
-  };
-
-  const handleStopAutoScroll = () => {
-    if (scrollInveral.current) {
-      clearInterval(scrollInveral.current);
-      scrollInveral.current = null;
-      setAutoScroll(false);
-    }
-  };
-
-  useEffect(() => {
-    if (autoScroll) {
-      handleAutoScroll();
-    } else {
-      handleStopAutoScroll();
-    }
-    return () => handleStopAutoScroll();
-  }, [autoScroll]);
+  }, [route.params.pathId]);
 
   useEffect(() => {
     if (isSaved || found) {
-      fadeAnim.setValue(1);
-      const timeoutId = setTimeout(() => {
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 2500,
-          useNativeDriver: true,
-        }).start(() => {
-          setIsSaving(false);
+      fadeAnim.current.setValue(1);
+      Animated.timing(fadeAnim.current, {
+        toValue: 0,
+        duration: 2500,
+        useNativeDriver: true,
+      }).start(() => {
+        Promise.resolve().then(() => {
           setIsSaved(false);
+          setIsSaving(false);
+          Animated.timing(new Animated.Value(0), {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }).start(() => {
+            Promise.resolve().then(() => {
+              setFound(false);
+            });
+          });
         });
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
+      });
     }
+    return () => {
+      fadeAnim.current.stopAnimation();
+    };
   }, [isSaved, found]);
 
+  const scrollAnimValueRef = useRef(new Animated.Value(0));
+
   useEffect(() => {
-    if (pathAng === matchedPath?.saveData.angNumber && pathContent) {
-      const timeoutId = setTimeout(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+    if (pathAng === matchedPath.current?.saveData.angNumber && pathContent) {
+      scrollAnimValueRef.current.setValue(0);
+      animation = Animated.timing(scrollAnimValueRef.current, {
+        toValue: 1,
+        duration: 10,
+        useNativeDriver: true,
+      });
+      animation.start(() => {
         scrollToSavedPathData();
-      }, 800);
-
-      return () => clearTimeout(timeoutId);
+      });
     }
-  }, [matchedPath, pathAng, pathContent]);
-
-  useFocusEffect(() => {
-    const fetchLarivaarData = async () => {
-      try {
-        const larivaar = await fetchLarivaar();
-        setIsLarivaar(larivaar || false);
-      } catch (error) {
-        setIsLarivaar(false);
+    return () => {
+      if (animation) {
+        animation.stop();
       }
     };
-    fetchLarivaarData();
-  });
+  }, [pathAng, pathContent, scrollToSavedPathData]);
 
-  useEffect(() => {
-    const checkNetworkStatus = async () => {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-      }
-    };
-    checkNetworkStatus();
-  }, []);
-
-  useFocusEffect(() => {
-    const fetchAngsFormatData = async () => {
-      try {
-        const format = await fetchAngsFormat();
-        setAngsFormat(format);
-        setPathPunjabiAng(convertNumberToFormat(pathAng, format.format as 'Punjabi' | 'English'));
-      } catch (error) {
-        setAngsFormat({ format: 'Punjabi' });
-        setPathPunjabiAng(convertNumberToFormat(pathAng, 'Punjabi'));
-      }
-    };
-    fetchAngsFormatData();
-  });
-
+  useFocusEffect(
+    useCallback(() => {
+      const fetchData = async () => {
+        try {
+          const [larivaar, format] = await Promise.all([fetchLarivaar(), fetchAngsFormat()]);
+          setIsLarivaar(larivaar || false);
+          setAngsFormat(format);
+        } catch (error) {
+          setIsLarivaar(false);
+          setAngsFormat({ format: 'Punjabi' });
+        }
+      };
+      fetchData();
+    }, [fetchLarivaar, fetchAngsFormat, pathAng])
+  );
+  useFocusEffect(
+    useCallback(() => {
+      const fetch = async () => {
+        try {
+          const fontSizeData = await fetchFontSize();
+          setFontSize(fontSizeData.number);
+        } catch (e) {
+          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
+          setFontSize(18);
+        }
+      };
+      fetch();
+    }, [fetchFontSize])
+  );
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -280,26 +328,31 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
 
   useEffect(() => {
     return () => {
-      if (scrollInveral.current) {
-        clearInterval(scrollInveral.current);
-        scrollInveral.current = null;
-      }
       if (debounceTimer.current) {
         clearTimeout(debounceTimer.current);
         debounceTimer.current = null;
       }
 
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-        scrollTimeoutRef.current = null;
-      }
+      fadeAnim.current.stopAnimation();
     };
   }, []);
 
+  useEffect(() => {
+    if (isOnline && retryState.needsRetry && retryState.lastFailedAng !== null) {
+      setRetryState({ needsRetry: false, lastFailedAng: null });
+      // Ensure states are reset before retry to prevent blocking interactions
+      setIsSaving(false);
+      setIsSaved(false);
+      fadeAnim.current.stopAnimation();
+      fadeAnim.current.setValue(0);
+      fetchFromBaniDB(retryState.lastFailedAng);
+    }
+  }, [isOnline, retryState, fetchFromBaniDB]);
+
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <View style={PathScreenStyles.container}>
-        <View style={PathScreenStyles.navContainer}>
+        <View>
           <PathNavigation
             pathPujabiAng={pathPujabiAng}
             pathAng={pathAng}
@@ -315,21 +368,28 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
           pressIndex={pressIndex}
           savedPathVerseId={savedPathVerseId}
           scrollRef={scrollRef}
-          scorllOffset={scorllOffset}
+          scrollOffset={scrollOffset}
           isAngNavigation={isAngNavigation}
           debouncedScrollSave={debouncedScrollSave}
-          handleStopAutoScroll={handleStopAutoScroll}
           handleRightArrow={handleRightArrow}
           handleLeftArrow={handleLeftArrow}
           setPressIndex={setPressIndex}
           setSavedPathVerseId={setSavedPathVerseId}
-          handleUpdatePath={handleUpdatePath}
+          handleUpdatePathWithErrorHandling={handleUpdatePathWithErrorHandling}
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
           pathId={route.params.pathId}
+          isNavigating={isNavigating}
+          found={found}
+          setFound={setFound}
+          fontSize={fontSize}
+          isSaved={isSaved}
         />
-        {aleartIndicator.current !== undefined ? (
-          <Loading alertIndicator={aleartIndicator.current} alertText={alertText.current} />
+        {alertIndicator.current !== undefined ? (
+          <Loading
+            alertIndicator={alertIndicator.current}
+            alertText={Constants.ALERT_TEXT_LOADING}
+          />
         ) : null}
 
         {!isSaving && !found ? (
@@ -337,32 +397,21 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
             <PathControls
               handleGoBack={handleGoBack}
               setIsSaving={setIsSaving}
-              isSaving={isSaving}
               fadeAnim={fadeAnim}
-              autoScroll={autoScroll}
-              setAutoScroll={setAutoScroll}
               navigation={navigation}
             />
           </View>
         ) : undefined}
-        {isSaving && (
-          <Message
-            message={
-              !isSaved
-                ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
-                : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE
-            }
-            fadeAnim={fadeAnim}
-          />
+        {isSaving && <Message message={savingMessage} fadeAnim={fadeAnim.current} />}
+        {found && (
+          <Message message={Constants.RESUMING_SAVED_PROGRESS} fadeAnim={fadeAnim.current} />
         )}
-        {found && <Message message={Constants.LAST_SAVED_PANKTEE_FOUNDED} fadeAnim={fadeAnim} />}
         {isAngsNavigationVisible && (
           <AngsNavigation
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}
-            handleRightArrow={() => handleRightArrow(pathAng)}
-            handleLeftArrow={() => handleLeftArrow(pathAng)}
-            angNavigationNumber={angNavigationNumber}
-            setAngNavigationNumber={setAngNavigationNumber}
+            handleRightArrow={handleAngsRightArrow}
+            handleLeftArrow={handleAngsLeftArrow}
+            pathAng={pathAng}
             isAngNavigation={isAngNavigation}
             setIsAngNavigation={setIsAngNavigation}
             fetchAngData={fetchFromBaniDB}
@@ -372,4 +421,4 @@ export const PathScreen = ({ navigation, route }: PathScreenProps) => {
       </View>
     </SafeAreaView>
   );
-};
+});

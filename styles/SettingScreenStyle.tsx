@@ -1,19 +1,29 @@
 import { StyleSheet } from 'react-native';
+import { UIConstants } from '@constants/UIConstants';
 
 export const SettingScreenStyle = StyleSheet.create({
   container: {
     flex: 1,
-    borderWidth: 4,
-    borderRightWidth: 5,
-    borderColor: 'rgba(253, 198, 6, 0.3)',
-    padding: 15,
   },
   navContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    backgroundColor: '#0D2346',
+  },
+  navText: {
+    color: '#fff',
   },
   settingContainer: {
     marginTop: 15,
+    padding: UIConstants.RHYTHM * 1.1,
+    paddingTop: 0,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '50%',
+    padding: UIConstants.RHYTHM * 1.5,
   },
 });

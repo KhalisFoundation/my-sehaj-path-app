@@ -2,12 +2,14 @@ import React from 'react';
 import { View, ScrollView, Image } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SimpleText, NavContent } from '@components';
-import { GoBackIcon, HomeIcon } from '@icons';
+import { HomeIcon, LeftArrowIcon } from '@icons';
 import { ErrorScreenStyles } from '@styles';
 import { RootStackParamList } from '../App';
-import { ErrorConstants } from '@constants';
+import { ErrorConstants, Routes } from '@constants';
+import { useScreenAnalytics } from '@hooks/useScreenAnalytics';
 
 export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Error'>) => {
+  useScreenAnalytics('Error', 'Error');
   return (
     <ScrollView contentContainerStyle={ErrorScreenStyles.container}>
       <Image
@@ -20,7 +22,7 @@ export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList,
       />
       <View style={ErrorScreenStyles.navContainer}>
         <NavContent
-          navIcon={<GoBackIcon />}
+          navIcon={<LeftArrowIcon />}
           onPress={() => {
             navigation.goBack();
           }}
@@ -29,7 +31,7 @@ export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList,
           <NavContent
             navIcon={<HomeIcon />}
             onPress={() => {
-              navigation.replace('Home');
+              navigation.replace(Routes.Home);
             }}
           />
         </View>

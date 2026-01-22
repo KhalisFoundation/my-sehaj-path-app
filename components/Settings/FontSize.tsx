@@ -4,7 +4,7 @@ import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent, SimpleText } from '@components';
 import { RightChevronIcon, LeftArrowIcon, CheckMarkIcon } from '@icons';
 import { useLocal, FontSizeData } from '@hooks';
-import { showErrorAlert } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { FontSizeStyle } from '@styles';
 import { ErrorConstants, Constants } from '@constants';
 import { FontSizes } from '@constants';
@@ -21,6 +21,7 @@ export const FontSize = () => {
   const handleFontSize = async (size: FontSizeData) => {
     try {
       setFontSize(size);
+      trackEvent('Settings', 'click', `changed font size to ${size.fontSize}`);
       handleToggle();
       await saveFontSize(size);
     } catch (error) {

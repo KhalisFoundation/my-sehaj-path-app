@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import font from '@utils/font';
+import { UIConstants } from '@constants/UIConstants';
 
 export const ContinueScreenStyles = StyleSheet.create({
   backgroundImage: {
@@ -11,12 +12,8 @@ export const ContinueScreenStyles = StyleSheet.create({
   container: {
     backgroundColor: 'rgba(245, 245, 245,0.89)',
     height: '100%',
-    borderWidth: 4,
-    borderRightWidth: 6,
-    borderColor: 'rgba(253, 198, 6, 0.3)',
-    padding: 35,
-    paddingTop: 26,
-    gap: 10,
+    padding: UIConstants.PADDING * 3,
+    gap: UIConstants.RHYTHM,
   },
   navContainer: {
     flexDirection: 'row',
@@ -25,13 +22,13 @@ export const ContinueScreenStyles = StyleSheet.create({
   },
   tabsContainer: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
+    gap: UIConstants.RHYTHM,
+    marginTop: UIConstants.RHYTHM,
   },
   tabActive: {
     borderBottomWidth: 3,
     borderBottomColor: '#11336A',
-    paddingBottom: 10,
+    paddingBottom: UIConstants.RHYTHM,
   },
   tabText: {
     fontFamily: font.Baloo_Paaji_2_Extra_Bold,
@@ -40,7 +37,7 @@ export const ContinueScreenStyles = StyleSheet.create({
   },
   sehajHeadingContainer: {
     flexDirection: 'row',
-    marginTop: 30,
+    marginTop: UIConstants.RHYTHM * 2,
   },
   sehajHeading: {
     fontSize: 48,
@@ -49,7 +46,7 @@ export const ContinueScreenStyles = StyleSheet.create({
   waheguruHeading: {
     fontFamily: font.Baloo_Paaji_2_Extra_Bold,
     fontSize: 16,
-    marginTop: 24,
+    marginTop: UIConstants.RHYTHM * 2,
   },
   impTextContainer: {
     fontSize: 22,
@@ -61,12 +58,12 @@ export const ContinueScreenStyles = StyleSheet.create({
   },
   streakScroll: {
     flexDirection: 'row',
-    gap: 6,
+    gap: UIConstants.RHYTHM / 2,
     width: 246,
   },
   streakScrollContainer: {
     maxHeight: 85,
-    marginTop: 10,
+    marginTop: UIConstants.RHYTHM,
     marginBottom: 48,
   },
   complete10Angs: {
@@ -75,13 +72,16 @@ export const ContinueScreenStyles = StyleSheet.create({
     fontSize: 24,
   },
   continueButton: {
-    width: 'auto',
-    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  continueButtonIcon: {
+    paddingLeft: 11,
   },
   streakContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 10,
+    marginTop: UIConstants.RHYTHM,
   },
   streakText: {
     fontSize: 72,
@@ -96,7 +96,7 @@ export const ContinueScreenStyles = StyleSheet.create({
     fontSize: 50,
     color: '#FFD700',
     position: 'relative',
-    right: 20,
+    right: UIConstants.RHYTHM * 2,
   },
   streakValueContainer: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useRef, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
@@ -14,11 +14,11 @@ import {
   PathRename,
   Calender,
 } from '@components';
-import { Constants, ErrorConstants } from '@constants';
+import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { PathData, useLocal, useInternet } from '@hooks';
-import { showErrorAlert } from '@utils';
-import { GoBackIcon, ContinueIcon } from '@icons';
+import { PathData, useLocal, useScreenAnalytics, useInternet } from '@hooks';
+import { showErrorAlert, trackEvent } from '@utils';
+import { LeftArrowIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
@@ -26,34 +26,39 @@ type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 export const Continue = ({ route, navigation }: ContinueProps) => {
   const { pathId } = route.params;
   dayjs.extend(customParseFormat);
-
-  // Consolidated state to reduce re-renders
+  useScreenAnalytics('Continue', 'Continue');
   const [pathState, setPathState] = useState({
-    pathData: undefined as PathData | undefined,
+    pathData: {
+      pathId: 0,
+      saveData: { angNumber: 0, verseId: 0 },
+      progress: 0,
+      startDate: '',
+      completionDate: '',
+      pathName: '',
+    },
     pathAng: 0,
     pathPercentage: 0,
     daysAgo: 0,
     averageAngs: 0,
-    finishDate: undefined as string | undefined,
+    finishDate: '',
     showData: false,
     pathName: '',
   });
 
   const [uiState, setUiState] = useState({
     showPathRename: false,
-    tabs: 'progress' as string,
+    tabs: 'progress',
     streakValue: 0,
   });
 
   const streak = useRef<number>(0);
   const { fetchFromLocal } = useLocal();
-  const { checkNetwork, updateOnlineStatus } = useInternet();
+  const { checkNetwork } = useInternet();
 
   const handleStreakUpdate = useCallback((newStreakValue: number) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
   }, []);
 
-  // Memoized calculation to prevent unnecessary recalculations
   const calculatePathCompletion = useCallback((matchedPath: PathData) => {
     const today = dayjs();
     const startDate = dayjs(matchedPath.startDate, 'D-MMMM-YYYY');
@@ -128,18 +133,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
     }
-  }, [checkNetwork, navigation, pathId]);
+  }, [navigation, pathId, checkNetwork]);
 
-  useEffect(() => {
-    try {
-      updateOnlineStatus();
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
-  }, [updateOnlineStatus]);
-
-  // Memoized tab handlers to prevent unnecessary re-renders
   const handleTabPress = useCallback((tab: string) => {
+    trackEvent('TabSwitch', 'click', `switch to ${tab} tab`);
     setUiState((prev) => ({ ...prev, tabs: tab }));
   }, []);
 
@@ -148,10 +145,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }, []);
 
   const handleBackPress = useCallback(() => {
-    navigation.replace('Home');
+    navigation.replace(Routes.Home);
   }, [navigation]);
 
-  // Memoized progress text to prevent unnecessary re-renders
   const progressText = useMemo(
     () => [
       Constants.YOU_ARE_ON_ANG_NUMBER,
@@ -182,9 +178,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     ],
     [pathState.daysAgo, pathState.averageAngs, pathState.finishDate]
   );
-
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <ImageBackground
         source={require('../assets/Images/ContinueScreenBg.png')}
         style={ContinueScreenStyles.backgroundImage}
@@ -201,7 +196,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               accessibilityRole="button"
               accessibilityHint="Tap to go back to home screen"
             >
-              <NavContent navIcon={<GoBackIcon />} onPress={handleBackPress} />
+              <NavContent navIcon={<LeftArrowIcon />} onPress={handleBackPress} />
               <NavContent text={Constants.SEE_ALL_PATH} />
             </Pressable>
             <View style={ContinueScreenStyles.tabsContainer}>
@@ -241,7 +236,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   accessibilityHint="Tap to rename this path"
                 >
                   <SecondaryHeading
-                    text={pathState.pathName || pathState.pathData?.pathName}
+                    text={pathState.pathName || pathState.pathData?.pathName || ''}
                     textStyles={ContinueScreenStyles.sehajHeading}
                   />
                 </Pressable>
@@ -268,7 +263,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                     <View style={ContinueScreenStyles.streakContainer}>
                       <View style={ContinueScreenStyles.streakValueContainer}>
                         <SecondaryHeading
-                          text={uiState.streakValue}
+                          text={uiState.streakValue.toString()}
                           textStyles={ContinueScreenStyles.streakText}
                         />
                         <Image
@@ -295,6 +290,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               buttonText={'Continue'}
               buttonIcon={<ContinueIcon />}
               buttonStyle={ContinueScreenStyles.continueButton}
+              buttonIconStyle={ContinueScreenStyles.continueButtonIcon}
             />
           </View>
         </ScrollView>

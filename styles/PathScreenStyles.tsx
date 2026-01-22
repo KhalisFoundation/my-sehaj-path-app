@@ -1,40 +1,41 @@
 import { StyleSheet } from 'react-native';
+import { UIConstants } from '@constants/UIConstants';
 
 export const PathScreenStyles = StyleSheet.create({
   container: {
-    borderWidth: 4,
-    borderRightWidth: 5,
-    borderColor: 'rgba(253, 198, 6, 0.3)',
     height: '100%',
     width: '100%',
-    paddingBottom: 40,
-  },
-  navContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 15,
-    position: 'absolute',
-    right: 10,
-    zIndex: 8,
+    paddingBottom: UIConstants.RHYTHM * 3,
   },
   pathContentContainer: {
-    padding: 15,
-    paddingTop: 20,
+    padding: UIConstants.RHYTHM,
+    paddingTop: UIConstants.RHYTHM * 2,
   },
-
   navigationContainer: {
     position: 'absolute',
     bottom: 5,
     zIndex: 9,
     width: '100%',
-    maxWidth: 258,
+    maxWidth: 200,
     backgroundColor: '#11336A',
-    padding: 10,
     height: 48,
     alignItems: 'center',
     justifyContent: 'space-around',
     alignSelf: 'center',
     borderRadius: 5,
     flexDirection: 'row',
+  },
+  controlsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  controlItem: {
+    flex: 1,
+    flexDirection: 'row',
+    width: '100%',
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

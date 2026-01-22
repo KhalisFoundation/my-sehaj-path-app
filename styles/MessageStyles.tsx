@@ -4,7 +4,7 @@ import { StyleSheet } from 'react-native';
 export const MessageStyles = StyleSheet.create({
   saveContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 2,
     zIndex: 100,
     width: '100%',
     maxWidth: 356,

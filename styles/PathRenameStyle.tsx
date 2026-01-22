@@ -3,13 +3,13 @@ import { StyleSheet } from 'react-native';
 
 export const PathRenameStyle = StyleSheet.create({
   blurView: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    zIndex: 999,
+    zIndex: 9999,
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    elevation: 1,
   },
   overlayContainer: {
     padding: 15,
@@ -29,6 +29,14 @@ export const PathRenameStyle = StyleSheet.create({
     alignItems: 'center',
     gap: 15,
     borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   renameText: {
     fontSize: 18,
@@ -63,5 +71,19 @@ export const PathRenameStyle = StyleSheet.create({
     top: 10,
     right: 10,
     zIndex: 999,
+  },
+  warningText: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    textAlign: 'center',
+    marginTop: -5,
+  },
+  disabledButton: {
+    backgroundColor: '#CCCCCC',
+    opacity: 0.6,
+  },
+  disabledButtonText: {
+    color: '#888888',
   },
 });

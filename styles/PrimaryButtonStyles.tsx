@@ -4,22 +4,22 @@ import font from '@utils/font';
 export const PrimaryButtonStyles = StyleSheet.create({
   container: {
     width: 'auto',
-    minWidth: 112,
+    minWidth: 125,
+    minHeight: 50,
     height: 'auto',
     marginTop: 10,
     borderRadius: 100,
   },
   button: {
     flexDirection: 'row',
-    padding: 11,
+    padding: 12,
     gap: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   text: {
-    color: 'white',
-    letterSpacing: 3,
-    fontFamily: font.Baloo_Paaji_2_Medium,
+    color: '#0D2346',
+    fontFamily: font.Baloo_Paaji_2_Regular,
     fontSize: 18,
-    transform: [{ translateY: -1 }],
   },
 });

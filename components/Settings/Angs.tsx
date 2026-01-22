@@ -6,7 +6,7 @@ import { AngsFormatArray } from '@constants';
 import { AngsFormat, useLocal } from '@hooks';
 import { LeftArrowIcon, RightChevronIcon } from '@icons';
 import { AngsFormatStyles } from '@styles';
-import { showErrorAlert } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { ErrorConstants, Constants } from '@constants';
 
 export const Angs = () => {
@@ -18,6 +18,7 @@ export const Angs = () => {
   const handleAngsFormat = async (format: AngsFormat) => {
     try {
       setAngsFormat(format);
+      trackEvent('Settings', 'click', `changed angs format to ${format.format}`);
       handleToggle();
       await saveAngsFormat(format);
     } catch (error) {
@@ -47,7 +48,10 @@ export const Angs = () => {
         accessibilityRole="button"
         accessibilityHint="Tap to change angs format"
       >
-        <SimpleText simpleText={Constants.ANG} simpleTextStyle={AngsFormatStyles.angsText} />
+        <SimpleText
+          simpleText={Constants.ANG_NUMBERING}
+          simpleTextStyle={AngsFormatStyles.angsText}
+        />
         <View style={AngsFormatStyles.angsContainer}>
           <SimpleText simpleText={angsFormat.format} simpleTextStyle={AngsFormatStyles.text} />
           <RightChevronIcon />

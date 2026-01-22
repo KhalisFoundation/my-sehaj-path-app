@@ -2,14 +2,16 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, ImageBackground, Animated } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Constants } from '@constants';
+import { Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { SplashScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
+import { useScreenAnalytics } from '@hooks';
 
 type SplashProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 export const SplashScreen = ({ navigation }: SplashProps) => {
   const fadeOut = useRef(new Animated.Value(1)).current;
+  useScreenAnalytics('SplashScreen', 'SplashScreen');
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       Animated.timing(fadeOut, {
@@ -17,14 +19,14 @@ export const SplashScreen = ({ navigation }: SplashProps) => {
         duration: 1500,
         useNativeDriver: true,
       }).start(() => {
-        navigation.replace('Home');
+        navigation.replace(Routes.Home);
       });
     }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [fadeOut, navigation]);
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <Animated.View style={{ opacity: fadeOut }}>
         <ImageBackground
           source={require('../assets/Images/SplashScreenBg.png')}

@@ -4,3 +4,4 @@ export { useNavigation } from './useNavigation';
 export { usePathNavigation } from './usePathNavigation';
 export { useScrollToSavedPath } from './useScrollToSavedPath';
 export type { PathData, DateData, PathDate, FontSizeData, AngsFormat } from './useLocal';
+export { useScreenAnalytics } from './useScreenAnalytics';

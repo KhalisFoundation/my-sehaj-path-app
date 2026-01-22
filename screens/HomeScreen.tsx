@@ -1,24 +1,24 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ImageBackground, ScrollView, SafeAreaView } from 'react-native';
+import { View, ImageBackground, ScrollView, BackHandler } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
-import { Constants, ErrorConstants } from '@constants';
-import { StartIcon } from '@icons';
-import { PathData, useLocal } from '@hooks';
-import { showErrorAlert } from '@utils';
+import { PathData, useLocal, useScreenAnalytics } from '@hooks';
+import { showErrorAlert, trackEvent } from '@utils';
+import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-export const HomeScreen = ({ navigation }: HomeProps) => {
+export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const [pathDataArrayFromLocal, setPathDataArrayFromLocal] = useState<PathData[]>([]);
   const { fetchFromLocal, handleNewPath } = useLocal();
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const errorAlertShownRef = useRef(false);
-
+  const isLoadingRef = useRef(false);
+  useScreenAnalytics('HomeScreen', 'HomeScreen');
   const { pathInProgress, pathCompleted } = useMemo(() => {
     const completed = pathDataArrayFromLocal.filter(
       (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
@@ -30,10 +30,10 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
   }, [pathDataArrayFromLocal]);
 
   const loadData = useCallback(async () => {
-    if (isLoading) {
+    if (isLoadingRef.current) {
       return;
     }
-    setIsLoading(true);
+    isLoadingRef.current = true;
     errorAlertShownRef.current = false;
     try {
       const { pathDataArray } = await fetchFromLocal();
@@ -51,9 +51,9 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
         );
       }
     } finally {
-      setIsLoading(false);
+      isLoadingRef.current = false;
     }
-  }, [fetchFromLocal, isLoading]);
+  }, [fetchFromLocal]);
 
   useFocusEffect(
     useCallback(() => {
@@ -61,13 +61,34 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
     }, [loadData])
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        timeoutId = setTimeout(() => {
+          BackHandler.exitApp();
+        }, 100);
+        return true;
+      });
+
+      return () => {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
+        backHandler.remove();
+      };
+    }, [])
+  );
+
   const handleStart = useCallback(async () => {
+    trackEvent('PathCreated', 'click', 'start new path');
     try {
       const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
       setPathDataArrayFromLocal(pathDataArray);
       await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
-      navigation.push('Continue', { pathId: newPathid });
+      navigation.push(Routes.Continue, { pathId: newPathid });
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
     }
@@ -82,7 +103,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
           angNumber={path.saveData.angNumber}
           progress={path.progress}
           onPress={() => {
-            navigation.push('Continue', { pathId: path.pathId });
+            navigation.push(Routes.Continue, { pathId: path.pathId });
           }}
         />
       )),
@@ -102,7 +123,7 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
   );
 
   return (
-    <SafeAreaView style={SafeAreaStyle.safeAreaView}>
+    <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <ImageBackground
         source={require('../assets/Images/HomeScreenBg.png')}
         resizeMode="cover"
@@ -110,22 +131,18 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       >
         <ScrollView contentContainerStyle={HomeScreenStyles.scrollContainer}>
           <View style={HomeScreenStyles.container}>
-            <Headline headline={Constants.ITS_FINE_DAY_TO_START_A} />
-            <Headline headline={Constants.NEW_SEHAJ_PATH} />
-            <PrimaryButton
-              buttonTitle={Constants.START}
-              Icon={<StartIcon />}
-              onPress={handleStart}
-            />
+            <Headline headline={Constants.ITS_FINE_DAY_FOR} />
+            <Headline headline={Constants.SEHAJ_PATH_ENGLISH} />
             {pathInProgress?.length > 0 ? (
               <View style={HomeScreenStyles.pathInProgressContianer}>
-                <Label label={`${Constants.SEHAJ_PATH_IN_PROGRESS} :`} />
+                <Label label={Constants.SEHAJ_PATH_IN_PROGRESS} />
                 <Slider arrayOfCards={pathInProgressCards} widthOfCard={199} dotsIndicator={true} />
               </View>
             ) : undefined}
+            <PrimaryButton buttonTitle={Constants.START_NEW} onPress={handleStart} />
             {pathCompleted?.length > 0 ? (
               <View style={HomeScreenStyles.pathCompletedContainer}>
-                <Label label={`${Constants.SEHAJ_PATH_COMPLETED} :`} />
+                <Label label={Constants.SEHAJ_PATH_COMPLETED} />
                 <Slider arrayOfCards={pathCompletedCards} widthOfCard={130} dotsIndicator={false} />
               </View>
             ) : undefined}
@@ -134,4 +151,4 @@ export const HomeScreen = ({ navigation }: HomeProps) => {
       </ImageBackground>
     </SafeAreaView>
   );
-};
+});
