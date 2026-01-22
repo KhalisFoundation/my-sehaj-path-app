@@ -21,10 +21,15 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   useScreenAnalytics('HomeScreen', 'HomeScreen');
   const { pathInProgress, pathCompleted } = useMemo(() => {
     const completed = pathDataArrayFromLocal.filter(
-      (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
+      (path: PathData) =>
+        (path.completionDate && path.completionDate !== '') ||
+        (path.saveData.angNumber === 1430 && path.saveData.verseId === 60403)
     );
     const inProgress = pathDataArrayFromLocal.filter(
-      (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+      (path: PathData) =>
+        !(path.completionDate && path.completionDate !== '') &&
+        !(path.saveData.angNumber === 1430 && path.saveData.verseId === 60403) &&
+        path.saveData.angNumber <= 1430
     );
     return { pathInProgress: inProgress, pathCompleted: completed };
   }, [pathDataArrayFromLocal]);

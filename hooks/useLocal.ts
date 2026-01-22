@@ -101,10 +101,33 @@ export const useLocal = () => {
     const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
+      const isCurrentlyCompleted =
+        matchedPath.saveData.angNumber === 1430 && matchedPath.saveData.verseId === 60403;
+      const isNewCompletion = angNumber === 1430 && verseId === 60403;
+      const hasCompletionDate = matchedPath.completionDate && matchedPath.completionDate !== '';
+
+      const preservedCompletionDate = hasCompletionDate ? matchedPath.completionDate : '';
+
+      if (!isCurrentlyCompleted && !isNewCompletion) {
+        if (verseId === 0 && angNumber < matchedPath.saveData.angNumber) {
+          return;
+        }
+        if (verseId === 0 && angNumber === matchedPath.saveData.angNumber) {
+          return;
+        }
+      }
+
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
 
       matchedPath.saveData = { angNumber, verseId };
       matchedPath.progress = (angNumber / 1430) * 100;
+      if (isNewCompletion) {
+        matchedPath.completionDate = todayDate;
+      } else if (hasCompletionDate && angNumber < 1430) {
+        matchedPath.completionDate = '';
+      } else if (preservedCompletionDate && angNumber >= 1430) {
+        matchedPath.completionDate = preservedCompletionDate;
+      }
 
       const updatedDates = [
         ...cleanMatchedPathDates,
@@ -119,10 +142,10 @@ export const useLocal = () => {
         scrollPosition: scrollPosition,
       });
 
-      if (angNumber === 1430 && verseId === 60403) {
+      if (isNewCompletion) {
         trackEvent('PathCompleted', 'completed', `path completed`);
-        matchedPath.completionDate = todayDate;
       }
+
       await Promise.all([
         AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray)),
         AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate)),

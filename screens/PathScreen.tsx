@@ -384,6 +384,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           setFound={setFound}
           fontSize={fontSize}
           isSaved={isSaved}
+          setIsAngNavigation={setIsAngNavigation}
         />
         {alertIndicator.current !== undefined ? (
           <Loading

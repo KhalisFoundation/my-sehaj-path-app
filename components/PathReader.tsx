@@ -35,6 +35,7 @@ interface PathReaderProps {
   setFound: (value: boolean) => void;
   fontSize: number;
   isSaved: boolean;
+  setIsAngNavigation: (value: boolean) => void;
 }
 
 const PathReaderComponent = ({
@@ -60,6 +61,7 @@ const PathReaderComponent = ({
   setFound,
   fontSize,
   isSaved,
+  setIsAngNavigation,
 }: PathReaderProps) => {
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -111,7 +113,12 @@ const PathReaderComponent = ({
         pathContent?.source?.pageNo,
         verseId,
         scrollOffset.current,
-        setIsSaved
+        (value: boolean) => {
+          setIsSaved(value);
+          if (value && isAngNavigation) {
+            setIsAngNavigation(false);
+          }
+        }
       );
     },
     [
@@ -120,6 +127,8 @@ const PathReaderComponent = ({
       scrollOffset,
       handleUpdatePathWithErrorHandling,
       setIsSaved,
+      isAngNavigation,
+      setIsAngNavigation,
     ]
   );
 

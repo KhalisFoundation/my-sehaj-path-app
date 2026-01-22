@@ -40,7 +40,9 @@ export const usePathNavigation = ({
       if (pathAng !== lastSavedAngNumber) {
         showSaveProgressAlert({
           onSaveAndGoBack: () => {
-            handleUpdatePath(pathId, pathAng, savedPathVerseId, scrollOffset.current, setIsSaved);
+            if (savedPathVerseId > 0) {
+              handleUpdatePath(pathId, pathAng, savedPathVerseId, scrollOffset.current, setIsSaved);
+            }
             setIsAngNavigation(false);
             navigation.push('Home');
           },
