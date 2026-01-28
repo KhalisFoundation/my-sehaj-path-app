@@ -108,25 +108,61 @@ export const useLocal = () => {
 
       const preservedCompletionDate = hasCompletionDate ? matchedPath.completionDate : '';
 
+      // Allow updating ang number when scrolling, even when going backwards
+      // Only prevent saving if scrolling on the same ang with no progress (to avoid unnecessary saves)
       if (!isCurrentlyCompleted && !isNewCompletion) {
-        if (verseId === 0 && angNumber < matchedPath.saveData.angNumber) {
-          return;
-        }
         if (verseId === 0 && angNumber === matchedPath.saveData.angNumber) {
+          // Same ang, no new line saved - don't save to avoid unnecessary updates
           return;
         }
+        // Allow saving when going backwards - this updates progress to current viewing position
       }
 
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
 
-      matchedPath.saveData = { angNumber, verseId };
-      matchedPath.progress = (angNumber / 1430) * 100;
+      const previousSavedAng = matchedPath.saveData.angNumber;
+      const previousSavedVerseId = matchedPath.saveData.verseId;
+
+      let finalAngNumber = angNumber;
+      let finalVerseId = verseId;
+
+      // Only update verseId when user explicitly saves a line (verseId > 0)
+      // When scrolling without saving (verseId === 0), don't preserve verseId from different ang
+      if (verseId === 0) {
+        // User is just scrolling, not saving a line
+        if (angNumber < previousSavedAng) {
+          // Going backwards to a lower ang - don't show verseId from higher ang
+          // Set to 0 since no line was saved on this ang
+          finalVerseId = 0;
+        } else if (angNumber === previousSavedAng) {
+          // Same ang - preserve verseId only if it was saved on this ang
+          // If previous verseId was from this ang, keep it; otherwise set to 0
+          finalVerseId = previousSavedVerseId;
+        } else {
+          // Moving forward - no line saved yet on this ang
+          finalVerseId = 0;
+        }
+      } else {
+        // User explicitly saved a line (verseId > 0) - always save it
+        finalVerseId = verseId;
+      }
+
+      matchedPath.saveData = { angNumber: finalAngNumber, verseId: finalVerseId };
+      matchedPath.progress = (finalAngNumber / 1430) * 100;
+
+      // Completion only happens when user saves last line (60403) on 1430
       if (isNewCompletion) {
+        // User just completed the path
         matchedPath.completionDate = todayDate;
-      } else if (hasCompletionDate && angNumber < 1430) {
-        matchedPath.completionDate = '';
-      } else if (preservedCompletionDate && angNumber >= 1430) {
-        matchedPath.completionDate = preservedCompletionDate;
+      } else if (hasCompletionDate) {
+        // Path was previously completed - check if still valid
+        if (finalAngNumber < 1430 || finalVerseId !== 60403) {
+          // User went back or saved a different line - clear completion
+          matchedPath.completionDate = '';
+        } else {
+          // Still on 1430 with last line saved - preserve completion
+          matchedPath.completionDate = preservedCompletionDate;
+        }
       }
 
       const updatedDates = [

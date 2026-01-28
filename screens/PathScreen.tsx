@@ -234,6 +234,19 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchPath();
   }, [route.params.pathId]);
 
+  // Clear savedPathVerseId when navigating to a different ang than the saved ang
+  // This prevents showing old saved verseId from a different ang
+  useEffect(() => {
+    if (matchedPath.current && pathAng !== matchedPath.current.saveData.angNumber) {
+      // User navigated to a different ang - clear the saved verseId
+      // It will only be set again if user explicitly saves a line on this ang
+      setSavedPathVerseId(0);
+    } else if (matchedPath.current && pathAng === matchedPath.current.saveData.angNumber) {
+      // User is on the saved ang - restore the saved verseId
+      setSavedPathVerseId(matchedPath.current.saveData.verseId);
+    }
+  }, [pathAng]);
+
   useEffect(() => {
     if (isSaved || found) {
       fadeAnim.current.setValue(1);
