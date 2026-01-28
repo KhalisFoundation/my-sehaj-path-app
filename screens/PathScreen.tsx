@@ -39,6 +39,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [pressIndex, setPressIndex] = useState<number>(0);
   const [found, setFound] = useState<boolean>(false);
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
+  const [isParagraphMode, setIsParagraphMode] = useState<boolean>(false);
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
@@ -78,6 +79,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchLarivaar,
     fetchFontSize,
     fetchAngsFormat,
+    fetchParagraphMode,
   } = useLocal();
 
   useScreenAnalytics('PathScreen', 'PathScreen');
@@ -288,16 +290,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     useCallback(() => {
       const fetchData = async () => {
         try {
-          const [larivaar, format] = await Promise.all([fetchLarivaar(), fetchAngsFormat()]);
+          const [larivaar, format, paragraphMode] = await Promise.all([fetchLarivaar(), fetchAngsFormat(), fetchParagraphMode()]);
           setIsLarivaar(larivaar || false);
           setAngsFormat(format);
+          setIsParagraphMode(paragraphMode || false);
         } catch (error) {
           setIsLarivaar(false);
           setAngsFormat({ format: 'Punjabi' });
+          setIsParagraphMode(false);
         }
       };
       fetchData();
-    }, [fetchLarivaar, fetchAngsFormat, pathAng])
+    }, [fetchLarivaar, fetchAngsFormat, fetchParagraphMode, pathAng])
   );
   useFocusEffect(
     useCallback(() => {
@@ -364,6 +368,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         <PathReader
           pathContent={pathContent}
           isLarivaar={isLarivaar}
+          isParagraphMode={isParagraphMode}
           isSaving={isSaving}
           pressIndex={pressIndex}
           savedPathVerseId={savedPathVerseId}

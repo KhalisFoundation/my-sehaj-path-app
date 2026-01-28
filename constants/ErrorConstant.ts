@@ -28,4 +28,6 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_LOAD_PREVIOUS_ANG: 'Failed to load the previous ang. Please try again.',
   FAILED_TO_LOAD_PATH_DATA_GENERIC: 'Failed to load path data. Please try again.',
   ERROR_SCROLLING_TO_SAVED_PATH: 'Error scrolling to saved path:',
+  FAILED_TO_SAVE_PARAGRAPH_MODE: 'Failed to save your paragraph mode preference. Please try again.',
+  FAILED_TO_LOAD_PARAGRAPH_MODE: 'Failed to load your paragraph mode preference. Please try again.',
 };

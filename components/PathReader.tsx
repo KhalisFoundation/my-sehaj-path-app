@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import GestureRecognizer from 'react-native-swipe-gestures';
-import { ScrollView } from 'react-native';
-import { SimpleTextForPath } from '@components';
+import { ScrollView, Text, View } from 'react-native';
+import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { trackEvent } from '@utils/analytics';
@@ -9,6 +9,7 @@ import { trackEvent } from '@utils/analytics';
 interface PathReaderProps {
   pathContent: any;
   isLarivaar: boolean;
+  isParagraphMode: boolean;
   isSaving: boolean;
   pressIndex: number;
   savedPathVerseId: number;
@@ -40,6 +41,7 @@ interface PathReaderProps {
 const PathReaderComponent = ({
   pathContent,
   isLarivaar,
+  isParagraphMode,
   isSaving,
   pressIndex,
   savedPathVerseId,
@@ -123,7 +125,67 @@ const PathReaderComponent = ({
     ]
   );
 
+  const groupedByShabad = useMemo(() => {
+    if (!pathContent?.page) return [];
+  
+    return Object.values(
+      pathContent.page.reduce((acc: any, item: any) => {
+        if (!acc[item.shabadId]) acc[item.shabadId] = [];
+        acc[item.shabadId].push(item);
+        return acc;
+      }, {})
+    );
+  }, [pathContent?.page]);
+  
+
   const pageContent = useMemo(() => {
+    if(isParagraphMode){
+      let globalIndex = 0;
+      return (
+        <View>
+          {groupedByShabad.map((shabad: any, sIndex) => (
+            <Text
+              key={sIndex}
+              style={{
+                marginBottom: 14,
+                lineHeight: fontSize * 1.6,
+              }}
+            >
+              {shabad.map((path: any, index: any) => {
+                const gurbaniLine = isLarivaar
+                  ? path.larivaar.unicode
+                  : path.verse.unicode;
+
+                const currentGlobalIndex = globalIndex++;
+    
+                return (
+                  <ParagraphTextForPath
+                    key={`${path.verseId}-${index}`}
+                    gurbaniLine={gurbaniLine}
+                    onSelection={createSelectionHandler(index, path.verseId)}
+                    onSave={createSaveHandler(path.verseId)}
+                    isSaving={isSaving}
+                    isParagraphMode={isParagraphMode}
+                    pressIndex={pressIndex}
+                    index={currentGlobalIndex + 1}
+                    verseId={path.verseId}
+                    savedPathVerseId={savedPathVerseId}
+                    setIsSaving={setIsSaving}
+                    setIsSaved={setIsSaved}
+                    setPressIndex={setPressIndex}
+                    setSavedPathVerseId={setSavedPathVerseId}
+                    found={found}
+                    setFound={setFound}
+                    fontSize={fontSize}
+                    isSaved={isSaved}
+                  />
+                );
+              })}
+            </Text>
+          ))}
+        </View>
+      ); 
+    }
     return pathContent?.page?.map((path: any, index: number) => {
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
 
@@ -165,6 +227,7 @@ const PathReaderComponent = ({
     setFound,
     fontSize,
     isSaved,
+    isParagraphMode,
   ]);
 
   return (
