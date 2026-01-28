@@ -124,7 +124,7 @@ export const useLocal = () => {
       const previousSavedVerseId = matchedPath.saveData.verseId;
 
       let finalAngNumber = angNumber;
-      let finalVerseId = verseId;
+      let finalVerseId: number;
 
       // Only update verseId when user explicitly saves a line (verseId > 0)
       // When scrolling without saving (verseId === 0), don't preserve verseId from different ang
