@@ -9,3 +9,4 @@ export { AngsFormatArray } from './Angs';
 export { BANIDB_API } from './API';
 export { Routes } from './Routes';
 export { EDGES_ALL_SIDES } from './UIConstants';
+export { PATH_DATA } from './PathData';

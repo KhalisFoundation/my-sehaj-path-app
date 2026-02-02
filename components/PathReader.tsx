@@ -5,6 +5,7 @@ import { SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { trackEvent } from '@utils/analytics';
+import { PATH_DATA } from '@constants';
 
 interface PathReaderProps {
   pathContent: any;
@@ -197,7 +198,7 @@ const PathReaderComponent = ({
         removeClippedSubviews={true}
       >
         {pageContent}
-        {pathContent?.source?.pageNo < 1430 && !isNavigating && (
+        {pathContent?.source?.pageNo < PATH_DATA.LAST_ANG_NUMBER && !isNavigating && (
           <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
         )}
       </ScrollView>

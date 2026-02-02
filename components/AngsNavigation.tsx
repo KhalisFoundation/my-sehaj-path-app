@@ -5,7 +5,7 @@ import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
 import { useInternet } from '@hooks';
 import { showErrorAlert } from '@utils';
-import { ErrorConstants } from '@constants';
+import { ErrorConstants, PATH_DATA } from '@constants';
 
 interface Props {
   setIsAngsNavigationVisible: (isAngsNavigationVisible: boolean) => void;
@@ -47,7 +47,7 @@ export const AngsNavigation = ({
       return;
     }
     const parsedNumber = parseInt(number, 10);
-    if (isNaN(parsedNumber) || parsedNumber > 1430 || parsedNumber < 1) {
+    if (isNaN(parsedNumber) || parsedNumber > PATH_DATA.LAST_ANG_NUMBER || parsedNumber < 1) {
       setIsValid(false);
       return;
     }
@@ -133,7 +133,7 @@ export const AngsNavigation = ({
               onChangeText={handleAngNumber}
               keyboardType="numeric"
               accessibilityLabel="Ang number input field"
-              accessibilityHint="Enter an ang number between 1 and 1430"
+              accessibilityHint={`Enter an ang number between 1 and ${PATH_DATA.LAST_ANG_NUMBER}`}
             />
             <TouchableOpacity
               onPress={() => handleNavigation(handleRightArrow)}
@@ -146,7 +146,7 @@ export const AngsNavigation = ({
           </View>
           {!isValid && inputValue !== '' && (
             <Text style={AngsNavigationStyle.warningText}>
-              Please enter a valid Ang number between 1 and 1430
+              Please enter a valid Ang number between 1 and {PATH_DATA.LAST_ANG_NUMBER}
             </Text>
           )}
           <TouchableOpacity

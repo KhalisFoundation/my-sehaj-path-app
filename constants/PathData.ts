@@ -1,0 +1,4 @@
+export const PATH_DATA = {
+  LAST_ANG_NUMBER: 1430,
+  LAST_VERSE_ID: 60403,
+};

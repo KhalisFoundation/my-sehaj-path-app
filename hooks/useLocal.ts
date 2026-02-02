@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MonthConstant, ErrorConstants } from '@constants';
+import { MonthConstant, ErrorConstants, PATH_DATA } from '@constants';
 import { trackEvent, showErrorAlert } from '@utils';
+import { isPathNotCompleted } from '@utils/isPathCompleted';
 
 export interface PathData {
   pathId: number;
@@ -101,40 +102,24 @@ export const useLocal = () => {
     const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
-      const isCurrentlyCompleted =
-        matchedPath.saveData.angNumber === 1430 && matchedPath.saveData.verseId === 60403;
-      const isNewCompletion = angNumber === 1430 && verseId === 60403;
-      const hasCompletionDate = matchedPath.completionDate && matchedPath.completionDate !== '';
-
-      const preservedCompletionDate = hasCompletionDate ? matchedPath.completionDate : '';
-
-      // Allow updating ang number when scrolling, even when going backwards
-      // Only prevent saving if scrolling on the same ang with no progress (to avoid unnecessary saves)
-      if (!isCurrentlyCompleted && !isNewCompletion) {
+      // If the user saves any verse other than the last verse on ang 1430, update completionDate to ''
+      if (!isPathNotCompleted(angNumber, verseId)) {
         if (verseId === 0 && angNumber === matchedPath.saveData.angNumber) {
-          // Same ang, no new line saved - don't save to avoid unnecessary updates
           return;
         }
-        // Allow saving when going backwards - this updates progress to current viewing position
+        matchedPath.completionDate = '';
       }
 
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
 
-      const previousSavedAng = matchedPath.saveData.angNumber;
+      const currentSavedAng = matchedPath.saveData.angNumber;
       const previousSavedVerseId = matchedPath.saveData.verseId;
 
       let finalAngNumber = angNumber;
       let finalVerseId: number;
 
-      // Only update verseId when user explicitly saves a line (verseId > 0)
-      // When scrolling without saving (verseId === 0), don't preserve verseId from different ang
       if (verseId === 0) {
-        // User is just scrolling, not saving a line
-        if (angNumber < previousSavedAng) {
-          // Going backwards to a lower ang - don't show verseId from higher ang
-          // Set to 0 since no line was saved on this ang
-          finalVerseId = 0;
-        } else if (angNumber === previousSavedAng) {
+        if (angNumber === currentSavedAng) {
           // Same ang - preserve verseId only if it was saved on this ang
           // If previous verseId was from this ang, keep it; otherwise set to 0
           finalVerseId = previousSavedVerseId;
@@ -148,20 +133,20 @@ export const useLocal = () => {
       }
 
       matchedPath.saveData = { angNumber: finalAngNumber, verseId: finalVerseId };
-      matchedPath.progress = (finalAngNumber / 1430) * 100;
+      matchedPath.progress = (finalAngNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
 
       // Completion only happens when user saves last line (60403) on 1430
-      if (isNewCompletion) {
+      if (isPathNotCompleted(angNumber, verseId)) {
         // User just completed the path
         matchedPath.completionDate = todayDate;
-      } else if (hasCompletionDate) {
+      } else if (matchedPath.completionDate && matchedPath.completionDate !== '') {
         // Path was previously completed - check if still valid
-        if (finalAngNumber < 1430 || finalVerseId !== 60403) {
+        if (!isPathNotCompleted(finalAngNumber, finalVerseId)) {
           // User went back or saved a different line - clear completion
           matchedPath.completionDate = '';
         } else {
           // Still on 1430 with last line saved - preserve completion
-          matchedPath.completionDate = preservedCompletionDate;
+          matchedPath.completionDate = matchedPath.completionDate;
         }
       }
 
@@ -178,7 +163,7 @@ export const useLocal = () => {
         scrollPosition: scrollPosition,
       });
 
-      if (isNewCompletion) {
+      if (isPathNotCompleted(angNumber, verseId)) {
         trackEvent('PathCompleted', 'completed', `path completed`);
       }
 

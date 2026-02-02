@@ -14,7 +14,7 @@ import {
   PathRename,
   Calender,
 } from '@components';
-import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes } from '@constants';
+import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, PATH_DATA } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
 import { PathData, useLocal, useScreenAnalytics, useInternet } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
@@ -65,7 +65,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     const days = today.diff(startDate, 'day');
     const averageMatchedAngs = (matchedPath.saveData.angNumber || 0) / (days ? days : 1);
 
-    const remainingAngs = 1430 - matchedPath.saveData.angNumber;
+    const remainingAngs = PATH_DATA.LAST_ANG_NUMBER - matchedPath.saveData.angNumber;
     const remainingDays = remainingAngs / (averageMatchedAngs ? averageMatchedAngs : 1);
     const completionDate = today.add(remainingDays, 'day');
 
@@ -94,7 +94,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         const show = matchedPath?.saveData.angNumber < 10 ? false : true;
         const pathAng = matchedPath?.saveData.angNumber || 0;
         const pathPercentage = parseFloat(
-          (((matchedPath?.saveData.angNumber || 0) / 1430) * 100).toFixed(2)
+          (((matchedPath?.saveData.angNumber || 0) / PATH_DATA.LAST_ANG_NUMBER) * 100).toFixed(2)
         );
         const { finishDate, daysAgo, averageAngs } = calculatePathCompletion(matchedPath);
 
