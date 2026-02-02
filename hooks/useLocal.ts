@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MonthConstant, ErrorConstants, PATH_DATA } from '@constants';
 import { trackEvent, showErrorAlert } from '@utils';
-import { isPathNotCompleted } from '@utils/isPathCompleted';
+import { isPathNotCompleted, isPathCompleted } from '@utils/isPathCompleted';
 
 export interface PathData {
   pathId: number;
@@ -117,8 +117,9 @@ export const useLocal = () => {
 
       let finalAngNumber = angNumber;
       let finalVerseId: number;
-
+      // 0 is used to indicate that no verse was saved on this ang and to rest the hightlight verse if user goes back to the previous ang
       if (verseId === 0) {
+        // If the user is going back to the previous ang, and the saved verseId is 0 (0 means no verse was saved on this ang), then reset the highlight verse
         if (angNumber === currentSavedAng) {
           // Same ang - preserve verseId only if it was saved on this ang
           // If previous verseId was from this ang, keep it; otherwise set to 0
@@ -139,14 +140,13 @@ export const useLocal = () => {
       if (isPathNotCompleted(angNumber, verseId)) {
         // User just completed the path
         matchedPath.completionDate = todayDate;
-      } else if (matchedPath.completionDate && matchedPath.completionDate !== '') {
+      } else if (matchedPath.completionDate) {
         // Path was previously completed - check if still valid
         if (!isPathNotCompleted(finalAngNumber, finalVerseId)) {
           // User went back or saved a different line - clear completion
           matchedPath.completionDate = '';
         } else {
-          // Still on 1430 with last line saved - preserve completion
-          matchedPath.completionDate = matchedPath.completionDate;
+          // User saved a different line - clear completion
         }
       }
 
@@ -163,7 +163,7 @@ export const useLocal = () => {
         scrollPosition: scrollPosition,
       });
 
-      if (isPathNotCompleted(angNumber, verseId)) {
+      if (isPathCompleted(angNumber, verseId, matchedPath.completionDate)) {
         trackEvent('PathCompleted', 'completed', `path completed`);
       }
 

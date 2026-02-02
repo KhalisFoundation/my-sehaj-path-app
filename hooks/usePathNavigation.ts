@@ -40,7 +40,8 @@ export const usePathNavigation = ({
       if (pathAng !== lastSavedAngNumber) {
         showSaveProgressAlert({
           onSaveAndGoBack: () => {
-            if (savedPathVerseId > 0) {
+            // If the user is going back to the previous ang, and the saved verseId is not 0 (0 means no verse was saved on this ang), then update the path
+            if (savedPathVerseId >= 0) {
               handleUpdatePath(pathId, pathAng, savedPathVerseId, scrollOffset.current, setIsSaved);
             }
             setIsAngNavigation(false);
