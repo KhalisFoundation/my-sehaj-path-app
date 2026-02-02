@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 import GestureRecognizer from 'react-native-swipe-gestures';
 import { ScrollView, Text, View } from 'react-native';
 import { ParagraphTextForPath, SimpleTextForPath } from '@components';
@@ -36,6 +36,8 @@ interface PathReaderProps {
   setFound: (value: boolean) => void;
   fontSize: number;
   isSaved: boolean;
+  setCenterVerseId?: (verseId: number) => void;
+  scrollToVerseId?: number;
 }
 
 const PathReaderComponent = ({
@@ -62,7 +64,13 @@ const PathReaderComponent = ({
   setFound,
   fontSize,
   isSaved,
+  setCenterVerseId,
+  scrollToVerseId,
 }: PathReaderProps) => {
+  const viewportHeight = useRef<number>(0);
+  const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
+  const hasScrolledToVerse = useRef<boolean>(false);
+
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
     handleRightArrow(pathContent?.source?.pageNo);
@@ -76,6 +84,29 @@ const PathReaderComponent = ({
     handleLeftArrow(pathContent?.source?.pageNo);
   }, [handleLeftArrow, pathContent?.source?.pageNo]);
 
+  const findCenterVerseId = useCallback((scrollY: number) => {
+    if (versePositions.current.size === 0 || !setCenterVerseId) return;
+
+    const centerY = scrollY + viewportHeight.current / 2;
+    let closestVerseId: number | null = null;
+    let minDistance = Infinity;
+
+    versePositions.current.forEach((position, verseId) => {
+      const verseCenter = position.y + position.height / 2;
+      const distance = Math.abs(verseCenter - centerY);
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestVerseId = verseId;
+      }
+    });
+
+    if (closestVerseId !== null) {
+      setCenterVerseId(closestVerseId);
+    }
+  }, [setCenterVerseId]);
+
+
   const handleScroll = useCallback(
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
@@ -83,10 +114,12 @@ const PathReaderComponent = ({
       if (!isAngNavigation) {
         debouncedScrollSave();
       }
+      findCenterVerseId(scrollY);
     },
-    [isAngNavigation, debouncedScrollSave, scrollOffset]
+    [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
   );
 
+  
   const gestureConfig = useMemo(
     () => ({
       velocityThreshold: 0.8,
@@ -125,6 +158,48 @@ const PathReaderComponent = ({
     ]
   );
 
+  const createLayoutHandler = useCallback(
+    (verseId: number) => (event: any) => {
+      const { y, height } = event.nativeEvent.layout;
+      versePositions.current.set(verseId, { y, height });
+      
+      // If we're waiting to scroll to this verse, do it now
+      if (scrollToVerseId === verseId && !hasScrolledToVerse.current && scrollRef.current) {
+        const verseY = y;
+        const targetScroll = Math.max(0, verseY - viewportHeight.current / 2 + height / 2);
+        
+        // Use a longer delay to ensure all layout is complete
+        setTimeout(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTo({
+              y: targetScroll,
+              animated: false,
+            });
+            scrollOffset.current = targetScroll;
+            hasScrolledToVerse.current = true;
+          }
+        }, 200);
+      }
+    },
+    [scrollToVerseId, scrollRef, scrollOffset]
+  );
+
+  // Clear verse positions when page changes
+  useEffect(() => {
+    versePositions.current.clear();
+    hasScrolledToVerse.current = false;
+    if (setCenterVerseId) {
+      setCenterVerseId(0);
+    }
+  }, [pathContent?.source?.pageNo, setCenterVerseId]);
+
+  // Reset scroll flag when scrollToVerseId changes
+  useEffect(() => {
+    if (scrollToVerseId) {
+      hasScrolledToVerse.current = false;
+    }
+  }, [scrollToVerseId]);
+
   const groupedByShabad = useMemo(() => {
     if (!pathContent?.page) return [];
   
@@ -143,46 +218,79 @@ const PathReaderComponent = ({
       let globalIndex = 0;
       return (
         <View>
-          {groupedByShabad.map((shabad: any, sIndex) => (
-            <Text
-              key={sIndex}
-              style={{
-                marginBottom: 14,
-                lineHeight: fontSize * 1.6,
-              }}
-            >
-              {shabad.map((path: any, index: any) => {
-                const gurbaniLine = isLarivaar
-                  ? path.larivaar.unicode
-                  : path.verse.unicode;
+          {groupedByShabad.map((shabad: any, sIndex) => {
+            // For paragraph mode, track ALL verses in the shabad
+            // Map each verse to this shabad's position
+            const shabadLayoutHandler = (event: any) => {
+              const { y, height } = event.nativeEvent.layout;
+              // Store position for all verses in this shabad
+              shabad.forEach((path: any) => {
+                versePositions.current.set(path.verseId, { y, height });
+              });
+              
+              // Check if we need to scroll to any verse in this shabad
+              if (scrollToVerseId && shabad.some((p: any) => p.verseId === scrollToVerseId) && !hasScrolledToVerse.current && scrollRef.current) {
+                const targetScroll = Math.max(0, y - viewportHeight.current / 2 + height / 2);
+                
+                setTimeout(() => {
+                  if (scrollRef.current) {
+                    scrollRef.current.scrollTo({
+                      y: targetScroll,
+                      animated: false,
+                    });
+                    scrollOffset.current = targetScroll;
+                    hasScrolledToVerse.current = true;
+                  }
+                }, 200);
+              }
+            };
+            
+            return (
+              <View 
+                key={sIndex} 
+                onLayout={shabadLayoutHandler}
+              >
+                <Text
+                  style={{
+                    marginBottom: 14,
+                    lineHeight: fontSize * 1.6,
+                  }}
+                >
+                  {shabad.map((path: any, index: any) => {
+                    const gurbaniLine = isLarivaar
+                      ? path.larivaar.unicode
+                      : path.verse.unicode;
 
-                const currentGlobalIndex = globalIndex++;
-    
-                return (
-                  <ParagraphTextForPath
-                    key={`${path.verseId}-${index}`}
-                    gurbaniLine={gurbaniLine}
-                    onSelection={createSelectionHandler(index, path.verseId)}
-                    onSave={createSaveHandler(path.verseId)}
-                    isSaving={isSaving}
-                    isParagraphMode={isParagraphMode}
-                    pressIndex={pressIndex}
-                    index={currentGlobalIndex + 1}
-                    verseId={path.verseId}
-                    savedPathVerseId={savedPathVerseId}
-                    setIsSaving={setIsSaving}
-                    setIsSaved={setIsSaved}
-                    setPressIndex={setPressIndex}
-                    setSavedPathVerseId={setSavedPathVerseId}
-                    found={found}
-                    setFound={setFound}
-                    fontSize={fontSize}
-                    isSaved={isSaved}
-                  />
-                );
-              })}
-            </Text>
-          ))}
+                    const currentGlobalIndex = globalIndex++;
+        
+                    return (
+                      <ParagraphTextForPath
+                        key={`${path.verseId}-${index}`}
+                        gurbaniLine={gurbaniLine}
+                        onSelection={createSelectionHandler(index, path.verseId)}
+                        onSave={createSaveHandler(path.verseId)}
+                        onLayout={() => {}}
+                        isSaving={isSaving}
+                        isParagraphMode={isParagraphMode}
+                        pressIndex={pressIndex}
+                        index={currentGlobalIndex + 1}
+                        verseId={path.verseId}
+                        savedPathVerseId={savedPathVerseId}
+                        setIsSaving={setIsSaving}
+                        setIsSaved={setIsSaved}
+                        setPressIndex={setPressIndex}
+                        setSavedPathVerseId={setSavedPathVerseId}
+                        found={found}
+                        setFound={setFound}
+                        fontSize={fontSize}
+                        isSaved={isSaved}
+                      />
+                    );
+                  })}
+                </Text>
+              </View>
+            );
+          })}
         </View>
       ); 
     }
@@ -195,6 +303,7 @@ const PathReaderComponent = ({
           gurbaniLine={gurbaniLine}
           onSelection={createSelectionHandler(index, path.verseId)}
           onSave={createSaveHandler(path.verseId)}
+          onLayout={createLayoutHandler(path.verseId)}
           isSaving={isSaving}
           pressIndex={pressIndex}
           index={index + 1}
@@ -219,6 +328,7 @@ const PathReaderComponent = ({
     savedPathVerseId,
     createSelectionHandler,
     createSaveHandler,
+    createLayoutHandler,
     setIsSaving,
     setIsSaved,
     setPressIndex,
@@ -228,6 +338,7 @@ const PathReaderComponent = ({
     fontSize,
     isSaved,
     isParagraphMode,
+    groupedByShabad,
   ]);
 
   return (
@@ -249,6 +360,9 @@ const PathReaderComponent = ({
         onStartShouldSetResponder={() => false}
         onMoveShouldSetResponder={() => false}
         removeClippedSubviews={true}
+        onLayout={(e) => {
+          viewportHeight.current = e.nativeEvent.layout.height;
+        }}
       >
         {pageContent}
         {pathContent?.source?.pageNo < 1430 && !isNavigating && (

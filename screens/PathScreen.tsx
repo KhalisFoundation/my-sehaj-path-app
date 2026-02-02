@@ -36,6 +36,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [savedPathVerseId, setSavedPathVerseId] = useState<number>(0);
+  const [centerVerseId, setCenterVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
   const [found, setFound] = useState<boolean>(false);
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
@@ -61,6 +62,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const fadeAnim = useRef(new Animated.Value(1));
   const debounceAnimValueRef = useRef(new Animated.Value(0));
   const [fontSize, setFontSize] = useState<number>(18);
+  const previousFontSize = useRef<number>(18);
+  const previousParagraphMode = useRef<boolean>(false);
+  const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
 
   const pathPujabiAng = useMemo(
     () =>
@@ -143,21 +147,27 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       useNativeDriver: true,
     }).start(() => {
       try {
-        handleUpdatePath(
-          route.params.pathId,
-          pathAng,
-          savedPathVerseId,
-          scrollOffset.current,
-          () => {
-            setIsSaved(false);
-          }
-        );
+        // Use savedPathVerseId if manually selected (long-press), otherwise use centerVerseId
+        // If both are 0, don't save (no verse has been identified yet)
+        const verseIdToSave = savedPathVerseId !== 0 ? savedPathVerseId : centerVerseId;
+        
+        if (verseIdToSave !== 0) {
+          handleUpdatePath(
+            route.params.pathId,
+            pathAng,
+            verseIdToSave,
+            scrollOffset.current,
+            () => {
+              setIsSaved(false);
+            }
+          );
+        }
       } catch (error) {
         // Silently handle error to prevent infinite loop in debounced function
         // Error is already handled at the UI level where user initiated the action
       }
     });
-  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
+  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId, centerVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate: matchedPathDate.current,
@@ -224,6 +234,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           const pathAngData =
             matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
           setSavedPathVerseId(matchedPathData.saveData.verseId);
+          setCenterVerseId(matchedPathData.saveData.verseId);
           setPathAng(pathAngData);
 
           scrolledToSavedPath.current = false;
@@ -317,6 +328,38 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       fetch();
     }, [fetchFontSize])
   );
+
+  // Trigger scroll to center verse when font size or paragraph mode changes
+  useEffect(() => {
+    const fontSizeChanged = fontSize !== previousFontSize.current;
+    const paragraphModeChanged = isParagraphMode !== previousParagraphMode.current;
+    
+    if ((fontSizeChanged || paragraphModeChanged) && pathContent?.page && centerVerseId !== 0) {
+      previousFontSize.current = fontSize;
+      previousParagraphMode.current = isParagraphMode;
+      
+      // First, scroll to approximate position to get the verse on screen
+      const scrollIndex = pathContent.page.findIndex(
+        (page: any) => page.verseId === centerVerseId
+      );
+      
+      if (scrollIndex !== -1 && scrollRef.current) {
+        // Rough estimate to get verse in viewport
+        const estimatedHeight = fontSize * 2;
+        const roughScroll = Math.max(0, scrollIndex * estimatedHeight - 300);
+        
+        scrollRef.current.scrollTo({
+          y: roughScroll,
+          animated: false,
+        });
+        
+        // Then trigger precise positioning via layout
+        setTimeout(() => {
+          setScrollToVerseId(centerVerseId);
+        }, 100);
+      }
+    }
+  }, [fontSize, isParagraphMode, pathContent, centerVerseId]);
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -389,6 +432,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           setFound={setFound}
           fontSize={fontSize}
           isSaved={isSaved}
+          setCenterVerseId={setCenterVerseId}
+          scrollToVerseId={scrollToVerseId}
         />
         {alertIndicator.current !== undefined ? (
           <Loading
