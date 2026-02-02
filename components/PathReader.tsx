@@ -85,7 +85,12 @@ const PathReaderComponent = ({
   }, [handleLeftArrow, pathContent?.source?.pageNo]);
 
   const findCenterVerseId = useCallback((scrollY: number) => {
-    if (versePositions.current.size === 0 || !setCenterVerseId) return;
+    if (!setCenterVerseId) return;
+    
+    // Wait for verses to be measured
+    if (versePositions.current.size === 0) {
+      return;
+    }
 
     const centerY = scrollY + viewportHeight.current / 2;
     let closestVerseId: number | null = null;
@@ -111,10 +116,10 @@ const PathReaderComponent = ({
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
+      findCenterVerseId(scrollY);
       if (!isAngNavigation) {
         debouncedScrollSave();
       }
-      findCenterVerseId(scrollY);
     },
     [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
   );
@@ -164,21 +169,25 @@ const PathReaderComponent = ({
       versePositions.current.set(verseId, { y, height });
       
       // If we're waiting to scroll to this verse, do it now
-      if (scrollToVerseId === verseId && !hasScrolledToVerse.current && scrollRef.current) {
+      if (scrollToVerseId === verseId && !hasScrolledToVerse.current && scrollRef.current && viewportHeight.current > 0) {
         const verseY = y;
-        const targetScroll = Math.max(0, verseY - viewportHeight.current / 2 + height / 2);
+        const verseCenterY = verseY + height / 2;
+        const screenCenterY = viewportHeight.current / 2;
+        const targetScroll = Math.max(0, verseCenterY - screenCenterY);
         
-        // Use a longer delay to ensure all layout is complete
-        setTimeout(() => {
-          if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-              y: targetScroll,
-              animated: false,
-            });
-            scrollOffset.current = targetScroll;
-            hasScrolledToVerse.current = true;
-          }
-        }, 200);
+        // Use requestAnimationFrame for better timing
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            if (scrollRef.current) {
+              scrollRef.current.scrollTo({
+                y: targetScroll,
+                animated: false,
+              });
+              scrollOffset.current = targetScroll;
+              hasScrolledToVerse.current = true;
+            }
+          }, 100);
+        });
       }
     },
     [scrollToVerseId, scrollRef, scrollOffset]
@@ -229,19 +238,23 @@ const PathReaderComponent = ({
               });
               
               // Check if we need to scroll to any verse in this shabad
-              if (scrollToVerseId && shabad.some((p: any) => p.verseId === scrollToVerseId) && !hasScrolledToVerse.current && scrollRef.current) {
-                const targetScroll = Math.max(0, y - viewportHeight.current / 2 + height / 2);
+              if (scrollToVerseId && shabad.some((p: any) => p.verseId === scrollToVerseId) && !hasScrolledToVerse.current && scrollRef.current && viewportHeight.current > 0) {
+                const shabadCenterY = y + height / 2;
+                const screenCenterY = viewportHeight.current / 2;
+                const targetScroll = Math.max(0, shabadCenterY - screenCenterY);
                 
-                setTimeout(() => {
-                  if (scrollRef.current) {
-                    scrollRef.current.scrollTo({
-                      y: targetScroll,
-                      animated: false,
-                    });
-                    scrollOffset.current = targetScroll;
-                    hasScrolledToVerse.current = true;
-                  }
-                }, 200);
+                requestAnimationFrame(() => {
+                  setTimeout(() => {
+                    if (scrollRef.current) {
+                      scrollRef.current.scrollTo({
+                        y: targetScroll,
+                        animated: false,
+                      });
+                      scrollOffset.current = targetScroll;
+                      hasScrolledToVerse.current = true;
+                    }
+                  }, 100);
+                });
               }
             };
             
