@@ -43,48 +43,11 @@ const ParagraphTextForPathComponent = ({
   fontSize,
   isSaved,
 }: Props) => {
-  const isLongPressingRef = useRef<boolean>(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const longPressLock = useRef(false);
   const didLongPress = useRef(false);
 
-
-//   const handleLongPress = useCallback(() => {
-//     if (isLongPressingRef.current) {
-//       return;
-//     }
-//     isLongPressingRef.current = true;
-//     if (found) {
-//       setFound(false);
-//     }
-
-//     unstable_batchedUpdates(() => {
-//       setPressIndex(index);
-//       setSavedPathVerseId(verseId);
-//       setIsSaving(true);
-//       setIsSaved(true);
-//     });
-
-//     onSelection();
-//     onSave();
-//     if (timeoutRef.current) {
-//       clearTimeout(timeoutRef.current);
-//     }
-//     isLongPressingRef.current = false;
-//     timeoutRef.current = null;
-//   }, [
-//     index,
-//     verseId,
-//     found,
-//     onSave,
-//     onSelection,
-//     setFound,
-//     setPressIndex,
-//     setSavedPathVerseId,
-//     setIsSaving,
-//     setIsSaved,
-//   ]);
 
   const handleLongPress = useCallback(() => {
     // Block duplicate triggers

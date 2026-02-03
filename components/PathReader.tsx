@@ -5,9 +5,10 @@ import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { trackEvent } from '@utils/analytics';
+import type { Verse, PathContent } from '@hooks';
 
 interface PathReaderProps {
-  pathContent: any;
+  pathContent: PathContent;
   isLarivaar: boolean;
   isParagraphMode: boolean;
   isSaving: boolean;
@@ -129,7 +130,7 @@ const PathReaderComponent = ({
     if (!pathContent?.page) return [];
   
     return Object.values(
-      pathContent.page.reduce((acc: any, item: any) => {
+      pathContent.page.reduce((acc: Record<number, Verse[]>, item: Verse) => {
         if (!acc[item.shabadId]) acc[item.shabadId] = [];
         acc[item.shabadId].push(item);
         return acc;
@@ -143,7 +144,7 @@ const PathReaderComponent = ({
       let globalIndex = 0;
       return (
         <View>
-          {groupedByShabad.map((shabad: any, sIndex) => (
+          {groupedByShabad.map((shabad: Verse[], sIndex: number) => (
             <Text
               key={sIndex}
               style={{
@@ -151,7 +152,7 @@ const PathReaderComponent = ({
                 lineHeight: fontSize * 1.6,
               }}
             >
-              {shabad.map((path: any, index: any) => {
+              {shabad.map((path: Verse, index: number) => {
                 const gurbaniLine = isLarivaar
                   ? path.larivaar.unicode
                   : path.verse.unicode;
@@ -186,7 +187,7 @@ const PathReaderComponent = ({
         </View>
       ); 
     }
-    return pathContent?.page?.map((path: any, index: number) => {
+    return pathContent?.page?.map((path: Verse, index: number) => {
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
 
       return (
