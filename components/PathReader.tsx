@@ -70,6 +70,7 @@ const PathReaderComponent = ({
   const viewportHeight = useRef<number>(0);
   const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
   const hasScrolledToVerse = useRef<boolean>(false);
+  const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -116,7 +117,17 @@ const PathReaderComponent = ({
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
-      findCenterVerseId(scrollY);
+      
+      // Clear existing timer
+      if (scrollEndTimer.current) {
+        clearTimeout(scrollEndTimer.current);
+      }
+      
+      // Set new timer to detect when scrolling stops
+      scrollEndTimer.current = setTimeout(() => {
+        findCenterVerseId(scrollY);
+      }, 150); // Wait 150ms after scrolling stops
+      
       if (!isAngNavigation) {
         debouncedScrollSave();
       }
