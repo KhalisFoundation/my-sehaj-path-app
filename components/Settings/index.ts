@@ -1,5 +1,2 @@
-export { FontSize } from './FontSize';
-export { Larivaar } from './Larivaar';
-export { Angs } from './Angs';
-export { Analytics } from './Analytics';
-export { ParagraphMode } from './ParagraphMode';
+export { SettingItem } from './SettingItem';
+export { SelectionSettingItem } from './SelectionSettingItem';

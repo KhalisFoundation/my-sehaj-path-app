@@ -29,3 +29,4 @@ export { PathRenameStyle } from './PathRenameStyle';
 export { MessageStyles } from './MessageStyles';
 export { AngsNavigationStyle } from './AngsNavigation';
 export { LoadingStyles } from './LoadingStyles';
+export { ParagraphModeStyles } from './ParagraphModeStyles';
