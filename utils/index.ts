@@ -3,3 +3,14 @@ export { showErrorAlert } from './Error';
 export { showSaveProgressAlert } from './alerts';
 export { convertToPunjabiNumber, convertNumberToFormat, type NumberFormat } from './numberUtils';
 export { allowTracking, trackEvent, trackScreenView } from './analytics';
+export {
+  useIsSelected,
+  useAccessibilityLabel,
+  useTextStyle,
+  useContainerStyle,
+  createLongPressHandler,
+  createPressHandler,
+  pathTextPropsAreEqual,
+  paragraphTextPropsAreEqual,
+  type PathTextProps,
+} from './pathTextHelpers';
