@@ -147,7 +147,7 @@ export const useLocal = () => {
         scrollPosition: scrollPosition,
       });
 
-      if (isPathCompleted(angNumber, verseId)) {
+      if (completedNow) {
         trackEvent('PathCompleted', 'completed', `path completed`);
       }
 
