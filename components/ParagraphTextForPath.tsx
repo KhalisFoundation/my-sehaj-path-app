@@ -35,6 +35,7 @@ const ParagraphTextForPathComponent = ({
   setFound,
   fontSize,
   isSaved,
+  vishraam,
 }: Props) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressLock = useRef(false);

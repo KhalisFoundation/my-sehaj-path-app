@@ -18,7 +18,8 @@ export const Settings = ({ navigation }: SettingProps) => {
     saveAngsFormat, fetchAngsFormat,
     saveParagraphMode, fetchParagraphMode,
     saveLarivaar, fetchLarivaar,
-    saveConsent, fetchConsent
+    saveConsent, fetchConsent,
+    saveVishraam, fetchVishraam
   } = useLocal();
 
   return (
@@ -98,6 +99,20 @@ export const Settings = ({ navigation }: SettingProps) => {
               errorMessages={{
                 loadError: ErrorConstants.FAILED_TO_LOAD_PARAGRAPH_MODE,
                 saveError: ErrorConstants.FAILED_TO_SAVE_PARAGRAPH_MODE,
+              }}
+              defaultValue={false}
+              containerStyle={ParagraphModeStyles.container}
+              textStyle={ParagraphModeStyles.fontSizeText}
+            />
+
+            <SettingItem
+              settingKey="vishraam"
+              label={Constants.VISHRAAM}
+              saveFn={saveVishraam}
+              fetchFn={fetchVishraam}
+              errorMessages={{
+                loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM,
+                saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM,
               }}
               defaultValue={false}
               containerStyle={ParagraphModeStyles.container}

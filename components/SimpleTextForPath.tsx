@@ -30,6 +30,8 @@ const SimpleTextForPathComponent = ({
   setFound,
   fontSize,
   isSaved,
+  isVishraam,
+  vishraam,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -88,8 +90,9 @@ const SimpleTextForPathComponent = ({
       accessibilityHint="Tap to select, long press to save this line"
       disabled={isSaved || found}
     >
-      <Text suppressHighlighting={true} style={textStyle}>
+      <Text suppressHighlighting={true} style={textStyle} >
         {gurbaniLine}
+        {/* {isVishraam && <Text style={{ color: 'pink' }}>Vishraam</Text>} */}
         {isSelected && (
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}

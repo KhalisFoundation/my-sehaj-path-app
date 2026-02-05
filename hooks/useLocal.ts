@@ -25,6 +25,11 @@ export interface FontSizeData {
 export interface AngsFormat {
   format: 'Punjabi' | 'English';
 }
+export interface Visraam {
+  sttm2: string[];
+  sttm: string[];
+  igurbani: string[];
+}
 
 export interface Verse {
   verseId: number;
@@ -35,6 +40,7 @@ export interface Verse {
   larivaar: {
     unicode: string;
   };
+  visraam: Visraam;
 }
 
 export interface PathContent {
@@ -233,7 +239,20 @@ export const useLocal = () => {
     } catch (error) {
       return false;
     }
-  };  
+  };
+
+  const saveVishraam = async (vishraam: boolean) => {
+    await AsyncStorage.setItem('vishraam', vishraam.toString());
+  };
+
+  const fetchVishraam = async () => {
+    try {
+      const vishraam = await AsyncStorage.getItem('vishraam');
+      return vishraam === 'true';
+    } catch (error) {
+      return false;
+    }
+  };
 
   const saveAngsFormat = async (angsFormat: AngsFormat) => {
     await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
@@ -289,6 +308,8 @@ export const useLocal = () => {
     fetchConsent,
     handleUpdatePathWithErrorHandling,
     saveParagraphMode,
-    fetchParagraphMode
+    fetchParagraphMode,
+    saveVishraam,
+    fetchVishraam,
   };
 };

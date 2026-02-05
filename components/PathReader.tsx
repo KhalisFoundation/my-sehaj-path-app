@@ -37,6 +37,7 @@ interface PathReaderProps {
   setFound: (value: boolean) => void;
   fontSize: number;
   isSaved: boolean;
+  isVishraam: boolean;
 }
 
 const PathReaderComponent = ({
@@ -63,6 +64,7 @@ const PathReaderComponent = ({
   setFound,
   fontSize,
   isSaved,
+  isVishraam,
 }: PathReaderProps) => {
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -156,6 +158,7 @@ const PathReaderComponent = ({
                 const gurbaniLine = isLarivaar
                   ? path.larivaar.unicode
                   : path.verse.unicode;
+                const vishraam = path.visraam;
 
                 const currentGlobalIndex = globalIndex++;
     
@@ -179,6 +182,8 @@ const PathReaderComponent = ({
                     setFound={setFound}
                     fontSize={fontSize}
                     isSaved={isSaved}
+                    isVishraam={isVishraam}
+                    vishraam={vishraam}
                   />
                 );
               })}
@@ -189,6 +194,7 @@ const PathReaderComponent = ({
     }
     return pathContent?.page?.map((path: Verse, index: number) => {
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
+      const vishraam = path.visraam;
 
       return (
         <SimpleTextForPath
@@ -209,6 +215,8 @@ const PathReaderComponent = ({
           setFound={setFound}
           fontSize={fontSize}
           isSaved={isSaved}
+          isVishraam={isVishraam}
+          vishraam={vishraam}
         />
       );
     });

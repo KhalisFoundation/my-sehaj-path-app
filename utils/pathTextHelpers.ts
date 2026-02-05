@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import { unstable_batchedUpdates } from 'react-native';
 import { SimpleTextForPathStyles } from '@styles';
+import { Visraam } from '@hooks/useLocal';
 
 /**
  * Common props interface for path text components
@@ -22,6 +23,8 @@ export interface PathTextProps {
   setFound: (value: boolean) => void;
   fontSize: number;
   isSaved: boolean;
+  isVishraam: boolean;
+  vishraam: Visraam;
 }
 
 /**
@@ -148,7 +151,8 @@ export const pathTextPropsAreEqual = (
     prevProps.verseId === nextProps.verseId &&
     prevProps.savedPathVerseId === nextProps.savedPathVerseId &&
     prevProps.found === nextProps.found &&
-    prevProps.fontSize === nextProps.fontSize
+    prevProps.fontSize === nextProps.fontSize &&
+    prevProps.isVishraam === nextProps.isVishraam
   );
 };
 
