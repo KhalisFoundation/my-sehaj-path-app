@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MonthConstant, ErrorConstants, PATH_DATA } from '@constants';
 import { trackEvent, showErrorAlert } from '@utils';
-import { isPathNotCompleted, isPathCompleted } from '@utils/isPathCompleted';
+import { isPathCompleted } from '@utils/isPathCompleted';
 
 export interface PathData {
   pathId: number;
@@ -102,14 +102,6 @@ export const useLocal = () => {
     const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
-      // If the user saves any verse other than the last verse on ang 1430, update completionDate to ''
-      if (!isPathNotCompleted(angNumber, verseId)) {
-        if (verseId === 0 && angNumber === matchedPath.saveData.angNumber) {
-          return;
-        }
-        matchedPath.completionDate = '';
-      }
-
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
 
       const currentSavedAng = matchedPath.saveData.angNumber;
@@ -134,21 +126,13 @@ export const useLocal = () => {
       }
 
       matchedPath.saveData = { angNumber: finalAngNumber, verseId: finalVerseId };
+      const completedNow = isPathCompleted(finalAngNumber, finalVerseId);
+
+      matchedPath.completionDate = completedNow ? todayDate : '';
+
       matchedPath.progress = (finalAngNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
 
       // Completion only happens when user saves last line (60403) on 1430
-      if (isPathNotCompleted(angNumber, verseId)) {
-        // User just completed the path
-        matchedPath.completionDate = todayDate;
-      } else if (matchedPath.completionDate) {
-        // Path was previously completed - check if still valid
-        if (!isPathNotCompleted(finalAngNumber, finalVerseId)) {
-          // User went back or saved a different line - clear completion
-          matchedPath.completionDate = '';
-        } else {
-          // User saved a different line - clear completion
-        }
-      }
 
       const updatedDates = [
         ...cleanMatchedPathDates,
@@ -163,7 +147,7 @@ export const useLocal = () => {
         scrollPosition: scrollPosition,
       });
 
-      if (isPathCompleted(angNumber, verseId, matchedPath.completionDate)) {
+      if (isPathCompleted(angNumber, verseId)) {
         trackEvent('PathCompleted', 'completed', `path completed`);
       }
 
