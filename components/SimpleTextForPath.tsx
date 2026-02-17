@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Text, Pressable, Platform } from 'react-native';
 import { SaveIcon } from '@icons';
 import { UIConstants } from '@constants';
