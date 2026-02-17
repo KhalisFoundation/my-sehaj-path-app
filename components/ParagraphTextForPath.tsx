@@ -9,7 +9,6 @@ import {
   useTextStyle,
   useContainerStyle,
   createLongPressHandler,
-  createPressHandler,
   pathTextPropsAreEqual,
 } from '@utils';
 

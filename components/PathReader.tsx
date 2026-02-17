@@ -126,49 +126,58 @@ const PathReaderComponent = ({
     ]
   );
 
-  const groupedByShabad = useMemo(() => {
+  const shabadsWithIndices = useMemo(() => {
     if (!pathContent?.page) return [];
   
-    return Object.values(
-      pathContent.page.reduce((acc: Record<number, Verse[]>, item: Verse) => {
-        if (!acc[item.shabadId]) acc[item.shabadId] = [];
-        acc[item.shabadId].push(item);
-        return acc;
-      }, {})
+    const versesByShabadId = pathContent.page.reduce(
+      (groupedVerses: Record<number, Verse[]>, verse: Verse) => {
+        if (!groupedVerses[verse.shabadId]) {
+          groupedVerses[verse.shabadId] = [];
+        }
+        groupedVerses[verse.shabadId].push(verse);
+        return groupedVerses;
+      },
+      {}
     );
+
+    let startIndex = 0;
+    return Object.values(versesByShabadId).map((verses) => {
+      const shabad = { startIndex, verses };
+      startIndex += verses.length;
+      return shabad;
+    });
   }, [pathContent?.page]);
   
 
   const pageContent = useMemo(() => {
     if(isParagraphMode){
-      let globalIndex = 0;
       return (
         <View>
-          {groupedByShabad.map((shabad: Verse[], sIndex: number) => (
+          {shabadsWithIndices.map((shabad, shabadIndex) => (
             <Text
-              key={sIndex}
+              key={shabadIndex}
               style={{
                 marginBottom: 14,
                 lineHeight: fontSize * 1.6,
               }}
             >
-              {shabad.map((path: Verse, index: number) => {
+              {shabad.verses.map((verse: Verse, verseIndex: number) => {
                 const gurbaniLine = isLarivaar
-                  ? path.larivaar.unicode
-                  : path.verse.unicode;
+                  ? verse.larivaar.unicode
+                  : verse.verse.unicode;
 
-                const currentGlobalIndex = globalIndex++;
+                const globalIndex = shabad.startIndex + verseIndex + 1;
     
                 return (
                   <ParagraphTextForPath
-                    key={`${path.verseId}-${index}`}
+                    key={`${verse.verseId}-${verseIndex}`}
                     gurbaniLine={gurbaniLine}
-                    onSelection={createSelectionHandler(index, path.verseId)}
-                    onSave={createSaveHandler(path.verseId)}
+                    onSelection={createSelectionHandler(verseIndex, verse.verseId)}
+                    onSave={createSaveHandler(verse.verseId)}
                     isSaving={isSaving}
                     pressIndex={pressIndex}
-                    index={currentGlobalIndex + 1}
-                    verseId={path.verseId}
+                    index={globalIndex}
+                    verseId={verse.verseId}
                     savedPathVerseId={savedPathVerseId}
                     setIsSaving={setIsSaving}
                     setIsSaved={setIsSaved}
@@ -228,6 +237,7 @@ const PathReaderComponent = ({
     fontSize,
     isSaved,
     isParagraphMode,
+    shabadsWithIndices,
   ]);
 
   return (
