@@ -10,7 +10,7 @@ interface SelectionOption<T> {
   label: string;
 }
 
-interface SelectionSettingItemProps<T> {
+interface DropdownSettingItemProps<T> {
   // Unique identifier for this setting
   settingKey: string;
   
@@ -54,7 +54,7 @@ interface SelectionSettingItemProps<T> {
   showCheckmark?: boolean;
 }
 
-export function SelectionSettingItem<T>({
+export function DropdownSettingItem<T>({
   settingKey,
   label,
   overlayTitle,
@@ -74,7 +74,7 @@ export function SelectionSettingItem<T>({
   getDisplayValue,
   isEqual,
   showCheckmark = true,
-}: SelectionSettingItemProps<T>) {
+}: DropdownSettingItemProps<T>) {
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [selectedValue, setSelectedValue] = useState<T>(defaultValue);
 

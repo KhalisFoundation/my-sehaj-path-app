@@ -1,2 +1,2 @@
-export { SettingItem } from './SettingItem';
-export { SelectionSettingItem } from './SelectionSettingItem';
+export { SwitchSettingItem } from './SwitchSettingItem';
+export { DropdownSettingItem } from './DropdownSettingItem';
