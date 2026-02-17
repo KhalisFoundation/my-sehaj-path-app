@@ -63,7 +63,7 @@ const ParagraphTextForPathComponent = ({
     baseLongPressHandler();
 
     // Unlock after delay
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       longPressLock.current = false;
     }, 600);
   };

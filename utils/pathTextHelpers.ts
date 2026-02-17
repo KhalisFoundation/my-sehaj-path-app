@@ -89,7 +89,7 @@ export const createLongPressHandler = (
   setIsSaving: (value: boolean) => void,
   setIsSaved: (value: boolean) => void
 ) => {
-  return useCallback(() => {
+  return () => {
     if (found) {
       setFound(false);
     }
@@ -103,18 +103,7 @@ export const createLongPressHandler = (
 
     onSelection();
     onSave();
-  }, [
-    index,
-    verseId,
-    found,
-    onSave,
-    onSelection,
-    setFound,
-    setPressIndex,
-    setSavedPathVerseId,
-    setIsSaving,
-    setIsSaved,
-  ]);
+  };
 };
 
 /**
@@ -125,12 +114,12 @@ export const createPressHandler = (
   onSelection: () => void,
   onSave: () => void
 ) => {
-  return useCallback(() => {
+  return () => {
     if (isSaving) {
       onSelection();
       onSave();
     }
-  }, [isSaving, onSelection, onSave]);
+  };
 };
 
 /**

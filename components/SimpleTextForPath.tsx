@@ -32,7 +32,6 @@ const SimpleTextForPathComponent = ({
   isSaved,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isSelected = useIsSelected(verseId, savedPathVerseId, isSaving, pressIndex, index);
   const accessibilityLabel = useAccessibilityLabel(index, isSelected);
@@ -58,23 +57,10 @@ const SimpleTextForPathComponent = ({
     }
     isLongPressingRef.current = true;
     baseLongPressHandler();
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
     isLongPressingRef.current = false;
-    timeoutRef.current = null;
   };
 
   const handlePress = createPressHandler(isSaving, onSelection, onSave);
-
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-    };
-  }, []);
 
   return (
     <Pressable
