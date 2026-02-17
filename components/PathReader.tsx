@@ -166,7 +166,6 @@ const PathReaderComponent = ({
                     onSelection={createSelectionHandler(index, path.verseId)}
                     onSave={createSaveHandler(path.verseId)}
                     isSaving={isSaving}
-                    isParagraphMode={isParagraphMode}
                     pressIndex={pressIndex}
                     index={currentGlobalIndex + 1}
                     verseId={path.verseId}
