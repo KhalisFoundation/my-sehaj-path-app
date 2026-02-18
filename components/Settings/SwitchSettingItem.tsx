@@ -4,7 +4,7 @@ import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
 import { showErrorAlert, trackEvent } from '@utils';
 
-interface SettingItemProps {
+interface SwitchSettingItemProps {
   // Unique identifier for this setting
   settingKey: string;
   
@@ -31,7 +31,7 @@ interface SettingItemProps {
   onValueChange?: (value: boolean) => void;
 }
 
-export const SettingItem = ({
+export const SwitchSettingItem = ({
   settingKey,
   label,
   saveFn,
@@ -42,7 +42,7 @@ export const SettingItem = ({
   containerStyle,
   textStyle,
   onValueChange,
-}: SettingItemProps) => {
+}: SwitchSettingItemProps) => {
   const [value, setValue] = useState<boolean>(defaultValue);
 
   const handleToggle = async (newValue: boolean) => {

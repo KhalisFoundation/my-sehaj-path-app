@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { NavContent, SimpleText, SettingItem, SelectionSettingItem } from '@components';
+import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
 import { LeftArrowIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle, LarivaarStyles, ParagraphModeStyles, FontSizeStyle, AngsFormatStyles } from '@styles';
 import { RootStackParamList } from '../App';
@@ -46,7 +46,7 @@ export const Settings = ({ navigation }: SettingProps) => {
               <SimpleText simpleText={Constants.DISPLAY_OPTIONS} />
             </View>
             
-            <SelectionSettingItem<FontSizeData>
+            <DropdownSettingItem<FontSizeData>
               settingKey="fontSize"
               label="Font-Size"
               overlayTitle={Constants.SELECT_YOUR_FONT_SIZE}
@@ -69,7 +69,7 @@ export const Settings = ({ navigation }: SettingProps) => {
               isEqual={(a: FontSizeData, b: FontSizeData) => a.fontSize === b.fontSize}
             />
             
-            <SelectionSettingItem<AngsFormat>
+            <DropdownSettingItem<AngsFormat>
               settingKey="angsFormat"
               label={Constants.ANG_NUMBERING}
               overlayTitle={Constants.SELECT_YOUR_ANG_FORMAT}
@@ -91,7 +91,7 @@ export const Settings = ({ navigation }: SettingProps) => {
               showCheckmark={false}
             />
             
-            <SettingItem
+            <SwitchSettingItem
               settingKey="paragraphMode"
               label={Constants.PARAGRAPHMODE}
               saveFn={saveParagraphMode}
@@ -124,7 +124,7 @@ export const Settings = ({ navigation }: SettingProps) => {
             <View>
               <SimpleText simpleText={Constants.BANI_OPTIONS} />
             </View>
-            <SettingItem
+            <SwitchSettingItem
               settingKey="larivaar"
               label={Constants.LARIVAAR}
               saveFn={saveLarivaar}
@@ -142,7 +142,7 @@ export const Settings = ({ navigation }: SettingProps) => {
           <View>
             <SimpleText simpleText={'Other Settings'} />
           </View>
-          <SettingItem
+          <SwitchSettingItem
             settingKey="analytics"
             label="Collect Analytics"
             saveFn={saveConsent}

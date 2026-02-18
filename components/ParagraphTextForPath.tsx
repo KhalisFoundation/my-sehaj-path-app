@@ -9,19 +9,13 @@ import {
   useTextStyle,
   useContainerStyle,
   createLongPressHandler,
-  createPressHandler,
-  paragraphTextPropsAreEqual,
+  pathTextPropsAreEqual,
 } from '@utils';
-
-interface Props extends PathTextProps {
-  isParagraphMode: boolean;
-}
 
 const ParagraphTextForPathComponent = ({
   gurbaniLine,
   onSelection,
   isSaving,
-  isParagraphMode,
   pressIndex,
   index,
   onSave,
@@ -36,7 +30,7 @@ const ParagraphTextForPathComponent = ({
   fontSize,
   isSaved,
   vishraam,
-}: Props) => {
+}: PathTextProps) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressLock = useRef(false);
   const didLongPress = useRef(false);
@@ -69,7 +63,7 @@ const ParagraphTextForPathComponent = ({
     baseLongPressHandler();
 
     // Unlock after delay
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       longPressLock.current = false;
     }, 600);
   };
@@ -120,4 +114,4 @@ const ParagraphTextForPathComponent = ({
   );
 };
 
-export const ParagraphTextForPath = React.memo(ParagraphTextForPathComponent, paragraphTextPropsAreEqual);
+export const ParagraphTextForPath = React.memo(ParagraphTextForPathComponent, pathTextPropsAreEqual);
