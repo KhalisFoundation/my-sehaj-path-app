@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent, SimpleText } from '@components';
 import { LeftArrowIcon, RightChevronIcon, CheckMarkIcon } from '@icons';
@@ -36,13 +36,13 @@ interface DropdownSettingItemProps<T> {
   
   // Optional configurations
   analyticsCategory?: string;
-  containerStyle?: any;
-  textStyle?: any;
-  overlayHeaderStyle?: any;
-  overlayTextContainerStyle?: any;
-  overlayTextStyle?: any;
-  overlayContainerStyle?: any;
-  overlayContentStyle?: any;
+  containerStyle?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
+  overlayHeaderStyle?: StyleProp<ViewStyle>;
+  overlayTextContainerStyle?: StyleProp<ViewStyle>;
+  overlayTextStyle?: StyleProp<TextStyle>;
+  overlayContainerStyle?: StyleProp<ViewStyle>;
+  overlayContentStyle?: StyleProp<ViewStyle>;
   
   // Function to get display value from the selected option
   getDisplayValue: (value: T) => string;
