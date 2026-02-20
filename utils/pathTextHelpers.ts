@@ -144,16 +144,3 @@ export const pathTextPropsAreEqual = (
     prevProps.isVishraam === nextProps.isVishraam
   );
 };
-
-/**
- * Extended comparison function that includes isParagraphMode
- */
-export const paragraphTextPropsAreEqual = (
-  prevProps: PathTextProps & { isParagraphMode: boolean },
-  nextProps: PathTextProps & { isParagraphMode: boolean }
-) => {
-  return (
-    pathTextPropsAreEqual(prevProps, nextProps) &&
-    prevProps.isParagraphMode === nextProps.isParagraphMode
-  );
-};

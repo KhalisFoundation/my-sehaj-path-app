@@ -11,6 +11,5 @@ export {
   createLongPressHandler,
   createPressHandler,
   pathTextPropsAreEqual,
-  paragraphTextPropsAreEqual,
   type PathTextProps,
 } from './pathTextHelpers';
