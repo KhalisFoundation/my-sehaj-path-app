@@ -10,6 +10,7 @@ import {
   useContainerStyle,
   createLongPressHandler,
   pathTextPropsAreEqual,
+  renderTextWithVishraams,
 } from '@utils';
 
 const ParagraphTextForPathComponent = ({
@@ -29,7 +30,11 @@ const ParagraphTextForPathComponent = ({
   setFound,
   fontSize,
   isSaved,
+  isVishraam,
   vishraam,
+  vishraamsSource,
+  vishraamsStyle,
+  originalVerse,
 }: PathTextProps) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressLock = useRef(false);
@@ -99,7 +104,8 @@ const ParagraphTextForPathComponent = ({
       suppressHighlighting={true}
       style={[textStyle, containerStyle]}
     >
-      {gurbaniLine + " "}
+      {isVishraam ? renderTextWithVishraams(gurbaniLine, vishraam, fontSize, vishraamsSource, vishraamsStyle, originalVerse) : gurbaniLine}
+      {" "}
       {isSelected && (
         <Text>
           <SaveIcon

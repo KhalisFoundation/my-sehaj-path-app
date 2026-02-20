@@ -5,8 +5,8 @@ import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '
 import { LeftArrowIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle, LarivaarStyles, ParagraphModeStyles, FontSizeStyle, AngsFormatStyles } from '@styles';
 import { RootStackParamList } from '../App';
-import { useScreenAnalytics, useLocal, FontSizeData, AngsFormat } from '@hooks';
-import { Constants, EDGES_ALL_SIDES, ErrorConstants, FontSizes, AngsFormatArray } from '@constants';
+import { useScreenAnalytics, useLocal, FontSizeData, AngsFormat, VishraamsSource, VishraamsStyle } from '@hooks';
+import { Constants, EDGES_ALL_SIDES, ErrorConstants, FontSizes, AngsFormatArray, VishraamsSourceArray, VishraamsSourceLabels, VishraamsStyleArray, VishraamsStyleLabels } from '@constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
@@ -19,7 +19,9 @@ export const Settings = ({ navigation }: SettingProps) => {
     saveParagraphMode, fetchParagraphMode,
     saveLarivaar, fetchLarivaar,
     saveConsent, fetchConsent,
-    saveVishraam, fetchVishraam
+    saveVishraam, fetchVishraam,
+    saveVishraamsSource, fetchVishraamsSource,
+    saveVishraamsStyle, fetchVishraamsStyle
   } = useLocal();
 
   return (
@@ -105,7 +107,7 @@ export const Settings = ({ navigation }: SettingProps) => {
               textStyle={ParagraphModeStyles.fontSizeText}
             />
 
-            <SettingItem
+            <SwitchSettingItem
               settingKey="vishraam"
               label={Constants.VISHRAAM}
               saveFn={saveVishraam}
@@ -117,6 +119,50 @@ export const Settings = ({ navigation }: SettingProps) => {
               defaultValue={false}
               containerStyle={ParagraphModeStyles.container}
               textStyle={ParagraphModeStyles.fontSizeText}
+            />
+
+            <DropdownSettingItem<VishraamsSource>
+              settingKey="vishraamsSource"
+              label="Vishraam Source"
+              overlayTitle="Select Vishraam Source"
+              options={VishraamsSourceArray.map(source => ({ value: source, label: VishraamsSourceLabels[source.source] }))}
+              saveFn={saveVishraamsSource}
+              fetchFn={fetchVishraamsSource}
+              errorMessages={{
+                loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM_SOURCE,
+                saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM_SOURCE,
+              }}
+              defaultValue={{ source: 'sttm' }}
+              containerStyle={AngsFormatStyles.container}
+              textStyle={AngsFormatStyles.angsText}
+              overlayHeaderStyle={AngsFormatStyles.overlayHeader}
+              overlayTextContainerStyle={AngsFormatStyles.overlayTextContainer}
+              overlayTextStyle={AngsFormatStyles.overlayText}
+              getDisplayValue={(value: VishraamsSource) => VishraamsSourceLabels[value.source]}
+              isEqual={(a: VishraamsSource, b: VishraamsSource) => a.source === b.source}
+              showCheckmark={false}
+            />
+
+            <DropdownSettingItem<VishraamsStyle>
+              settingKey="vishraamsStyle"
+              label="Vishraam Style"
+              overlayTitle="Select Vishraam Style"
+              options={VishraamsStyleArray.map(style => ({ value: style, label: VishraamsStyleLabels[style.style] }))}
+              saveFn={saveVishraamsStyle}
+              fetchFn={fetchVishraamsStyle}
+              errorMessages={{
+                loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM_STYLE,
+                saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM_STYLE,
+              }}
+              defaultValue={{ style: 'colored-words' }}
+              containerStyle={AngsFormatStyles.container}
+              textStyle={AngsFormatStyles.angsText}
+              overlayHeaderStyle={AngsFormatStyles.overlayHeader}
+              overlayTextContainerStyle={AngsFormatStyles.overlayTextContainer}
+              overlayTextStyle={AngsFormatStyles.overlayText}
+              getDisplayValue={(value: VishraamsStyle) => VishraamsStyleLabels[value.style]}
+              isEqual={(a: VishraamsStyle, b: VishraamsStyle) => a.style === b.style}
+              showCheckmark={false}
             />
           </View>
           

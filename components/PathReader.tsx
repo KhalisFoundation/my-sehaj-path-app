@@ -38,6 +38,8 @@ interface PathReaderProps {
   fontSize: number;
   isSaved: boolean;
   isVishraam: boolean;
+  vishraamsSource: string;
+  vishraamsStyle: string;
 }
 
 const PathReaderComponent = ({
@@ -65,6 +67,8 @@ const PathReaderComponent = ({
   fontSize,
   isSaved,
   isVishraam,
+  vishraamsSource,
+  vishraamsStyle,
 }: PathReaderProps) => {
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -168,6 +172,7 @@ const PathReaderComponent = ({
                   ? verse.larivaar.unicode
                   : verse.verse.unicode;
                 const vishraam = verse.visraam;
+                const originalVerse = verse.verse.unicode;
 
                 const globalIndex = shabad.startIndex + verseIndex + 1;
     
@@ -192,6 +197,9 @@ const PathReaderComponent = ({
                     isSaved={isSaved}
                     isVishraam={isVishraam}
                     vishraam={vishraam}
+                    vishraamsSource={vishraamsSource}
+                    vishraamsStyle={vishraamsStyle}
+                    originalVerse={originalVerse}
                   />
                 );
               })}
@@ -203,6 +211,7 @@ const PathReaderComponent = ({
     return pathContent?.page?.map((path: Verse, index: number) => {
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
       const vishraam = path.visraam;
+      const originalVerse = path.verse.unicode;
 
       return (
         <SimpleTextForPath
@@ -225,6 +234,9 @@ const PathReaderComponent = ({
           isSaved={isSaved}
           isVishraam={isVishraam}
           vishraam={vishraam}
+          vishraamsSource={vishraamsSource}
+          vishraamsStyle={vishraamsStyle}
+          originalVerse={originalVerse}
         />
       );
     });
@@ -246,6 +258,9 @@ const PathReaderComponent = ({
     isSaved,
     isParagraphMode,
     shabadsWithIndices,
+    isVishraam,
+    vishraamsSource,
+    vishraamsStyle,
   ]);
 
   return (

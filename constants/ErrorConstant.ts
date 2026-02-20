@@ -32,4 +32,10 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_LOAD_PARAGRAPH_MODE: 'Failed to load your paragraph mode preference. Please try again.',
   FAILED_TO_SAVE_VISHRAAM: 'Failed to save your vishraam preference. Please try again.',
   FAILED_TO_LOAD_VISHRAAM: 'Failed to load your vishraam preference. Please try again.',
+  FAILED_TO_LOAD_VISHRAAM_SOURCE: 'Failed to load vishraam source',
+  FAILED_TO_SAVE_VISHRAAM_SOURCE: 'Failed to save vishraam source',
+  FAILED_TO_LOAD_VISHRAAM_STYLE: 'Failed to load vishraam style',
+  FAILED_TO_SAVE_VISHRAAM_STYLE: 'Failed to save vishraam style',
+  FAILED_TO_LOAD_ANALYTICS: 'Failed to load analytics',
+  FAILED_TO_SAVE_ANALYTICS: 'Failed to save analytics',
 };

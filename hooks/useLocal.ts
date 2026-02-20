@@ -25,10 +25,23 @@ export interface FontSizeData {
 export interface AngsFormat {
   format: 'Punjabi' | 'English';
 }
+
+export interface VishraamsSource {
+  source: 'sttm' | 'igurbani' | 'sttm2';
+}
+
+export interface VishraamsStyle {
+  style: 'colored-words' | 'gradient-bg';
+}
+export interface VishraamsMarker {
+  p: number;
+  t: string;
+}
+
 export interface Visraam {
-  sttm2: string[];
-  sttm: string[];
-  igurbani: string[];
+  sttm2: VishraamsMarker[];
+  sttm: VishraamsMarker[];
+  igurbani: VishraamsMarker[];
 }
 
 export interface Verse {
@@ -254,6 +267,52 @@ export const useLocal = () => {
     }
   };
 
+  const saveVishraamsSource = async (vishraamsSource: VishraamsSource) => {
+    await AsyncStorage.setItem('vishraamsSource', JSON.stringify(vishraamsSource));
+  };
+
+  const fetchVishraamsSource = async () => {
+    try {
+      const vishraamsSource = await AsyncStorage.getItem('vishraamsSource');
+      if (vishraamsSource) {
+        try {
+          const parsedVishraamsSource = JSON.parse(vishraamsSource);
+          if (parsedVishraamsSource && typeof parsedVishraamsSource === 'object') {
+            return parsedVishraamsSource;
+          }
+        } catch (parseError) {
+          return { source: 'sttm' };
+        }
+      }
+      return { source: 'sttm' };
+    } catch (error) {
+      return { source: 'sttm' };
+    }
+  };
+
+  const saveVishraamsStyle = async (vishraamsStyle: VishraamsStyle) => {
+    await AsyncStorage.setItem('vishraamsStyle', JSON.stringify(vishraamsStyle));
+  };
+
+  const fetchVishraamsStyle = async () => {
+    try {
+      const vishraamsStyle = await AsyncStorage.getItem('vishraamsStyle');
+      if (vishraamsStyle) {
+        try {
+          const parsedVishraamsStyle = JSON.parse(vishraamsStyle);
+          if (parsedVishraamsStyle && typeof parsedVishraamsStyle === 'object') {
+            return parsedVishraamsStyle;
+          }
+        } catch (parseError) {
+          return { style: 'colored-words' };
+        }
+      }
+      return { style: 'colored-words' };
+    } catch (error) {
+      return { style: 'colored-words' };
+    }
+  };
+
   const saveAngsFormat = async (angsFormat: AngsFormat) => {
     await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
   };
@@ -311,5 +370,9 @@ export const useLocal = () => {
     fetchParagraphMode,
     saveVishraam,
     fetchVishraam,
+    saveVishraamsSource,
+    fetchVishraamsSource,
+    saveVishraamsStyle,
+    fetchVishraamsStyle,
   };
 };

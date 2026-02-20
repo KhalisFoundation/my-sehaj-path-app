@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { unstable_batchedUpdates } from 'react-native';
 import { SimpleTextForPathStyles } from '@styles';
-import { Visraam } from '@hooks/useLocal';
+import { Visraam, VishraamsMarker } from '@hooks/useLocal';
+import React from 'react';
+import { Text } from 'react-native';
 
 /**
  * Common props interface for path text components
@@ -25,6 +27,9 @@ export interface PathTextProps {
   isSaved: boolean;
   isVishraam: boolean;
   vishraam: Visraam;
+  vishraamsSource?: string;
+  vishraamsStyle?: string;
+  originalVerse?: string;
 }
 
 /**
@@ -123,6 +128,185 @@ export const createPressHandler = (
       onSave();
     }
   };
+};
+
+/**
+ * Processes Gurbani text and renders with vishraam styling
+ * Note: The position 'p' in vishraam data represents the word index (0-based)
+ * Vishraams are applied to the entire word at position p
+ * @param gurbaniLine - The Gurbani text (can be spaced or Larivaar)
+ * @param vishraam - Vishraam data containing marker positions
+ * @param fontSize - Font size for styling
+ * @param vishraamsSource - Selected vishraam source ('sttm', 'igurbani', or 'sttm2')
+ * @param vishraamsStyle - Selected vishraam style ('colored-words' or 'gradient-bg')
+ * @param originalVerse - The original spaced verse (needed for Larivaar mode)
+ * @returns Array of React elements with vishraam styling applied to words
+ */
+export const renderTextWithVishraams = (
+  gurbaniLine: string,
+  vishraam: Visraam,
+  fontSize: number,
+  vishraamsSource: string = 'sttm',
+  vishraamsStyle: string = 'colored-words',
+  originalVerse?: string
+): React.ReactElement[] => {
+  // Use the selected vishraam source
+  const vishraamsData = vishraam?.[vishraamsSource as keyof Visraam] || [];
+  
+  if (!vishraamsData || vishraamsData.length === 0) {
+    return [React.createElement(Text, { key: 0 }, gurbaniLine)];
+  }
+
+  // Check if this is Larivaar mode (no spaces in the text)
+  const isLarivaar = !gurbaniLine.includes(' ');
+  
+  // For Larivaar, we need the original spaced verse to map word positions
+  const referenceText = isLarivaar && originalVerse ? originalVerse : gurbaniLine;
+  const words = referenceText.split(' ').filter(w => w.length > 0);
+  const elements: React.ReactElement[] = [];
+  
+  // For Larivaar mode, build character position mapping
+  if (isLarivaar && originalVerse) {
+    let larivaarPos = 0;
+    
+    words.forEach((word, wordIndex) => {
+      const marker = vishraamsData.find((v: VishraamsMarker) => v.p === wordIndex);
+      const wordLength = word.length;
+      const wordText = gurbaniLine.substring(larivaarPos, larivaarPos + wordLength);
+      
+      if (marker) {
+        const isMainPause = marker.t === 'v';
+        
+        if (vishraamsStyle === 'gradient-bg') {
+          elements.push(
+            React.createElement(
+              Text,
+              {
+                key: `word-${wordIndex}`,
+                style: {
+                  backgroundColor: isMainPause 
+                    ? 'rgba(210, 105, 30, 0.3)' 
+                    : 'rgba(0, 204, 102, 0.3)',
+                  paddingHorizontal: 6,
+                  paddingVertical: 3,
+                  borderRadius: 6,
+                  borderLeftWidth: 3,
+                  borderLeftColor: isMainPause 
+                    ? 'rgba(210, 105, 30, 0.1)' 
+                    : 'rgba(0, 204, 102, 0.1)',
+                  borderRightWidth: 3,
+                  borderRightColor: isMainPause 
+                    ? 'rgba(210, 105, 30, 0.6)' 
+                    : 'rgba(0, 204, 102, 0.6)',
+                },
+              },
+              wordText
+            )
+          );
+        } else {
+          const visraamColor = isMainPause ? '#d2691e' : '#00cc66';
+          elements.push(
+            React.createElement(
+              Text,
+              {
+                key: `word-${wordIndex}`,
+                style: {
+                  color: visraamColor,
+                  fontWeight: '600' as const,
+                },
+              },
+              wordText
+            )
+          );
+        }
+      } else {
+        elements.push(
+          React.createElement(Text, { key: `word-${wordIndex}` }, wordText)
+        );
+      }
+      
+      larivaarPos += wordLength;
+    });
+    
+    return elements;
+  }
+  
+  // Regular spaced text mode
+
+  words.forEach((word, wordIndex) => {
+    // Check if there's a vishraam marker at this word position (0-based)
+    const marker = vishraamsData.find((v: VishraamsMarker) => v.p === wordIndex);
+    
+    if (marker) {
+      // Apply vishraam styling based on selected style
+      const isMainPause = marker.t === 'v';
+      
+      if (vishraamsStyle === 'gradient-bg') {
+        // Gradient background style with linear gradient effect
+        const isMainPause = marker.t === 'v';
+        
+        // Create gradient effect by wrapping word in a View with gradient
+        // Since React Native doesn't support CSS gradients directly, we'll use backgroundColor with opacity
+        // and add padding to create a subtle gradient-like effect
+        elements.push(
+          React.createElement(
+            Text,
+            {
+              key: `word-${wordIndex}`,
+              style: {
+                // Create a gradient-like effect using background color with varying opacity
+                backgroundColor: isMainPause 
+                  ? 'rgba(210, 105, 30, 0.3)' 
+                  : 'rgba(0, 204, 102, 0.3)',
+                paddingHorizontal: 6,
+                paddingVertical: 3,
+                borderRadius: 6,
+                // Add a subtle shadow/border to enhance the gradient effect
+                borderLeftWidth: 3,
+                borderLeftColor: isMainPause 
+                  ? 'rgba(210, 105, 30, 0.1)' 
+                  : 'rgba(0, 204, 102, 0.1)',
+                borderRightWidth: 3,
+                borderRightColor: isMainPause 
+                  ? 'rgba(210, 105, 30, 0.6)' 
+                  : 'rgba(0, 204, 102, 0.6)',
+              },
+            },
+            word
+          )
+        );
+      } else {
+        // Colored words style (default)
+        const visraamColor = isMainPause ? '#d2691e' : '#00cc66';
+        
+        elements.push(
+          React.createElement(
+            Text,
+            {
+              key: `word-${wordIndex}`,
+              style: {
+                color: visraamColor,
+                fontWeight: '600' as const,
+              },
+            },
+            word
+          )
+        );
+      }
+    } else {
+      // Regular word without vishraam
+      elements.push(
+        React.createElement(Text, { key: `word-${wordIndex}` }, word)
+      );
+    }
+
+    // Add space after word (except for last word)
+    if (wordIndex < words.length - 1) {
+      elements.push(React.createElement(Text, { key: `space-${wordIndex}` }, ' '));
+    }
+  });
+
+  return elements;
 };
 
 /**

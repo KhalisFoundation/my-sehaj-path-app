@@ -6,6 +6,8 @@ export { CalenderDays } from './CalenderConstants';
 export { UIConstants } from './UIConstants';
 export { ErrorConstants } from './ErrorConstant';
 export { AngsFormatArray } from './Angs';
+export { VishraamsSourceArray, VishraamsSourceLabels } from './VishraamsSource';
+export { VishraamsStyleArray, VishraamsStyleLabels } from './VishraamsStyle';
 export { BANIDB_API } from './API';
 export { Routes } from './Routes';
 export { EDGES_ALL_SIDES } from './UIConstants';
