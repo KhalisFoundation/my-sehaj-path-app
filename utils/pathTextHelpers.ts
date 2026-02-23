@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { unstable_batchedUpdates } from 'react-native';
 import { SimpleTextForPathStyles } from '@styles';
 import { Visraam, VishraamsMarker } from '@hooks/useLocal';
+import { VishraamsTheme } from '@constants/VishraamsTheme';
 import React from 'react';
 import { Text } from 'react-native';
 
@@ -176,6 +177,7 @@ export const renderTextWithVishraams = (
       
       if (marker) {
         const isMainPause = marker.t === 'v';
+        const pauseConfig = isMainPause ? VishraamsTheme.mainPause : VishraamsTheme.lightPause;
         
         if (vishraamsStyle === 'gradient-bg') {
           elements.push(
@@ -184,35 +186,28 @@ export const renderTextWithVishraams = (
               {
                 key: `word-${wordIndex}`,
                 style: {
-                  backgroundColor: isMainPause 
-                    ? 'rgba(210, 105, 30, 0.3)' 
-                    : 'rgba(0, 204, 102, 0.3)',
-                  paddingHorizontal: 6,
-                  paddingVertical: 3,
-                  borderRadius: 6,
-                  borderLeftWidth: 3,
-                  borderLeftColor: isMainPause 
-                    ? 'rgba(210, 105, 30, 0.1)' 
-                    : 'rgba(0, 204, 102, 0.1)',
-                  borderRightWidth: 3,
-                  borderRightColor: isMainPause 
-                    ? 'rgba(210, 105, 30, 0.6)' 
-                    : 'rgba(0, 204, 102, 0.6)',
+                  backgroundColor: pauseConfig.gradientBg,
+                  paddingHorizontal: VishraamsTheme.gradient.paddingHorizontal,
+                  paddingVertical: VishraamsTheme.gradient.paddingVertical,
+                  borderRadius: VishraamsTheme.gradient.borderRadius,
+                  borderLeftWidth: VishraamsTheme.gradient.borderLeftWidth,
+                  borderLeftColor: pauseConfig.gradientBorderLeft,
+                  borderRightWidth: VishraamsTheme.gradient.borderRightWidth,
+                  borderRightColor: pauseConfig.gradientBorderRight,
                 },
               },
               wordText
             )
           );
         } else {
-          const visraamColor = isMainPause ? '#d2691e' : '#00cc66';
           elements.push(
             React.createElement(
               Text,
               {
                 key: `word-${wordIndex}`,
                 style: {
-                  color: visraamColor,
-                  fontWeight: '600' as const,
+                  color: pauseConfig.text,
+                  fontWeight: VishraamsTheme.coloredWords.fontWeight,
                 },
               },
               wordText
@@ -240,11 +235,10 @@ export const renderTextWithVishraams = (
     if (marker) {
       // Apply vishraam styling based on selected style
       const isMainPause = marker.t === 'v';
+      const pauseConfig = isMainPause ? VishraamsTheme.mainPause : VishraamsTheme.lightPause;
       
       if (vishraamsStyle === 'gradient-bg') {
         // Gradient background style with linear gradient effect
-        const isMainPause = marker.t === 'v';
-        
         // Create gradient effect by wrapping word in a View with gradient
         // Since React Native doesn't support CSS gradients directly, we'll use backgroundColor with opacity
         // and add padding to create a subtle gradient-like effect
@@ -255,21 +249,15 @@ export const renderTextWithVishraams = (
               key: `word-${wordIndex}`,
               style: {
                 // Create a gradient-like effect using background color with varying opacity
-                backgroundColor: isMainPause 
-                  ? 'rgba(210, 105, 30, 0.3)' 
-                  : 'rgba(0, 204, 102, 0.3)',
-                paddingHorizontal: 6,
-                paddingVertical: 3,
-                borderRadius: 6,
+                backgroundColor: pauseConfig.gradientBg,
+                paddingHorizontal: VishraamsTheme.gradient.paddingHorizontal,
+                paddingVertical: VishraamsTheme.gradient.paddingVertical,
+                borderRadius: VishraamsTheme.gradient.borderRadius,
                 // Add a subtle shadow/border to enhance the gradient effect
-                borderLeftWidth: 3,
-                borderLeftColor: isMainPause 
-                  ? 'rgba(210, 105, 30, 0.1)' 
-                  : 'rgba(0, 204, 102, 0.1)',
-                borderRightWidth: 3,
-                borderRightColor: isMainPause 
-                  ? 'rgba(210, 105, 30, 0.6)' 
-                  : 'rgba(0, 204, 102, 0.6)',
+                borderLeftWidth: VishraamsTheme.gradient.borderLeftWidth,
+                borderLeftColor: pauseConfig.gradientBorderLeft,
+                borderRightWidth: VishraamsTheme.gradient.borderRightWidth,
+                borderRightColor: pauseConfig.gradientBorderRight,
               },
             },
             word
@@ -277,16 +265,14 @@ export const renderTextWithVishraams = (
         );
       } else {
         // Colored words style (default)
-        const visraamColor = isMainPause ? '#d2691e' : '#00cc66';
-        
         elements.push(
           React.createElement(
             Text,
             {
               key: `word-${wordIndex}`,
               style: {
-                color: visraamColor,
-                fontWeight: '600' as const,
+                color: pauseConfig.text,
+                fontWeight: VishraamsTheme.coloredWords.fontWeight,
               },
             },
             word

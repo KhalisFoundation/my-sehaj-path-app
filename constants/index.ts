@@ -8,6 +8,8 @@ export { ErrorConstants } from './ErrorConstant';
 export { AngsFormatArray } from './Angs';
 export { VishraamsSourceArray, VishraamsSourceLabels } from './VishraamsSource';
 export { VishraamsStyleArray, VishraamsStyleLabels } from './VishraamsStyle';
+export { VishraamsTheme } from './VishraamsTheme';
+export type { VishraamsColorConfig } from './VishraamsTheme';
 export { BANIDB_API } from './API';
 export { Routes } from './Routes';
 export { EDGES_ALL_SIDES } from './UIConstants';
