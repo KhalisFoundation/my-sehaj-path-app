@@ -311,6 +311,8 @@ export const pathTextPropsAreEqual = (
     prevProps.savedPathVerseId === nextProps.savedPathVerseId &&
     prevProps.found === nextProps.found &&
     prevProps.fontSize === nextProps.fontSize &&
-    prevProps.isVishraam === nextProps.isVishraam
+    prevProps.isVishraam === nextProps.isVishraam &&
+    prevProps.vishraamsSource === nextProps.vishraamsSource &&
+    prevProps.vishraamsStyle === nextProps.vishraamsStyle
   );
 };
