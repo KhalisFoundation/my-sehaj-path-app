@@ -329,34 +329,26 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }, [fetchFontSize])
   );
 
-  // Trigger scroll to center verse when font size or paragraph mode changes
+  // Maintain scroll position when font size or paragraph mode changes
   useEffect(() => {
     const fontSizeChanged = fontSize !== previousFontSize.current;
     const paragraphModeChanged = isParagraphMode !== previousParagraphMode.current;
     
     if ((fontSizeChanged || paragraphModeChanged) && pathContent?.page && centerVerseId !== 0) {
+      const oldFontSize = previousFontSize.current;
       previousFontSize.current = fontSize;
       previousParagraphMode.current = isParagraphMode;
       
-      // First, scroll to approximate position to get the verse on screen
-      const scrollIndex = pathContent.page.findIndex(
+      // Calculate the verse index to know how much content is above
+      const verseIndex = pathContent.page.findIndex(
         (page: any) => page.verseId === centerVerseId
       );
       
-      if (scrollIndex !== -1 && scrollRef.current) {
-        // Rough estimate to get verse in viewport
-        const estimatedHeight = fontSize * 2;
-        const roughScroll = Math.max(0, scrollIndex * estimatedHeight - 300);
-        
-        scrollRef.current.scrollTo({
-          y: roughScroll,
-          animated: false,
-        });
-        
-        // Then trigger precise positioning via layout
+      if (verseIndex !== -1 && scrollRef.current) {
+        // Wait for layout to complete with new font size, then scroll to the verse
         setTimeout(() => {
           setScrollToVerseId(centerVerseId);
-        }, 100);
+        }, 200);
       }
     }
   }, [fontSize, isParagraphMode, pathContent, centerVerseId]);

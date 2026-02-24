@@ -187,19 +187,15 @@ const PathReaderComponent = ({
         const screenCenterY = viewportHeight.current / 2;
         const targetScroll = Math.max(0, verseCenterY - screenCenterY);
         
-        // Use requestAnimationFrame for better timing
-        requestAnimationFrame(() => {
-          setTimeout(() => {
-            if (scrollRef.current) {
-              scrollRef.current.scrollTo({
-                y: targetScroll,
-                animated: false,
-              });
-              scrollOffset.current = targetScroll;
-              hasScrolledToVerse.current = true;
-            }
-          }, 100);
-        });
+        // Scroll immediately without delay to prevent verse from jumping
+        if (scrollRef.current) {
+          scrollRef.current.scrollTo({
+            y: targetScroll,
+            animated: false,
+          });
+          scrollOffset.current = targetScroll;
+          hasScrolledToVerse.current = true;
+        }
       }
     },
     [scrollToVerseId, scrollRef, scrollOffset]
@@ -213,6 +209,12 @@ const PathReaderComponent = ({
       setCenterVerseId(0);
     }
   }, [pathContent?.source?.pageNo, setCenterVerseId]);
+
+  // Clear verse positions when font size or paragraph mode changes
+  useEffect(() => {
+    versePositions.current.clear();
+    hasScrolledToVerse.current = false;
+  }, [fontSize, isParagraphMode]);
 
   // Reset scroll flag when scrollToVerseId changes
   useEffect(() => {
