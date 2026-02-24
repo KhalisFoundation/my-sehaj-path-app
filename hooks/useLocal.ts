@@ -25,6 +25,25 @@ export interface FontSizeData {
 export interface AngsFormat {
   format: 'Punjabi' | 'English';
 }
+
+export interface Verse {
+  verseId: number;
+  shabadId: number;
+  verse: {
+    unicode: string;
+  };
+  larivaar: {
+    unicode: string;
+  };
+}
+
+export interface PathContent {
+  page: Verse[];
+  source: {
+    pageNo: number;
+  };
+}
+
 export const useLocal = () => {
   const fetchFromLocal = async () => {
     const pathFromLocal = await AsyncStorage.getItem('pathDetails');

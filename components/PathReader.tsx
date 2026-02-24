@@ -5,9 +5,10 @@ import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { trackEvent } from '@utils/analytics';
+import type { Verse, PathContent } from '@hooks';
 
 interface PathReaderProps {
-  pathContent: any;
+  pathContent: PathContent;
   isLarivaar: boolean;
   isParagraphMode: boolean;
   isSaving: boolean;
@@ -220,105 +221,76 @@ const PathReaderComponent = ({
     }
   }, [scrollToVerseId]);
 
-  const groupedByShabad = useMemo(() => {
+  const shabadsWithIndices = useMemo(() => {
     if (!pathContent?.page) return [];
   
-    return Object.values(
-      pathContent.page.reduce((acc: any, item: any) => {
-        if (!acc[item.shabadId]) acc[item.shabadId] = [];
-        acc[item.shabadId].push(item);
-        return acc;
-      }, {})
+    const versesByShabadId = pathContent.page.reduce(
+      (groupedVerses: Record<number, Verse[]>, verse: Verse) => {
+        if (!groupedVerses[verse.shabadId]) {
+          groupedVerses[verse.shabadId] = [];
+        }
+        groupedVerses[verse.shabadId].push(verse);
+        return groupedVerses;
+      },
+      {}
     );
+
+    let startIndex = 0;
+    return Object.values(versesByShabadId).map((verses) => {
+      const shabad = { startIndex, verses };
+      startIndex += verses.length;
+      return shabad;
+    });
   }, [pathContent?.page]);
   
 
   const pageContent = useMemo(() => {
     if(isParagraphMode){
-      let globalIndex = 0;
       return (
         <View>
-          {groupedByShabad.map((shabad: any, sIndex) => {
-            // For paragraph mode, track ALL verses in the shabad
-            // Map each verse to this shabad's position
-            const shabadLayoutHandler = (event: any) => {
-              const { y, height } = event.nativeEvent.layout;
-              // Store position for all verses in this shabad
-              shabad.forEach((path: any) => {
-                versePositions.current.set(path.verseId, { y, height });
-              });
-              
-              // Check if we need to scroll to any verse in this shabad
-              if (scrollToVerseId && shabad.some((p: any) => p.verseId === scrollToVerseId) && !hasScrolledToVerse.current && scrollRef.current && viewportHeight.current > 0) {
-                const shabadCenterY = y + height / 2;
-                const screenCenterY = viewportHeight.current / 2;
-                const targetScroll = Math.max(0, shabadCenterY - screenCenterY);
-                
-                requestAnimationFrame(() => {
-                  setTimeout(() => {
-                    if (scrollRef.current) {
-                      scrollRef.current.scrollTo({
-                        y: targetScroll,
-                        animated: false,
-                      });
-                      scrollOffset.current = targetScroll;
-                      hasScrolledToVerse.current = true;
-                    }
-                  }, 100);
-                });
-              }
-            };
-            
-            return (
-              <View 
-                key={sIndex} 
-                onLayout={shabadLayoutHandler}
-              >
-                <Text
-                  style={{
-                    marginBottom: 14,
-                    lineHeight: fontSize * 1.6,
-                  }}
-                >
-                  {shabad.map((path: any, index: any) => {
-                    const gurbaniLine = isLarivaar
-                      ? path.larivaar.unicode
-                      : path.verse.unicode;
+          {shabadsWithIndices.map((shabad, shabadIndex) => (
+            <Text
+              key={shabadIndex}
+              style={{
+                marginBottom: 14,
+                lineHeight: fontSize * 1.6,
+              }}
+            >
+              {shabad.verses.map((verse: Verse, verseIndex: number) => {
+                const gurbaniLine = isLarivaar
+                  ? verse.larivaar.unicode
+                  : verse.verse.unicode;
 
-                    const currentGlobalIndex = globalIndex++;
-        
-                    return (
-                      <ParagraphTextForPath
-                        key={`${path.verseId}-${index}`}
-                        gurbaniLine={gurbaniLine}
-                        onSelection={createSelectionHandler(index, path.verseId)}
-                        onSave={createSaveHandler(path.verseId)}
-                        onLayout={() => {}}
-                        isSaving={isSaving}
-                        isParagraphMode={isParagraphMode}
-                        pressIndex={pressIndex}
-                        index={currentGlobalIndex + 1}
-                        verseId={path.verseId}
-                        savedPathVerseId={savedPathVerseId}
-                        setIsSaving={setIsSaving}
-                        setIsSaved={setIsSaved}
-                        setPressIndex={setPressIndex}
-                        setSavedPathVerseId={setSavedPathVerseId}
-                        found={found}
-                        setFound={setFound}
-                        fontSize={fontSize}
-                        isSaved={isSaved}
-                      />
-                    );
-                  })}
-                </Text>
-              </View>
-            );
-          })}
+                const globalIndex = shabad.startIndex + verseIndex + 1;
+    
+                return (
+                  <ParagraphTextForPath
+                    key={`${verse.verseId}-${verseIndex}`}
+                    gurbaniLine={gurbaniLine}
+                    onSelection={createSelectionHandler(verseIndex, verse.verseId)}
+                    onSave={createSaveHandler(verse.verseId)}
+                    isSaving={isSaving}
+                    pressIndex={pressIndex}
+                    index={globalIndex}
+                    verseId={verse.verseId}
+                    savedPathVerseId={savedPathVerseId}
+                    setIsSaving={setIsSaving}
+                    setIsSaved={setIsSaved}
+                    setPressIndex={setPressIndex}
+                    setSavedPathVerseId={setSavedPathVerseId}
+                    found={found}
+                    setFound={setFound}
+                    fontSize={fontSize}
+                    isSaved={isSaved}
+                  />
+                );
+              })}
+            </Text>
+          ))}
         </View>
       ); 
     }
-    return pathContent?.page?.map((path: any, index: number) => {
+    return pathContent?.page?.map((path: Verse, index: number) => {
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
 
       return (
@@ -362,7 +334,7 @@ const PathReaderComponent = ({
     fontSize,
     isSaved,
     isParagraphMode,
-    groupedByShabad,
+    shabadsWithIndices,
   ]);
 
   return (
