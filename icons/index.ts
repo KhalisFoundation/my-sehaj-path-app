@@ -12,3 +12,4 @@ export { StartIcon } from './Start.icon';
 export { CrossIcon } from './Cross.icon';
 export { LeftLineIcon } from './LeftLine.icon';
 export { RightLineIcon } from './RightLine.icon';
+export { MenuIcon } from './Menu.icon';
