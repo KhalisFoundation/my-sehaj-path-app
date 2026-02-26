@@ -13,3 +13,8 @@ export { CrossIcon } from './Cross.icon';
 export { LeftLineIcon } from './LeftLine.icon';
 export { RightLineIcon } from './RightLine.icon';
 export { MenuIcon } from './Menu.icon';
+export { ProgressIcon } from './Progress.icon';
+export { StreakIcon } from './Streak.icon';
+export { GoToAngIcon } from './GoToAng.icon';
+export { LoginIcon } from './Login.icon';
+export { AllPathLogoIcon } from './AllPathLogo.icon';

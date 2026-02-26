@@ -23,6 +23,7 @@ import {
   Message,
   PathReader,
   PathNavigation,
+  DrawerMenu,
 } from '@components';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
@@ -46,6 +47,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const [retryState, setRetryState] = useState<{
     needsRetry: boolean;
     lastFailedAng: number | null;
@@ -199,6 +201,15 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const handleAngsLeftArrow = useCallback(() => {
     handleLeftArrow(pathAng);
   }, [handleLeftArrow, pathAng]);
+
+  const handleDrawerNavigate = useCallback((route: string) => {
+    if (route === 'Home') {
+      navigation.navigate(Routes.Home);
+    } else if (route === 'Setting') {
+      navigation.navigate(Routes.Setting);
+    }
+    // Add other route handlers as needed
+  }, [navigation]);
   const savingMessage = useMemo(
     () =>
       !isSaved
@@ -363,6 +374,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             handleLeftArrow={handleLeftArrow}
             handleRightArrow={handleRightArrow}
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}
+            onMenuPress={() => setIsDrawerVisible(true)}
           />
         </View>
         <PathReader
@@ -423,6 +435,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             updatePathAng={updatePathAng}
           />
         )}
+        <DrawerMenu
+          isVisible={isDrawerVisible}
+          onClose={() => setIsDrawerVisible(false)}
+          onNavigate={handleDrawerNavigate}
+          currentRoute={Routes.Path}
+        />
       </View>
     </SafeAreaView>
   );

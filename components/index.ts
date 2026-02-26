@@ -20,3 +20,4 @@ export { Loading } from './Loading';
 export { PathControls } from './PathControls';
 export { Message } from './Message';
 export { ParagraphTextForPath } from './ParagraphTextForPath';
+export { DrawerMenu } from './DrawerMenu';
