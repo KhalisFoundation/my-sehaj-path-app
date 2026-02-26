@@ -20,7 +20,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0D2346',
+    backgroundColor: '#11336A',
     paddingHorizontal: UIConstants.RHYTHM * 2,
     paddingVertical: UIConstants.RHYTHM * 1.2,
     gap: UIConstants.RHYTHM * 1.5,

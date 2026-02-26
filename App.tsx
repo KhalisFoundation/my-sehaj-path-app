@@ -11,7 +11,7 @@ import { useLocal } from '@hooks';
 export type RootStackParamList = {
   Splash: undefined;
   Home: undefined;
-  Continue: { pathId: number };
+  Continue: { pathId: number; initialTab?: string };
   Path: { pathId: number };
   Setting: undefined;
   Error: undefined;

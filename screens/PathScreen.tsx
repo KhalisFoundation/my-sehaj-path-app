@@ -15,6 +15,7 @@ import {
   usePathNavigation,
   useScrollToSavedPath,
   AngsFormat,
+  useDrawerNavigation,
 } from '@hooks';
 import {
   AngsNavigation,
@@ -74,6 +75,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   );
 
   const { checkNetwork, isOnline } = useInternet();
+  const { handleDrawerNavigate } = useDrawerNavigation();
   const {
     fetchFromLocal,
     handleUpdatePathWithErrorHandling,
@@ -202,14 +204,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     handleLeftArrow(pathAng);
   }, [handleLeftArrow, pathAng]);
 
-  const handleDrawerNavigate = useCallback((route: string) => {
-    if (route === 'Home') {
-      navigation.navigate(Routes.Home);
-    } else if (route === 'Setting') {
-      navigation.navigate(Routes.Setting);
-    }
-    // Add other route handlers as needed
-  }, [navigation]);
   const savingMessage = useMemo(
     () =>
       !isSaved
@@ -440,6 +434,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           onClose={() => setIsDrawerVisible(false)}
           onNavigate={handleDrawerNavigate}
           currentRoute={Routes.Path}
+          pathId={route.params.pathId}
+          onGoToAngPress={() => setIsAngsNavigationVisible(true)}
+          onSavePress={() => {
+            setIsSaving(true);
+            fadeAnim.current.setValue(1);
+          }}
         />
       </View>
     </SafeAreaView>
