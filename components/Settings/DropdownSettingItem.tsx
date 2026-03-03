@@ -4,6 +4,7 @@ import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent, SimpleText } from '@components';
 import { LeftArrowIcon, RightChevronIcon, CheckMarkIcon } from '@icons';
 import { showErrorAlert, trackEvent } from '@utils';
+import { DropdownSettingItemStyles } from '@styles/DropdownSettingItemStyles';
 
 interface SelectionOption<T> {
   value: T;
@@ -78,23 +79,23 @@ export function DropdownSettingItem<T>({
   const [isVisible, setIsVisible] = useState<boolean>(false);
   const [selectedValue, setSelectedValue] = useState<T>(defaultValue);
 
-  const handleToggle = () => setIsVisible(!isVisible);
+  const handleToggle = () => setIsVisible(prev => !prev);
 
   const handleSelect = async (option: SelectionOption<T>) => {
     try {
       setSelectedValue(option.value);
       
-      // Track analytics
+      handleToggle();
+      
+      // Save to storage
+      await saveFn(option.value);
+      
+      // Track analytics only after successful save
       trackEvent(
         analyticsCategory,
         'click',
         `changed ${settingKey} to ${option.label}`
       );
-      
-      handleToggle();
-      
-      // Save to storage
-      await saveFn(option.value);
     } catch (error) {
       // Revert on error
       showErrorAlert(errorMessages.saveError);
@@ -125,7 +126,7 @@ export function DropdownSettingItem<T>({
         accessibilityHint={`Tap to change ${label}`}
       >
         <SimpleText simpleText={label} simpleTextStyle={textStyle} />
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <View style={DropdownSettingItemStyles.valueContainer}>
           <SimpleText
             simpleText={getDisplayValue(selectedValue)}
             simpleTextStyle={textStyle}
@@ -134,39 +135,37 @@ export function DropdownSettingItem<T>({
         </View>
       </TouchableOpacity>
 
-      {isVisible && (
-        <Overlay
-          isVisible={isVisible}
-          onBackdropPress={handleToggle}
-          overlayStyle={overlayContainerStyle}
-        >
-          <View>
-            <View style={overlayHeaderStyle}>
-              <NavContent navIcon={<LeftArrowIcon />} onPress={handleToggle} />
-              <NavContent text={overlayTitle} />
-            </View>
-            <View style={overlayContentStyle}>
-              {options.map((option, index) => (
-                <ListItem
-                  key={index}
-                  onPress={() => handleSelect(option)}
-                  accessibilityLabel={`${label} option: ${option.label}`}
-                  accessibilityRole="button"
-                  accessibilityHint={`Tap to select ${option.label}`}
-                  accessibilityState={{ selected: isEqual(selectedValue, option.value) }}
-                >
-                  <ListItem.Content style={overlayTextContainerStyle}>
-                    <ListItem.Title style={overlayTextStyle}>
-                      {option.label}
-                    </ListItem.Title>
-                    {showCheckmark && isEqual(selectedValue, option.value) && <CheckMarkIcon />}
-                  </ListItem.Content>
-                </ListItem>
-              ))}
-            </View>
+      <Overlay
+        isVisible={isVisible}
+        onBackdropPress={handleToggle}
+        overlayStyle={overlayContainerStyle}
+      >
+        <View>
+          <View style={overlayHeaderStyle}>
+            <NavContent navIcon={<LeftArrowIcon />} onPress={handleToggle} />
+            <NavContent text={overlayTitle} />
           </View>
-        </Overlay>
-      )}
+          <View style={overlayContentStyle}>
+            {options.map((option, index) => (
+              <ListItem
+                key={index}
+                onPress={() => handleSelect(option)}
+                accessibilityLabel={`${label} option: ${option.label}`}
+                accessibilityRole="button"
+                accessibilityHint={`Tap to select ${option.label}`}
+                accessibilityState={{ selected: isEqual(selectedValue, option.value) }}
+              >
+                <ListItem.Content style={overlayTextContainerStyle}>
+                  <ListItem.Title style={overlayTextStyle}>
+                    {option.label}
+                  </ListItem.Title>
+                  {showCheckmark && isEqual(selectedValue, option.value) && <CheckMarkIcon />}
+                </ListItem.Content>
+              </ListItem>
+            ))}
+          </View>
+        </View>
+      </Overlay>
     </>
   );
 }
