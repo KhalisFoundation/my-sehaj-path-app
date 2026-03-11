@@ -41,6 +41,9 @@ export const DrawerMenuStyles = StyleSheet.create({
   menuItems: {
     paddingTop: UIConstants.RHYTHM,
   },
+  menuItemsHighlight: {
+    fontWeight: '600',
+  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',

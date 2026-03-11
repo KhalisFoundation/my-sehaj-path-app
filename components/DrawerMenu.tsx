@@ -173,7 +173,10 @@ const DrawerMenuComponent = ({
                   accessibilityRole="button"
                 >
                   <View style={DrawerMenuStyles.menuItemIcon}>{item.icon}</View>
-                  <Text style={DrawerMenuStyles.menuItemText}>{item.label}</Text>
+                  <Text style={[
+                    DrawerMenuStyles.menuItemText,
+                    (currentRoute === item.route) && DrawerMenuStyles.menuItemsHighlight,
+                  ]}>{item.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
