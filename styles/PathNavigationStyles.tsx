@@ -39,9 +39,6 @@ export const PathNavigationStyles = StyleSheet.create({
     alignItems: 'flex-start',
     padding: UIConstants.RHYTHM * 2,
   },
-  arrowButtonRight: {
-    alignItems: 'flex-end',
-  },
   angs: {
     alignItems: 'center',
     justifyContent: 'center',
