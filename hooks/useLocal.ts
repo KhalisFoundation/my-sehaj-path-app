@@ -30,15 +30,12 @@ export interface VishraamsSource {
   source: 'sttm' | 'igurbani' | 'sttm2';
 }
 
-export interface VishraamsStyle {
-  style: 'colored-words' | 'gradient-bg';
-}
 export interface VishraamsMarker {
   p: number;
   t: string;
 }
 
-export interface Visraam {
+export interface Visraams {
   sttm2: VishraamsMarker[];
   sttm: VishraamsMarker[];
   igurbani: VishraamsMarker[];
@@ -53,7 +50,7 @@ export interface Verse {
   larivaar: {
     unicode: string;
   };
-  visraam: Visraam;
+  visraam: Visraams;
 }
 
 export interface PathContent {
@@ -290,29 +287,6 @@ export const useLocal = () => {
     }
   };
 
-  const saveVishraamsStyle = async (vishraamsStyle: VishraamsStyle) => {
-    await AsyncStorage.setItem('vishraamsStyle', JSON.stringify(vishraamsStyle));
-  };
-
-  const fetchVishraamsStyle = async () => {
-    try {
-      const vishraamsStyle = await AsyncStorage.getItem('vishraamsStyle');
-      if (vishraamsStyle) {
-        try {
-          const parsedVishraamsStyle = JSON.parse(vishraamsStyle);
-          if (parsedVishraamsStyle && typeof parsedVishraamsStyle === 'object') {
-            return parsedVishraamsStyle;
-          }
-        } catch (parseError) {
-          return { style: 'colored-words' };
-        }
-      }
-      return { style: 'colored-words' };
-    } catch (error) {
-      return { style: 'colored-words' };
-    }
-  };
-
   const saveAngsFormat = async (angsFormat: AngsFormat) => {
     await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
   };
@@ -372,7 +346,5 @@ export const useLocal = () => {
     fetchVishraam,
     saveVishraamsSource,
     fetchVishraamsSource,
-    saveVishraamsStyle,
-    fetchVishraamsStyle,
   };
 };

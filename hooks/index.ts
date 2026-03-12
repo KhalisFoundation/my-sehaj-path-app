@@ -3,5 +3,5 @@ export { useInternet } from './useInternet';
 export { useNavigation } from './useNavigation';
 export { usePathNavigation } from './usePathNavigation';
 export { useScrollToSavedPath } from './useScrollToSavedPath';
-export type { PathData, DateData, PathDate, FontSizeData, AngsFormat, Verse, PathContent, Visraam, VishraamsSource, VishraamsStyle } from './useLocal';
+export type { PathData, DateData, PathDate, FontSizeData, AngsFormat, Verse, PathContent, Visraams, VishraamsSource } from './useLocal';
 export { useScreenAnalytics } from './useScreenAnalytics';

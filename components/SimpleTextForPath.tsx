@@ -32,9 +32,8 @@ const SimpleTextForPathComponent = ({
   fontSize,
   isSaved,
   isVishraam,
-  vishraam,
+  vishraams,
   vishraamsSource,
-  vishraamsStyle,
   originalVerse,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
@@ -81,7 +80,7 @@ const SimpleTextForPathComponent = ({
       disabled={isSaved || found}
     >
       <Text suppressHighlighting={true} style={textStyle} >
-        {isVishraam ? renderTextWithVishraams(gurbaniLine, vishraam, fontSize, vishraamsSource, vishraamsStyle, originalVerse) : gurbaniLine}
+        {isVishraam ? renderTextWithVishraams(gurbaniLine, vishraams, fontSize, vishraamsSource, originalVerse) : gurbaniLine}
         {isSelected && (
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}

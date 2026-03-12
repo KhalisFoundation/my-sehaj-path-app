@@ -196,7 +196,7 @@ const PathReaderComponent = ({
                     fontSize={fontSize}
                     isSaved={isSaved}
                     isVishraam={isVishraam}
-                    vishraam={vishraam}
+                    vishraams={vishraam}
                     vishraamsSource={vishraamsSource}
                     vishraamsStyle={vishraamsStyle}
                     originalVerse={originalVerse}
@@ -233,9 +233,9 @@ const PathReaderComponent = ({
           fontSize={fontSize}
           isSaved={isSaved}
           isVishraam={isVishraam}
-          vishraam={vishraam}
+          vishraams={vishraam}
           vishraamsSource={vishraamsSource}
-          vishraamsStyle={vishraamsStyle}
+          vishraamsStyle='colored-words'
           originalVerse={originalVerse}
         />
       );

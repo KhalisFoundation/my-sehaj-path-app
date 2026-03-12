@@ -31,9 +31,8 @@ const ParagraphTextForPathComponent = ({
   fontSize,
   isSaved,
   isVishraam,
-  vishraam,
+  vishraams,
   vishraamsSource,
-  vishraamsStyle,
   originalVerse,
 }: PathTextProps) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,7 +103,7 @@ const ParagraphTextForPathComponent = ({
       suppressHighlighting={true}
       style={[textStyle, containerStyle]}
     >
-      {isVishraam ? renderTextWithVishraams(gurbaniLine, vishraam, fontSize, vishraamsSource, vishraamsStyle, originalVerse) : gurbaniLine}
+      {isVishraam ? renderTextWithVishraams(gurbaniLine, vishraams, fontSize, vishraamsSource, originalVerse) : gurbaniLine}
       {" "}
       {isSelected && (
         <Text>
