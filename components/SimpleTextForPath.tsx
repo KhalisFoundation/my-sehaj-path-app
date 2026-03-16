@@ -30,6 +30,7 @@ const SimpleTextForPathComponent = ({
   setFound,
   fontSize,
   isSaved,
+  onLayout,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
 
@@ -73,6 +74,7 @@ const SimpleTextForPathComponent = ({
       pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
       accessibilityHint="Tap to select, long press to save this line"
       disabled={isSaved || found}
+      onLayout={onLayout}
     >
       <Text suppressHighlighting={true} style={textStyle}>
         {gurbaniLine}

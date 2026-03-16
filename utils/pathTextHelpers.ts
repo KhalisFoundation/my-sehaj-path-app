@@ -22,6 +22,7 @@ export interface PathTextProps {
   setFound: (value: boolean) => void;
   fontSize: number;
   isSaved: boolean;
+  onLayout?: (event: any) => void;
 }
 
 /**
