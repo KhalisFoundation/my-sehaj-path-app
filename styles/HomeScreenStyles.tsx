@@ -28,4 +28,11 @@ export const HomeScreenStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  menuButton: {
+    position: 'absolute',
+    top: UIConstants.RHYTHM * 2,
+    left: UIConstants.RHYTHM * 2,
+    zIndex: 10,
+    padding: UIConstants.RHYTHM,
+  },
 });

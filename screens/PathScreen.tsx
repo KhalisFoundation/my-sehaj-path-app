@@ -15,6 +15,7 @@ import {
   usePathNavigation,
   useScrollToSavedPath,
   AngsFormat,
+  useDrawerNavigation,
 } from '@hooks';
 import {
   AngsNavigation,
@@ -23,6 +24,7 @@ import {
   Message,
   PathReader,
   PathNavigation,
+  DrawerMenu,
 } from '@components';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
@@ -47,6 +49,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const [retryState, setRetryState] = useState<{
     needsRetry: boolean;
     lastFailedAng: number | null;
@@ -76,6 +79,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   );
 
   const { checkNetwork, isOnline } = useInternet();
+  const { handleDrawerNavigate } = useDrawerNavigation();
   const {
     fetchFromLocal,
     handleUpdatePathWithErrorHandling,
@@ -209,6 +213,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const handleAngsLeftArrow = useCallback(() => {
     handleLeftArrow(pathAng);
   }, [handleLeftArrow, pathAng]);
+
   const savingMessage = useMemo(
     () =>
       !isSaved
@@ -398,6 +403,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             handleLeftArrow={handleLeftArrow}
             handleRightArrow={handleRightArrow}
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}
+            onMenuPress={() => setIsDrawerVisible(true)}
           />
         </View>
         <PathReader
@@ -460,6 +466,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             updatePathAng={updatePathAng}
           />
         )}
+        <DrawerMenu
+          isVisible={isDrawerVisible}
+          onClose={() => setIsDrawerVisible(false)}
+          onNavigate={handleDrawerNavigate}
+          currentRoute={Routes.Path}
+          pathId={route.params.pathId}
+          onGoToAngPress={() => setIsAngsNavigationVisible(true)}
+          onSavePress={() => {
+            setIsSaving(true);
+            fadeAnim.current.setValue(1);
+          }}
+        />
       </View>
     </SafeAreaView>
   );
