@@ -31,6 +31,7 @@ export interface PathTextProps {
   vishraamsSource?: string;
   vishraamsStyle?: string;
   originalVerse?: string;
+  onLayout?: (event: any) => void;
 }
 
 /**

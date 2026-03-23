@@ -32,7 +32,7 @@ export const Constants: Constant = {
   RESUMING_SAVED_PROGRESS: 'Resuming saved progress',
   SELECT_YOUR_FONT_SIZE: 'Select your font size',
   LARIVAAR: 'Larivaar',
-  PARAGRAPHMODE: 'Paragraph Mode',
+  PARAGRAPH_MODE: 'Paragraph Mode',
   SETTINGS: 'Settings',
   SELECT_YOUR_ANG_FORMAT: 'Select your ang format',
   ANGS: 'Angs',
@@ -40,4 +40,6 @@ export const Constants: Constant = {
   GO_TO_NEXT_ANG: 'Go To Next Ang',
   ALERT_TEXT_LOADING: 'Loading ... ',
   VISHRAAM: 'Vishraam',
+  ANALYTICS: 'Collect Analytics',
+  FONT_SIZE: 'Font-Size',
 };

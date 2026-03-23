@@ -3,6 +3,7 @@ import { View, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
 import { showErrorAlert, trackEvent } from '@utils';
+import { UIConstants } from '@constants';
 
 interface SwitchSettingItemProps {
   // Unique identifier for this setting
@@ -49,15 +50,15 @@ export const SwitchSettingItem = ({
     try {
       setValue(newValue);
       
-      // Track analytics
+      // Save to storage
+      await saveFn(newValue);
+      
+      // Track analytics only after successful save
       trackEvent(
         analyticsCategory,
         'click',
         `changed ${settingKey} to ${newValue ? 'enabled' : 'disabled'}`
       );
-      
-      // Save to storage
-      await saveFn(newValue);
       
       // Call optional callback
       if (onValueChange) {
@@ -90,10 +91,10 @@ export const SwitchSettingItem = ({
         value={value}
         onValueChange={handleToggle}
         trackColor={{
-          false: 'rgb(194, 194, 194)',
-          true: 'rgba(17, 51, 106, 0.46)',
+          false: UIConstants.SWITCH_TRACK_COLOR_FALSE,
+          true: UIConstants.SWITCH_TRACK_COLOR_TRUE,
         }}
-        thumbColor={value ? 'rgb(17, 51, 106)' : 'rgb(142, 142, 142)'}
+        thumbColor={value ? UIConstants.SWITCH_THUMB_COLOR_TRUE : UIConstants.SWITCH_THUMB_COLOR_FALSE}
         accessibilityLabel={`${label} setting`}
         accessibilityRole="switch"
         accessibilityHint={`Tap to ${value ? 'disable' : 'enable'} ${label}`}

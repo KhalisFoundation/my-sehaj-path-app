@@ -15,6 +15,7 @@ import {
   usePathNavigation,
   useScrollToSavedPath,
   AngsFormat,
+  useDrawerNavigation,
 } from '@hooks';
 import {
   AngsNavigation,
@@ -23,6 +24,7 @@ import {
   Message,
   PathReader,
   PathNavigation,
+  DrawerMenu,
 } from '@components';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
@@ -36,6 +38,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [savedPathVerseId, setSavedPathVerseId] = useState<number>(0);
+  const [centerVerseId, setCenterVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
   const [found, setFound] = useState<boolean>(false);
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
@@ -49,6 +52,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const [retryState, setRetryState] = useState<{
     needsRetry: boolean;
     lastFailedAng: number | null;
@@ -64,6 +68,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const fadeAnim = useRef(new Animated.Value(1));
   const debounceAnimValueRef = useRef(new Animated.Value(0));
   const [fontSize, setFontSize] = useState<number>(18);
+  const previousFontSize = useRef<number>(18);
+  const previousParagraphMode = useRef<boolean>(false);
+  const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
 
   const pathPujabiAng = useMemo(
     () =>
@@ -75,6 +82,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   );
 
   const { checkNetwork, isOnline } = useInternet();
+  const { handleDrawerNavigate } = useDrawerNavigation();
   const {
     fetchFromLocal,
     handleUpdatePathWithErrorHandling,
@@ -148,21 +156,27 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       useNativeDriver: true,
     }).start(() => {
       try {
-        handleUpdatePath(
-          route.params.pathId,
-          pathAng,
-          savedPathVerseId,
-          scrollOffset.current,
-          () => {
-            setIsSaved(false);
-          }
-        );
+        // Use savedPathVerseId if manually selected (long-press), otherwise use centerVerseId
+        // If both are 0, don't save (no verse has been identified yet)
+        const verseIdToSave = savedPathVerseId !== 0 ? savedPathVerseId : centerVerseId;
+        
+        if (verseIdToSave !== 0) {
+          handleUpdatePath(
+            route.params.pathId,
+            pathAng,
+            verseIdToSave,
+            scrollOffset.current,
+            () => {
+              setIsSaved(false);
+            }
+          );
+        }
       } catch (error) {
         // Silently handle error to prevent infinite loop in debounced function
         // Error is already handled at the UI level where user initiated the action
       }
     });
-  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
+  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId, centerVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate: matchedPathDate.current,
@@ -204,6 +218,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const handleAngsLeftArrow = useCallback(() => {
     handleLeftArrow(pathAng);
   }, [handleLeftArrow, pathAng]);
+
   const savingMessage = useMemo(
     () =>
       !isSaved
@@ -229,6 +244,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           const pathAngData =
             matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
           setSavedPathVerseId(matchedPathData.saveData.verseId);
+          setCenterVerseId(matchedPathData.saveData.verseId);
           setPathAng(pathAngData);
 
           scrolledToSavedPath.current = false;
@@ -331,6 +347,30 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       fetch();
     }, [fetchFontSize])
   );
+
+  // Maintain scroll position when font size or paragraph mode changes
+  useEffect(() => {
+    const fontSizeChanged = fontSize !== previousFontSize.current;
+    const paragraphModeChanged = isParagraphMode !== previousParagraphMode.current;
+    
+    if ((fontSizeChanged || paragraphModeChanged) && pathContent?.page && centerVerseId !== 0) {
+      const oldFontSize = previousFontSize.current;
+      previousFontSize.current = fontSize;
+      previousParagraphMode.current = isParagraphMode;
+      
+      // Calculate the verse index to know how much content is above
+      const verseIndex = pathContent.page.findIndex(
+        (page: any) => page.verseId === centerVerseId
+      );
+      
+      if (verseIndex !== -1 && scrollRef.current) {
+        // Wait for layout to complete with new font size, then scroll to the verse
+        setTimeout(() => {
+          setScrollToVerseId(centerVerseId);
+        }, 200);
+      }
+    }
+  }, [fontSize, isParagraphMode, pathContent, centerVerseId]);
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -377,6 +417,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             handleLeftArrow={handleLeftArrow}
             handleRightArrow={handleRightArrow}
             setIsAngsNavigationVisible={setIsAngsNavigationVisible}
+            onMenuPress={() => setIsDrawerVisible(true)}
           />
         </View>
         <PathReader
@@ -406,6 +447,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           isVishraam={isVishraam}
           vishraamsSource={vishraamsSource}
           vishraamsStyle={vishraamsStyle}
+          setCenterVerseId={setCenterVerseId}
+          scrollToVerseId={scrollToVerseId}
         />
         {alertIndicator.current !== undefined ? (
           <Loading
@@ -440,6 +483,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             updatePathAng={updatePathAng}
           />
         )}
+        <DrawerMenu
+          isVisible={isDrawerVisible}
+          onClose={() => setIsDrawerVisible(false)}
+          onNavigate={handleDrawerNavigate}
+          currentRoute={Routes.Path}
+          pathId={route.params.pathId}
+          onGoToAngPress={() => setIsAngsNavigationVisible(true)}
+          onSavePress={() => {
+            setIsSaving(true);
+            fadeAnim.current.setValue(1);
+          }}
+        />
       </View>
     </SafeAreaView>
   );

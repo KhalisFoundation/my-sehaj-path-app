@@ -1,21 +1,24 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ImageBackground, ScrollView, BackHandler } from 'react-native';
+import { View, ImageBackground, ScrollView, BackHandler, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
-import { PathData, useLocal, useScreenAnalytics } from '@hooks';
+import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label, DrawerMenu } from '@components';
+import { PathData, useLocal, useScreenAnalytics, useDrawerNavigation } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
+import { MenuIcon } from '@icons';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const [pathDataArrayFromLocal, setPathDataArrayFromLocal] = useState<PathData[]>([]);
+  const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const { fetchFromLocal, handleNewPath } = useLocal();
+  const { handleDrawerNavigate } = useDrawerNavigation();
   const errorAlertShownRef = useRef(false);
   const isLoadingRef = useRef(false);
   useScreenAnalytics('HomeScreen', 'HomeScreen');
@@ -129,6 +132,14 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
         resizeMode="cover"
         style={HomeScreenStyles.backgroundImage}
       >
+        <TouchableOpacity
+          style={HomeScreenStyles.menuButton}
+          onPress={() => setIsDrawerVisible(true)}
+          accessibilityLabel="Menu"
+          accessibilityRole="button"
+        >
+          <MenuIcon color="#0D2346" />
+        </TouchableOpacity>
         <ScrollView contentContainerStyle={HomeScreenStyles.scrollContainer}>
           <View style={HomeScreenStyles.container}>
             <Headline headline={Constants.ITS_FINE_DAY_FOR} />
@@ -148,6 +159,13 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
             ) : undefined}
           </View>
         </ScrollView>
+        <DrawerMenu
+          isVisible={isDrawerVisible}
+          onClose={() => setIsDrawerVisible(false)}
+          onNavigate={handleDrawerNavigate}
+          currentRoute={Routes.Home}
+          showOnlyHomeItems={true}
+        />
       </ImageBackground>
     </SafeAreaView>
   );

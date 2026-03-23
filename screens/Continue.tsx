@@ -24,7 +24,7 @@ import { RootStackParamList } from '../App';
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
 export const Continue = ({ route, navigation }: ContinueProps) => {
-  const { pathId } = route.params;
+  const { pathId, initialTab } = route.params;
   dayjs.extend(customParseFormat);
   useScreenAnalytics('Continue', 'Continue');
   const [pathState, setPathState] = useState({
@@ -47,7 +47,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const [uiState, setUiState] = useState({
     showPathRename: false,
-    tabs: 'progress',
+    tabs: initialTab || 'progress',
     streakValue: 0,
   });
 

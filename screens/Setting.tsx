@@ -49,7 +49,7 @@ export const Settings = ({ navigation }: SettingProps) => {
             
             <DropdownSettingItem<FontSizeData>
               settingKey="fontSize"
-              label="Font-Size"
+              label={Constants.FONT_SIZE}
               overlayTitle={Constants.SELECT_YOUR_FONT_SIZE}
               options={FontSizes.map(size => ({ value: size, label: size.fontSize }))}
               saveFn={saveFontSize}
@@ -94,7 +94,7 @@ export const Settings = ({ navigation }: SettingProps) => {
             
             <SwitchSettingItem
               settingKey="paragraphMode"
-              label={Constants.PARAGRAPHMODE}
+              label={Constants.PARAGRAPH_MODE}
               saveFn={saveParagraphMode}
               fetchFn={fetchParagraphMode}
               errorMessages={{
@@ -167,7 +167,7 @@ export const Settings = ({ navigation }: SettingProps) => {
           </View>
           <SwitchSettingItem
             settingKey="analytics"
-            label="Collect Analytics"
+            label={Constants.ANALYTICS}
             saveFn={saveConsent}
             fetchFn={fetchConsent}
             errorMessages={{
