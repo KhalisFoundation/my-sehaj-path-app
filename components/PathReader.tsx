@@ -41,6 +41,7 @@ interface PathReaderProps {
   setIsAngNavigation: (value: boolean) => void;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
+  onUserScroll?: (scrollY: number, centerVerseId: number) => boolean;
 }
 
 const PathReaderComponent = ({
@@ -70,6 +71,7 @@ const PathReaderComponent = ({
   setIsAngNavigation,
   setCenterVerseId,
   scrollToVerseId,
+  onUserScroll,
 }: PathReaderProps) => {
   const viewportHeight = useRef<number>(0);
   const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
@@ -89,36 +91,56 @@ const PathReaderComponent = ({
     handleLeftArrow(pathContent?.source?.pageNo);
   }, [handleLeftArrow, pathContent?.source?.pageNo]);
 
-  const findCenterVerseId = useCallback(
-    (scrollY: number) => {
+  const getCenterVerseId = useCallback(
+    (scrollY: number): number | null => {
       if (!setCenterVerseId) {
-        return;
-      }
-
-      // Wait for verses to be measured
-      if (versePositions.current.size === 0) {
-        return;
+        return null;
       }
 
       const centerY = scrollY + viewportHeight.current / 2;
-      let closestVerseId: number | null = null;
-      let minDistance = Infinity;
 
-      versePositions.current.forEach((position, verseId) => {
-        const verseCenter = position.y + position.height / 2;
-        const distance = Math.abs(verseCenter - centerY);
+      // If verses are measured (non-paragraph mode), use precise positions.
+      if (versePositions.current.size > 0) {
+        let closestVerseId: number | null = null;
+        let minDistance = Infinity;
 
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestVerseId = verseId;
-        }
-      });
+        versePositions.current.forEach((position, verseId) => {
+          const verseCenter = position.y + position.height / 2;
+          const distance = Math.abs(verseCenter - centerY);
 
-      if (closestVerseId !== null) {
-        setCenterVerseId(closestVerseId);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestVerseId = verseId;
+          }
+        });
+
+        return closestVerseId;
       }
+
+      // Paragraph mode fallback: approximate by scroll height.
+      if (pathContent?.page?.length) {
+        let scrollHeight;
+        if (fontSize <= 18) {
+          scrollHeight = 25;
+        } else if (fontSize <= 24) {
+          scrollHeight = 50;
+        } else if (fontSize <= 30) {
+          scrollHeight = 100;
+        } else {
+          scrollHeight = 150;
+        }
+        const approxIndex = Math.max(
+          0,
+          Math.min(pathContent.page.length - 1, Math.round(centerY / scrollHeight))
+        );
+        const verseId = pathContent.page[approxIndex]?.verseId;
+        if (verseId) {
+          return verseId;
+        }
+      }
+      return null;
     },
-    [setCenterVerseId]
+    [setCenterVerseId, pathContent?.page, fontSize]
   );
 
   const handleScroll = useCallback(
@@ -133,14 +155,30 @@ const PathReaderComponent = ({
 
       // Set new timer to detect when scrolling stops
       scrollEndTimer.current = setTimeout(() => {
-        findCenterVerseId(scrollY);
+        const centerVerseId = getCenterVerseId(scrollY);
+        if (centerVerseId && setCenterVerseId) {
+          setCenterVerseId(centerVerseId);
+        }
       }, 150); // Wait 150ms after scrolling stops
 
-      if (!isAngNavigation) {
+      const immediateCenterVerseId = getCenterVerseId(scrollY) || 0;
+      if (immediateCenterVerseId && setCenterVerseId) {
+        setCenterVerseId(immediateCenterVerseId);
+      }
+      const handledByParent = onUserScroll ? onUserScroll(scrollY, immediateCenterVerseId) : false;
+
+      if (!handledByParent && !isAngNavigation) {
         debouncedScrollSave();
       }
     },
-    [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
+    [
+      scrollOffset,
+      onUserScroll,
+      isAngNavigation,
+      getCenterVerseId,
+      debouncedScrollSave,
+      setCenterVerseId,
+    ]
   );
 
   const gestureConfig = useMemo(

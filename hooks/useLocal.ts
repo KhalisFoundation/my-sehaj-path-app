@@ -77,6 +77,28 @@ export const useLocal = () => {
     return { pathDataArray: pathFromLocalArray, pathDateDataArray: pathDateDataArray };
   };
 
+  const updateScrollPositionOnly = async (pathId: number, scrollPosition: number) => {
+    const { pathDateDataArray } = await fetchFromLocal();
+    const matchedDate = pathDateDataArray.find((path) => path.pathid === pathId);
+    if (matchedDate) {
+      matchedDate.scrollPosition = scrollPosition;
+      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
+      return true;
+    }
+    return false;
+  };
+
+  const clearCompletionDate = async (pathId: number) => {
+    const { pathDataArray } = await fetchFromLocal();
+    const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
+    if (matchedPath) {
+      matchedPath.completionDate = '';
+      await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
+      return true;
+    }
+    return false;
+  };
+
   const handleNewPath = async () => {
     const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
     let pathid = pathDataArray.length > 0 ? pathDataArray.length : 0;
@@ -123,27 +145,11 @@ export const useLocal = () => {
     if (matchedPath && matchedDate) {
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
 
-      const currentSavedAng = matchedPath.saveData.angNumber;
-      const previousSavedVerseId = matchedPath.saveData.verseId;
+      const currentAng = matchedPath.saveData.angNumber;
+      const currentVerseId = matchedPath.saveData.verseId;
 
       let finalAngNumber = angNumber;
-      let finalVerseId: number;
-      // 0 is used to indicate that no verse was saved on this ang and to rest the hightlight verse if user goes back to the previous ang
-      if (verseId === 0) {
-        // If the user is going back to the previous ang, and the saved verseId is 0 (0 means no verse was saved on this ang), then reset the highlight verse
-        if (angNumber === currentSavedAng) {
-          // Same ang - preserve verseId only if it was saved on this ang
-          // If previous verseId was from this ang, keep it; otherwise set to 0
-          finalVerseId = previousSavedVerseId;
-        } else {
-          // Moving forward - no line saved yet on this ang
-          finalVerseId = 0;
-        }
-      } else {
-        // User explicitly saved a line (verseId > 0) - always save it
-        finalVerseId = verseId;
-      }
-
+      const finalVerseId = verseId > 0 ? verseId : angNumber === currentAng ? currentVerseId : 0;
       matchedPath.saveData = { angNumber: finalAngNumber, verseId: finalVerseId };
       const completedNow = isPathCompleted(finalAngNumber, finalVerseId);
 
@@ -306,6 +312,8 @@ export const useLocal = () => {
     fetchFromLocal,
     handleNewPath,
     handleUpdatePath,
+    updateScrollPositionOnly,
+    clearCompletionDate,
     saveFontSize,
     fetchFontSize,
     saveLarivaar,
