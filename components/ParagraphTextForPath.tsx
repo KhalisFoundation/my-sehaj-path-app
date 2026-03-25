@@ -10,8 +10,8 @@ import {
   useContainerStyle,
   createLongPressHandler,
   pathTextPropsAreEqual,
-  renderTextWithVishraams,
 } from '@utils';
+import { VishraamsText } from './VishraamsText';
 
 const ParagraphTextForPathComponent = ({
   gurbaniLine,
@@ -103,8 +103,17 @@ const ParagraphTextForPathComponent = ({
       suppressHighlighting={true}
       style={[textStyle, containerStyle]}
     >
-      {isVishraam ? renderTextWithVishraams(gurbaniLine, vishraams, fontSize, vishraamsSource, originalVerse) : gurbaniLine}
-      {" "}
+      {isVishraam ? (
+        <VishraamsText
+          gurbaniLine={gurbaniLine}
+          vishraams={vishraams}
+          fontSize={fontSize}
+          vishraamsSource={vishraamsSource}
+          originalVerse={originalVerse}
+        />
+      ) : (
+        gurbaniLine
+      )}{" "}
       {isSelected && (
         <Text>
           <SaveIcon

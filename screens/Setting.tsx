@@ -131,7 +131,7 @@ export const Settings = ({ navigation }: SettingProps) => {
                 loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM_SOURCE,
                 saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM_SOURCE,
               }}
-              defaultValue={{ source: 'sttm' }}
+              defaultValue={{ source: Constants.DEFAULT_VISHRAAM_SOURCE }}
               containerStyle={AngsFormatStyles.container}
               textStyle={AngsFormatStyles.angsText}
               overlayHeaderStyle={AngsFormatStyles.overlayHeader}

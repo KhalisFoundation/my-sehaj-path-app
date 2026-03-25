@@ -44,7 +44,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
   const [isParagraphMode, setIsParagraphMode] = useState<boolean>(false);
   const [isVishraam, setIsVishraam] = useState<boolean>(false);
-  const [vishraamsSource, setVishraamsSource] = useState<string>('sttm');
+  const [vishraamsSource, setVishraamsSource] = useState<string>(Constants.DEFAULT_VISHRAAM_SOURCE);
   const [vishraamsStyle, setVishraamsStyle] = useState<string>('colored-words');
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
@@ -322,7 +322,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           setAngsFormat(format);
           setIsParagraphMode(paragraphMode || false);
           setIsVishraam(vishraam || false);
-          setVishraamsSource(vishraamsSourceData?.source || 'sttm');
+          setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
         } catch (error) {
           setIsLarivaar(false);
           setAngsFormat({ format: 'Punjabi' });

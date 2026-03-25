@@ -42,4 +42,5 @@ export const Constants: Constant = {
   VISHRAAM: 'Vishraam',
   ANALYTICS: 'Collect Analytics',
   FONT_SIZE: 'Font-Size',
+  DEFAULT_VISHRAAM_SOURCE: 'sttm',
 };

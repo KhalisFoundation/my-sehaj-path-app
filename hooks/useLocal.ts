@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MonthConstant, ErrorConstants } from '@constants';
+import { MonthConstant, ErrorConstants, Constants } from '@constants';
 import { trackEvent, showErrorAlert } from '@utils';
 
 export interface PathData {
@@ -278,12 +278,12 @@ export const useLocal = () => {
             return parsedVishraamsSource;
           }
         } catch (parseError) {
-          return { source: 'sttm' };
+          return { source: Constants.DEFAULT_VISHRAAM_SOURCE };
         }
       }
-      return { source: 'sttm' };
+      return { source: Constants.DEFAULT_VISHRAAM_SOURCE };
     } catch (error) {
-      return { source: 'sttm' };
+      return { source: Constants.DEFAULT_VISHRAAM_SOURCE };
     }
   };
 
