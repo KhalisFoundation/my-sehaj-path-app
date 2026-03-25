@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Text, Pressable, Platform } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { Text } from 'react-native';
 import { SaveIcon } from '@icons';
 import { UIConstants } from '@constants';
 import {
@@ -9,11 +9,10 @@ import {
   useTextStyle,
   useContainerStyle,
   createLongPressHandler,
-  createPressHandler,
   pathTextPropsAreEqual,
 } from '@utils';
 
-const SimpleTextForPathComponent = ({
+const ParagraphTextForPathComponent = ({
   gurbaniLine,
   onSelection,
   isSaving,
@@ -30,9 +29,10 @@ const SimpleTextForPathComponent = ({
   setFound,
   fontSize,
   isSaved,
-  onLayout,
 }: PathTextProps) => {
-  const isLongPressingRef = useRef<boolean>(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressLock = useRef(false);
+  const didLongPress = useRef(false);
 
   const isSelected = useIsSelected(verseId, savedPathVerseId, isSaving, pressIndex, index);
   const accessibilityLabel = useAccessibilityLabel(index, isSelected);
@@ -53,42 +53,64 @@ const SimpleTextForPathComponent = ({
   );
 
   const handleLongPress = () => {
-    if (isLongPressingRef.current) {
-      return;
-    }
-    isLongPressingRef.current = true;
+    // Block duplicate triggers
+    if (longPressLock.current) return;
+
+    longPressLock.current = true;
+    didLongPress.current = true;
+
     baseLongPressHandler();
-    isLongPressingRef.current = false;
+
+    // Unlock after delay
+    timeoutRef.current = setTimeout(() => {
+      longPressLock.current = false;
+    }, 600);
   };
 
-  const handlePress = createPressHandler(isSaving, onSelection, onSave);
+  const handlePress = () => {
+    if (didLongPress.current) {
+      didLongPress.current = false;
+      return;
+    }
+    if (isSaving) {
+      onSelection();
+      onSave();
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
+  }, []);
 
   return (
-    <Pressable
+    <Text
       onPress={handlePress}
-      style={containerStyle}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
       onLongPress={handleLongPress}
-      delayLongPress={Platform.OS === 'ios' ? 350 : 500}
-      pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
       accessibilityHint="Tap to select, long press to save this line"
       disabled={isSaved || found}
-      onLayout={onLayout}
+      suppressHighlighting={true}
+      style={[textStyle, containerStyle]}
     >
-      <Text suppressHighlighting={true} style={textStyle}>
-        {gurbaniLine}
-        {isSelected && (
+      {gurbaniLine + " "}
+      {isSelected && (
+        <Text>
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
             style={{ transform: [{ translateY: fontSize * 0.2 }] }}
           />
-        )}
-      </Text>
-    </Pressable>
+        </Text>
+      )}
+    </Text>
   );
 };
 
-export const SimpleTextForPath = React.memo(SimpleTextForPathComponent, pathTextPropsAreEqual);
+export const ParagraphTextForPath = React.memo(ParagraphTextForPathComponent, pathTextPropsAreEqual);

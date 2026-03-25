@@ -26,6 +26,25 @@ export interface FontSizeData {
 export interface AngsFormat {
   format: 'Punjabi' | 'English';
 }
+
+export interface Verse {
+  verseId: number;
+  shabadId: number;
+  verse: {
+    unicode: string;
+  };
+  larivaar: {
+    unicode: string;
+  };
+}
+
+export interface PathContent {
+  page: Verse[];
+  source: {
+    pageNo: number;
+  };
+}
+
 export const useLocal = () => {
   const fetchFromLocal = async () => {
     const pathFromLocal = await AsyncStorage.getItem('pathDetails');
@@ -231,6 +250,19 @@ export const useLocal = () => {
     }
   };
 
+  const saveParagraphMode = async (paragraphMode: boolean) => {
+    await AsyncStorage.setItem('paragraphMode', paragraphMode.toString());
+  };
+
+  const fetchParagraphMode = async () => {
+    try {
+      const paragraphMode = await AsyncStorage.getItem('paragraphMode');
+      return paragraphMode === 'true';
+    } catch (error) {
+      return false;
+    }
+  };
+
   const saveAngsFormat = async (angsFormat: AngsFormat) => {
     await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
   };
@@ -284,5 +316,7 @@ export const useLocal = () => {
     saveConsent,
     fetchConsent,
     handleUpdatePathWithErrorHandling,
+    saveParagraphMode,
+    fetchParagraphMode,
   };
 };

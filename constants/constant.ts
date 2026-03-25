@@ -32,10 +32,13 @@ export const Constants: Constant = {
   RESUMING_SAVED_PROGRESS: 'Resuming saved progress',
   SELECT_YOUR_FONT_SIZE: 'Select your font size',
   LARIVAAR: 'Larivaar',
+  PARAGRAPH_MODE: 'Paragraph Mode',
   SETTINGS: 'Settings',
   SELECT_YOUR_ANG_FORMAT: 'Select your ang format',
   ANGS: 'Angs',
   ANG_NUMBERING: 'Ang Numbering',
   GO_TO_NEXT_ANG: 'Go To Next Ang',
   ALERT_TEXT_LOADING: 'Loading ... ',
+  ANALYTICS: 'Collect Analytics',
+  FONT_SIZE: 'Font-Size',
 };
