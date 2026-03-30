@@ -333,7 +333,7 @@ const PathReaderComponent = ({
           isVishraam={isVishraam}
           vishraams={vishraam}
           vishraamsSource={vishraamsSource}
-          vishraamsStyle='colored-words'
+          vishraamsStyle={vishraamsStyle}
           originalVerse={originalVerse}
         />
       );

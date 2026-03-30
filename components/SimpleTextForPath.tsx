@@ -86,7 +86,6 @@ const SimpleTextForPathComponent = ({
           <VishraamsText
             gurbaniLine={gurbaniLine}
             vishraams={vishraams}
-            fontSize={fontSize}
             vishraamsSource={vishraamsSource}
             originalVerse={originalVerse}
           />

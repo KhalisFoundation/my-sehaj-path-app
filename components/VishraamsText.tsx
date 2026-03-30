@@ -7,7 +7,6 @@ import { Constants } from '@constants/constant';
 type VishraamsTextProps = {
   gurbaniLine: string;
   vishraams: Visraams;
-  fontSize: number;
   vishraamsSource?: string;
   originalVerse?: string;
 };
@@ -15,7 +14,6 @@ type VishraamsTextProps = {
 export const VishraamsText: React.FC<VishraamsTextProps> = ({
   gurbaniLine,
   vishraams,
-  fontSize,
   vishraamsSource = Constants.DEFAULT_VISHRAAM_SOURCE,
   originalVerse,
 }) => {

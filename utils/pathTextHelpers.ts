@@ -1,10 +1,7 @@
 import { useMemo } from 'react';
 import { unstable_batchedUpdates } from 'react-native';
 import { SimpleTextForPathStyles } from '@styles';
-import { VishraamsMarker, Visraams } from '@hooks/useLocal';
-import { VishraamsTheme } from '@constants/VishraamsTheme';
-import React from 'react';
-import { Text } from 'react-native';
+import { Visraams } from '@hooks/useLocal';
 
 /**
  * Common props interface for path text components
