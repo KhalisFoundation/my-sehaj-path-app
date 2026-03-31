@@ -19,7 +19,7 @@ export const VishraamsText: React.FC<VishraamsTextProps> = ({
 }) => {
   const vishraamsData = vishraams?.[vishraamsSource as keyof Visraams] || [];
 
-  if (!vishraamsData || vishraamsData.length === 0) {
+  if (vishraamsData.length === 0) {
     return <Text>{gurbaniLine}</Text>;
   }
 
