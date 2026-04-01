@@ -28,7 +28,7 @@ import {
 } from '@components';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
-import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
+import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -68,13 +68,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const previousFontSize = useRef<number>(18);
   const previousParagraphMode = useRef<boolean>(false);
   const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
-  const completionUndoArmed = useRef<boolean>(false);
-  const lastScrollYRef = useRef<number>(0);
-  const completionSavedScrollYRef = useRef<number>(0);
-  // Prevents scroll auto-save from re-completing the path after undo.
-  const suppressAutoSaveOnLastAng = useRef<boolean>(false);
-  // After undoing completion, block auto-save until user explicitly saves a line.
-  const suppressAutoSaveUntilExplicitSave = useRef<boolean>(false);
 
   const pathPujabiAng = useMemo(
     () =>
@@ -84,10 +77,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       }),
     [pathAng, angsFormat.format]
   );
-  const effectiveSavedPathVerseId =
-    matchedPath.current && pathAng === matchedPath.current.saveData.angNumber
-      ? savedPathVerseId
-      : 0;
 
   const { checkNetwork, isOnline } = useInternet();
   const { handleDrawerNavigate } = useDrawerNavigation();
@@ -95,64 +84,11 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFromLocal,
     handleUpdatePathWithErrorHandling,
     handleUpdatePath,
-    updateScrollPositionOnly,
-    clearCompletionDate,
     fetchLarivaar,
     fetchFontSize,
     fetchAngsFormat,
     fetchParagraphMode,
   } = useLocal();
-
-  const updateScrollPositionOnlyAndSync = useCallback(
-    async (pathId: number, scrollPosition: number) => {
-      // Keep resume position without touching saved verse state.
-      const updated = await updateScrollPositionOnly(pathId, scrollPosition);
-      if (updated && matchedPathDate.current) {
-        matchedPathDate.current = {
-          ...matchedPathDate.current,
-          scrollPosition,
-        };
-      }
-    },
-    [updateScrollPositionOnly]
-  );
-
-  const clearCompletionDateAndSync = useCallback(
-    async (pathId: number) => {
-      // Undo completion without changing the saved verse.
-      const updated = await clearCompletionDate(pathId);
-      if (updated && matchedPath.current) {
-        matchedPath.current = {
-          ...matchedPath.current,
-          completionDate: '',
-        };
-      }
-    },
-    [clearCompletionDate]
-  );
-
-  const syncMatchedPathRefs = useCallback(
-    (angNumber: number, verseId: number, scrollPosition: number) => {
-      if (matchedPath.current) {
-        matchedPath.current = {
-          ...matchedPath.current,
-          saveData: { angNumber, verseId },
-        };
-      }
-      if (matchedPathDate.current) {
-        matchedPathDate.current = {
-          ...matchedPathDate.current,
-          scrollPosition,
-        };
-      }
-      completionUndoArmed.current =
-        angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID;
-      if (completionUndoArmed.current) {
-        completionSavedScrollYRef.current = scrollPosition;
-      }
-    },
-    []
-  );
 
   useScreenAnalytics('PathScreen', 'PathScreen');
 
@@ -215,15 +151,11 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       useNativeDriver: true,
     }).start(() => {
       try {
-        // Only persist an explicitly saved verse; scrolling should not create a saved line.
-        const verseIdToSave = savedPathVerseId !== 0 ? savedPathVerseId : 0;
-        const hasAngChanged =
-          matchedPath.current && pathAng !== matchedPath.current.saveData.angNumber;
+        // Use savedPathVerseId if manually selected (long-press), otherwise use centerVerseId
+        // If both are 0, don't save (no verse has been identified yet)
+        const verseIdToSave = savedPathVerseId !== 0 ? savedPathVerseId : centerVerseId;
 
-        if (verseIdToSave !== 0 || hasAngChanged) {
-          // Update saved verse only when user explicitly saved or ang changed.
-          syncMatchedPathRefs(pathAng, verseIdToSave, scrollOffset.current);
-          scrolledToSavedPath.current = true;
+        if (verseIdToSave !== 0) {
           handleUpdatePath(
             route.params.pathId,
             pathAng,
@@ -233,16 +165,13 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
               setIsSaved(false);
             }
           );
-        } else {
-          // Save scroll position for resume without modifying saved verse.
-          updateScrollPositionOnlyAndSync(route.params.pathId, scrollOffset.current);
         }
       } catch (error) {
         // Silently handle error to prevent infinite loop in debounced function
         // Error is already handled at the UI level where user initiated the action
       }
     });
-  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId]);
+  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId, centerVerseId]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate: matchedPathDate.current,
@@ -257,70 +186,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setIsSaved,
     fetchFontSize,
   });
-
-  const handleUserScroll = useCallback(
-    (scrollY: number, _centerVerseIdFromScroll: number) => {
-      if (suppressAutoSaveUntilExplicitSave.current) {
-        // After undo, keep updating scroll position but block auto-save.
-        if (Math.abs(scrollY - lastScrollYRef.current) > 20) {
-          lastScrollYRef.current = scrollY;
-          updateScrollPositionOnlyAndSync(route.params.pathId, scrollY);
-        }
-        return true;
-      }
-      if (suppressAutoSaveOnLastAng.current && pathAng === PATH_DATA.LAST_ANG_NUMBER) {
-        // Avoid re-completing on last ang while completion is undone.
-        return true;
-      }
-      if (
-        completionUndoArmed.current &&
-        pathAng === PATH_DATA.LAST_ANG_NUMBER &&
-        matchedPath.current?.saveData.verseId === PATH_DATA.LAST_VERSE_ID
-      ) {
-        // Any scroll after completing last line should undo completion.
-        lastScrollYRef.current = scrollY;
-        suppressAutoSaveOnLastAng.current = true;
-        suppressAutoSaveUntilExplicitSave.current = true;
-        completionUndoArmed.current = false;
-        scrolledToSavedPath.current = true;
-        clearCompletionDateAndSync(route.params.pathId);
-        updateScrollPositionOnlyAndSync(route.params.pathId, scrollY);
-        setIsSaving(false);
-        setIsSaved(false);
-        setPressIndex(0);
-        return true;
-      }
-      return false;
-    },
-    [clearCompletionDateAndSync, pathAng, route.params.pathId, updateScrollPositionOnlyAndSync]
-  );
-
-  const handleUpdatePathWithSync = useCallback(
-    (
-      pathId: number,
-      pageNo: number,
-      verseId: number,
-      scrollPosition: number,
-      setIsSavedValue: (value: boolean) => void
-    ) => {
-      handleUpdatePathWithErrorHandling(
-        pathId,
-        pageNo,
-        verseId,
-        scrollPosition,
-        (value: boolean) => {
-          if (value) {
-            suppressAutoSaveUntilExplicitSave.current = false;
-            suppressAutoSaveOnLastAng.current = false;
-            syncMatchedPathRefs(pageNo, verseId, scrollPosition);
-            scrolledToSavedPath.current = true;
-          }
-          setIsSavedValue(value);
-        }
-      );
-    },
-    [handleUpdatePathWithErrorHandling, syncMatchedPathRefs]
-  );
 
   const updatePathAng = useCallback((angNumber: number) => {
     setPathAng(angNumber);
@@ -394,22 +259,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       // User navigated to a different ang - clear the saved verseId
       // It will only be set again if user explicitly saves a line on this ang
       setSavedPathVerseId(0);
-      setIsSaving(false);
-      setIsSaved(false);
-      setPressIndex(0);
     } else if (matchedPath.current && pathAng === matchedPath.current.saveData.angNumber) {
       // User is on the saved ang - restore the saved verseId
       setSavedPathVerseId(matchedPath.current.saveData.verseId);
-    }
-    if (matchedPath.current) {
-      suppressAutoSaveOnLastAng.current =
-        pathAng === PATH_DATA.LAST_ANG_NUMBER &&
-        matchedPath.current.completionDate === '' &&
-        matchedPath.current.saveData.verseId === PATH_DATA.LAST_VERSE_ID;
-    }
-    if (pathAng !== PATH_DATA.LAST_ANG_NUMBER) {
-      suppressAutoSaveUntilExplicitSave.current = false;
-      suppressAutoSaveOnLastAng.current = false;
     }
   }, [pathAng]);
 
@@ -574,7 +426,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           isParagraphMode={isParagraphMode}
           isSaving={isSaving}
           pressIndex={pressIndex}
-          savedPathVerseId={effectiveSavedPathVerseId}
+          savedPathVerseId={savedPathVerseId}
           scrollRef={scrollRef}
           scrollOffset={scrollOffset}
           isAngNavigation={isAngNavigation}
@@ -583,7 +435,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           handleLeftArrow={handleLeftArrow}
           setPressIndex={setPressIndex}
           setSavedPathVerseId={setSavedPathVerseId}
-          handleUpdatePathWithErrorHandling={handleUpdatePathWithSync}
+          handleUpdatePathWithErrorHandling={handleUpdatePathWithErrorHandling}
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
           pathId={route.params.pathId}
@@ -595,7 +447,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           setIsAngNavigation={setIsAngNavigation}
           setCenterVerseId={setCenterVerseId}
           scrollToVerseId={scrollToVerseId}
-          onUserScroll={handleUserScroll}
         />
         {alertIndicator.current !== undefined ? (
           <Loading
