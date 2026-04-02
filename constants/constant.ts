@@ -39,6 +39,8 @@ export const Constants: Constant = {
   ANG_NUMBERING: 'Ang Numbering',
   GO_TO_NEXT_ANG: 'Go To Next Ang',
   ALERT_TEXT_LOADING: 'Loading ... ',
+  VISHRAAM: 'Vishraam',
   ANALYTICS: 'Collect Analytics',
   FONT_SIZE: 'Font-Size',
+  DEFAULT_VISHRAAM_SOURCE: 'sttm',
 };

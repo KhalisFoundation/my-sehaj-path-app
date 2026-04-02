@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View } from 'react-native';
+import { View, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
 import { showErrorAlert, trackEvent } from '@utils';
@@ -25,8 +25,8 @@ interface SwitchSettingItemProps {
   // Optional configurations
   defaultValue?: boolean;
   analyticsCategory?: string;
-  containerStyle?: any;
-  textStyle?: any;
+  containerStyle?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   
   // Optional callback when value changes
   onValueChange?: (value: boolean) => void;
