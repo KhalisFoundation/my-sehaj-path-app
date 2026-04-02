@@ -43,6 +43,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [found, setFound] = useState<boolean>(false);
   const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
   const [isParagraphMode, setIsParagraphMode] = useState<boolean>(false);
+  const [isVishraam, setIsVishraam] = useState<boolean>(false);
+  const [vishraamsSource, setVishraamsSource] = useState<string>(Constants.DEFAULT_VISHRAAM_SOURCE);
+  const [vishraamsStyle, setVishraamsStyle] = useState<string>('colored-words');
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
@@ -88,6 +91,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFontSize,
     fetchAngsFormat,
     fetchParagraphMode,
+    fetchVishraam,
+    fetchVishraamsSource,
   } = useLocal();
 
   useScreenAnalytics('PathScreen', 'PathScreen');
@@ -319,22 +324,35 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     useCallback(() => {
       const fetchData = async () => {
         try {
-          const [larivaar, format, paragraphMode] = await Promise.all([
-            fetchLarivaar(),
-            fetchAngsFormat(),
-            fetchParagraphMode(),
-          ]);
+          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData] =
+            await Promise.all([
+              fetchLarivaar(),
+              fetchAngsFormat(),
+              fetchParagraphMode(),
+              fetchVishraam(),
+              fetchVishraamsSource(),
+            ]);
           setIsLarivaar(larivaar || false);
           setAngsFormat(format);
           setIsParagraphMode(paragraphMode || false);
+          setIsVishraam(vishraam || false);
+          setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
         } catch (error) {
           setIsLarivaar(false);
           setAngsFormat({ format: 'Punjabi' });
           setIsParagraphMode(false);
+          setIsVishraam(false);
         }
       };
       fetchData();
-    }, [fetchLarivaar, fetchAngsFormat, fetchParagraphMode, pathAng])
+    }, [
+      fetchLarivaar,
+      fetchAngsFormat,
+      fetchParagraphMode,
+      fetchVishraam,
+      fetchVishraamsSource,
+      pathAng,
+    ])
   );
   useFocusEffect(
     useCallback(() => {
@@ -445,6 +463,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           fontSize={fontSize}
           isSaved={isSaved}
           setIsAngNavigation={setIsAngNavigation}
+          isVishraam={isVishraam}
+          vishraamsSource={vishraamsSource}
+          vishraamsStyle={vishraamsStyle}
           setCenterVerseId={setCenterVerseId}
           scrollToVerseId={scrollToVerseId}
         />

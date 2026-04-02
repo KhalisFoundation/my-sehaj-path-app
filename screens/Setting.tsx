@@ -5,8 +5,8 @@ import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '
 import { LeftArrowIcon } from '@icons';
 import { SettingScreenStyle, SafeAreaStyle, LarivaarStyles, ParagraphModeStyles, FontSizeStyle, AngsFormatStyles } from '@styles';
 import { RootStackParamList } from '../App';
-import { useScreenAnalytics, useLocal, FontSizeData, AngsFormat } from '@hooks';
-import { Constants, EDGES_ALL_SIDES, ErrorConstants, FontSizes, AngsFormatArray } from '@constants';
+import { useScreenAnalytics, useLocal, FontSizeData, AngsFormat, VishraamsSource } from '@hooks';
+import { Constants, EDGES_ALL_SIDES, ErrorConstants, FontSizes, AngsFormatArray, VishraamsSourceArray, VishraamsSourceLabels } from '@constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
@@ -18,7 +18,9 @@ export const Settings = ({ navigation }: SettingProps) => {
     saveAngsFormat, fetchAngsFormat,
     saveParagraphMode, fetchParagraphMode,
     saveLarivaar, fetchLarivaar,
-    saveConsent, fetchConsent
+    saveConsent, fetchConsent,
+    saveVishraam, fetchVishraam,
+    saveVishraamsSource, fetchVishraamsSource,
   } = useLocal();
 
   return (
@@ -102,6 +104,42 @@ export const Settings = ({ navigation }: SettingProps) => {
               defaultValue={false}
               containerStyle={ParagraphModeStyles.container}
               textStyle={ParagraphModeStyles.fontSizeText}
+            />
+
+            <SwitchSettingItem
+              settingKey="vishraam"
+              label={Constants.VISHRAAM}
+              saveFn={saveVishraam}
+              fetchFn={fetchVishraam}
+              errorMessages={{
+                loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM,
+                saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM,
+              }}
+              defaultValue={false}
+              containerStyle={ParagraphModeStyles.container}
+              textStyle={ParagraphModeStyles.fontSizeText}
+            />
+
+            <DropdownSettingItem<VishraamsSource>
+              settingKey="vishraamsSource"
+              label="Vishraam Source"
+              overlayTitle="Select Vishraam Source"
+              options={VishraamsSourceArray.map(source => ({ value: source, label: VishraamsSourceLabels[source.source] }))}
+              saveFn={saveVishraamsSource}
+              fetchFn={fetchVishraamsSource}
+              errorMessages={{
+                loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM_SOURCE,
+                saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM_SOURCE,
+              }}
+              defaultValue={{ source: Constants.DEFAULT_VISHRAAM_SOURCE }}
+              containerStyle={AngsFormatStyles.container}
+              textStyle={AngsFormatStyles.angsText}
+              overlayHeaderStyle={AngsFormatStyles.overlayHeader}
+              overlayTextContainerStyle={AngsFormatStyles.overlayTextContainer}
+              overlayTextStyle={AngsFormatStyles.overlayText}
+              getDisplayValue={(value: VishraamsSource) => VishraamsSourceLabels[value.source]}
+              isEqual={(a: VishraamsSource, b: VishraamsSource) => a.source === b.source}
+              showCheckmark={false}
             />
           </View>
           

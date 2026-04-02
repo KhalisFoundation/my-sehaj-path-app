@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MonthConstant, ErrorConstants, PATH_DATA } from '@constants';
+import { MonthConstant, ErrorConstants, PATH_DATA, Constants } from '@constants';
 import { trackEvent, showErrorAlert } from '@utils';
 import { isPathCompleted } from '@utils/isPathCompleted';
 
@@ -27,6 +27,21 @@ export interface AngsFormat {
   format: 'Punjabi' | 'English';
 }
 
+export interface VishraamsSource {
+  source: 'sttm' | 'igurbani' | 'sttm2';
+}
+
+export interface VishraamsMarker {
+  p: number;
+  t: string;
+}
+
+export interface Visraams {
+  sttm2: VishraamsMarker[];
+  sttm: VishraamsMarker[];
+  igurbani: VishraamsMarker[];
+}
+
 export interface Verse {
   verseId: number;
   shabadId: number;
@@ -36,6 +51,7 @@ export interface Verse {
   larivaar: {
     unicode: string;
   };
+  visraam: Visraams;
 }
 
 export interface PathContent {
@@ -263,6 +279,42 @@ export const useLocal = () => {
     }
   };
 
+  const saveVishraam = async (vishraam: boolean) => {
+    await AsyncStorage.setItem('vishraam', vishraam.toString());
+  };
+
+  const fetchVishraam = async () => {
+    try {
+      const vishraam = await AsyncStorage.getItem('vishraam');
+      return vishraam === 'true';
+    } catch (error) {
+      return false;
+    }
+  };
+
+  const saveVishraamsSource = async (vishraamsSource: VishraamsSource) => {
+    await AsyncStorage.setItem('vishraamsSource', JSON.stringify(vishraamsSource));
+  };
+
+  const fetchVishraamsSource = async () => {
+    try {
+      const vishraamsSource = await AsyncStorage.getItem('vishraamsSource');
+      if (vishraamsSource) {
+        try {
+          const parsedVishraamsSource = JSON.parse(vishraamsSource);
+          if (parsedVishraamsSource && typeof parsedVishraamsSource === 'object') {
+            return parsedVishraamsSource;
+          }
+        } catch (parseError) {
+          return { source: Constants.DEFAULT_VISHRAAM_SOURCE };
+        }
+      }
+      return { source: Constants.DEFAULT_VISHRAAM_SOURCE };
+    } catch (error) {
+      return { source: Constants.DEFAULT_VISHRAAM_SOURCE };
+    }
+  };
+
   const saveAngsFormat = async (angsFormat: AngsFormat) => {
     await AsyncStorage.setItem('angsFormat', JSON.stringify(angsFormat));
   };
@@ -318,5 +370,9 @@ export const useLocal = () => {
     handleUpdatePathWithErrorHandling,
     saveParagraphMode,
     fetchParagraphMode,
+    saveVishraam,
+    fetchVishraam,
+    saveVishraamsSource,
+    fetchVishraamsSource,
   };
 };

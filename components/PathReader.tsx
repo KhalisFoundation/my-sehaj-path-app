@@ -39,6 +39,9 @@ interface PathReaderProps {
   fontSize: number;
   isSaved: boolean;
   setIsAngNavigation: (value: boolean) => void;
+  isVishraam: boolean;
+  vishraamsSource: string;
+  vishraamsStyle: string;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
 }
@@ -68,6 +71,9 @@ const PathReaderComponent = ({
   fontSize,
   isSaved,
   setIsAngNavigation,
+  isVishraam,
+  vishraamsSource,
+  vishraamsStyle,
   setCenterVerseId,
   scrollToVerseId,
 }: PathReaderProps) => {
@@ -279,6 +285,8 @@ const PathReaderComponent = ({
             >
               {shabad.verses.map((verse: Verse, verseIndex: number) => {
                 const gurbaniLine = isLarivaar ? verse.larivaar.unicode : verse.verse.unicode;
+                const vishraam = verse.visraam;
+                const originalVerse = verse.verse.unicode;
 
                 const globalIndex = shabad.startIndex + verseIndex + 1;
 
@@ -301,6 +309,11 @@ const PathReaderComponent = ({
                     setFound={setFound}
                     fontSize={fontSize}
                     isSaved={isSaved}
+                    isVishraam={isVishraam}
+                    vishraams={vishraam}
+                    vishraamsSource={vishraamsSource}
+                    vishraamsStyle={vishraamsStyle}
+                    originalVerse={originalVerse}
                   />
                 );
               })}
@@ -311,6 +324,8 @@ const PathReaderComponent = ({
     }
     return pathContent?.page?.map((path: Verse, index: number) => {
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
+      const vishraam = path.visraam;
+      const originalVerse = path.verse.unicode;
 
       return (
         <SimpleTextForPath
@@ -332,6 +347,11 @@ const PathReaderComponent = ({
           setFound={setFound}
           fontSize={fontSize}
           isSaved={isSaved}
+          isVishraam={isVishraam}
+          vishraams={vishraam}
+          vishraamsSource={vishraamsSource}
+          vishraamsStyle={vishraamsStyle}
+          originalVerse={originalVerse}
         />
       );
     });
@@ -354,6 +374,9 @@ const PathReaderComponent = ({
     isSaved,
     isParagraphMode,
     shabadsWithIndices,
+    isVishraam,
+    vishraamsSource,
+    vishraamsStyle,
   ]);
 
   return (
