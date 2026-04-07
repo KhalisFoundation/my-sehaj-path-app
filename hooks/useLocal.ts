@@ -138,36 +138,9 @@ export const useLocal = () => {
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
+      matchedPath.saveData = { angNumber, verseId };
 
-      const currentSavedAng = matchedPath.saveData.angNumber;
-      const previousSavedVerseId = matchedPath.saveData.verseId;
-
-      let finalAngNumber = angNumber;
-      let finalVerseId: number;
-      // 0 is used to indicate that no verse was saved on this ang and to rest the hightlight verse if user goes back to the previous ang
-      if (verseId === 0) {
-        // If the user is going back to the previous ang, and the saved verseId is 0 (0 means no verse was saved on this ang), then reset the highlight verse
-        if (angNumber === currentSavedAng) {
-          // Same ang - preserve verseId only if it was saved on this ang
-          // If previous verseId was from this ang, keep it; otherwise set to 0
-          finalVerseId = previousSavedVerseId;
-        } else {
-          // Moving forward - no line saved yet on this ang
-          finalVerseId = 0;
-        }
-      } else {
-        // User explicitly saved a line (verseId > 0) - always save it
-        finalVerseId = verseId;
-      }
-
-      matchedPath.saveData = { angNumber: finalAngNumber, verseId: finalVerseId };
-      const completedNow = isPathCompleted(finalAngNumber, finalVerseId);
-
-      matchedPath.completionDate = completedNow ? todayDate : '';
-
-      matchedPath.progress = (finalAngNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
-
-      // Completion only happens when user saves last line (60403) on 1430
+      matchedPath.progress = (angNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
 
       const updatedDates = [
         ...cleanMatchedPathDates,
@@ -182,8 +155,12 @@ export const useLocal = () => {
         scrollPosition: scrollPosition,
       });
 
-      if (completedNow) {
+      // Completion is authoritative only when the exact final ang + final verse is saved.
+      if (isPathCompleted(angNumber, verseId)) {
+        matchedPath.completionDate = todayDate;
         trackEvent('PathCompleted', 'completed', `path completed`);
+      } else {
+        matchedPath.completionDate = '';
       }
 
       await Promise.all([
@@ -208,6 +185,52 @@ export const useLocal = () => {
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
     }
+  };
+  const clearPathCompletionAndSavedVerse = async (
+    pathId: number,
+    scrollPosition?: number,
+    angNumber?: number
+  ) => {
+    const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+    const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
+    const matchedPathDate = pathDateDataArray.find((pathDate) => pathDate.pathid === pathId);
+
+    if (matchedPath) {
+      // Undo completion and clear verse selection, while keeping current ang context.
+      matchedPath.completionDate = '';
+      matchedPath.saveData = {
+        angNumber: typeof angNumber === 'number' ? angNumber : matchedPath.saveData.angNumber,
+        verseId: 0,
+      };
+
+      // `scrollPosition` is ScrollView `contentOffset.y` (type: number, unit: vertical pixels).
+      if (matchedPathDate && typeof scrollPosition === 'number') {
+        matchedPathDate.scrollPosition = scrollPosition;
+      }
+
+      await Promise.all([
+        AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray)),
+        AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray)),
+      ]);
+      return true;
+    }
+
+    throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+  };
+
+  const updatePathScrollPosition = async (pathId: number, scrollPosition: number) => {
+    const { pathDateDataArray } = await fetchFromLocal();
+    const matchedPathDate = pathDateDataArray.find((pathDate) => pathDate.pathid === pathId);
+
+    if (matchedPathDate) {
+      // `scrollPosition` is ScrollView `contentOffset.y` (type: number, unit: vertical pixels).
+      // Lightweight write path used during scroll-only mode (no verse/completion mutation).
+      matchedPathDate.scrollPosition = scrollPosition;
+      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
+      return true;
+    }
+
+    throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
   };
 
   const renamePath = async (pathId: number, pathName: string) => {
@@ -368,6 +391,8 @@ export const useLocal = () => {
     saveConsent,
     fetchConsent,
     handleUpdatePathWithErrorHandling,
+    clearPathCompletionAndSavedVerse,
+    updatePathScrollPosition,
     saveParagraphMode,
     fetchParagraphMode,
     saveVishraam,

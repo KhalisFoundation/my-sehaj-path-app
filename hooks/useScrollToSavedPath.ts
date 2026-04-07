@@ -51,51 +51,58 @@ export const useScrollToSavedPath = ({
   }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
 
   const scrollToSavedPathData = useCallback(async () => {
-    if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
-      scrollOffset.current = matchedPathDate.scrollPosition;
-      if (scrollRef.current) {
+    if (scrolledToSavedPath.current || !scrollRef.current) {
+      return;
+    }
+
+    try {
+      // Prefer verse on the *current* page first. Raw scrollPosition can be from another ang
+      // (e.g. 1430) and would clamp badly after navigating to 1429, then findCenter + autosave
+      // would persist the wrong verse.
+      if (pathContent?.page && savedPathVerseId) {
+        const scrollIndex = pathContent.page.findIndex(
+          (page: any) => page.verseId === savedPathVerseId
+        );
+        if (scrollIndex !== -1) {
+          // Approximate line height buckets keep restore fast without measuring every row.
+          const fontSize = await fetchFontSize();
+          const fontSizeNumber = fontSize.number;
+          let scrollHeight;
+          if (fontSizeNumber <= 18) {
+            scrollHeight = 25;
+          } else if (fontSizeNumber <= 24) {
+            scrollHeight = 50;
+          } else if (fontSizeNumber <= 30) {
+            scrollHeight = 100;
+          } else {
+            scrollHeight = 150;
+          }
+          scrollOffset.current = scrollIndex * scrollHeight;
+          scrollRef.current.scrollTo({
+            y: scrollOffset.current,
+            animated: true,
+          });
+          scrolledToSavedPath.current = true;
+          fadeAnim.setValue(1);
+          runFadeSequence();
+          return;
+        }
+      }
+
+      if (matchedPathDate) {
+        // Fallback to raw scroll offset when saved verse is not on this ang.
+        // Stored value uses ScrollView `contentOffset.y` (type: number, vertical pixels).
+        scrollOffset.current = matchedPathDate.scrollPosition;
         scrollRef.current.scrollTo({
           y: scrollOffset.current,
           animated: true,
         });
+        scrolledToSavedPath.current = true;
+        fadeAnim.setValue(1);
+        runFadeSequence();
       }
-      scrolledToSavedPath.current = true;
-      fadeAnim.setValue(1);
-      runFadeSequence();
-    }
-
-    if (pathContent && !scrolledToSavedPath.current) {
-      try {
-        const scrollIndex = pathContent?.page?.findIndex(
-          (page: any) => page.verseId === savedPathVerseId
-        );
-        const fontSize = await fetchFontSize();
-        const fontSizeNumber = fontSize.number;
-        let scrollHeight;
-        if (fontSizeNumber <= 18) {
-          scrollHeight = 25;
-        } else if (fontSizeNumber <= 24) {
-          scrollHeight = 50;
-        } else if (fontSizeNumber <= 30) {
-          scrollHeight = 100;
-        } else {
-          scrollHeight = 150;
-        }
-        if (scrollIndex !== -1) {
-          scrollOffset.current = scrollIndex * scrollHeight;
-          if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-              y: scrollOffset.current,
-              animated: true,
-            });
-          }
-          scrolledToSavedPath.current = true;
-          fadeAnim.setValue(1);
-          runFadeSequence();
-        }
-      } catch (error) {
-        showErrorAlert(ErrorConstants.ERROR_SCROLLING_TO_SAVED_PATH);
-      }
+    } catch (error) {
+      showErrorAlert(ErrorConstants.ERROR_SCROLLING_TO_SAVED_PATH);
     }
   }, [
     matchedPathDate,

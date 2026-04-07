@@ -18,7 +18,6 @@ import { showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
-import { isPathCompleted } from '@utils/isPathCompleted';
 import { MenuIcon } from '@icons';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
@@ -32,6 +31,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const isLoadingRef = useRef(false);
   useScreenAnalytics('HomeScreen', 'HomeScreen');
   const { pathInProgress, pathCompleted } = useMemo(() => {
+    // Keep "completed" strict: both completionDate and final checkpoint must match.
     const completed = pathDataArrayFromLocal.filter(
       (path: PathData) =>
         path.completionDate !== '' &&
@@ -39,9 +39,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
         path.saveData.verseId === PATH_DATA.LAST_VERSE_ID
     );
     const inProgress = pathDataArrayFromLocal.filter(
-      (path: PathData) =>
-        !isPathCompleted(path.saveData.angNumber, path.saveData.verseId) &&
-        path.saveData.angNumber <= PATH_DATA.LAST_ANG_NUMBER
+      (path: PathData) => path.completionDate === ''
     );
     return { pathInProgress: inProgress, pathCompleted: completed };
   }, [pathDataArrayFromLocal]);

@@ -28,9 +28,14 @@ import {
 } from '@components';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
-import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES } from '@constants';
+import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
+// Scroll save modes:
+// - `normal`: regular autosave flow (save verse + scroll).
+// - `pauseAfterCompletion`: temporary guard after completion; ignore autosave until user intentionally scrolls up.
+// - `scrollOnly`: persist only `contentOffset.y` scroll position, do not auto-select a verse.
+type ScrollSaveMode = 'normal' | 'pauseAfterCompletion' | 'scrollOnly';
 
 export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) => {
   const [pathAng, setPathAng] = useState<number>(0);
@@ -45,7 +50,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isParagraphMode, setIsParagraphMode] = useState<boolean>(false);
   const [isVishraam, setIsVishraam] = useState<boolean>(false);
   const [vishraamsSource, setVishraamsSource] = useState<string>(Constants.DEFAULT_VISHRAAM_SOURCE);
-  const [vishraamsStyle, setVishraamsStyle] = useState<string>('colored-words');
+  const [vishraamsStyle] = useState<string>('colored-words');
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
@@ -71,6 +76,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const previousFontSize = useRef<number>(18);
   const previousParagraphMode = useRef<boolean>(false);
   const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
+  const scrollSaveModeRef = useRef<ScrollSaveMode>('normal');
+  const completionPauseAnchorOffsetRef = useRef<number | null>(null);
+  const isUndoInFlightRef = useRef<boolean>(false);
 
   const pathPujabiAng = useMemo(
     () =>
@@ -87,6 +95,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFromLocal,
     handleUpdatePathWithErrorHandling,
     handleUpdatePath,
+    clearPathCompletionAndSavedVerse,
+    updatePathScrollPosition,
     fetchLarivaar,
     fetchFontSize,
     fetchAngsFormat,
@@ -145,6 +155,49 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFromBaniDB,
   });
 
+  // Split from `undoCompletion` on purpose:
+  // this helper is local-only (React state + refs) and can be reused after any successful
+  // persistence path that has already cleared completion in storage.
+  const applyCompletionUndoState = useCallback(
+    (angNumber: number) => {
+      // Keep UI and in-memory path refs in sync after clearing completion in storage.
+      if (matchedPath.current) {
+        matchedPath.current.completionDate = '';
+        matchedPath.current.saveData = {
+          angNumber,
+          verseId: 0,
+        };
+      }
+      setSavedPathVerseId(0);
+      setCenterVerseId(0);
+      setPressIndex(0);
+      setIsSaved(false);
+      scrollSaveModeRef.current = 'scrollOnly';
+      completionPauseAnchorOffsetRef.current = null;
+    },
+    [setSavedPathVerseId, setCenterVerseId, setPressIndex, setIsSaved]
+  );
+
+  // Storage-facing wrapper:
+  // first writes completion undo to AsyncStorage, then calls `applyCompletionUndoState`
+  // so UI updates only happen after persistence succeeds.
+  const undoCompletion = useCallback(
+    async (angNumber: number) => {
+      // Persist first, then update local state to avoid UI saying "undone" before storage succeeds.
+      await clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current, angNumber);
+      applyCompletionUndoState(angNumber);
+    },
+    [applyCompletionUndoState, clearPathCompletionAndSavedVerse, route.params.pathId]
+  );
+
+  const isCompletedAtFinalCheckpoint = useCallback(() => {
+    return (
+      matchedPath.current?.completionDate !== '' &&
+      matchedPath.current?.saveData.angNumber === PATH_DATA.LAST_ANG_NUMBER &&
+      matchedPath.current?.saveData.verseId === PATH_DATA.LAST_VERSE_ID
+    );
+  }, []);
+
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -156,6 +209,20 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       useNativeDriver: true,
     }).start(() => {
       try {
+        // Freeze autosave immediately after completion so small scroll jitter does not undo it.
+        if (scrollSaveModeRef.current === 'pauseAfterCompletion') {
+          return;
+        }
+        // After undoing completion, keep persisting scroll position
+        // without auto-saving a random verse highlight.
+        if (scrollSaveModeRef.current === 'scrollOnly') {
+          updatePathScrollPosition(route.params.pathId, scrollOffset.current);
+          if (matchedPathDate.current) {
+            matchedPathDate.current.scrollPosition = scrollOffset.current;
+          }
+          return;
+        }
+
         // Use savedPathVerseId if manually selected (long-press), otherwise use centerVerseId
         // If both are 0, don't save (no verse has been identified yet)
         const verseIdToSave = savedPathVerseId !== 0 ? savedPathVerseId : centerVerseId;
@@ -168,6 +235,22 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             scrollOffset.current,
             () => {
               setIsSaved(false);
+              if (matchedPath.current) {
+                matchedPath.current.saveData = { angNumber: pathAng, verseId: verseIdToSave };
+                const isCompletedNow =
+                  pathAng === PATH_DATA.LAST_ANG_NUMBER &&
+                  verseIdToSave === PATH_DATA.LAST_VERSE_ID;
+                matchedPath.current.completionDate = isCompletedNow
+                  ? matchedPath.current.completionDate || new Date().toISOString()
+                  : '';
+
+                if (isCompletedNow) {
+                  // Start a guarded window where only deliberate upward scroll can undo completion.
+                  scrollSaveModeRef.current = 'pauseAfterCompletion';
+                  completionPauseAnchorOffsetRef.current = scrollOffset.current;
+                }
+              }
+              setSavedPathVerseId(verseIdToSave);
             }
           );
         }
@@ -176,7 +259,78 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         // Error is already handled at the UI level where user initiated the action
       }
     });
-  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId, centerVerseId]);
+  }, [
+    handleUpdatePath,
+    route.params.pathId,
+    pathAng,
+    savedPathVerseId,
+    centerVerseId,
+    updatePathScrollPosition,
+  ]);
+
+  const handleUpwardScroll = useCallback(
+    async (scrollY: number) => {
+      // Any manual scroll means we're no longer in initial auto-resume mode.
+      scrolledToSavedPath.current = true;
+      setFound(false);
+
+      const completedByHomeRule = isCompletedAtFinalCheckpoint();
+      // Direction handler is only relevant while completion is in guarded pause mode.
+      if (scrollSaveModeRef.current !== 'pauseAfterCompletion') {
+        return;
+      }
+
+      if (!completedByHomeRule) {
+        scrollSaveModeRef.current = 'normal';
+        completionPauseAnchorOffsetRef.current = null;
+        return;
+      }
+
+      // On final ang: require deliberate upward movement before undo.
+      if (pathAng !== PATH_DATA.LAST_ANG_NUMBER) {
+        return;
+      }
+
+      if (completionPauseAnchorOffsetRef.current === null) {
+        completionPauseAnchorOffsetRef.current = scrollY;
+      }
+
+      const upwardDelta = completionPauseAnchorOffsetRef.current - scrollY;
+      if (upwardDelta < 200) {
+        return;
+      }
+
+      try {
+        await undoCompletion(pathAng);
+      } catch (error) {
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      }
+    },
+    [pathAng, undoCompletion, isCompletedAtFinalCheckpoint]
+  );
+
+  const handleAnyScroll = useCallback(async () => {
+    // Any manual scroll means we're no longer in initial auto-resume mode.
+    scrolledToSavedPath.current = true;
+    setFound(false);
+
+    // If user has moved off final ang after completion, undo immediately on first scroll.
+    if (
+      pathAng !== PATH_DATA.LAST_ANG_NUMBER &&
+      scrollSaveModeRef.current === 'pauseAfterCompletion' &&
+      isCompletedAtFinalCheckpoint() &&
+      !isUndoInFlightRef.current
+    ) {
+      isUndoInFlightRef.current = true;
+      try {
+        await undoCompletion(pathAng);
+      } catch (error) {
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      } finally {
+        isUndoInFlightRef.current = false;
+      }
+    }
+  }, [pathAng, undoCompletion, isCompletedAtFinalCheckpoint]);
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate: matchedPathDate.current,
@@ -227,6 +381,33 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [isSaved]
   );
 
+  // Manual save path (via long-press save) does not always pass through debounced save callback.
+  // Arm pause/anchor here too so undo-on-scroll remains reliable after completing last line.
+  useEffect(() => {
+    const completedNow =
+      isSaved &&
+      pathAng === PATH_DATA.LAST_ANG_NUMBER &&
+      savedPathVerseId === PATH_DATA.LAST_VERSE_ID;
+
+    if (completedNow) {
+      // Manual save can bypass debounced autosave callback; arm completion guard here as well.
+      scrollSaveModeRef.current = 'pauseAfterCompletion';
+      completionPauseAnchorOffsetRef.current = scrollOffset.current;
+      if (matchedPath.current) {
+        matchedPath.current.saveData = {
+          angNumber: PATH_DATA.LAST_ANG_NUMBER,
+          verseId: PATH_DATA.LAST_VERSE_ID,
+        };
+        matchedPath.current.completionDate =
+          matchedPath.current.completionDate || new Date().toISOString();
+      }
+    } else if (isSaved && savedPathVerseId !== 0) {
+      // Any explicit successful save of a verse exits scroll-only mode.
+      scrollSaveModeRef.current = 'normal';
+      completionPauseAnchorOffsetRef.current = null;
+    }
+  }, [isSaved, pathAng, savedPathVerseId]);
+
   useEffect(() => {
     scrolledToSavedPath.current = false;
     const fetchPath = async () => {
@@ -241,6 +422,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         if (matchedPathData) {
           matchedPath.current = matchedPathData;
           matchedPathDate.current = matchedPathDateData;
+          // Resume in scroll-only mode when completion was previously undone on last ang.
+          scrollSaveModeRef.current =
+            matchedPathData.saveData.angNumber === PATH_DATA.LAST_ANG_NUMBER &&
+            matchedPathData.saveData.verseId === 0 &&
+            matchedPathData.completionDate === ''
+              ? 'scrollOnly'
+              : 'normal';
+          completionPauseAnchorOffsetRef.current = null;
           const pathAngData =
             matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
           setSavedPathVerseId(matchedPathData.saveData.verseId);
@@ -269,6 +458,28 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       setSavedPathVerseId(matchedPath.current.saveData.verseId);
     }
   }, [pathAng]);
+
+  useEffect(() => {
+    const clearCompletionAfterLeavingLastAng = async () => {
+      if (!matchedPath.current) {
+        return;
+      }
+
+      const hasCompletionMarked = matchedPath.current.completionDate !== '';
+      // Completion should not remain true once user has left the final ang.
+      if (pathAng === PATH_DATA.LAST_ANG_NUMBER || !hasCompletionMarked) {
+        return;
+      }
+
+      try {
+        await undoCompletion(pathAng);
+      } catch (error) {
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      }
+    };
+
+    clearCompletionAfterLeavingLastAng();
+  }, [pathAng, undoCompletion]);
 
   useEffect(() => {
     if (isSaved || found) {
@@ -468,6 +679,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           vishraamsStyle={vishraamsStyle}
           setCenterVerseId={setCenterVerseId}
           scrollToVerseId={scrollToVerseId}
+          onAnyScroll={handleAnyScroll}
+          onUpwardScroll={handleUpwardScroll}
         />
         {alertIndicator.current !== undefined ? (
           <Loading

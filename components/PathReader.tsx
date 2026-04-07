@@ -44,6 +44,8 @@ interface PathReaderProps {
   vishraamsStyle: string;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
+  onAnyScroll?: () => void;
+  onUpwardScroll?: (scrollY: number) => void;
 }
 
 const PathReaderComponent = ({
@@ -76,11 +78,15 @@ const PathReaderComponent = ({
   vishraamsStyle,
   setCenterVerseId,
   scrollToVerseId,
+  onAnyScroll,
+  onUpwardScroll,
 }: PathReaderProps) => {
   const viewportHeight = useRef<number>(0);
   const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
   const hasScrolledToVerse = useRef<boolean>(false);
   const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const previousScrollY = useRef<number>(0);
+  const isUserDraggingRef = useRef<boolean>(false);
 
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -130,7 +136,18 @@ const PathReaderComponent = ({
   const handleScroll = useCallback(
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
+      const scrollDelta = scrollY - previousScrollY.current;
       scrollOffset.current = scrollY;
+      previousScrollY.current = scrollY;
+
+      if (isUserDraggingRef.current) {
+        if (onAnyScroll) {
+          onAnyScroll();
+        }
+        if (onUpwardScroll && scrollDelta < 0) {
+          onUpwardScroll(scrollY);
+        }
+      }
 
       // Clear existing timer
       if (scrollEndTimer.current) {
@@ -146,7 +163,14 @@ const PathReaderComponent = ({
         debouncedScrollSave();
       }
     },
-    [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
+    [
+      isAngNavigation,
+      debouncedScrollSave,
+      scrollOffset,
+      findCenterVerseId,
+      onAnyScroll,
+      onUpwardScroll,
+    ]
   );
 
   const gestureConfig = useMemo(
@@ -229,6 +253,7 @@ const PathReaderComponent = ({
   useEffect(() => {
     versePositions.current.clear();
     hasScrolledToVerse.current = false;
+    previousScrollY.current = 0;
     if (setCenterVerseId) {
       setCenterVerseId(0);
     }
@@ -393,6 +418,15 @@ const PathReaderComponent = ({
         nestedScrollEnabled={false}
         keyboardShouldPersistTaps="handled"
         onScroll={handleScroll}
+        onScrollBeginDrag={() => {
+          isUserDraggingRef.current = true;
+        }}
+        onScrollEndDrag={() => {
+          isUserDraggingRef.current = false;
+        }}
+        onMomentumScrollEnd={() => {
+          isUserDraggingRef.current = false;
+        }}
         scrollEventThrottle={16}
         decelerationRate="fast"
         onStartShouldSetResponder={() => false}
