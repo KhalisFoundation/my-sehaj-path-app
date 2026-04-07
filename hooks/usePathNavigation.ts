@@ -40,7 +40,6 @@ export const usePathNavigation = ({
       if (pathAng !== lastSavedAngNumber) {
         showSaveProgressAlert({
           onSaveAndGoBack: () => {
-            // Save current page context even when verseId is 0, so ang/scroll progress is not lost.
             handleUpdatePath(pathId, pathAng, savedPathVerseId, scrollOffset.current, setIsSaved);
             setIsAngNavigation(false);
             navigation.push('Home');

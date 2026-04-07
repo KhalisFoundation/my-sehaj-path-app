@@ -217,7 +217,7 @@ export const useLocal = () => {
 
     throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
   };
-
+  // Lightweight write path used during scroll-only mode (no verse/completion mutation). Needed for completion undo.
   const updatePathScrollPosition = async (pathId: number, scrollPosition: number) => {
     const { pathDateDataArray } = await fetchFromLocal();
     const matchedPathDate = pathDateDataArray.find((pathDate) => pathDate.pathid === pathId);

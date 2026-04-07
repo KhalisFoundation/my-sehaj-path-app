@@ -31,7 +31,7 @@ import { useScreenAnalytics } from '@hooks';
 import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
-// Scroll save modes:
+// Scroll save modes(for completion undo):
 // - `normal`: regular autosave flow (save verse + scroll).
 // - `pauseAfterCompletion`: temporary guard after completion; ignore autosave until user intentionally scrolls up.
 // - `scrollOnly`: persist only `contentOffset.y` scroll position, do not auto-select a verse.
