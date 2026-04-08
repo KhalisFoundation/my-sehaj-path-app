@@ -199,12 +199,12 @@ export const useLocal = () => {
       // Undo completion and clear verse selection, while keeping current ang context.
       matchedPath.completionDate = '';
       matchedPath.saveData = {
-        angNumber: typeof angNumber === 'number' ? angNumber : matchedPath.saveData.angNumber,
+        angNumber: angNumber ?? matchedPath.saveData.angNumber,
         verseId: 0,
       };
 
       // `scrollPosition` is ScrollView `contentOffset.y` (type: number, unit: vertical pixels).
-      if (matchedPathDate && typeof scrollPosition === 'number') {
+      if (matchedPathDate && scrollPosition !== undefined) {
         matchedPathDate.scrollPosition = scrollPosition;
       }
 

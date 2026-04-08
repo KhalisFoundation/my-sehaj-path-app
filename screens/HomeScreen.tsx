@@ -15,7 +15,7 @@ import {
 } from '@components';
 import { PathData, useLocal, useScreenAnalytics, useDrawerNavigation } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
-import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
+import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { MenuIcon } from '@icons';
@@ -32,12 +32,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   useScreenAnalytics('HomeScreen', 'HomeScreen');
   const { pathInProgress, pathCompleted } = useMemo(() => {
     // Keep "completed" strict: both completionDate and final checkpoint must match.
-    const completed = pathDataArrayFromLocal.filter(
-      (path: PathData) =>
-        path.completionDate !== '' &&
-        path.saveData.angNumber === PATH_DATA.LAST_ANG_NUMBER &&
-        path.saveData.verseId === PATH_DATA.LAST_VERSE_ID
-    );
+    const completed = pathDataArrayFromLocal.filter((path: PathData) => path.completionDate !== '');
     const inProgress = pathDataArrayFromLocal.filter(
       (path: PathData) => path.completionDate === ''
     );
