@@ -29,7 +29,7 @@ interface PathReaderProps {
     verseId: number,
     scrollPosition: number,
     setIsSaved: (value: boolean) => void
-  ) => void;
+  ) => Promise<boolean>;
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
   pathId: number;
@@ -42,6 +42,7 @@ interface PathReaderProps {
   isVishraam: boolean;
   vishraamsSource: string;
   vishraamsStyle: string;
+  onSaveCommit?: (angNumber: number, verseId: number) => void;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
   onAnyScroll?: () => void;
@@ -76,6 +77,7 @@ const PathReaderComponent = ({
   isVishraam,
   vishraamsSource,
   vishraamsStyle,
+  onSaveCommit,
   setCenterVerseId,
   scrollToVerseId,
   onAnyScroll,
@@ -193,8 +195,8 @@ const PathReaderComponent = ({
   );
 
   const createSaveHandler = useCallback(
-    (verseId: number) => () => {
-      handleUpdatePathWithErrorHandling(
+    (verseId: number) => async () => {
+      const saved = await handleUpdatePathWithErrorHandling(
         pathId,
         pathContent?.source?.pageNo,
         verseId,
@@ -206,6 +208,9 @@ const PathReaderComponent = ({
           }
         }
       );
+      if (saved && onSaveCommit) {
+        onSaveCommit(pathContent?.source?.pageNo ?? 0, verseId);
+      }
     },
     [
       pathId,
@@ -215,6 +220,7 @@ const PathReaderComponent = ({
       setIsSaved,
       isAngNavigation,
       setIsAngNavigation,
+      onSaveCommit,
     ]
   );
 

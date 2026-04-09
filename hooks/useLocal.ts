@@ -179,11 +179,13 @@ export const useLocal = () => {
     verseId: number,
     scrollPosition: number,
     setIsSaved: (value: boolean) => void
-  ) => {
+  ): Promise<boolean> => {
     try {
       await handleUpdatePath(pathId, angNumber, verseId, scrollPosition, setIsSaved);
+      return true;
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      return false;
     }
   };
   const clearPathCompletionAndSavedVerse = async (
