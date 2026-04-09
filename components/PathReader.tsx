@@ -38,7 +38,6 @@ interface PathReaderProps {
   setFound: (value: boolean) => void;
   fontSize: number;
   isSaved: boolean;
-  setIsAngNavigation: (value: boolean) => void;
   isVishraam: boolean;
   vishraamsSource: string;
   vishraamsStyle: string;
@@ -73,7 +72,6 @@ const PathReaderComponent = ({
   setFound,
   fontSize,
   isSaved,
-  setIsAngNavigation,
   isVishraam,
   vishraamsSource,
   vishraamsStyle,
@@ -181,12 +179,7 @@ const PathReaderComponent = ({
         pathContent?.source?.pageNo,
         verseId,
         scrollOffset.current,
-        (value: boolean) => {
-          setIsSaved(value);
-          if (value && isAngNavigation) {
-            setIsAngNavigation(false);
-          }
-        }
+        setIsSaved
       );
       if (saved && onSaveCommit) {
         onSaveCommit(pathContent?.source?.pageNo ?? 0, verseId);
@@ -198,8 +191,6 @@ const PathReaderComponent = ({
       scrollOffset,
       handleUpdatePathWithErrorHandling,
       setIsSaved,
-      isAngNavigation,
-      setIsAngNavigation,
       onSaveCommit,
     ]
   );

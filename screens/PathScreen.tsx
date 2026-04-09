@@ -216,7 +216,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }).start(() => {
       try {
         if (completionUndoPendingRef.current) {
-          clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current, pathAng);
+          const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
+          handleUpdatePath(
+            route.params.pathId,
+            pathAng,
+            verseIdToKeep,
+            scrollOffset.current,
+            setIsSaved
+          );
           return;
         }
 
@@ -592,7 +599,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           setFound={setFound}
           fontSize={fontSize}
           isSaved={isSaved}
-          setIsAngNavigation={setIsAngNavigation}
           isVishraam={isVishraam}
           vishraamsSource={vishraamsSource}
           vishraamsStyle={vishraamsStyle}
