@@ -93,7 +93,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     handleUpdatePathWithErrorHandling,
     handleUpdatePath,
     clearPathCompletionAndSavedVerse,
-    updatePathScrollPosition,
     fetchLarivaar,
     fetchFontSize,
     fetchAngsFormat,
@@ -210,10 +209,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }).start(() => {
       try {
         if (completionUndoPendingRef.current) {
-          updatePathScrollPosition(route.params.pathId, scrollOffset.current);
-          if (matchedPathDate.current) {
-            matchedPathDate.current.scrollPosition = scrollOffset.current;
-          }
+          clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current, pathAng);
           return;
         }
 
@@ -234,7 +230,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     });
   }, [
     handleUpdatePath,
-    updatePathScrollPosition,
+    clearPathCompletionAndSavedVerse,
     route.params.pathId,
     pathAng,
     savedPathVerseId,

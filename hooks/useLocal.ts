@@ -219,22 +219,6 @@ export const useLocal = () => {
 
     throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
   };
-  // Lightweight write path used during scroll-only mode (no verse/completion mutation). Needed for completion undo.
-  const updatePathScrollPosition = async (pathId: number, scrollPosition: number) => {
-    const { pathDateDataArray } = await fetchFromLocal();
-    const matchedPathDate = pathDateDataArray.find((pathDate) => pathDate.pathid === pathId);
-
-    if (matchedPathDate) {
-      // `scrollPosition` is ScrollView `contentOffset.y` (type: number, unit: vertical pixels).
-      // Lightweight write path used during scroll-only mode (no verse/completion mutation).
-      matchedPathDate.scrollPosition = scrollPosition;
-      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
-      return true;
-    }
-
-    throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
-  };
-
   const renamePath = async (pathId: number, pathName: string) => {
     try {
       const { pathDataArray } = await fetchFromLocal();
@@ -394,7 +378,6 @@ export const useLocal = () => {
     fetchConsent,
     handleUpdatePathWithErrorHandling,
     clearPathCompletionAndSavedVerse,
-    updatePathScrollPosition,
     saveParagraphMode,
     fetchParagraphMode,
     saveVishraam,
