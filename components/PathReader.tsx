@@ -87,7 +87,6 @@ const PathReaderComponent = ({
   const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
   const hasScrolledToVerse = useRef<boolean>(false);
   const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isUserDraggingRef = useRef<boolean>(false);
 
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -139,12 +138,6 @@ const PathReaderComponent = ({
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
 
-      if (isUserDraggingRef.current) {
-        if (onAnyScroll) {
-          onAnyScroll();
-        }
-      }
-
       // Clear existing timer
       if (scrollEndTimer.current) {
         clearTimeout(scrollEndTimer.current);
@@ -159,15 +152,7 @@ const PathReaderComponent = ({
         debouncedScrollSave();
       }
     },
-    [
-      isAngNavigation,
-      debouncedScrollSave,
-      scrollOffset,
-      findCenterVerseId,
-      onAnyScroll,
-      savedPathVerseId,
-      setCenterVerseId,
-    ]
+    [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
   );
 
   const gestureConfig = useMemo(
@@ -418,15 +403,11 @@ const PathReaderComponent = ({
         nestedScrollEnabled={false}
         keyboardShouldPersistTaps="handled"
         onScroll={handleScroll}
-        onScrollBeginDrag={() => {
-          isUserDraggingRef.current = true;
-        }}
+        onScrollBeginDrag={onAnyScroll}
         onScrollEndDrag={() => {
-          isUserDraggingRef.current = false;
           onScrollEndDrag?.(scrollOffset.current);
         }}
         onMomentumScrollEnd={() => {
-          isUserDraggingRef.current = false;
           onScrollEndDrag?.(scrollOffset.current);
         }}
         scrollEventThrottle={16}
