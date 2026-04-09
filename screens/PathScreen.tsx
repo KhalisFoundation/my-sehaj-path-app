@@ -151,6 +151,27 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFromBaniDB,
   });
 
+  const resetCompletionViewState = useCallback(
+    (angNumber?: number) => {
+      if (matchedPath.current) {
+        matchedPath.current.completionDate = '';
+        matchedPath.current.saveData = {
+          angNumber: angNumber ?? matchedPath.current.saveData.angNumber,
+          verseId: 0,
+        };
+      }
+      if (matchedPathDate.current) {
+        matchedPathDate.current.scrollPosition = scrollOffset.current;
+      }
+      setSavedPathVerseId(0);
+      setCenterVerseId(0);
+      setPressIndex(0);
+      setIsSaved(false);
+      completionUndoStartScrollYRef.current = null;
+    },
+    [scrollOffset]
+  );
+
   const undoCompletion = useCallback(
     async (angNumber: number) => {
       if (debounceTimer.current) {
@@ -158,25 +179,11 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         debounceTimer.current = null;
       }
       await clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current, angNumber);
-      if (matchedPath.current) {
-        matchedPath.current.completionDate = '';
-        matchedPath.current.saveData = {
-          angNumber,
-          verseId: 0,
-        };
-      }
-      if (matchedPathDate.current) {
-        matchedPathDate.current.scrollPosition = scrollOffset.current;
-      }
+      resetCompletionViewState(angNumber);
       completionUndoPendingRef.current = true;
       setSavedAngNumber(angNumber);
-      setSavedPathVerseId(0);
-      setCenterVerseId(0);
-      setPressIndex(0);
-      setIsSaved(false);
-      completionUndoStartScrollYRef.current = null;
     },
-    [clearPathCompletionAndSavedVerse, route.params.pathId]
+    [clearPathCompletionAndSavedVerse, resetCompletionViewState, route.params.pathId]
   );
 
   const commitSavedPathState = useCallback((angNumber: number, verseId: number) => {
@@ -382,20 +389,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
       try {
         await clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current);
-        if (matchedPath.current) {
-          matchedPath.current.completionDate = '';
-          matchedPath.current.saveData = {
-            ...matchedPath.current.saveData,
-            verseId: 0,
-          };
-        }
-        if (matchedPathDate.current) {
-          matchedPathDate.current.scrollPosition = scrollOffset.current;
-        }
-        setSavedPathVerseId(0);
-        setCenterVerseId(0);
-        setPressIndex(0);
-        setIsSaved(false);
+        resetCompletionViewState();
         completionUndoPendingRef.current = false;
         completionUndoStartScrollYRef.current = null;
       } catch (error) {
@@ -404,7 +398,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     };
 
     clearCompletionAfterLeavingLastAng();
-  }, [pathAng, undoCompletion]);
+  }, [pathAng, resetCompletionViewState]);
 
   useEffect(() => {
     if (isSaved || found) {
