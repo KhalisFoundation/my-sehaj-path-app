@@ -46,7 +46,7 @@ interface PathReaderProps {
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
   onAnyScroll?: () => void;
-  onUpwardScroll?: (scrollY: number) => void;
+  onScrollEndDrag?: (scrollY: number) => void;
 }
 
 const PathReaderComponent = ({
@@ -81,13 +81,12 @@ const PathReaderComponent = ({
   setCenterVerseId,
   scrollToVerseId,
   onAnyScroll,
-  onUpwardScroll,
+  onScrollEndDrag,
 }: PathReaderProps) => {
   const viewportHeight = useRef<number>(0);
   const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
   const hasScrolledToVerse = useRef<boolean>(false);
   const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const previousScrollY = useRef<number>(0);
   const isUserDraggingRef = useRef<boolean>(false);
 
   const handleAngChange = useCallback(() => {
@@ -138,16 +137,11 @@ const PathReaderComponent = ({
   const handleScroll = useCallback(
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
-      const scrollDelta = scrollY - previousScrollY.current;
       scrollOffset.current = scrollY;
-      previousScrollY.current = scrollY;
 
       if (isUserDraggingRef.current) {
         if (onAnyScroll) {
           onAnyScroll();
-        }
-        if (onUpwardScroll && scrollDelta < 0) {
-          onUpwardScroll(scrollY);
         }
       }
 
@@ -171,7 +165,8 @@ const PathReaderComponent = ({
       scrollOffset,
       findCenterVerseId,
       onAnyScroll,
-      onUpwardScroll,
+      savedPathVerseId,
+      setCenterVerseId,
     ]
   );
 
@@ -259,7 +254,6 @@ const PathReaderComponent = ({
   useEffect(() => {
     versePositions.current.clear();
     hasScrolledToVerse.current = false;
-    previousScrollY.current = 0;
     if (setCenterVerseId) {
       setCenterVerseId(0);
     }
@@ -429,9 +423,11 @@ const PathReaderComponent = ({
         }}
         onScrollEndDrag={() => {
           isUserDraggingRef.current = false;
+          onScrollEndDrag?.(scrollOffset.current);
         }}
         onMomentumScrollEnd={() => {
           isUserDraggingRef.current = false;
+          onScrollEndDrag?.(scrollOffset.current);
         }}
         scrollEventThrottle={16}
         decelerationRate="fast"
