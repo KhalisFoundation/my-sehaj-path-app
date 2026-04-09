@@ -264,12 +264,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [pathAng, undoCompletion]
   );
 
-  const handleAnyScroll = useCallback(() => {
-    // Any manual scroll means we're no longer in initial auto-resume mode.
-    scrolledToSavedPath.current = true;
-    setFound(false);
-  }, []);
-
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate: matchedPathDate.current,
     pathContent,
@@ -611,7 +605,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           onSaveCommit={commitSavedPathState}
           setCenterVerseId={setCenterVerseId}
           scrollToVerseId={scrollToVerseId}
-          onAnyScroll={handleAnyScroll}
+          scrolledToSavedPath={scrolledToSavedPath}
           onScrollEndDrag={handleScrollEnd}
         />
         {alertIndicator.current !== undefined ? (

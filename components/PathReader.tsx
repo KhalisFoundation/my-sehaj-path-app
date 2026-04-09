@@ -45,7 +45,7 @@ interface PathReaderProps {
   onSaveCommit?: (angNumber: number, verseId: number) => void;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
-  onAnyScroll?: () => void;
+  scrolledToSavedPath: React.MutableRefObject<boolean>;
   onScrollEndDrag?: (scrollY: number) => void;
 }
 
@@ -80,7 +80,7 @@ const PathReaderComponent = ({
   onSaveCommit,
   setCenterVerseId,
   scrollToVerseId,
-  onAnyScroll,
+  scrolledToSavedPath,
   onScrollEndDrag,
 }: PathReaderProps) => {
   const viewportHeight = useRef<number>(0);
@@ -403,7 +403,10 @@ const PathReaderComponent = ({
         nestedScrollEnabled={false}
         keyboardShouldPersistTaps="handled"
         onScroll={handleScroll}
-        onScrollBeginDrag={onAnyScroll}
+        onScrollBeginDrag={() => {
+          scrolledToSavedPath.current = true;
+          setFound(false);
+        }}
         onScrollEndDrag={() => {
           onScrollEndDrag?.(scrollOffset.current);
         }}
