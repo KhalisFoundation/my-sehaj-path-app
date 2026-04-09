@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { showErrorAlert } from '@utils';
-import { ErrorConstants } from '@constants/ErrorConstant';
+import { ErrorConstants, PATH_DATA } from '@constants';
 import { ScrollView } from 'react-native';
 
 export interface UseNavigationParams {
@@ -29,7 +29,7 @@ export const useNavigation = ({
       if (isNavigating) {
         return;
       }
-      if (pageNo >= 1430) {
+      if (pageNo >= PATH_DATA.LAST_ANG_NUMBER) {
         return;
       }
 
