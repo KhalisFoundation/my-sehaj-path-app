@@ -26,7 +26,7 @@ export const DrawerMenuStyles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 280,
-    backgroundColor: UIConstants.DRAWER_PANEL_BACKGROUND,
+    backgroundColor: '#F5F5F5',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
@@ -36,7 +36,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: UIConstants.DRAWER_HEADER_BACKGROUND,
+    backgroundColor: '#11336A',
     paddingHorizontal: UIConstants.RHYTHM * 2,
     paddingVertical: UIConstants.RHYTHM * 1.2,
     gap: UIConstants.RHYTHM * 1.5,
@@ -45,14 +45,14 @@ export const DrawerMenuStyles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: UIConstants.DRAWER_LOGO_TILE_BACKGROUND,
+    backgroundColor: '#FFFFFF20',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: UIConstants.DRAWER_HEADER_TITLE_COLOR,
+    color: '#FFFFFF',
   },
   menuItems: {
     paddingTop: UIConstants.RHYTHM,
@@ -75,7 +75,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 15,
-    color: UIConstants.DRAWER_MENU_ITEM_COLOR,
+    color: '#2C3E50',
     fontWeight: '400',
   },
   footer: {
@@ -91,11 +91,11 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   donateIcon: {
     fontSize: 20,
-    color: UIConstants.DRAWER_DONATE_ACCENT,
+    color: '#F39C12',
   },
   donateText: {
     fontSize: 15,
-    color: UIConstants.DRAWER_DONATE_ACCENT,
+    color: '#F39C12',
     fontWeight: '500',
   },
 });
