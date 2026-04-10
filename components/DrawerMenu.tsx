@@ -47,15 +47,19 @@ const DrawerMenuComponent = ({
   const slideAnim = useRef(new Animated.Value(UIConstants.DRAWER_ANIMATION_HIDDEN_OFFSET)).current;
 
   useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: isVisible
-        ? UIConstants.DRAWER_ANIMATION_VISIBLE_OFFSET
-        : UIConstants.DRAWER_ANIMATION_HIDDEN_OFFSET,
-      duration: isVisible
-        ? UIConstants.DRAWER_ANIMATION_OPEN_DURATION
-        : UIConstants.DRAWER_ANIMATION_CLOSE_DURATION,
-      useNativeDriver: true,
-    }).start();
+    if (isVisible) {
+      Animated.timing(slideAnim, {
+        toValue: UIConstants.DRAWER_ANIMATION_VISIBLE_OFFSET,
+        duration: UIConstants.DRAWER_ANIMATION_OPEN_DURATION,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: UIConstants.DRAWER_ANIMATION_HIDDEN_OFFSET,
+        duration: UIConstants.DRAWER_ANIMATION_CLOSE_DURATION,
+        useNativeDriver: true,
+      }).start();
+    }
   }, [isVisible, slideAnim]);
 
   const handleMenuItemPress = (route: string, label: string) => {
