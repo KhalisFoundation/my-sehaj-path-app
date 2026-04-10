@@ -1,18 +1,22 @@
 import React, { useEffect, useRef } from 'react';
-import { View, TouchableOpacity, Text, Animated, Modal, Pressable, Linking } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  Animated,
+  Modal,
+  Pressable,
+  Linking,
+  StyleSheet,
+} from 'react-native';
 import { BlurView } from '@react-native-community/blur';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { Constants, KHALIS_FOUNDATION_DONATE_URL } from '@constants';
 import { DrawerMenuStyles } from '@styles';
-import { 
-  ProgressIcon,
-  StreakIcon,
-  GoToAngIcon,
-  AllPathLogoIcon,
-  KhalisIcon
-} from '@icons';
+import { KhalisIcon } from '@icons';
 import { trackEvent } from '@utils';
-import { SaveIconMenu } from '@icons/SaveIconMenu.icon';
-import { SettingsMenu } from '@icons/SettingsMenu.icon';
 import { DonationIcon } from '@icons/Donation.icon';
+import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
 
 interface DrawerMenuProps {
   isVisible: boolean;
@@ -25,40 +29,24 @@ interface DrawerMenuProps {
   onSavePress?: () => void;
 }
 
-interface MenuItem {
-  id: string;
-  label: string;
-  icon: React.ReactNode;
-  route: string;
-  showOnHome?: boolean;
-}
-
-const DrawerMenuComponent = ({ 
-  isVisible, 
-  onClose, 
+const DrawerMenuComponent = ({
+  isVisible,
+  onClose,
   onNavigate,
   currentRoute,
   showOnlyHomeItems = false,
   pathId,
   onGoToAngPress,
-  onSavePress
+  onSavePress,
 }: DrawerMenuProps) => {
   const slideAnim = useRef(new Animated.Value(-300)).current;
 
   useEffect(() => {
-    if (isVisible) {
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(slideAnim, {
-        toValue: -300,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    }
+    Animated.timing(slideAnim, {
+      toValue: isVisible ? 0 : -300,
+      duration: isVisible ? 250 : 200,
+      useNativeDriver: true,
+    }).start();
   }, [isVisible, slideAnim]);
 
   const handleMenuItemPress = (route: string, label: string) => {
@@ -78,127 +66,94 @@ const DrawerMenuComponent = ({
     }
   };
 
-  const allMenuItems: MenuItem[] = [
-    {
-      id: 'all-paths',
-      label: 'All Paths',
-      icon: <AllPathLogoIcon />,
-      route: 'Home',
-      showOnHome: true,
-    },
-    {
-      id: 'progress',
-      label: 'Progress',
-      icon: <ProgressIcon />,
-      route: 'Progress',
-      showOnHome: false,
-    },
-    {
-      id: 'streaks',
-      label: 'Streaks',
-      icon: <StreakIcon />,
-      route: 'Streaks',
-      showOnHome: false,
-    },
-    {
-      id: 'go-to-ang',
-      label: 'Go To Ang',
-      icon: <GoToAngIcon />,
-      route: 'GoToAng',
-      showOnHome: false,
-    },
-    {
-      id: 'save',
-      label: 'Save',
-      icon: <SaveIconMenu />,
-      route: 'Save',
-      showOnHome: false,
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: <SettingsMenu />,
-      route: 'Setting',
-      showOnHome: true,
-    },
-    // Required only when the khalis SSO will be implemented in near future
-    // {
-    //   id: 'login',
-    //   label: 'Login',
-    //   icon: <LoginIcon />,
-    //   route: 'Login',
-    //   showOnHome: true,
-    // },
-  ];
-
-  const menuItems = showOnlyHomeItems 
-    ? allMenuItems.filter(item => item.showOnHome)
-    : allMenuItems;
+  const menuItems = showOnlyHomeItems
+    ? DRAWER_MENU_ITEMS.filter((item) => item.showOnHome)
+    : DRAWER_MENU_ITEMS;
 
   return (
     <Modal
       visible={isVisible}
       transparent
       animationType="none"
+      presentationStyle="overFullScreen"
+      statusBarTranslucent
       onRequestClose={onClose}
     >
-      <BlurView
-        style={DrawerMenuStyles.overlay}
-        blurType="light"
-        blurAmount={10}
-        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.5)"
-      >
-        <Pressable style={DrawerMenuStyles.overlay} onPress={onClose}>
-        <Animated.View
-          style={[
-            DrawerMenuStyles.drawerContainer,
-            { transform: [{ translateX: slideAnim }] },
-          ]}
-        >
-        <View style={DrawerMenuStyles.header}>
-            <View style={DrawerMenuStyles.logoContainer}>
-            <KhalisIcon />
+      <SafeAreaProvider>
+        <View style={DrawerMenuStyles.modalRoot}>
+          <BlurView
+            blurType="light"
+            blurAmount={2}
+            reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={DrawerMenuStyles.drawerRow}>
+            <View style={DrawerMenuStyles.drawerSlot}>
+              <Animated.View
+                style={[DrawerMenuStyles.drawerPanel, { transform: [{ translateX: slideAnim }] }]}
+              >
+                <SafeAreaView
+                  style={DrawerMenuStyles.drawerSafeArea}
+                  edges={['top', 'left', 'bottom']}
+                >
+                  <View style={DrawerMenuStyles.header}>
+                    <View style={DrawerMenuStyles.logoContainer}>
+                      <KhalisIcon />
+                    </View>
+                    <Text style={DrawerMenuStyles.headerTitle}>{Constants.KHALIS_SEHAJ_PATH}</Text>
+                  </View>
+                  <View style={DrawerMenuStyles.menuItems}>
+                    {menuItems.map((item) => {
+                      const RowIcon = item.Icon;
+                      return (
+                        <TouchableOpacity
+                          key={item.id}
+                          style={DrawerMenuStyles.menuItem}
+                          onPress={() => handleMenuItemPress(item.route, item.label)}
+                          accessibilityLabel={item.label}
+                          accessibilityRole="button"
+                        >
+                          <View style={DrawerMenuStyles.menuItemIcon}>
+                            <RowIcon />
+                          </View>
+                          <Text
+                            style={[
+                              DrawerMenuStyles.menuItemText,
+                              currentRoute === item.route && DrawerMenuStyles.menuItemsHighlight,
+                            ]}
+                          >
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  <View style={DrawerMenuStyles.footer}>
+                    <TouchableOpacity
+                      style={DrawerMenuStyles.donateButton}
+                      onPress={() => {
+                        trackEvent('DonateButton', 'click', 'Donate button pressed');
+                        Linking.openURL(KHALIS_FOUNDATION_DONATE_URL);
+                      }}
+                      accessibilityLabel={Constants.DONATE}
+                      accessibilityRole="button"
+                    >
+                      <DonationIcon />
+                      <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </SafeAreaView>
+              </Animated.View>
             </View>
-            <Text style={DrawerMenuStyles.headerTitle}>Khalis Sehaj Path</Text>
+            <Pressable
+              style={DrawerMenuStyles.backdropPressable}
+              onPress={onClose}
+              accessibilityLabel={Constants.CLOSE_MENU}
+              accessibilityRole="button"
+            />
+          </View>
         </View>
-          <Pressable>
-
-            <View style={DrawerMenuStyles.menuItems}>
-              {menuItems.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={DrawerMenuStyles.menuItem}
-                  onPress={() => handleMenuItemPress(item.route, item.label)}
-                  accessibilityLabel={item.label}
-                  accessibilityRole="button"
-                >
-                  <View style={DrawerMenuStyles.menuItemIcon}>{item.icon}</View>
-                  <Text style={[
-                    DrawerMenuStyles.menuItemText,
-                    (currentRoute === item.route) && DrawerMenuStyles.menuItemsHighlight,
-                  ]}>{item.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-              <View style={DrawerMenuStyles.footer}>
-                <TouchableOpacity
-                  style={DrawerMenuStyles.donateButton}
-                  onPress={() => {
-                    trackEvent('DonateButton', 'click', 'Donate button pressed');
-                    Linking.openURL('https://khalisfoundation.org/donate/');
-                  }}
-                  accessibilityLabel="Donate"
-                  accessibilityRole="button"
-                >
-                  <DonationIcon />
-                  <Text style={DrawerMenuStyles.donateText}>Donate</Text>
-                </TouchableOpacity>
-              </View>
-
-          </Pressable>
-        </Animated.View>
-        </Pressable>
-      </BlurView>
+      </SafeAreaProvider>
     </Modal>
   );
 };

@@ -2,15 +2,31 @@ import { StyleSheet } from 'react-native';
 import { UIConstants } from '@constants/UIConstants';
 
 export const DrawerMenuStyles = StyleSheet.create({
-  overlay: {
+  modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
   },
-  drawerContainer: {
+  backdropPressable: {
+    flex: 1,
+  },
+  drawerRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  drawerSlot: {
     width: 280,
-    height: '100%',
-    backgroundColor: '#F5F5F5',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+  },
+  drawerSafeArea: {
+    flex: 1,
+  },
+  drawerPanel: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 280,
+    backgroundColor: UIConstants.DRAWER_PANEL_BACKGROUND,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
@@ -20,7 +36,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#11336A',
+    backgroundColor: UIConstants.DRAWER_HEADER_BACKGROUND,
     paddingHorizontal: UIConstants.RHYTHM * 2,
     paddingVertical: UIConstants.RHYTHM * 1.2,
     gap: UIConstants.RHYTHM * 1.5,
@@ -29,14 +45,14 @@ export const DrawerMenuStyles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 8,
-    backgroundColor: '#FFFFFF20',
+    backgroundColor: UIConstants.DRAWER_LOGO_TILE_BACKGROUND,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: UIConstants.DRAWER_HEADER_TITLE_COLOR,
   },
   menuItems: {
     paddingTop: UIConstants.RHYTHM,
@@ -59,7 +75,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 15,
-    color: '#2C3E50',
+    color: UIConstants.DRAWER_MENU_ITEM_COLOR,
     fontWeight: '400',
   },
   footer: {
@@ -75,11 +91,11 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   donateIcon: {
     fontSize: 20,
-    color: '#F39C12',
+    color: UIConstants.DRAWER_DONATE_ACCENT,
   },
   donateText: {
     fontSize: 15,
-    color: '#F39C12',
+    color: UIConstants.DRAWER_DONATE_ACCENT,
     fontWeight: '500',
   },
 });

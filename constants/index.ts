@@ -9,6 +9,6 @@ export { AngsFormatArray } from './Angs';
 export { VishraamsSourceArray, VishraamsSourceLabels } from './VishraamsSource';
 export { VishraamsTheme } from './VishraamsTheme';
 export type { VishraamsColorConfig } from './VishraamsTheme';
-export { BANIDB_API } from './API';
+export { BANIDB_API, KHALIS_FOUNDATION_DONATE_URL } from './API';
 export { Routes } from './Routes';
 export { EDGES_ALL_SIDES } from './UIConstants';
