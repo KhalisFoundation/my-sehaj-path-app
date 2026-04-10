@@ -4,7 +4,15 @@ import { View, ImageBackground, ScrollView, BackHandler, TouchableOpacity } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label, DrawerMenu } from '@components';
+import {
+  Headline,
+  Slider,
+  PrimaryButton,
+  PrimaryCard,
+  SecondaryCard,
+  Label,
+  DrawerMenu,
+} from '@components';
 import { PathData, useLocal, useScreenAnalytics, useDrawerNavigation } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
@@ -23,11 +31,10 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const isLoadingRef = useRef(false);
   useScreenAnalytics('HomeScreen', 'HomeScreen');
   const { pathInProgress, pathCompleted } = useMemo(() => {
-    const completed = pathDataArrayFromLocal.filter(
-      (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
-    );
+    // Keep "completed" strict: both completionDate and final checkpoint must match.
+    const completed = pathDataArrayFromLocal.filter((path: PathData) => path.completionDate !== '');
     const inProgress = pathDataArrayFromLocal.filter(
-      (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
+      (path: PathData) => path.completionDate === ''
     );
     return { pathInProgress: inProgress, pathCompleted: completed };
   }, [pathDataArrayFromLocal]);

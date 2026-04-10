@@ -5,6 +5,7 @@ import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { trackEvent } from '@utils/analytics';
+import { PATH_DATA } from '@constants';
 import type { Verse, PathContent } from '@hooks';
 
 interface PathReaderProps {
@@ -28,7 +29,7 @@ interface PathReaderProps {
     verseId: number,
     scrollPosition: number,
     setIsSaved: (value: boolean) => void
-  ) => void;
+  ) => Promise<boolean>;
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
   pathId: number;
@@ -40,8 +41,11 @@ interface PathReaderProps {
   isVishraam: boolean;
   vishraamsSource: string;
   vishraamsStyle: string;
+  onSaveCommit?: (angNumber: number, verseId: number) => void;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
+  scrolledToSavedPath: React.MutableRefObject<boolean>;
+  onScrollEndDrag?: (scrollY: number) => void;
 }
 
 const PathReaderComponent = ({
@@ -71,8 +75,11 @@ const PathReaderComponent = ({
   isVishraam,
   vishraamsSource,
   vishraamsStyle,
+  onSaveCommit,
   setCenterVerseId,
   scrollToVerseId,
+  scrolledToSavedPath,
+  onScrollEndDrag,
 }: PathReaderProps) => {
   const viewportHeight = useRef<number>(0);
   const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
@@ -92,49 +99,53 @@ const PathReaderComponent = ({
     handleLeftArrow(pathContent?.source?.pageNo);
   }, [handleLeftArrow, pathContent?.source?.pageNo]);
 
-  const findCenterVerseId = useCallback((scrollY: number) => {
-    if (!setCenterVerseId) return;
-    
-    // Wait for verses to be measured
-    if (versePositions.current.size === 0) {
-      return;
-    }
-
-    const centerY = scrollY + viewportHeight.current / 2;
-    let closestVerseId: number | null = null;
-    let minDistance = Infinity;
-
-    versePositions.current.forEach((position, verseId) => {
-      const verseCenter = position.y + position.height / 2;
-      const distance = Math.abs(verseCenter - centerY);
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestVerseId = verseId;
+  const findCenterVerseId = useCallback(
+    (scrollY: number) => {
+      if (!setCenterVerseId) {
+        return;
       }
-    });
 
-    if (closestVerseId !== null) {
-      setCenterVerseId(closestVerseId);
-    }
-  }, [setCenterVerseId]);
+      // Wait for verses to be measured
+      if (versePositions.current.size === 0) {
+        return;
+      }
 
+      const centerY = scrollY + viewportHeight.current / 2;
+      let closestVerseId: number | null = null;
+      let minDistance = Infinity;
+
+      versePositions.current.forEach((position, verseId) => {
+        const verseCenter = position.y + position.height / 2;
+        const distance = Math.abs(verseCenter - centerY);
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestVerseId = verseId;
+        }
+      });
+
+      if (closestVerseId !== null) {
+        setCenterVerseId(closestVerseId);
+      }
+    },
+    [setCenterVerseId]
+  );
 
   const handleScroll = useCallback(
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
-      
+
       // Clear existing timer
       if (scrollEndTimer.current) {
         clearTimeout(scrollEndTimer.current);
       }
-      
+
       // Set new timer to detect when scrolling stops
       scrollEndTimer.current = setTimeout(() => {
         findCenterVerseId(scrollY);
       }, 150); // Wait 150ms after scrolling stops
-      
+
       if (!isAngNavigation) {
         debouncedScrollSave();
       }
@@ -142,7 +153,6 @@ const PathReaderComponent = ({
     [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
   );
 
-  
   const gestureConfig = useMemo(
     () => ({
       velocityThreshold: 0.8,
@@ -163,14 +173,17 @@ const PathReaderComponent = ({
   );
 
   const createSaveHandler = useCallback(
-    (verseId: number) => () => {
-      handleUpdatePathWithErrorHandling(
+    (verseId: number) => async () => {
+      const saved = await handleUpdatePathWithErrorHandling(
         pathId,
         pathContent?.source?.pageNo,
         verseId,
         scrollOffset.current,
         setIsSaved
       );
+      if (saved && onSaveCommit) {
+        onSaveCommit(pathContent?.source?.pageNo ?? 0, verseId);
+      }
     },
     [
       pathId,
@@ -178,6 +191,7 @@ const PathReaderComponent = ({
       scrollOffset,
       handleUpdatePathWithErrorHandling,
       setIsSaved,
+      onSaveCommit,
     ]
   );
 
@@ -185,14 +199,19 @@ const PathReaderComponent = ({
     (verseId: number) => (event: any) => {
       const { y, height } = event.nativeEvent.layout;
       versePositions.current.set(verseId, { y, height });
-      
+
       // If we're waiting to scroll to this verse, do it now
-      if (scrollToVerseId === verseId && !hasScrolledToVerse.current && scrollRef.current && viewportHeight.current > 0) {
+      if (
+        scrollToVerseId === verseId &&
+        !hasScrolledToVerse.current &&
+        scrollRef.current &&
+        viewportHeight.current > 0
+      ) {
         const verseY = y;
         const verseCenterY = verseY + height / 2;
         const screenCenterY = viewportHeight.current / 2;
         const targetScroll = Math.max(0, verseCenterY - screenCenterY);
-        
+
         // Scroll immediately without delay to prevent verse from jumping
         if (scrollRef.current) {
           scrollRef.current.scrollTo({
@@ -230,8 +249,10 @@ const PathReaderComponent = ({
   }, [scrollToVerseId]);
 
   const shabadsWithIndices = useMemo(() => {
-    if (!pathContent?.page) return [];
-  
+    if (!pathContent?.page) {
+      return [];
+    }
+
     const versesByShabadId = pathContent.page.reduce(
       (groupedVerses: Record<number, Verse[]>, verse: Verse) => {
         if (!groupedVerses[verse.shabadId]) {
@@ -250,10 +271,9 @@ const PathReaderComponent = ({
       return shabad;
     });
   }, [pathContent?.page]);
-  
 
   const pageContent = useMemo(() => {
-    if(isParagraphMode){
+    if (isParagraphMode) {
       return (
         <View>
           {shabadsWithIndices.map((shabad, shabadIndex) => (
@@ -265,14 +285,12 @@ const PathReaderComponent = ({
               }}
             >
               {shabad.verses.map((verse: Verse, verseIndex: number) => {
-                const gurbaniLine = isLarivaar
-                  ? verse.larivaar.unicode
-                  : verse.verse.unicode;
+                const gurbaniLine = isLarivaar ? verse.larivaar.unicode : verse.verse.unicode;
                 const vishraam = verse.visraam;
                 const originalVerse = verse.verse.unicode;
 
                 const globalIndex = shabad.startIndex + verseIndex + 1;
-    
+
                 return (
                   <ParagraphTextForPath
                     key={`${verse.verseId}-${verseIndex}`}
@@ -303,7 +321,7 @@ const PathReaderComponent = ({
             </Text>
           ))}
         </View>
-      ); 
+      );
     }
     return pathContent?.page?.map((path: Verse, index: number) => {
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
@@ -376,6 +394,16 @@ const PathReaderComponent = ({
         nestedScrollEnabled={false}
         keyboardShouldPersistTaps="handled"
         onScroll={handleScroll}
+        onScrollBeginDrag={() => {
+          scrolledToSavedPath.current = true;
+          setFound(false);
+        }}
+        onScrollEndDrag={() => {
+          onScrollEndDrag?.(scrollOffset.current);
+        }}
+        onMomentumScrollEnd={() => {
+          onScrollEndDrag?.(scrollOffset.current);
+        }}
         scrollEventThrottle={16}
         decelerationRate="fast"
         onStartShouldSetResponder={() => false}
@@ -386,7 +414,7 @@ const PathReaderComponent = ({
         }}
       >
         {pageContent}
-        {pathContent?.source?.pageNo < 1430 && !isNavigating && (
+        {pathContent?.source?.pageNo < PATH_DATA.LAST_ANG_NUMBER && !isNavigating && (
           <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
         )}
       </ScrollView>

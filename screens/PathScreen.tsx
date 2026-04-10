@@ -28,7 +28,7 @@ import {
 } from '@components';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
-import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES } from '@constants';
+import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
 
@@ -38,6 +38,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isSaved, setIsSaved] = useState<boolean>(false);
   const [savedPathVerseId, setSavedPathVerseId] = useState<number>(0);
+  const [savedAngNumber, setSavedAngNumber] = useState<number>(0);
   const [centerVerseId, setCenterVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
   const [found, setFound] = useState<boolean>(false);
@@ -45,7 +46,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isParagraphMode, setIsParagraphMode] = useState<boolean>(false);
   const [isVishraam, setIsVishraam] = useState<boolean>(false);
   const [vishraamsSource, setVishraamsSource] = useState<string>(Constants.DEFAULT_VISHRAAM_SOURCE);
-  const [vishraamsStyle, setVishraamsStyle] = useState<string>('colored-words');
+  const [vishraamsStyle] = useState<string>('colored-words');
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
@@ -71,6 +72,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const previousFontSize = useRef<number>(18);
   const previousParagraphMode = useRef<boolean>(false);
   const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
+  const completionUndoPendingRef = useRef<boolean>(false);
+  // Baseline scroll Y captured when completion guard starts; used to measure
+  // upward movement and undo completion only after user scrolls up > 200px.
+  const completionUndoStartScrollYRef = useRef<number | null>(null);
 
   const pathPujabiAng = useMemo(
     () =>
@@ -87,6 +92,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFromLocal,
     handleUpdatePathWithErrorHandling,
     handleUpdatePath,
+    clearPathCompletionAndSavedVerse,
     fetchLarivaar,
     fetchFontSize,
     fetchAngsFormat,
@@ -145,6 +151,59 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFromBaniDB,
   });
 
+  const resetCompletionViewState = useCallback(
+    (angNumber?: number) => {
+      if (matchedPath.current) {
+        matchedPath.current.completionDate = '';
+        matchedPath.current.saveData = {
+          angNumber: angNumber ?? matchedPath.current.saveData.angNumber,
+          verseId: 0,
+        };
+      }
+      if (matchedPathDate.current) {
+        matchedPathDate.current.scrollPosition = scrollOffset.current;
+      }
+      setSavedPathVerseId(0);
+      setCenterVerseId(0);
+      setPressIndex(0);
+      setIsSaved(false);
+      completionUndoStartScrollYRef.current = null;
+    },
+    [scrollOffset]
+  );
+
+  const undoCompletion = useCallback(
+    async (angNumber: number) => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+        debounceTimer.current = null;
+      }
+      await clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current, angNumber);
+      resetCompletionViewState(angNumber);
+      completionUndoPendingRef.current = true;
+      setSavedAngNumber(angNumber);
+    },
+    [clearPathCompletionAndSavedVerse, resetCompletionViewState, route.params.pathId]
+  );
+
+  const commitSavedPathState = useCallback((angNumber: number, verseId: number) => {
+    if (!matchedPath.current) {
+      return;
+    }
+    matchedPath.current.saveData = { angNumber, verseId };
+    matchedPath.current.completionDate =
+      angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID
+        ? matchedPath.current.completionDate || new Date().toISOString()
+        : '';
+    setSavedAngNumber(angNumber);
+    setSavedPathVerseId(verseId);
+    completionUndoPendingRef.current =
+      angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID;
+    if (completionUndoPendingRef.current) {
+      completionUndoStartScrollYRef.current = scrollOffset.current;
+    }
+  }, []);
+
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
@@ -156,27 +215,68 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       useNativeDriver: true,
     }).start(() => {
       try {
-        // Use savedPathVerseId if manually selected (long-press), otherwise use centerVerseId
-        // If both are 0, don't save (no verse has been identified yet)
-        const verseIdToSave = savedPathVerseId !== 0 ? savedPathVerseId : centerVerseId;
-        
-        if (verseIdToSave !== 0) {
+        if (completionUndoPendingRef.current) {
+          const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
           handleUpdatePath(
             route.params.pathId,
             pathAng,
-            verseIdToSave,
+            verseIdToKeep,
             scrollOffset.current,
-            () => {
-              setIsSaved(false);
-            }
+            setIsSaved
           );
+          return;
         }
+
+        handleUpdatePath(
+          route.params.pathId,
+          pathAng,
+          savedPathVerseId,
+          scrollOffset.current,
+          () => {
+            setIsSaved(false);
+            commitSavedPathState(pathAng, savedPathVerseId);
+          }
+        );
       } catch (error) {
         // Silently handle error to prevent infinite loop in debounced function
         // Error is already handled at the UI level where user initiated the action
       }
     });
-  }, [handleUpdatePath, route.params.pathId, pathAng, savedPathVerseId, centerVerseId]);
+  }, [
+    handleUpdatePath,
+    clearPathCompletionAndSavedVerse,
+    route.params.pathId,
+    pathAng,
+    savedPathVerseId,
+    commitSavedPathState,
+  ]);
+
+  const handleScrollEnd = useCallback(
+    async (scrollY: number) => {
+      // Any manual scroll means we're no longer in initial auto-resume mode.
+      scrolledToSavedPath.current = true;
+      setFound(false);
+      if (
+        !completionUndoPendingRef.current ||
+        pathAng !== PATH_DATA.LAST_ANG_NUMBER ||
+        completionUndoStartScrollYRef.current === null
+      ) {
+        return;
+      }
+
+      const upwardDelta = completionUndoStartScrollYRef.current - scrollY;
+      if (upwardDelta < 200) {
+        return;
+      }
+
+      try {
+        await undoCompletion(PATH_DATA.LAST_ANG_NUMBER);
+      } catch (error) {
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      }
+    },
+    [pathAng, undoCompletion]
+  );
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
     matchedPathDate: matchedPathDate.current,
@@ -198,6 +298,11 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setIsSaved(false);
     setPressIndex(0);
     setFound(false);
+    setSavedAngNumber(angNumber);
+    if (angNumber !== PATH_DATA.LAST_ANG_NUMBER) {
+      completionUndoPendingRef.current = false;
+      completionUndoStartScrollYRef.current = null;
+    }
   }, []);
 
   const { handleGoBack } = usePathNavigation({
@@ -241,8 +346,11 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         if (matchedPathData) {
           matchedPath.current = matchedPathData;
           matchedPathDate.current = matchedPathDateData;
+          completionUndoPendingRef.current = false;
+          completionUndoStartScrollYRef.current = null;
           const pathAngData =
             matchedPathData.saveData.angNumber === 0 ? 1 : matchedPathData.saveData.angNumber;
+          setSavedAngNumber(pathAngData);
           setSavedPathVerseId(matchedPathData.saveData.verseId);
           setCenterVerseId(matchedPathData.saveData.verseId);
           setPathAng(pathAngData);
@@ -256,6 +364,48 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     };
     fetchPath();
   }, [route.params.pathId]);
+
+  useEffect(() => {
+    if (!matchedPath.current) {
+      return;
+    }
+
+    if (pathAng === savedAngNumber) {
+      setSavedPathVerseId(matchedPath.current.saveData.verseId);
+    } else {
+      setSavedPathVerseId(0);
+    }
+  }, [pathAng, savedAngNumber]);
+
+  useEffect(() => {
+    const clearCompletionAfterLeavingLastAng = async () => {
+      if (!matchedPath.current) {
+        return;
+      }
+
+      if (pathAng === PATH_DATA.LAST_ANG_NUMBER) {
+        return;
+      }
+
+      completionUndoPendingRef.current = false;
+      completionUndoStartScrollYRef.current = null;
+
+      if (matchedPath.current.completionDate === '') {
+        return;
+      }
+
+      try {
+        await clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current);
+        resetCompletionViewState();
+        completionUndoPendingRef.current = false;
+        completionUndoStartScrollYRef.current = null;
+      } catch (error) {
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      }
+    };
+
+    clearCompletionAfterLeavingLastAng();
+  }, [pathAng, resetCompletionViewState]);
 
   useEffect(() => {
     if (isSaved || found) {
@@ -311,13 +461,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     useCallback(() => {
       const fetchData = async () => {
         try {
-          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData] = await Promise.all([
-            fetchLarivaar(), 
-            fetchAngsFormat(), 
-            fetchParagraphMode(), 
-            fetchVishraam(),
-            fetchVishraamsSource(),
-          ]);
+          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData] =
+            await Promise.all([
+              fetchLarivaar(),
+              fetchAngsFormat(),
+              fetchParagraphMode(),
+              fetchVishraam(),
+              fetchVishraamsSource(),
+            ]);
           setIsLarivaar(larivaar || false);
           setAngsFormat(format);
           setIsParagraphMode(paragraphMode || false);
@@ -331,7 +482,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         }
       };
       fetchData();
-    }, [fetchLarivaar, fetchAngsFormat, fetchParagraphMode, fetchVishraam, fetchVishraamsSource, pathAng])
+    }, [
+      fetchLarivaar,
+      fetchAngsFormat,
+      fetchParagraphMode,
+      fetchVishraam,
+      fetchVishraamsSource,
+      pathAng,
+    ])
   );
   useFocusEffect(
     useCallback(() => {
@@ -352,17 +510,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   useEffect(() => {
     const fontSizeChanged = fontSize !== previousFontSize.current;
     const paragraphModeChanged = isParagraphMode !== previousParagraphMode.current;
-    
+
     if ((fontSizeChanged || paragraphModeChanged) && pathContent?.page && centerVerseId !== 0) {
-      const oldFontSize = previousFontSize.current;
       previousFontSize.current = fontSize;
       previousParagraphMode.current = isParagraphMode;
-      
+
       // Calculate the verse index to know how much content is above
-      const verseIndex = pathContent.page.findIndex(
-        (page: any) => page.verseId === centerVerseId
-      );
-      
+      const verseIndex = pathContent.page.findIndex((page: any) => page.verseId === centerVerseId);
+
       if (verseIndex !== -1 && scrollRef.current) {
         // Wait for layout to complete with new font size, then scroll to the verse
         setTimeout(() => {
@@ -447,8 +602,11 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           isVishraam={isVishraam}
           vishraamsSource={vishraamsSource}
           vishraamsStyle={vishraamsStyle}
+          onSaveCommit={commitSavedPathState}
           setCenterVerseId={setCenterVerseId}
           scrollToVerseId={scrollToVerseId}
+          scrolledToSavedPath={scrolledToSavedPath}
+          onScrollEndDrag={handleScrollEnd}
         />
         {alertIndicator.current !== undefined ? (
           <Loading

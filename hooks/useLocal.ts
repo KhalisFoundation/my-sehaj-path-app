@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MonthConstant, ErrorConstants, Constants } from '@constants';
+import { MonthConstant, ErrorConstants, PATH_DATA, Constants } from '@constants';
 import { trackEvent, showErrorAlert } from '@utils';
+import { isPathCompleted } from '@utils/isPathCompleted';
 
 export interface PathData {
   pathId: number;
@@ -137,9 +138,9 @@ export const useLocal = () => {
     const updatedPathDate = pathDateDataArray.filter((path) => path.pathid !== pathId);
     if (matchedPath && matchedDate) {
       const cleanMatchedPathDates = matchedDate.dates.filter((dates) => dates.date !== todayDate);
-
       matchedPath.saveData = { angNumber, verseId };
-      matchedPath.progress = (angNumber / 1430) * 100;
+
+      matchedPath.progress = (angNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
 
       const updatedDates = [
         ...cleanMatchedPathDates,
@@ -154,10 +155,14 @@ export const useLocal = () => {
         scrollPosition: scrollPosition,
       });
 
-      if (angNumber === 1430 && verseId === 60403) {
-        trackEvent('PathCompleted', 'completed', `path completed`);
+      // Completion is authoritative only when the exact final ang + final verse is saved.
+      if (isPathCompleted(angNumber, verseId)) {
         matchedPath.completionDate = todayDate;
+        trackEvent('PathCompleted', 'completed', `path completed`);
+      } else {
+        matchedPath.completionDate = '';
       }
+
       await Promise.all([
         AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray)),
         AsyncStorage.setItem('pathDateDetails', JSON.stringify(updatedPathDate)),
@@ -174,14 +179,46 @@ export const useLocal = () => {
     verseId: number,
     scrollPosition: number,
     setIsSaved: (value: boolean) => void
-  ) => {
+  ): Promise<boolean> => {
     try {
       await handleUpdatePath(pathId, angNumber, verseId, scrollPosition, setIsSaved);
+      return true;
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      return false;
     }
   };
+  const clearPathCompletionAndSavedVerse = async (
+    pathId: number,
+    scrollPosition?: number,
+    angNumber?: number
+  ) => {
+    const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
+    const matchedPath = pathDataArray.find((path) => path.pathId === pathId);
+    const matchedPathDate = pathDateDataArray.find((pathDate) => pathDate.pathid === pathId);
 
+    if (matchedPath) {
+      // Undo completion and clear verse selection, while keeping current ang context.
+      matchedPath.completionDate = '';
+      matchedPath.saveData = {
+        angNumber: angNumber ?? matchedPath.saveData.angNumber,
+        verseId: 0,
+      };
+
+      // `scrollPosition` is ScrollView `contentOffset.y` (type: number, unit: vertical pixels).
+      if (matchedPathDate && scrollPosition !== undefined) {
+        matchedPathDate.scrollPosition = scrollPosition;
+      }
+
+      await Promise.all([
+        AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray)),
+        AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray)),
+      ]);
+      return true;
+    }
+
+    throw new Error(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+  };
   const renamePath = async (pathId: number, pathName: string) => {
     try {
       const { pathDataArray } = await fetchFromLocal();
@@ -340,6 +377,7 @@ export const useLocal = () => {
     saveConsent,
     fetchConsent,
     handleUpdatePathWithErrorHandling,
+    clearPathCompletionAndSavedVerse,
     saveParagraphMode,
     fetchParagraphMode,
     saveVishraam,
