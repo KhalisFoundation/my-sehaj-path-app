@@ -44,12 +44,16 @@ const DrawerMenuComponent = ({
   onGoToAngPress,
   onSavePress,
 }: DrawerMenuProps) => {
-  const slideAnim = useRef(new Animated.Value(-300)).current;
+  const slideAnim = useRef(new Animated.Value(UIConstants.DRAWER_ANIMATION_HIDDEN_OFFSET)).current;
 
   useEffect(() => {
     Animated.timing(slideAnim, {
-      toValue: isVisible ? 0 : -300,
-      duration: isVisible ? 250 : 200,
+      toValue: isVisible
+        ? UIConstants.DRAWER_ANIMATION_VISIBLE_OFFSET
+        : UIConstants.DRAWER_ANIMATION_HIDDEN_OFFSET,
+      duration: isVisible
+        ? UIConstants.DRAWER_ANIMATION_OPEN_DURATION
+        : UIConstants.DRAWER_ANIMATION_CLOSE_DURATION,
       useNativeDriver: true,
     }).start();
   }, [isVisible, slideAnim]);
