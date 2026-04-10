@@ -11,7 +11,12 @@ import {
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Constants, KHALIS_FOUNDATION_DONATE_URL } from '@constants';
+import {
+  Constants,
+  EDGES_DRAWER_MENU,
+  KHALIS_FOUNDATION_DONATE_URL,
+  UIConstants,
+} from '@constants';
 import { DrawerMenuStyles } from '@styles';
 import { KhalisIcon } from '@icons';
 import { trackEvent } from '@utils';
@@ -84,7 +89,7 @@ const DrawerMenuComponent = ({
           <BlurView
             blurType="light"
             blurAmount={2}
-            reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
+            reducedTransparencyFallbackColor={UIConstants.DRAWER_REDUCED_TRANSPARENCY_FALLBACK}
             style={StyleSheet.absoluteFillObject}
           />
           <View style={DrawerMenuStyles.drawerRow}>
@@ -92,10 +97,7 @@ const DrawerMenuComponent = ({
               <Animated.View
                 style={[DrawerMenuStyles.drawerPanel, { transform: [{ translateX: slideAnim }] }]}
               >
-                <SafeAreaView
-                  style={DrawerMenuStyles.drawerSafeArea}
-                  edges={['top', 'left', 'bottom']}
-                >
+                <SafeAreaView style={DrawerMenuStyles.drawerSafeArea} edges={EDGES_DRAWER_MENU}>
                   <View style={DrawerMenuStyles.header}>
                     <View style={DrawerMenuStyles.logoContainer}>
                       <KhalisIcon />

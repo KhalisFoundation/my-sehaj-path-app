@@ -11,4 +11,4 @@ export { VishraamsTheme } from './VishraamsTheme';
 export type { VishraamsColorConfig } from './VishraamsTheme';
 export { BANIDB_API, KHALIS_FOUNDATION_DONATE_URL } from './API';
 export { Routes } from './Routes';
-export { EDGES_ALL_SIDES } from './UIConstants';
+export { EDGES_ALL_SIDES, EDGES_DRAWER_MENU } from './UIConstants';
