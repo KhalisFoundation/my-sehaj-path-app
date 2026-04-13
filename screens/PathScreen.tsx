@@ -186,28 +186,45 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [clearPathCompletionAndSavedVerse, resetCompletionViewState, route.params.pathId]
   );
 
-  const commitSavedPathState = useCallback((angNumber: number, verseId: number) => {
-    if (!matchedPath.current) {
-      return;
-    }
-    matchedPath.current.saveData = { angNumber, verseId };
-    matchedPath.current.completionDate =
-      angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID
-        ? matchedPath.current.completionDate || new Date().toISOString()
-        : '';
-    setSavedAngNumber(angNumber);
-    setSavedPathVerseId(verseId);
-    completionUndoPendingRef.current =
-      angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID;
-    if (completionUndoPendingRef.current) {
-      completionUndoStartScrollYRef.current = scrollOffset.current;
-    }
-  }, []);
+  const commitSavedPathState = useCallback(
+    (
+      angNumber: number,
+      verseId: number,
+      scrollPosition = scrollOffset.current,
+      clearAngNavigation = false
+    ) => {
+      if (!matchedPath.current) {
+        return;
+      }
+      matchedPath.current.saveData = { angNumber, verseId };
+      matchedPath.current.completionDate =
+        angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID
+          ? matchedPath.current.completionDate || new Date().toISOString()
+          : '';
+      setSavedAngNumber(angNumber);
+      setSavedPathVerseId(verseId);
+      completionUndoPendingRef.current =
+        angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID;
+      if (completionUndoPendingRef.current) {
+        completionUndoStartScrollYRef.current = scrollPosition;
+      }
+      if (matchedPathDate.current) {
+        matchedPathDate.current.scrollPosition = scrollPosition;
+      }
+      if (clearAngNavigation) {
+        setIsAngNavigation(false);
+      }
+    },
+    [scrollOffset, setIsAngNavigation]
+  );
 
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
+    const currentPathAng = pathAng;
+    const currentScrollPosition = scrollOffset.current;
+    const verseForScroll = matchedPath.current?.saveData.verseId || savedPathVerseId;
     debounceAnimValueRef.current.setValue(0);
     debounceTimer.current = Animated.timing(debounceAnimValueRef.current, {
       toValue: 1,
@@ -219,9 +236,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
           handleUpdatePath(
             route.params.pathId,
-            pathAng,
+            currentPathAng,
             verseIdToKeep,
-            scrollOffset.current,
+            currentScrollPosition,
             setIsSaved
           );
           return;
@@ -229,12 +246,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
         handleUpdatePath(
           route.params.pathId,
-          pathAng,
-          savedPathVerseId,
-          scrollOffset.current,
+          currentPathAng,
+          verseForScroll,
+          currentScrollPosition,
           () => {
             setIsSaved(false);
-            commitSavedPathState(pathAng, savedPathVerseId);
+            commitSavedPathState(currentPathAng, verseForScroll, currentScrollPosition);
           }
         );
       } catch (error) {
@@ -248,6 +265,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     route.params.pathId,
     pathAng,
     savedPathVerseId,
+    centerVerseId,
     commitSavedPathState,
   ]);
 

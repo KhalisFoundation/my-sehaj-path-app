@@ -41,7 +41,12 @@ interface PathReaderProps {
   isVishraam: boolean;
   vishraamsSource: string;
   vishraamsStyle: string;
-  onSaveCommit?: (angNumber: number, verseId: number) => void;
+  onSaveCommit?: (
+    angNumber: number,
+    verseId: number,
+    scrollPosition?: number,
+    clearAngNavigation?: boolean
+  ) => void;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
   scrolledToSavedPath: React.MutableRefObject<boolean>;
@@ -182,7 +187,7 @@ const PathReaderComponent = ({
         setIsSaved
       );
       if (saved && onSaveCommit) {
-        onSaveCommit(pathContent?.source?.pageNo ?? 0, verseId);
+        onSaveCommit(pathContent?.source?.pageNo ?? 0, verseId, scrollOffset.current, true);
       }
     },
     [
