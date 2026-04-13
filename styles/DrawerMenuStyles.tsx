@@ -2,14 +2,30 @@ import { StyleSheet } from 'react-native';
 import { UIConstants } from '@constants/UIConstants';
 
 export const DrawerMenuStyles = StyleSheet.create({
-  overlay: {
+  modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-start',
   },
-  drawerContainer: {
+  backdropPressable: {
+    flex: 1,
+  },
+  drawerRow: {
+    flex: 1,
+    flexDirection: 'row',
+  },
+  drawerSlot: {
     width: 280,
-    height: '100%',
+    alignSelf: 'stretch',
+    overflow: 'hidden',
+  },
+  drawerSafeArea: {
+    flex: 1,
+  },
+  drawerPanel: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 280,
     backgroundColor: '#F5F5F5',
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 0 },

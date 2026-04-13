@@ -23,6 +23,8 @@ export const UIConstants: UIConstant = {
   SWITCH_THUMB_COLOR_FALSE: 'rgb(142, 142, 142)',
   PADDING: 12,
   RHYTHM: 12,
+  DRAWER_REDUCED_TRANSPARENCY_FALLBACK: 'rgba(0, 0, 0, 0.3)',
 };
 
 export const EDGES_ALL_SIDES = ['top', 'bottom', 'left', 'right'] as const;
+export const EDGES_DRAWER_MENU = ['top', 'left', 'bottom'] as const;
