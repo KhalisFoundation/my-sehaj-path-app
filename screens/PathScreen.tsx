@@ -144,7 +144,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     isNavigating,
     setIsNavigating,
     setIsSaving,
-    setIsAngNavigation,
     scrollOffset,
     scrollRef,
     setPathAng,
@@ -187,23 +186,29 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [clearPathCompletionAndSavedVerse, resetCompletionViewState, route.params.pathId]
   );
 
-  const commitSavedPathState = useCallback((angNumber: number, verseId: number) => {
-    if (!matchedPath.current) {
-      return;
-    }
-    matchedPath.current.saveData = { angNumber, verseId };
-    matchedPath.current.completionDate =
-      angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID
-        ? matchedPath.current.completionDate || new Date().toISOString()
-        : '';
-    setSavedAngNumber(angNumber);
-    setSavedPathVerseId(verseId);
-    completionUndoPendingRef.current =
-      angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID;
-    if (completionUndoPendingRef.current) {
-      completionUndoStartScrollYRef.current = scrollOffset.current;
-    }
-  }, []);
+  const commitSavedPathState = useCallback(
+    (angNumber: number, verseId: number, clearAngNavigation = false) => {
+      if (!matchedPath.current) {
+        return;
+      }
+      matchedPath.current.saveData = { angNumber, verseId };
+      matchedPath.current.completionDate =
+        angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID
+          ? matchedPath.current.completionDate || new Date().toISOString()
+          : '';
+      setSavedAngNumber(angNumber);
+      setSavedPathVerseId(verseId);
+      completionUndoPendingRef.current =
+        angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID;
+      if (completionUndoPendingRef.current) {
+        completionUndoStartScrollYRef.current = scrollOffset.current;
+      }
+      if (clearAngNavigation) {
+        setIsAngNavigation(false);
+      }
+    },
+    [scrollOffset, setIsAngNavigation]
+  );
 
   const debouncedScrollSave = useCallback(() => {
     if (debounceTimer.current) {
