@@ -144,6 +144,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     isNavigating,
     setIsNavigating,
     setIsSaving,
+    setIsAngNavigation,
     scrollOffset,
     scrollRef,
     setPathAng,
