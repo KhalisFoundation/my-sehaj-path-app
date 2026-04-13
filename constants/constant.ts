@@ -43,4 +43,12 @@ export const Constants: Constant = {
   ANALYTICS: 'Collect Analytics',
   FONT_SIZE: 'Font-Size',
   DEFAULT_VISHRAAM_SOURCE: 'sttm',
+  KHALIS_SEHAJ_PATH: 'Khalis Sehaj Path',
+  DONATE: 'Donate',
+  CLOSE_MENU: 'Close menu',
+  ALL_PATHS: 'All Paths',
+  PROGRESS: 'Progress',
+  STREAKS: 'Streaks',
+  GO_TO_ANG: 'Go To Ang',
+  SAVE: 'Save',
 };
