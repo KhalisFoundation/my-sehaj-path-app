@@ -222,9 +222,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     if (debounceTimer.current) {
       clearTimeout(debounceTimer.current);
     }
-    const currentPathAng = pathAng;
-    const currentScrollPosition = scrollOffset.current;
-    const verseForScroll = matchedPath.current?.saveData.verseId || savedPathVerseId;
     debounceAnimValueRef.current.setValue(0);
     debounceTimer.current = Animated.timing(debounceAnimValueRef.current, {
       toValue: 1,
@@ -236,9 +233,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
           handleUpdatePath(
             route.params.pathId,
-            currentPathAng,
+            pathAng,
             verseIdToKeep,
-            currentScrollPosition,
+            scrollOffset.current,
             setIsSaved
           );
           return;
@@ -246,12 +243,16 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
         handleUpdatePath(
           route.params.pathId,
-          currentPathAng,
-          verseForScroll,
-          currentScrollPosition,
+          pathAng,
+          matchedPath.current?.saveData.verseId || savedPathVerseId,
+          scrollOffset.current,
           () => {
             setIsSaved(false);
-            commitSavedPathState(currentPathAng, verseForScroll, currentScrollPosition);
+            commitSavedPathState(
+              pathAng,
+              matchedPath.current?.saveData.verseId || savedPathVerseId,
+              scrollOffset.current
+            );
           }
         );
       } catch (error) {
