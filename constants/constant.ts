@@ -51,4 +51,5 @@ export const Constants: Constant = {
   STREAKS: 'Streaks',
   GO_TO_ANG: 'Go To Ang',
   SAVE: 'Save',
+  BACK_TO_PATH: 'Back to path',
 };
