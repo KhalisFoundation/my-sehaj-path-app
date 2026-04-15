@@ -187,7 +187,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   );
 
   const commitSavedPathState = useCallback(
-    (angNumber: number, verseId: number, clearAngNavigation = false) => {
+    (
+      angNumber: number,
+      verseId: number,
+      scrollPosition = scrollOffset.current,
+      clearAngNavigation = false
+    ) => {
       if (!matchedPath.current) {
         return;
       }
@@ -201,7 +206,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       completionUndoPendingRef.current =
         angNumber === PATH_DATA.LAST_ANG_NUMBER && verseId === PATH_DATA.LAST_VERSE_ID;
       if (completionUndoPendingRef.current) {
-        completionUndoStartScrollYRef.current = scrollOffset.current;
+        completionUndoStartScrollYRef.current = scrollPosition;
+      }
+      if (matchedPathDate.current) {
+        matchedPathDate.current.scrollPosition = scrollPosition;
       }
       if (clearAngNavigation) {
         setIsAngNavigation(false);
@@ -236,11 +244,15 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         handleUpdatePath(
           route.params.pathId,
           pathAng,
-          savedPathVerseId,
+          matchedPath.current?.saveData.verseId || savedPathVerseId,
           scrollOffset.current,
           () => {
             setIsSaved(false);
-            commitSavedPathState(pathAng, savedPathVerseId);
+            commitSavedPathState(
+              pathAng,
+              matchedPath.current?.saveData.verseId || savedPathVerseId,
+              scrollOffset.current
+            );
           }
         );
       } catch (error) {
@@ -254,6 +266,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     route.params.pathId,
     pathAng,
     savedPathVerseId,
+    centerVerseId,
     commitSavedPathState,
   ]);
 
