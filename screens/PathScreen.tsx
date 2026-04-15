@@ -72,6 +72,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const previousFontSize = useRef<number>(18);
   const previousParagraphMode = useRef<boolean>(false);
   const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
+  const [scrollToVerseRequestKey, setScrollToVerseRequestKey] = useState<number>(0);
   const completionUndoPendingRef = useRef<boolean>(false);
   // Baseline scroll Y captured when completion guard starts; used to measure
   // upward movement and undo completion only after user scrolls up > 200px.
@@ -529,22 +530,20 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   useEffect(() => {
     const fontSizeChanged = fontSize !== previousFontSize.current;
     const paragraphModeChanged = isParagraphMode !== previousParagraphMode.current;
+    const verseIdToCenter =
+      centerVerseId || savedPathVerseId || matchedPath.current?.saveData.verseId || 0;
 
-    if ((fontSizeChanged || paragraphModeChanged) && pathContent?.page && centerVerseId !== 0) {
+    if (
+      (fontSizeChanged || paragraphModeChanged) &&
+      verseIdToCenter !== 0 &&
+      pathContent?.page?.some((page: any) => page.verseId === verseIdToCenter)
+    ) {
       previousFontSize.current = fontSize;
       previousParagraphMode.current = isParagraphMode;
-
-      // Calculate the verse index to know how much content is above
-      const verseIndex = pathContent.page.findIndex((page: any) => page.verseId === centerVerseId);
-
-      if (verseIndex !== -1 && scrollRef.current) {
-        // Wait for layout to complete with new font size, then scroll to the verse
-        setTimeout(() => {
-          setScrollToVerseId(centerVerseId);
-        }, 200);
-      }
+      setScrollToVerseId(verseIdToCenter);
+      setScrollToVerseRequestKey((currentKey) => currentKey + 1);
     }
-  }, [fontSize, isParagraphMode, pathContent, centerVerseId]);
+  }, [fontSize, isParagraphMode, pathContent, centerVerseId, savedPathVerseId]);
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
@@ -624,6 +623,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           onSaveCommit={commitSavedPathState}
           setCenterVerseId={setCenterVerseId}
           scrollToVerseId={scrollToVerseId}
+          scrollToVerseRequestKey={scrollToVerseRequestKey}
           scrolledToSavedPath={scrolledToSavedPath}
           onScrollEndDrag={handleScrollEnd}
         />

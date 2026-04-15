@@ -147,6 +147,7 @@ export const pathTextPropsAreEqual = (
     prevProps.fontSize === nextProps.fontSize &&
     prevProps.isVishraam === nextProps.isVishraam &&
     prevProps.vishraamsSource === nextProps.vishraamsSource &&
-    prevProps.vishraamsStyle === nextProps.vishraamsStyle
+    prevProps.vishraamsStyle === nextProps.vishraamsStyle &&
+    prevProps.onLayout === nextProps.onLayout
   );
 };

@@ -34,6 +34,7 @@ const ParagraphTextForPathComponent = ({
   vishraams,
   vishraamsSource,
   originalVerse,
+  onLayout,
 }: PathTextProps) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressLock = useRef(false);
@@ -102,6 +103,7 @@ const ParagraphTextForPathComponent = ({
       disabled={isSaved || found}
       suppressHighlighting={true}
       style={[textStyle, containerStyle]}
+      onLayout={onLayout}
     >
       {isVishraam ? (
         <VishraamsText
@@ -112,7 +114,7 @@ const ParagraphTextForPathComponent = ({
         />
       ) : (
         gurbaniLine
-      )}{" "}
+      )}{' '}
       {isSelected && (
         <Text>
           <SaveIcon
@@ -127,4 +129,7 @@ const ParagraphTextForPathComponent = ({
   );
 };
 
-export const ParagraphTextForPath = React.memo(ParagraphTextForPathComponent, pathTextPropsAreEqual);
+export const ParagraphTextForPath = React.memo(
+  ParagraphTextForPathComponent,
+  pathTextPropsAreEqual
+);
