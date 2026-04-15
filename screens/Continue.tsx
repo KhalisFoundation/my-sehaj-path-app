@@ -4,7 +4,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigationState } from '@react-navigation/native';
 import {
   NavContent,
   SecondaryButton,
@@ -54,6 +54,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const streak = useRef<number>(0);
   const { fetchFromLocal } = useLocal();
   const { checkNetwork } = useInternet();
+  const previousRoute = useNavigationState((state) => state.routes[state.index - 1]?.name);
+  const isFromPath = previousRoute === Routes.Path;
 
   const handleStreakUpdate = useCallback((newStreakValue: number) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
@@ -145,8 +147,13 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }, []);
 
   const handleBackPress = useCallback(() => {
+    if (isFromPath) {
+      navigation.goBack();
+      return;
+    }
+
     navigation.replace(Routes.Home);
-  }, [navigation]);
+  }, [navigation, isFromPath]);
 
   const progressText = useMemo(
     () => [
@@ -192,12 +199,14 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             <Pressable
               style={ContinueScreenStyles.navContainer}
               onPress={handleBackPress}
-              accessibilityLabel="Back to home"
+              accessibilityLabel={isFromPath ? Constants.BACK_TO_PATH : 'Back to home'}
               accessibilityRole="button"
-              accessibilityHint="Tap to go back to home screen"
+              accessibilityHint={
+                isFromPath ? 'Tap to go back to the path screen' : 'Tap to go back to home screen'
+              }
             >
               <NavContent navIcon={<LeftArrowIcon />} onPress={handleBackPress} />
-              <NavContent text={Constants.SEE_ALL_PATH} />
+              <NavContent text={isFromPath ? Constants.BACK_TO_PATH : Constants.SEE_ALL_PATH} />
             </Pressable>
             <View style={ContinueScreenStyles.tabsContainer}>
               <Pressable
