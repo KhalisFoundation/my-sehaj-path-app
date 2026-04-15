@@ -30,9 +30,8 @@ export const HomeScreenStyles = StyleSheet.create({
   },
   menuButton: {
     position: 'absolute',
-    top: UIConstants.RHYTHM * 2,
-    left: UIConstants.RHYTHM * 2,
+    top: UIConstants.RHYTHM * 1.5,
+    left: UIConstants.RHYTHM * 1.5,
     zIndex: 10,
-    padding: UIConstants.RHYTHM,
   },
 });
