@@ -121,13 +121,12 @@ const PathReaderComponent = ({
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
-      findCenterVerseId(scrollY);
 
       if (!isAngNavigation) {
         debouncedScrollSave();
       }
     },
-    [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
+    [isAngNavigation, debouncedScrollSave, scrollOffset]
   );
 
   const gestureConfig = useMemo(
@@ -344,9 +343,11 @@ const PathReaderComponent = ({
           setFound(false);
         }}
         onScrollEndDrag={() => {
+          findCenterVerseId(scrollOffset.current);
           onScrollEndDrag?.(scrollOffset.current);
         }}
         onMomentumScrollEnd={() => {
+          findCenterVerseId(scrollOffset.current);
           onScrollEndDrag?.(scrollOffset.current);
         }}
         scrollEventThrottle={16}
