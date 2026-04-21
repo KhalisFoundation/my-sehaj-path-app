@@ -1,9 +1,10 @@
-import React, { useCallback, useMemo, useRef, useEffect } from 'react';
+import React, { useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
 import GestureRecognizer from 'react-native-swipe-gestures';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
+import { usePathReaderCentering } from './usePathReaderCentering';
 import { trackEvent } from '@utils/analytics';
 import { PATH_DATA } from '@constants';
 import type { Verse, PathContent } from '@hooks';
@@ -49,6 +50,7 @@ interface PathReaderProps {
   ) => void;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
+  scrollToVerseRequestKey?: number;
   scrolledToSavedPath: React.MutableRefObject<boolean>;
   onScrollEndDrag?: (scrollY: number) => void;
 }
@@ -83,13 +85,24 @@ const PathReaderComponent = ({
   onSaveCommit,
   setCenterVerseId,
   scrollToVerseId,
+  scrollToVerseRequestKey,
   scrolledToSavedPath,
   onScrollEndDrag,
 }: PathReaderProps) => {
-  const viewportHeight = useRef<number>(0);
-  const versePositions = useRef<Map<number, { y: number; height: number }>>(new Map());
-  const hasScrolledToVerse = useRef<boolean>(false);
-  const scrollEndTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    clearMeasuredVerses,
+    createLayoutHandler,
+    createParagraphVerseLayoutHandler,
+    createShabadLayoutHandler,
+    findCenterVerseId,
+    handleViewportLayout,
+    requestRecenter,
+  } = usePathReaderCentering({
+    scrollRef,
+    scrollOffset,
+    setCenterVerseId,
+    scrollToVerseId,
+  });
 
   const handleAngChange = useCallback(() => {
     trackEvent('AngsByBottomNav', 'click', 'next ang from bottom nav');
@@ -104,58 +117,16 @@ const PathReaderComponent = ({
     handleLeftArrow(pathContent?.source?.pageNo);
   }, [handleLeftArrow, pathContent?.source?.pageNo]);
 
-  const findCenterVerseId = useCallback(
-    (scrollY: number) => {
-      if (!setCenterVerseId) {
-        return;
-      }
-
-      // Wait for verses to be measured
-      if (versePositions.current.size === 0) {
-        return;
-      }
-
-      const centerY = scrollY + viewportHeight.current / 2;
-      let closestVerseId: number | null = null;
-      let minDistance = Infinity;
-
-      versePositions.current.forEach((position, verseId) => {
-        const verseCenter = position.y + position.height / 2;
-        const distance = Math.abs(verseCenter - centerY);
-
-        if (distance < minDistance) {
-          minDistance = distance;
-          closestVerseId = verseId;
-        }
-      });
-
-      if (closestVerseId !== null) {
-        setCenterVerseId(closestVerseId);
-      }
-    },
-    [setCenterVerseId]
-  );
-
   const handleScroll = useCallback(
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
 
-      // Clear existing timer
-      if (scrollEndTimer.current) {
-        clearTimeout(scrollEndTimer.current);
-      }
-
-      // Set new timer to detect when scrolling stops
-      scrollEndTimer.current = setTimeout(() => {
-        findCenterVerseId(scrollY);
-      }, 150); // Wait 150ms after scrolling stops
-
       if (!isAngNavigation) {
         debouncedScrollSave();
       }
     },
-    [isAngNavigation, debouncedScrollSave, scrollOffset, findCenterVerseId]
+    [isAngNavigation, debouncedScrollSave, scrollOffset]
   );
 
   const gestureConfig = useMemo(
@@ -200,58 +171,20 @@ const PathReaderComponent = ({
     ]
   );
 
-  const createLayoutHandler = useCallback(
-    (verseId: number) => (event: any) => {
-      const { y, height } = event.nativeEvent.layout;
-      versePositions.current.set(verseId, { y, height });
-
-      // If we're waiting to scroll to this verse, do it now
-      if (
-        scrollToVerseId === verseId &&
-        !hasScrolledToVerse.current &&
-        scrollRef.current &&
-        viewportHeight.current > 0
-      ) {
-        const verseY = y;
-        const verseCenterY = verseY + height / 2;
-        const screenCenterY = viewportHeight.current / 2;
-        const targetScroll = Math.max(0, verseCenterY - screenCenterY);
-
-        // Scroll immediately without delay to prevent verse from jumping
-        if (scrollRef.current) {
-          scrollRef.current.scrollTo({
-            y: targetScroll,
-            animated: false,
-          });
-          scrollOffset.current = targetScroll;
-          hasScrolledToVerse.current = true;
-        }
-      }
-    },
-    [scrollToVerseId, scrollRef, scrollOffset]
-  );
-
   // Clear verse positions when page changes
-  useEffect(() => {
-    versePositions.current.clear();
-    hasScrolledToVerse.current = false;
-    if (setCenterVerseId) {
-      setCenterVerseId(0);
-    }
-  }, [pathContent?.source?.pageNo, setCenterVerseId]);
+  useLayoutEffect(() => {
+    clearMeasuredVerses(true);
+  }, [clearMeasuredVerses, pathContent?.source?.pageNo]);
 
   // Clear verse positions when font size or paragraph mode changes
-  useEffect(() => {
-    versePositions.current.clear();
-    hasScrolledToVerse.current = false;
-  }, [fontSize, isParagraphMode]);
+  useLayoutEffect(() => {
+    clearMeasuredVerses();
+  }, [clearMeasuredVerses, fontSize, isParagraphMode]);
 
   // Reset scroll flag when scrollToVerseId changes
   useEffect(() => {
-    if (scrollToVerseId) {
-      hasScrolledToVerse.current = false;
-    }
-  }, [scrollToVerseId]);
+    requestRecenter(scrollToVerseId);
+  }, [requestRecenter, scrollToVerseId, scrollToVerseRequestKey]);
 
   const shabadsWithIndices = useMemo(() => {
     if (!pathContent?.page) {
@@ -282,11 +215,14 @@ const PathReaderComponent = ({
       return (
         <View>
           {shabadsWithIndices.map((shabad, shabadIndex) => (
-            <Text
+            <View
               key={shabadIndex}
+              onLayout={createShabadLayoutHandler(shabadIndex)}
               style={{
                 marginBottom: 14,
-                lineHeight: fontSize * 1.6,
+                flexDirection: 'row',
+                flexWrap: 'wrap',
+                alignItems: 'flex-start',
               }}
             >
               {shabad.verses.map((verse: Verse, verseIndex: number) => {
@@ -302,6 +238,7 @@ const PathReaderComponent = ({
                     gurbaniLine={gurbaniLine}
                     onSelection={createSelectionHandler(verseIndex, verse.verseId)}
                     onSave={createSaveHandler(verse.verseId)}
+                    onLayout={createParagraphVerseLayoutHandler(verse.verseId, shabadIndex)}
                     isSaving={isSaving}
                     pressIndex={pressIndex}
                     index={globalIndex}
@@ -323,7 +260,7 @@ const PathReaderComponent = ({
                   />
                 );
               })}
-            </Text>
+            </View>
           ))}
         </View>
       );
@@ -370,6 +307,8 @@ const PathReaderComponent = ({
     createSelectionHandler,
     createSaveHandler,
     createLayoutHandler,
+    createParagraphVerseLayoutHandler,
+    createShabadLayoutHandler,
     setIsSaving,
     setIsSaved,
     setPressIndex,
@@ -404,9 +343,11 @@ const PathReaderComponent = ({
           setFound(false);
         }}
         onScrollEndDrag={() => {
+          findCenterVerseId(scrollOffset.current);
           onScrollEndDrag?.(scrollOffset.current);
         }}
         onMomentumScrollEnd={() => {
+          findCenterVerseId(scrollOffset.current);
           onScrollEndDrag?.(scrollOffset.current);
         }}
         scrollEventThrottle={16}
@@ -414,9 +355,7 @@ const PathReaderComponent = ({
         onStartShouldSetResponder={() => false}
         onMoveShouldSetResponder={() => false}
         removeClippedSubviews={true}
-        onLayout={(e) => {
-          viewportHeight.current = e.nativeEvent.layout.height;
-        }}
+        onLayout={handleViewportLayout}
       >
         {pageContent}
         {pathContent?.source?.pageNo < PATH_DATA.LAST_ANG_NUMBER && !isNavigating && (
