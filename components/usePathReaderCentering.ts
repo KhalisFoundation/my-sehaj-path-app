@@ -11,6 +11,7 @@ type ParagraphVerseLayout = {
   shabadIndex: number;
   localY: number;
   height: number;
+  measuredFromTextLayout?: boolean;
 };
 
 type UsePathReaderCenteringArgs = {
@@ -118,13 +119,68 @@ export const usePathReaderCentering = ({
   const createParagraphVerseLayoutHandler = useCallback(
     (verseId: number, shabadIndex: number) => (event: LayoutChangeEvent) => {
       const { y, height } = event.nativeEvent.layout;
+      const existingLayout = paragraphVerseLayouts.current.get(verseId);
+
+      if (existingLayout?.measuredFromTextLayout) {
+        return;
+      }
+
       paragraphVerseLayouts.current.set(verseId, {
         shabadIndex,
         localY: y,
         height,
+        measuredFromTextLayout: false,
       });
 
       syncParagraphVersePosition(verseId);
+    },
+    [syncParagraphVersePosition]
+  );
+
+  const createParagraphVerseTextLayoutHandler = useCallback(
+    (shabadIndex: number, verses: { verseId: number; text: string }[]) => (event: any) => {
+      const lines = event?.nativeEvent?.lines;
+      if (!Array.isArray(lines) || lines.length === 0) {
+        return;
+      }
+
+      let cumulativeLineLength = 0;
+      const lineRanges = lines.map((line: any) => {
+        const text = typeof line?.text === 'string' ? line.text : '';
+        const start = cumulativeLineLength;
+        cumulativeLineLength += text.length;
+
+        return {
+          start,
+          end: cumulativeLineLength,
+          y: line?.y ?? 0,
+          height: line?.height ?? 0,
+        };
+      });
+
+      let verseStart = 0;
+      verses.forEach(({ verseId, text }) => {
+        const verseEnd = verseStart + text.length;
+        const matchingLines = lineRanges.filter(
+          (line) => line.end > verseStart && line.start < verseEnd
+        );
+
+        if (matchingLines.length > 0) {
+          const firstLine = matchingLines[0];
+          const lastLine = matchingLines[matchingLines.length - 1];
+
+          paragraphVerseLayouts.current.set(verseId, {
+            shabadIndex,
+            localY: firstLine.y,
+            height: Math.max(lastLine.y + lastLine.height - firstLine.y, lastLine.height),
+            measuredFromTextLayout: true,
+          });
+
+          syncParagraphVersePosition(verseId);
+        }
+
+        verseStart = verseEnd;
+      });
     },
     [syncParagraphVersePosition]
   );
@@ -181,6 +237,7 @@ export const usePathReaderCentering = ({
     clearMeasuredVerses,
     createLayoutHandler,
     createParagraphVerseLayoutHandler,
+    createParagraphVerseTextLayoutHandler,
     createShabadLayoutHandler,
     findCenterVerseId,
     handleViewportLayout,

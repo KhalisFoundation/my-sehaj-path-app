@@ -7,11 +7,14 @@ import {
   useIsSelected,
   useAccessibilityLabel,
   useTextStyle,
-  useContainerStyle,
   createLongPressHandler,
   pathTextPropsAreEqual,
 } from '@utils';
 import { VishraamsText } from './VishraamsText';
+
+type ParagraphTextForPathProps = PathTextProps & {
+  onTextLayout?: (event: any) => void;
+};
 
 const ParagraphTextForPathComponent = ({
   gurbaniLine,
@@ -35,7 +38,8 @@ const ParagraphTextForPathComponent = ({
   vishraamsSource,
   originalVerse,
   onLayout,
-}: PathTextProps) => {
+  onTextLayout,
+}: ParagraphTextForPathProps) => {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressLock = useRef(false);
   const didLongPress = useRef(false);
@@ -43,7 +47,9 @@ const ParagraphTextForPathComponent = ({
   const isSelected = useIsSelected(verseId, savedPathVerseId, isSaving, pressIndex, index);
   const accessibilityLabel = useAccessibilityLabel(index, isSelected);
   const textStyle = useTextStyle(fontSize);
-  const containerStyle = useContainerStyle(isSelected);
+  const selectedTextStyle = isSelected
+    ? { backgroundColor: UIConstants.PATH_SELECTED_BACKGROUND_COLOR }
+    : undefined;
 
   const baseLongPressHandler = createLongPressHandler(
     index,
@@ -60,7 +66,9 @@ const ParagraphTextForPathComponent = ({
 
   const handleLongPress = () => {
     // Block duplicate triggers
-    if (longPressLock.current) return;
+    if (longPressLock.current) {
+      return;
+    }
 
     longPressLock.current = true;
     didLongPress.current = true;
@@ -102,19 +110,22 @@ const ParagraphTextForPathComponent = ({
       accessibilityHint="Tap to select, long press to save this line"
       disabled={isSaved || found}
       suppressHighlighting={true}
-      style={[textStyle, containerStyle]}
+      style={textStyle}
       onLayout={onLayout}
+      onTextLayout={onTextLayout}
     >
-      {isVishraam ? (
-        <VishraamsText
-          gurbaniLine={gurbaniLine}
-          vishraams={vishraams}
-          vishraamsSource={vishraamsSource}
-          originalVerse={originalVerse}
-        />
-      ) : (
-        gurbaniLine
-      )}{' '}
+      <Text style={selectedTextStyle}>
+        {isVishraam ? (
+          <VishraamsText
+            gurbaniLine={gurbaniLine}
+            vishraams={vishraams}
+            vishraamsSource={vishraamsSource}
+            originalVerse={originalVerse}
+          />
+        ) : (
+          gurbaniLine
+        )}{' '}
+      </Text>
       {isSelected && (
         <Text>
           <SaveIcon
@@ -131,5 +142,6 @@ const ParagraphTextForPathComponent = ({
 
 export const ParagraphTextForPath = React.memo(
   ParagraphTextForPathComponent,
-  pathTextPropsAreEqual
+  (prevProps, nextProps) =>
+    pathTextPropsAreEqual(prevProps, nextProps) && prevProps.onTextLayout === nextProps.onTextLayout
 );

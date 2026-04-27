@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
 import GestureRecognizer from 'react-native-swipe-gestures';
-import { ScrollView, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
@@ -93,6 +93,7 @@ const PathReaderComponent = ({
     clearMeasuredVerses,
     createLayoutHandler,
     createParagraphVerseLayoutHandler,
+    createParagraphVerseTextLayoutHandler,
     createShabadLayoutHandler,
     findCenterVerseId,
     handleViewportLayout,
@@ -210,20 +211,30 @@ const PathReaderComponent = ({
     });
   }, [pathContent?.page]);
 
+  const paragraphShabadTextStyle = useMemo(
+    () => ({
+      marginBottom: 14,
+      lineHeight: fontSize * 1.6,
+    }),
+    [fontSize]
+  );
+
   const pageContent = useMemo(() => {
     if (isParagraphMode) {
       return (
         <View>
           {shabadsWithIndices.map((shabad, shabadIndex) => (
-            <View
+            <Text
               key={shabadIndex}
               onLayout={createShabadLayoutHandler(shabadIndex)}
-              style={{
-                marginBottom: 14,
-                flexDirection: 'row',
-                flexWrap: 'wrap',
-                alignItems: 'flex-start',
-              }}
+              onTextLayout={createParagraphVerseTextLayoutHandler(
+                shabadIndex,
+                shabad.verses.map((verse) => ({
+                  verseId: verse.verseId,
+                  text: `${isLarivaar ? verse.larivaar.unicode : verse.verse.unicode} `,
+                }))
+              )}
+              style={paragraphShabadTextStyle}
             >
               {shabad.verses.map((verse: Verse, verseIndex: number) => {
                 const gurbaniLine = isLarivaar ? verse.larivaar.unicode : verse.verse.unicode;
@@ -236,7 +247,7 @@ const PathReaderComponent = ({
                   <ParagraphTextForPath
                     key={`${verse.verseId}-${verseIndex}`}
                     gurbaniLine={gurbaniLine}
-                    onSelection={createSelectionHandler(verseIndex, verse.verseId)}
+                    onSelection={createSelectionHandler(globalIndex - 1, verse.verseId)}
                     onSave={createSaveHandler(verse.verseId)}
                     onLayout={createParagraphVerseLayoutHandler(verse.verseId, shabadIndex)}
                     isSaving={isSaving}
@@ -260,7 +271,7 @@ const PathReaderComponent = ({
                   />
                 );
               })}
-            </View>
+            </Text>
           ))}
         </View>
       );
@@ -308,6 +319,7 @@ const PathReaderComponent = ({
     createSaveHandler,
     createLayoutHandler,
     createParagraphVerseLayoutHandler,
+    createParagraphVerseTextLayoutHandler,
     createShabadLayoutHandler,
     setIsSaving,
     setIsSaved,
@@ -316,6 +328,7 @@ const PathReaderComponent = ({
     found,
     setFound,
     fontSize,
+    paragraphShabadTextStyle,
     isSaved,
     isParagraphMode,
     shabadsWithIndices,

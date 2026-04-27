@@ -132,10 +132,7 @@ export const createPressHandler = (
 /**
  * Comparison function for React.memo to prevent unnecessary re-renders
  */
-export const pathTextPropsAreEqual = (
-  prevProps: PathTextProps,
-  nextProps: PathTextProps
-) => {
+export const pathTextPropsAreEqual = (prevProps: PathTextProps, nextProps: PathTextProps) => {
   return (
     prevProps.gurbaniLine === nextProps.gurbaniLine &&
     prevProps.isSaving === nextProps.isSaving &&
