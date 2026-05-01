@@ -69,7 +69,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const fadeAnim = useRef(new Animated.Value(1));
   const debounceAnimValueRef = useRef(new Animated.Value(0));
   const [fontSize, setFontSize] = useState<number>(18);
-  const [displaySettingsLoaded, setDisplaySettingsLoaded] = useState<boolean>(false);
   const [readerContentHeight, setReaderContentHeight] = useState<number>(0);
   const previousFontSize = useRef<number>(18);
   const previousParagraphMode = useRef<boolean>(false);
@@ -397,47 +396,42 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [isSaved]
   );
 
-  const loadDisplaySettings = useCallback(async () => {
-    try {
-      const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData, fontSizeData] =
-        await Promise.all([
-          fetchLarivaar(),
-          fetchAngsFormat(),
-          fetchParagraphMode(),
-          fetchVishraam(),
-          fetchVishraamsSource(),
-          fetchFontSize(),
-        ]);
-
-      const nextParagraphMode = paragraphMode || false;
-      const nextFontSize = fontSizeData.number;
-
-      setIsLarivaar(larivaar || false);
-      setAngsFormat(format);
-      setIsParagraphMode(nextParagraphMode);
-      setIsVishraam(vishraam || false);
-      setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
-      setFontSize(nextFontSize);
-      return { fontSize: nextFontSize, paragraphMode: nextParagraphMode };
-    } catch (error) {
-      setIsLarivaar(false);
-      setAngsFormat({ format: 'Punjabi' });
-      setIsParagraphMode(false);
-      setIsVishraam(false);
-      setFontSize(18);
-      return { fontSize: 18, paragraphMode: false };
-    } finally {
-      setDisplaySettingsLoaded(true);
-    }
-  }, []);
-
   useEffect(() => {
     scrolledToSavedPath.current = false;
     const fetchPath = async () => {
       try {
-        const settings = await loadDisplaySettings();
-        previousFontSize.current = settings.fontSize;
-        previousParagraphMode.current = settings.paragraphMode;
+        try {
+          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData, fontSizeData] =
+            await Promise.all([
+              fetchLarivaar(),
+              fetchAngsFormat(),
+              fetchParagraphMode(),
+              fetchVishraam(),
+              fetchVishraamsSource(),
+              fetchFontSize(),
+            ]);
+
+          const nextParagraphMode = paragraphMode || false;
+          const nextFontSize = fontSizeData.number;
+
+          setIsLarivaar(larivaar || false);
+          setAngsFormat(format);
+          setIsParagraphMode(nextParagraphMode);
+          setIsVishraam(vishraam || false);
+          setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
+          setFontSize(nextFontSize);
+          previousFontSize.current = nextFontSize;
+          previousParagraphMode.current = nextParagraphMode;
+        } catch (error) {
+          setIsLarivaar(false);
+          setAngsFormat({ format: 'Punjabi' });
+          setIsParagraphMode(false);
+          setIsVishraam(false);
+          setFontSize(18);
+          previousFontSize.current = 18;
+          previousParagraphMode.current = false;
+        }
+
         const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
         const matchedPathData = pathDataArray.find(
           (path: PathData) => path.pathId === route.params.pathId
@@ -543,7 +537,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     const hasEnoughContentForSavedScroll =
       savedScrollPosition === 0 || readerContentHeight > savedScrollPosition;
 
-    if (!displaySettingsLoaded || !isSavedAng || !pathContent || !hasEnoughContentForSavedScroll) {
+    if (!isSavedAng || !pathContent || !hasEnoughContentForSavedScroll) {
       return;
     }
 
@@ -564,15 +558,39 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         cancelAnimationFrame(secondFrame);
       }
     };
-  }, [pathAng, pathContent, readerContentHeight, displaySettingsLoaded, scrollToSavedPathData]);
+  }, [pathAng, pathContent, readerContentHeight, scrollToSavedPathData]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!displaySettingsLoaded) {
-        return;
-      }
-      loadDisplaySettings();
-    }, [loadDisplaySettings, displaySettingsLoaded])
+      const refreshDisplaySettings = async () => {
+        try {
+          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData, fontSizeData] =
+            await Promise.all([
+              fetchLarivaar(),
+              fetchAngsFormat(),
+              fetchParagraphMode(),
+              fetchVishraam(),
+              fetchVishraamsSource(),
+              fetchFontSize(),
+            ]);
+
+          setIsLarivaar(larivaar || false);
+          setAngsFormat(format);
+          setIsParagraphMode(paragraphMode || false);
+          setIsVishraam(vishraam || false);
+          setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
+          setFontSize(fontSizeData.number);
+        } catch (error) {
+          setIsLarivaar(false);
+          setAngsFormat({ format: 'Punjabi' });
+          setIsParagraphMode(false);
+          setIsVishraam(false);
+          setFontSize(18);
+        }
+      };
+
+      refreshDisplaySettings();
+    }, [])
   );
 
   // Maintain scroll position when font size or paragraph mode changes
