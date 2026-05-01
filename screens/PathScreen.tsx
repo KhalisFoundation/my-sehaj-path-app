@@ -400,6 +400,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     scrolledToSavedPath.current = false;
     const fetchPath = async () => {
       try {
+        // Paragraph mode, larivaar, vishraam, and font size all change the rendered
+        // text flow. We load them before fetching/opening the saved ang so the first
+        // restore uses the final layout instead of restoring scroll against defaults
+        // and then reflowing to a different position.
         try {
           const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData, fontSizeData] =
             await Promise.all([

@@ -230,6 +230,9 @@ const PathReaderComponent = ({
       return [];
     }
 
+    // Paragraph mode needs one prepared render model that both the visible
+    // text and the centering/layout code can share. Without that, larivaar
+    // wrapping, Vishraam segmentation, and measured verse positions can drift.
     return shabadsWithIndices.map((shabad) => ({
       startIndex: shabad.startIndex,
       verses: shabad.verses.map((verse) => {
@@ -271,6 +274,9 @@ const PathReaderComponent = ({
             <Text
               key={shabadIndex}
               onLayout={createShabadLayoutHandler(shabadIndex)}
+              // Measure the full rendered paragraph flow once, then derive each
+              // verse's vertical range from that shared layout. This is more
+              // stable than treating paragraph verses like independent blocks.
               onTextLayout={createParagraphVerseTextLayoutHandler(
                 shabadIndex,
                 shabad.verses.map(({ verse, renderedText }) => ({
@@ -320,6 +326,8 @@ const PathReaderComponent = ({
       );
     }
     return pathContent?.page?.map((path: Verse, index: number) => {
+      // Line mode can render directly from per-verse data because each verse is
+      // already its own measurable block.
       const larivaarRenderData = isLarivaar
         ? getLarivaarRenderData(path.larivaar.unicode, path.verse.unicode)
         : null;

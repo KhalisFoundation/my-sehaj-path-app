@@ -90,6 +90,9 @@ const getGraphemes = (text: string): string[] => {
   return Array.from(text);
 };
 
+// Larivaar text has no visible spaces, so paragraph mode needs explicit wrap
+// opportunities. Joining grapheme clusters with zero-width spaces preserves the
+// visual text while still letting React Native wrap it.
 const buildGraphemeWrappedText = (text: string) => getGraphemes(text).join(ZERO_WIDTH_SPACE);
 
 const splitWords = (text?: string): string[] =>
@@ -104,6 +107,10 @@ const buildAlignedLarivaarSegments = (
     return null;
   }
 
+  // When the spaced verse and larivaar text still match at the grapheme-count
+  // level, we can project word boundaries onto larivaar and keep Vishraam
+  // word indices meaningful. If that mapping does not line up exactly, callers
+  // must fall back to grapheme-only wrapping instead of forcing bad segments.
   const originalWordLengths = originalWords.map((word) => getGraphemes(word).length);
   const larivaarGraphemes = getGraphemes(larivaar);
   if (larivaarGraphemes.length === 0) {
@@ -147,6 +154,8 @@ export const getLarivaarRenderData = (
 ): LarivaarRenderData => {
   const wordSegments = buildAlignedLarivaarSegments(larivaar, originalVerse);
 
+  // Prefer aligned word segments when they are provably valid so paragraph
+  // rendering and Vishraam styling share the same segmentation model.
   if (wordSegments && wordSegments.length > 1) {
     return {
       displayText: wordSegments.join(ZERO_WIDTH_SPACE),
@@ -154,6 +163,8 @@ export const getLarivaarRenderData = (
     };
   }
 
+  // Fallback keeps paragraph wrapping working even when we cannot safely map
+  // the spaced verse onto larivaar word boundaries.
   return {
     displayText: buildGraphemeWrappedText(larivaar),
     wordSegments: null,
