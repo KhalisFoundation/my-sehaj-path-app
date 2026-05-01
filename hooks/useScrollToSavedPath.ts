@@ -51,23 +51,19 @@ export const useScrollToSavedPath = ({
   }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
 
   const scrollToSavedPathData = useCallback(async () => {
-    const applyScroll = (y: number) => {
-      scrollOffset.current = y;
-      scrollRef.current?.scrollTo({
-        y,
-        animated: true,
-      });
+    const matchedPathDate = matchedPathDateRef.current;
+
+    if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
+      scrollOffset.current = matchedPathDate.scrollPosition;
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({
+          y: scrollOffset.current,
+          animated: true,
+        });
+      }
       scrolledToSavedPath.current = true;
       fadeAnim.setValue(1);
       runFadeSequence();
-    };
-
-    // Read the ref at call time so we always get the latest value, not the
-    // value captured when the hook was first invoked.
-    const matchedPathDate = matchedPathDateRef.current;
-    if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
-      applyScroll(matchedPathDate.scrollPosition);
-      return;
     }
 
     if (pathContent && !scrolledToSavedPath.current) {
@@ -88,7 +84,16 @@ export const useScrollToSavedPath = ({
           scrollHeight = 150;
         }
         if (scrollIndex !== -1) {
-          applyScroll(scrollIndex * scrollHeight);
+          scrollOffset.current = scrollIndex * scrollHeight;
+          if (scrollRef.current) {
+            scrollRef.current.scrollTo({
+              y: scrollOffset.current,
+              animated: true,
+            });
+          }
+          scrolledToSavedPath.current = true;
+          fadeAnim.setValue(1);
+          runFadeSequence();
         }
       } catch (error) {
         showErrorAlert(ErrorConstants.ERROR_SCROLLING_TO_SAVED_PATH);
