@@ -5,7 +5,7 @@ import { ErrorConstants } from '@constants';
 import { DateData } from '@hooks';
 
 interface UseScrollToSavedPathProps {
-  matchedPathDateRef: React.MutableRefObject<DateData | undefined>;
+  matchedPathDate: DateData | undefined;
   pathContent: any;
   savedPathVerseId: number;
   scrolledToSavedPath: React.MutableRefObject<boolean>;
@@ -19,7 +19,7 @@ interface UseScrollToSavedPathProps {
 }
 
 export const useScrollToSavedPath = ({
-  matchedPathDateRef,
+  matchedPathDate,
   pathContent,
   savedPathVerseId,
   scrolledToSavedPath,
@@ -51,8 +51,6 @@ export const useScrollToSavedPath = ({
   }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
 
   const scrollToSavedPathData = useCallback(async () => {
-    const matchedPathDate = matchedPathDateRef.current;
-
     if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
       scrollOffset.current = matchedPathDate.scrollPosition;
       if (scrollRef.current) {
@@ -100,7 +98,7 @@ export const useScrollToSavedPath = ({
       }
     }
   }, [
-    matchedPathDateRef,
+    matchedPathDate,
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,

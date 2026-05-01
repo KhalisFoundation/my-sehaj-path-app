@@ -306,7 +306,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   );
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
-    matchedPathDateRef: matchedPathDate,
+    matchedPathDate: matchedPathDate.current,
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,
