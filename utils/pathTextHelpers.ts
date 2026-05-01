@@ -8,6 +8,7 @@ import { Visraams } from '@hooks/useLocal';
  */
 export interface PathTextProps {
   gurbaniLine: string;
+  renderWordSegments?: string[] | null;
   onSelection: () => void;
   isSaving: boolean;
   pressIndex: number;
@@ -27,7 +28,6 @@ export interface PathTextProps {
   vishraams: Visraams;
   vishraamsSource?: string;
   vishraamsStyle?: string;
-  originalVerse?: string;
   onLayout?: (event: any) => void;
 }
 
@@ -69,6 +69,95 @@ export const useTextStyle = (fontSize: number) => {
     }),
     [fontSize]
   );
+};
+
+export type LarivaarRenderData = {
+  displayText: string;
+  wordSegments: string[] | null;
+};
+
+const ZERO_WIDTH_SPACE = '\u200B';
+
+const getGraphemes = (text: string): string[] => {
+  const { Segmenter } = Intl as { Segmenter?: any };
+  if (Segmenter) {
+    return Array.from(
+      new Segmenter(undefined, { granularity: 'grapheme' }).segment(text),
+      ({ segment }) => segment
+    );
+  }
+
+  return Array.from(text);
+};
+
+const buildGraphemeWrappedText = (text: string) => getGraphemes(text).join(ZERO_WIDTH_SPACE);
+
+const splitWords = (text?: string): string[] =>
+  text ? text.trim().split(/\s+/).filter(Boolean) : [];
+
+const buildAlignedLarivaarSegments = (
+  larivaar: string,
+  originalVerse?: string
+): string[] | null => {
+  const originalWords = splitWords(originalVerse);
+  if (originalWords.length <= 1) {
+    return null;
+  }
+
+  const originalWordLengths = originalWords.map((word) => getGraphemes(word).length);
+  const larivaarGraphemes = getGraphemes(larivaar);
+  if (larivaarGraphemes.length === 0) {
+    return null;
+  }
+
+  const segments: string[] = [];
+  let cursor = 0;
+
+  for (let index = 0; index < originalWordLengths.length; index += 1) {
+    const length = originalWordLengths[index];
+    if (length <= 0) {
+      return null;
+    }
+
+    const end = cursor + length;
+    if (end > larivaarGraphemes.length) {
+      return null;
+    }
+
+    const segment = larivaarGraphemes.slice(cursor, end).join('');
+    if (!segment) {
+      return null;
+    }
+
+    segments.push(segment);
+    cursor = end;
+  }
+
+  // Any remaining graphemes mean source and target are misaligned.
+  if (cursor !== larivaarGraphemes.length) {
+    return null;
+  }
+
+  return segments.length > 1 ? segments : null;
+};
+
+export const getLarivaarRenderData = (
+  larivaar: string,
+  originalVerse?: string
+): LarivaarRenderData => {
+  const wordSegments = buildAlignedLarivaarSegments(larivaar, originalVerse);
+
+  if (wordSegments && wordSegments.length > 1) {
+    return {
+      displayText: wordSegments.join(ZERO_WIDTH_SPACE),
+      wordSegments,
+    };
+  }
+
+  return {
+    displayText: buildGraphemeWrappedText(larivaar),
+    wordSegments: null,
+  };
 };
 
 /**
@@ -135,6 +224,7 @@ export const createPressHandler = (
 export const pathTextPropsAreEqual = (prevProps: PathTextProps, nextProps: PathTextProps) => {
   return (
     prevProps.gurbaniLine === nextProps.gurbaniLine &&
+    prevProps.renderWordSegments === nextProps.renderWordSegments &&
     prevProps.isSaving === nextProps.isSaving &&
     prevProps.pressIndex === nextProps.pressIndex &&
     prevProps.index === nextProps.index &&

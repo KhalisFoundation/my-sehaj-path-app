@@ -9,27 +9,27 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 interface UsePathNavigationProps {
   isAngNavigation: boolean;
   pathAng: number;
-  savedPathVerseId: number;
   pathId: number;
-  setIsSaved: (value: boolean) => void;
   setIsAngNavigation: (value: boolean) => void;
   updatePathAng: (angNumber: number) => void;
-  scrollOffset: React.MutableRefObject<number>;
   navigation: NavigationProp;
+  persistCurrentScroll: () => Promise<void>;
 }
 
 export const usePathNavigation = ({
   isAngNavigation,
   pathAng,
-  savedPathVerseId,
   pathId,
-  setIsSaved,
   setIsAngNavigation,
   updatePathAng,
-  scrollOffset,
   navigation,
+  persistCurrentScroll,
 }: UsePathNavigationProps) => {
-  const { fetchFromLocal, handleUpdatePath } = useLocal();
+  const { fetchFromLocal } = useLocal();
+  const persistAndGoHome = useCallback(async () => {
+    await persistCurrentScroll();
+    navigation.push('Home');
+  }, [persistCurrentScroll, navigation]);
 
   const handleGoBack = useCallback(async () => {
     if (isAngNavigation) {
@@ -39,10 +39,9 @@ export const usePathNavigation = ({
 
       if (pathAng !== lastSavedAngNumber) {
         showSaveProgressAlert({
-          onSaveAndGoBack: () => {
-            handleUpdatePath(pathId, pathAng, savedPathVerseId, scrollOffset.current, setIsSaved);
+          onSaveAndGoBack: async () => {
             setIsAngNavigation(false);
-            navigation.push('Home');
+            await persistAndGoHome();
           },
           onGoBackWithoutSaving: () => {
             updatePathAng(lastSavedAngNumber);
@@ -50,23 +49,20 @@ export const usePathNavigation = ({
           },
         });
       } else {
-        navigation.push('Home');
+        await persistAndGoHome();
       }
     } else {
-      navigation.push('Home');
+      await persistAndGoHome();
     }
   }, [
     isAngNavigation,
     pathAng,
-    handleUpdatePath,
     pathId,
-    savedPathVerseId,
-    setIsSaved,
+    persistAndGoHome,
     setIsAngNavigation,
     navigation,
     fetchFromLocal,
     updatePathAng,
-    scrollOffset,
   ]);
 
   return { handleGoBack };

@@ -5,7 +5,7 @@ import { ErrorConstants } from '@constants';
 import { DateData } from '@hooks';
 
 interface UseScrollToSavedPathProps {
-  matchedPathDate: DateData | undefined;
+  matchedPathDateRef: React.MutableRefObject<DateData | undefined>;
   pathContent: any;
   savedPathVerseId: number;
   scrolledToSavedPath: React.MutableRefObject<boolean>;
@@ -19,7 +19,7 @@ interface UseScrollToSavedPathProps {
 }
 
 export const useScrollToSavedPath = ({
-  matchedPathDate,
+  matchedPathDateRef,
   pathContent,
   savedPathVerseId,
   scrolledToSavedPath,
@@ -51,17 +51,23 @@ export const useScrollToSavedPath = ({
   }, [fadeAnim, setFound, setIsSaving, setIsSaved]);
 
   const scrollToSavedPathData = useCallback(async () => {
-    if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
-      scrollOffset.current = matchedPathDate.scrollPosition;
-      if (scrollRef.current) {
-        scrollRef.current.scrollTo({
-          y: scrollOffset.current,
-          animated: true,
-        });
-      }
+    const applyScroll = (y: number) => {
+      scrollOffset.current = y;
+      scrollRef.current?.scrollTo({
+        y,
+        animated: true,
+      });
       scrolledToSavedPath.current = true;
       fadeAnim.setValue(1);
       runFadeSequence();
+    };
+
+    // Read the ref at call time so we always get the latest value, not the
+    // value captured when the hook was first invoked.
+    const matchedPathDate = matchedPathDateRef.current;
+    if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
+      applyScroll(matchedPathDate.scrollPosition);
+      return;
     }
 
     if (pathContent && !scrolledToSavedPath.current) {
@@ -82,23 +88,14 @@ export const useScrollToSavedPath = ({
           scrollHeight = 150;
         }
         if (scrollIndex !== -1) {
-          scrollOffset.current = scrollIndex * scrollHeight;
-          if (scrollRef.current) {
-            scrollRef.current.scrollTo({
-              y: scrollOffset.current,
-              animated: true,
-            });
-          }
-          scrolledToSavedPath.current = true;
-          fadeAnim.setValue(1);
-          runFadeSequence();
+          applyScroll(scrollIndex * scrollHeight);
         }
       } catch (error) {
         showErrorAlert(ErrorConstants.ERROR_SCROLLING_TO_SAVED_PATH);
       }
     }
   }, [
-    matchedPathDate,
+    matchedPathDateRef,
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,

@@ -69,6 +69,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const fadeAnim = useRef(new Animated.Value(1));
   const debounceAnimValueRef = useRef(new Animated.Value(0));
   const [fontSize, setFontSize] = useState<number>(18);
+  const [displaySettingsLoaded, setDisplaySettingsLoaded] = useState<boolean>(false);
+  const [readerContentHeight, setReaderContentHeight] = useState<number>(0);
   const previousFontSize = useRef<number>(18);
   const previousParagraphMode = useRef<boolean>(false);
   const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
@@ -77,6 +79,13 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // Baseline scroll Y captured when completion guard starts; used to measure
   // upward movement and undo completion only after user scrolls up > 200px.
   const completionUndoStartScrollYRef = useRef<number | null>(null);
+
+  const resetTransientUiState = useCallback(() => {
+    setIsSaving(false);
+    setIsSaved(false);
+    setPressIndex(0);
+    setFound(false);
+  }, []);
 
   const pathPujabiAng = useMemo(
     () =>
@@ -107,13 +116,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const fetchFromBaniDB = useCallback(
     async (angNumber: number) => {
       alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
+      setReaderContentHeight(0);
       const pathFromBaniDB = await BaniDB(angNumber);
+      alertIndicator.current = undefined;
       setPathContent(pathFromBaniDB.data);
       setRetryState({ needsRetry: false, lastFailedAng: null });
-      setIsSaving(false);
-      setIsSaved(false);
-      setPressIndex(0);
-      setFound(false);
+      resetTransientUiState();
       if (pathFromBaniDB.success === false) {
         const isConnected = await checkNetwork();
         if (!isConnected) {
@@ -126,7 +134,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           return;
         }
       }
-      alertIndicator.current = undefined;
       const currentDebounceTimer = debounceTimer.current;
       if (currentDebounceTimer) {
         clearTimeout(currentDebounceTimer);
@@ -138,7 +145,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         animated: false,
       });
     },
-    [checkNetwork, navigation]
+    [checkNetwork, navigation, resetTransientUiState]
   );
 
   const { handleRightArrow, handleLeftArrow } = useNavigation({
@@ -299,7 +306,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   );
 
   const { scrollToSavedPathData } = useScrollToSavedPath({
-    matchedPathDate: matchedPathDate.current,
+    matchedPathDateRef: matchedPathDate,
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,
@@ -312,30 +319,64 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fetchFontSize,
   });
 
-  const updatePathAng = useCallback((angNumber: number) => {
-    setPathAng(angNumber);
-    setIsSaving(false);
-    setIsSaved(false);
-    setPressIndex(0);
-    setFound(false);
-    setSavedAngNumber(angNumber);
-    if (angNumber !== PATH_DATA.LAST_ANG_NUMBER) {
-      completionUndoPendingRef.current = false;
-      completionUndoStartScrollYRef.current = null;
+  const updatePathAng = useCallback(
+    (angNumber: number) => {
+      setPathAng(angNumber);
+      resetTransientUiState();
+      setSavedAngNumber(angNumber);
+      if (angNumber !== PATH_DATA.LAST_ANG_NUMBER) {
+        completionUndoPendingRef.current = false;
+        completionUndoStartScrollYRef.current = null;
+      }
+    },
+    [resetTransientUiState]
+  );
+
+  const persistCurrentScrollPosition = useCallback(async () => {
+    if (!pathAng) {
+      return;
     }
-  }, []);
+
+    try {
+      const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
+      await handleUpdatePath(
+        route.params.pathId,
+        pathAng,
+        verseIdToKeep,
+        scrollOffset.current,
+        () => {}
+      );
+      commitSavedPathState(pathAng, verseIdToKeep, scrollOffset.current);
+    } catch (error) {
+      // Leaving the screen should not be blocked by a background scroll-position save.
+    }
+  }, [
+    handleUpdatePath,
+    route.params.pathId,
+    pathAng,
+    savedPathVerseId,
+    scrollOffset,
+    commitSavedPathState,
+  ]);
 
   const { handleGoBack } = usePathNavigation({
     isAngNavigation,
     pathAng,
-    savedPathVerseId,
     pathId: route.params.pathId,
-    setIsSaved,
     setIsAngNavigation,
     updatePathAng,
-    scrollOffset,
     navigation,
+    persistCurrentScroll: persistCurrentScrollPosition,
   });
+
+  const handlePathDrawerNavigate = useCallback(
+    async (targetRoute: string, targetPathId?: number) => {
+      await persistCurrentScrollPosition();
+      handleDrawerNavigate(targetRoute, targetPathId);
+    },
+    [persistCurrentScrollPosition, handleDrawerNavigate]
+  );
+
   const handleAngsRightArrow = useCallback(() => {
     handleRightArrow(pathAng);
   }, [handleRightArrow, pathAng]);
@@ -343,6 +384,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const handleAngsLeftArrow = useCallback(() => {
     handleLeftArrow(pathAng);
   }, [handleLeftArrow, pathAng]);
+
+  const handleReaderContentSizeChange = useCallback((_: number, height: number) => {
+    setReaderContentHeight((currentHeight) => (currentHeight === height ? currentHeight : height));
+  }, []);
 
   const savingMessage = useMemo(
     () =>
@@ -352,10 +397,47 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [isSaved]
   );
 
+  const loadDisplaySettings = useCallback(async () => {
+    try {
+      const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData, fontSizeData] =
+        await Promise.all([
+          fetchLarivaar(),
+          fetchAngsFormat(),
+          fetchParagraphMode(),
+          fetchVishraam(),
+          fetchVishraamsSource(),
+          fetchFontSize(),
+        ]);
+
+      const nextParagraphMode = paragraphMode || false;
+      const nextFontSize = fontSizeData.number;
+
+      setIsLarivaar(larivaar || false);
+      setAngsFormat(format);
+      setIsParagraphMode(nextParagraphMode);
+      setIsVishraam(vishraam || false);
+      setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
+      setFontSize(nextFontSize);
+      return { fontSize: nextFontSize, paragraphMode: nextParagraphMode };
+    } catch (error) {
+      setIsLarivaar(false);
+      setAngsFormat({ format: 'Punjabi' });
+      setIsParagraphMode(false);
+      setIsVishraam(false);
+      setFontSize(18);
+      return { fontSize: 18, paragraphMode: false };
+    } finally {
+      setDisplaySettingsLoaded(true);
+    }
+  }, []);
+
   useEffect(() => {
     scrolledToSavedPath.current = false;
     const fetchPath = async () => {
       try {
+        const settings = await loadDisplaySettings();
+        previousFontSize.current = settings.fontSize;
+        previousParagraphMode.current = settings.paragraphMode;
         const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
         const matchedPathData = pathDataArray.find(
           (path: PathData) => path.pathId === route.params.pathId
@@ -455,75 +537,42 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     };
   }, [isSaved, found]);
 
-  const scrollAnimValueRef = useRef(new Animated.Value(0));
-
   useEffect(() => {
-    let animation: Animated.CompositeAnimation | null = null;
-    if (pathAng === matchedPath.current?.saveData.angNumber && pathContent) {
-      scrollAnimValueRef.current.setValue(0);
-      animation = Animated.timing(scrollAnimValueRef.current, {
-        toValue: 1,
-        duration: 10,
-        useNativeDriver: true,
-      });
-      animation.start(() => {
+    const savedScrollPosition = matchedPathDate.current?.scrollPosition || 0;
+    const isSavedAng = pathAng === matchedPath.current?.saveData.angNumber;
+    const hasEnoughContentForSavedScroll =
+      savedScrollPosition === 0 || readerContentHeight > savedScrollPosition;
+
+    if (!displaySettingsLoaded || !isSavedAng || !pathContent || !hasEnoughContentForSavedScroll) {
+      return;
+    }
+
+    let firstFrame: number | null = null;
+    let secondFrame: number | null = null;
+
+    firstFrame = requestAnimationFrame(() => {
+      secondFrame = requestAnimationFrame(() => {
         scrollToSavedPathData();
       });
-    }
+    });
+
     return () => {
-      if (animation) {
-        animation.stop();
+      if (firstFrame !== null) {
+        cancelAnimationFrame(firstFrame);
+      }
+      if (secondFrame !== null) {
+        cancelAnimationFrame(secondFrame);
       }
     };
-  }, [pathAng, pathContent, scrollToSavedPathData]);
+  }, [pathAng, pathContent, readerContentHeight, displaySettingsLoaded, scrollToSavedPathData]);
 
   useFocusEffect(
     useCallback(() => {
-      const fetchData = async () => {
-        try {
-          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData] =
-            await Promise.all([
-              fetchLarivaar(),
-              fetchAngsFormat(),
-              fetchParagraphMode(),
-              fetchVishraam(),
-              fetchVishraamsSource(),
-            ]);
-          setIsLarivaar(larivaar || false);
-          setAngsFormat(format);
-          setIsParagraphMode(paragraphMode || false);
-          setIsVishraam(vishraam || false);
-          setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
-        } catch (error) {
-          setIsLarivaar(false);
-          setAngsFormat({ format: 'Punjabi' });
-          setIsParagraphMode(false);
-          setIsVishraam(false);
-        }
-      };
-      fetchData();
-    }, [
-      fetchLarivaar,
-      fetchAngsFormat,
-      fetchParagraphMode,
-      fetchVishraam,
-      fetchVishraamsSource,
-      pathAng,
-    ])
-  );
-  useFocusEffect(
-    useCallback(() => {
-      const fetch = async () => {
-        try {
-          const fontSizeData = await fetchFontSize();
-          setFontSize(fontSizeData.number);
-        } catch (e) {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_FONT_SIZE);
-          setFontSize(18);
-        }
-      };
-      fetch();
-    }, [fetchFontSize])
+      if (!displaySettingsLoaded) {
+        return;
+      }
+      loadDisplaySettings();
+    }, [loadDisplaySettings, displaySettingsLoaded])
   );
 
   // Maintain scroll position when font size or paragraph mode changes
@@ -626,6 +675,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           scrollToVerseRequestKey={scrollToVerseRequestKey}
           scrolledToSavedPath={scrolledToSavedPath}
           onScrollEndDrag={handleScrollEnd}
+          onContentSizeChange={handleReaderContentSizeChange}
         />
         {alertIndicator.current !== undefined ? (
           <Loading
@@ -663,7 +713,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         <DrawerMenu
           isVisible={isDrawerVisible}
           onClose={() => setIsDrawerVisible(false)}
-          onNavigate={handleDrawerNavigate}
+          onNavigate={handlePathDrawerNavigate}
           currentRoute={Routes.Path}
           pathId={route.params.pathId}
           onGoToAngPress={() => setIsAngsNavigationVisible(true)}
