@@ -78,95 +78,25 @@ export type LarivaarRenderData = {
 
 const ZERO_WIDTH_SPACE = '\u200B';
 
-const getGraphemes = (text: string): string[] => {
-  const { Segmenter } = Intl as { Segmenter?: any };
-  if (Segmenter) {
-    return Array.from(
-      new Segmenter(undefined, { granularity: 'grapheme' }).segment(text),
-      ({ segment }) => segment
-    );
-  }
-
-  return Array.from(text);
-};
-
-// Larivaar text has no visible spaces, so paragraph mode needs explicit wrap
-// opportunities. Joining grapheme clusters with zero-width spaces preserves the
-// visual text while still letting React Native wrap it.
-const buildGraphemeWrappedText = (text: string) => getGraphemes(text).join(ZERO_WIDTH_SPACE);
-
 const splitWords = (text?: string): string[] =>
   text ? text.trim().split(/\s+/).filter(Boolean) : [];
-
-const buildAlignedLarivaarSegments = (
-  larivaar: string,
-  originalVerse?: string
-): string[] | null => {
-  const originalWords = splitWords(originalVerse);
-  if (originalWords.length <= 1) {
-    return null;
-  }
-
-  // When the spaced verse and larivaar text still match at the grapheme-count
-  // level, we can project word boundaries onto larivaar and keep Vishraam
-  // word indices meaningful. If that mapping does not line up exactly, callers
-  // must fall back to grapheme-only wrapping instead of forcing bad segments.
-  const originalWordLengths = originalWords.map((word) => getGraphemes(word).length);
-  const larivaarGraphemes = getGraphemes(larivaar);
-  if (larivaarGraphemes.length === 0) {
-    return null;
-  }
-
-  const segments: string[] = [];
-  let cursor = 0;
-
-  for (let index = 0; index < originalWordLengths.length; index += 1) {
-    const length = originalWordLengths[index];
-    if (length <= 0) {
-      return null;
-    }
-
-    const end = cursor + length;
-    if (end > larivaarGraphemes.length) {
-      return null;
-    }
-
-    const segment = larivaarGraphemes.slice(cursor, end).join('');
-    if (!segment) {
-      return null;
-    }
-
-    segments.push(segment);
-    cursor = end;
-  }
-
-  // Any remaining graphemes mean source and target are misaligned.
-  if (cursor !== larivaarGraphemes.length) {
-    return null;
-  }
-
-  return segments.length > 1 ? segments : null;
-};
 
 export const getLarivaarRenderData = (
   larivaar: string,
   originalVerse?: string
 ): LarivaarRenderData => {
-  const wordSegments = buildAlignedLarivaarSegments(larivaar, originalVerse);
+  const originalWords = splitWords(originalVerse);
+  const collapsedOriginal = originalWords.join('');
 
-  // Prefer aligned word segments when they are provably valid so paragraph
-  // rendering and Vishraam styling share the same segmentation model.
-  if (wordSegments && wordSegments.length > 1) {
+  if (originalWords.length > 1 && collapsedOriginal === larivaar) {
     return {
-      displayText: wordSegments.join(ZERO_WIDTH_SPACE),
-      wordSegments,
+      displayText: originalWords.join(ZERO_WIDTH_SPACE),
+      wordSegments: originalWords,
     };
   }
 
-  // Fallback keeps paragraph wrapping working even when we cannot safely map
-  // the spaced verse onto larivaar word boundaries.
   return {
-    displayText: buildGraphemeWrappedText(larivaar),
+    displayText: larivaar,
     wordSegments: null,
   };
 };

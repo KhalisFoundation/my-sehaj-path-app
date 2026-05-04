@@ -18,6 +18,7 @@ export const VishraamsText: React.FC<VishraamsTextProps> = ({
   vishraamsSource = Constants.DEFAULT_VISHRAAM_SOURCE,
 }) => {
   const vishraamsData = vishraams?.[vishraamsSource as keyof Visraams] || [];
+  const isSegmentedLarivaar = !!(renderWordSegments && renderWordSegments.length > 1);
   const getMarker = (wordIndex: number) => vishraamsData.find((v) => v.p === wordIndex);
   const getWordTextElement = (word: string, wordIndex: number) => {
     const marker = getMarker(wordIndex);
@@ -42,12 +43,8 @@ export const VishraamsText: React.FC<VishraamsTextProps> = ({
     return <Text>{gurbaniLine}</Text>;
   }
 
-  const normalizedLine = gurbaniLine.replace(/\u200B/g, '');
-  const isLarivaar = !normalizedLine.includes(' ');
-  const words = isLarivaar
-    ? renderWordSegments && renderWordSegments.length > 1
-      ? renderWordSegments
-      : null
+  const words = isSegmentedLarivaar
+    ? renderWordSegments
     : gurbaniLine.split(' ').filter((w) => w.length > 0);
 
   if (!words || words.length <= 1) {
@@ -62,7 +59,7 @@ export const VishraamsText: React.FC<VishraamsTextProps> = ({
         return (
           <React.Fragment key={`frag-${wordIndex}`}>
             {element}
-            {wordIndex < words.length - 1 && <Text>{isLarivaar ? '\u200B' : ' '}</Text>}
+            {wordIndex < words.length - 1 && <Text>{isSegmentedLarivaar ? '\u200B' : ' '}</Text>}
           </React.Fragment>
         );
       })}

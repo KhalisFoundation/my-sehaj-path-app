@@ -328,10 +328,11 @@ const PathReaderComponent = ({
     return pathContent?.page?.map((path: Verse, index: number) => {
       // Line mode can render directly from per-verse data because each verse is
       // already its own measurable block.
-      const larivaarRenderData = isLarivaar
-        ? getLarivaarRenderData(path.larivaar.unicode, path.verse.unicode)
-        : null;
-      const gurbaniLine = larivaarRenderData?.displayText ?? path.verse.unicode;
+      const larivaarRenderData =
+        isLarivaar && isVishraam
+          ? getLarivaarRenderData(path.larivaar.unicode, path.verse.unicode)
+          : null;
+      const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
       const vishraam = path.visraam;
 
       return (
