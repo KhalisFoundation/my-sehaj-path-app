@@ -18,6 +18,7 @@ type ParagraphTextForPathProps = PathTextProps & {
 
 const ParagraphTextForPathComponent = ({
   gurbaniLine,
+  renderWordSegments,
   onSelection,
   isSaving,
   pressIndex,
@@ -36,7 +37,6 @@ const ParagraphTextForPathComponent = ({
   isVishraam,
   vishraams,
   vishraamsSource,
-  originalVerse,
   onLayout,
   onTextLayout,
 }: ParagraphTextForPathProps) => {
@@ -118,9 +118,9 @@ const ParagraphTextForPathComponent = ({
         {isVishraam ? (
           <VishraamsText
             gurbaniLine={gurbaniLine}
+            renderWordSegments={renderWordSegments}
             vishraams={vishraams}
             vishraamsSource={vishraamsSource}
-            originalVerse={originalVerse}
           />
         ) : (
           gurbaniLine

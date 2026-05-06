@@ -8,6 +8,7 @@ import { Visraams } from '@hooks/useLocal';
  */
 export interface PathTextProps {
   gurbaniLine: string;
+  renderWordSegments?: string[] | null;
   onSelection: () => void;
   isSaving: boolean;
   pressIndex: number;
@@ -27,7 +28,6 @@ export interface PathTextProps {
   vishraams: Visraams;
   vishraamsSource?: string;
   vishraamsStyle?: string;
-  originalVerse?: string;
   onLayout?: (event: any) => void;
 }
 
@@ -69,6 +69,36 @@ export const useTextStyle = (fontSize: number) => {
     }),
     [fontSize]
   );
+};
+
+export type LarivaarRenderData = {
+  displayText: string;
+  wordSegments: string[] | null;
+};
+
+const ZERO_WIDTH_SPACE = '\u200B';
+
+const splitWords = (text?: string): string[] =>
+  text ? text.trim().split(/\s+/).filter(Boolean) : [];
+
+export const getLarivaarRenderData = (
+  larivaar: string,
+  originalVerse?: string
+): LarivaarRenderData => {
+  const originalWords = splitWords(originalVerse);
+  const collapsedOriginal = originalWords.join('');
+
+  if (originalWords.length > 1 && collapsedOriginal === larivaar) {
+    return {
+      displayText: originalWords.join(ZERO_WIDTH_SPACE),
+      wordSegments: originalWords,
+    };
+  }
+
+  return {
+    displayText: larivaar,
+    wordSegments: null,
+  };
 };
 
 /**
@@ -135,6 +165,7 @@ export const createPressHandler = (
 export const pathTextPropsAreEqual = (prevProps: PathTextProps, nextProps: PathTextProps) => {
   return (
     prevProps.gurbaniLine === nextProps.gurbaniLine &&
+    prevProps.renderWordSegments === nextProps.renderWordSegments &&
     prevProps.isSaving === nextProps.isSaving &&
     prevProps.pressIndex === nextProps.pressIndex &&
     prevProps.index === nextProps.index &&

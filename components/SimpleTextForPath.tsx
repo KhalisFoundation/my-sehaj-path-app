@@ -16,6 +16,7 @@ import { VishraamsText } from './VishraamsText';
 
 const SimpleTextForPathComponent = ({
   gurbaniLine,
+  renderWordSegments,
   onSelection,
   isSaving,
   pressIndex,
@@ -34,7 +35,6 @@ const SimpleTextForPathComponent = ({
   isVishraam,
   vishraams,
   vishraamsSource,
-  originalVerse,
   onLayout,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
@@ -85,9 +85,9 @@ const SimpleTextForPathComponent = ({
         {isVishraam ? (
           <VishraamsText
             gurbaniLine={gurbaniLine}
+            renderWordSegments={renderWordSegments}
             vishraams={vishraams}
             vishraamsSource={vishraamsSource}
-            originalVerse={originalVerse}
           />
         ) : (
           gurbaniLine

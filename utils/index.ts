@@ -10,6 +10,8 @@ export {
   useContainerStyle,
   createLongPressHandler,
   createPressHandler,
+  getLarivaarRenderData,
   pathTextPropsAreEqual,
+  type LarivaarRenderData,
   type PathTextProps,
 } from './pathTextHelpers';
