@@ -45,6 +45,7 @@ export const Slider = ({
         showsHorizontalScrollIndicator={false}
         onScroll={handleScroll}
         style={[SliderStyles.sliderContainer, sliderContainerStyle]}
+        contentContainerStyle={SliderStyles.sliderContentContainer}
         renderItem={({ item }) => <View>{item}</View>}
       />
 

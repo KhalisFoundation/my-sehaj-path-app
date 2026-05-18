@@ -5,6 +5,9 @@ export const SliderStyles = StyleSheet.create({
     flexGrow: 0,
     paddingBottom: 10,
   },
+  sliderContentContainer: {
+    gap: 16,
+  },
   indicatorContainer: {
     flexDirection: 'row',
     justifyContent: 'center',

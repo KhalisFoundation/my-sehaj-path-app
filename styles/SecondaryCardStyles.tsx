@@ -16,7 +16,6 @@ export const CompletedPathCardStyles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
     elevation: 2,
-    marginRight: 16,
   },
   sehajText: {
     fontFamily: font.Brandon_Grotesque_Regular,
