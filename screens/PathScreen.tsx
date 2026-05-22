@@ -4,7 +4,7 @@ import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'reac
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BaniDB, showErrorAlert, convertNumberToFormat } from '@utils';
+import { BaniDB, showErrorAlert, convertNumberToFormat, recordError } from '@utils';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
   DateData,
@@ -459,6 +459,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           await fetchFromBaniDB(pathAngData);
         }
       } catch (error) {
+        recordError(error, 'PathScreen: failed to load path data');
         showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA_GENERIC, () => fetchPath(), 'Retry');
       }
     };

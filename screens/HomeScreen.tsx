@@ -14,7 +14,7 @@ import {
   DrawerMenu,
 } from '@components';
 import { PathData, useLocal, useScreenAnalytics, useDrawerNavigation } from '@hooks';
-import { showErrorAlert, trackEvent } from '@utils';
+import { showErrorAlert, trackEvent, recordError } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
@@ -49,6 +49,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
       const { pathDataArray } = await fetchFromLocal();
       setPathDataArrayFromLocal(pathDataArray);
     } catch (error) {
+      recordError(error, 'HomeScreen: failed to load sehaj paths data');
       if (!errorAlertShownRef.current) {
         errorAlertShownRef.current = true;
         showErrorAlert(
@@ -100,6 +101,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
       await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
       navigation.push(Routes.Continue, { pathId: newPathid });
     } catch (error) {
+      recordError(error, 'HomeScreen: failed to create new sehaj path');
       showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
     }
   }, [handleNewPath, navigation]);

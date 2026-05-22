@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MonthConstant, ErrorConstants, PATH_DATA, Constants } from '@constants';
-import { trackEvent, showErrorAlert } from '@utils';
+import { trackEvent, showErrorAlert, recordError } from '@utils';
 import { isPathCompleted } from '@utils/isPathCompleted';
 
 export interface PathData {
@@ -184,6 +184,7 @@ export const useLocal = () => {
       await handleUpdatePath(pathId, angNumber, verseId, scrollPosition, setIsSaved);
       return true;
     } catch (error) {
+      recordError(error, 'useLocal: handleUpdatePath failed to save progress');
       showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
       return false;
     }
@@ -233,6 +234,7 @@ export const useLocal = () => {
       }
       return false;
     } catch (error) {
+      recordError(error, 'useLocal: renamePath failed');
       showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
     }
   };
