@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { showErrorAlert } from '@utils';
+import { showErrorAlert, recordError } from '@utils';
 import { ErrorConstants, PATH_DATA } from '@constants';
 import { ScrollView } from 'react-native';
 
@@ -32,7 +32,6 @@ export const useNavigation = ({
       if (pageNo >= PATH_DATA.LAST_ANG_NUMBER) {
         return;
       }
-
       setIsNavigating(true);
       setIsSaving(false);
       scrollOffset.current = 0;
@@ -52,6 +51,7 @@ export const useNavigation = ({
         await fetchFromBaniDB(pageNo + 1);
         setPathAng(pageNo + 1);
       } catch (error) {
+        recordError(error, `useNavigation: failed to load next ang from ${pageNo}`);
         const isConnected = await checkNetwork();
         if (!isConnected) {
           showErrorAlert(
@@ -105,6 +105,7 @@ export const useNavigation = ({
         await fetchFromBaniDB(pageNo - 1);
         setPathAng(pageNo - 1);
       } catch (error) {
+        recordError(error, `useNavigation: failed to load previous ang from ${pageNo}`);
         const isConnected = await checkNetwork();
         if (!isConnected) {
           showErrorAlert(

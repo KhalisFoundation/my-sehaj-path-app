@@ -5,7 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
 import { Routes } from '@constants';
-import { allowTracking } from '@utils';
+import { allowTracking, allowCrashReporting } from '@utils';
 import { useLocal } from '@hooks';
 
 export type RootStackParamList = {
@@ -28,6 +28,7 @@ const App = () => {
         const consent = await fetchConsent();
         if (consent) {
           allowTracking();
+          allowCrashReporting();
         }
       } catch (_e) {
         // ignore initialization errors; app works without analytics
