@@ -677,7 +677,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           isAngNavigation={isAngNavigation}
           debouncedScrollSave={debouncedScrollSave}
           handleRightArrow={handleRightArrow}
-          handleLeftArrow={handleLeftArrow}
           setPressIndex={setPressIndex}
           setSavedPathVerseId={setSavedPathVerseId}
           handleUpdatePathWithErrorHandling={handleUpdatePathWithErrorHandling}
