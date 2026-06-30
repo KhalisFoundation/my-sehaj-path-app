@@ -4,6 +4,7 @@
   "exclude": ["**/node_modules", "**/Pods"],
   "compilerOptions": {
     "baseUrl": ".",
+    "types": ["jest"],
     "paths": {
       "@assets/*": ["./assets/*"],
       "@components/*": ["./components/*"],
