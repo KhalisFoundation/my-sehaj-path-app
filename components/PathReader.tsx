@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
-import GestureRecognizer from 'react-native-swipe-gestures';
 import { ScrollView, Text, View } from 'react-native';
 import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
@@ -22,7 +21,6 @@ interface PathReaderProps {
   isAngNavigation: boolean;
   debouncedScrollSave: () => void;
   handleRightArrow: (pageNo: number) => void;
-  handleLeftArrow: (pageNo: number) => void;
   setPressIndex: (index: number) => void;
   setSavedPathVerseId: (verseId: number) => void;
   handleUpdatePathWithErrorHandling: (
@@ -80,7 +78,6 @@ const PathReaderComponent = ({
   isAngNavigation,
   debouncedScrollSave,
   handleRightArrow,
-  handleLeftArrow,
   setPressIndex,
   setSavedPathVerseId,
   handleUpdatePathWithErrorHandling,
@@ -124,14 +121,6 @@ const PathReaderComponent = ({
     handleRightArrow(pathContent?.source?.pageNo);
   }, [handleRightArrow, pathContent?.source?.pageNo]);
 
-  const handleSwipeLeft = useCallback(() => {
-    handleRightArrow(pathContent?.source?.pageNo);
-  }, [handleRightArrow, pathContent?.source?.pageNo]);
-
-  const handleSwipeRight = useCallback(() => {
-    handleLeftArrow(pathContent?.source?.pageNo);
-  }, [handleLeftArrow, pathContent?.source?.pageNo]);
-
   const handleScroll = useCallback(
     (e: any) => {
       const scrollY = e.nativeEvent.contentOffset.y;
@@ -142,15 +131,6 @@ const PathReaderComponent = ({
       }
     },
     [isAngNavigation, debouncedScrollSave, scrollOffset]
-  );
-
-  const gestureConfig = useMemo(
-    () => ({
-      velocityThreshold: 0.8,
-      directionalOffsetThreshold: 80,
-      gestureIsClickThreshold: 10,
-    }),
-    []
   );
 
   const createSelectionHandler = useCallback(
@@ -392,45 +372,37 @@ const PathReaderComponent = ({
   ]);
 
   return (
-    <GestureRecognizer
-      onSwipeLeft={handleSwipeLeft}
-      onSwipeRight={handleSwipeRight}
-      onSwipeDown={() => undefined}
-      onSwipeUp={() => undefined}
-      config={gestureConfig}
+    <ScrollView
+      contentContainerStyle={PathReaderStyles.pathContentContainer}
+      ref={scrollRef}
+      nestedScrollEnabled={false}
+      keyboardShouldPersistTaps="handled"
+      onScroll={handleScroll}
+      onScrollBeginDrag={() => {
+        scrolledToSavedPath.current = true;
+        setFound(false);
+      }}
+      onScrollEndDrag={() => {
+        findCenterVerseId(scrollOffset.current);
+        onScrollEndDrag?.(scrollOffset.current);
+      }}
+      onMomentumScrollEnd={() => {
+        findCenterVerseId(scrollOffset.current);
+        onScrollEndDrag?.(scrollOffset.current);
+      }}
+      scrollEventThrottle={16}
+      decelerationRate="fast"
+      onStartShouldSetResponder={() => false}
+      onMoveShouldSetResponder={() => false}
+      removeClippedSubviews={true}
+      onLayout={handleViewportLayout}
+      onContentSizeChange={onContentSizeChange}
     >
-      <ScrollView
-        contentContainerStyle={PathReaderStyles.pathContentContainer}
-        ref={scrollRef}
-        nestedScrollEnabled={false}
-        keyboardShouldPersistTaps="handled"
-        onScroll={handleScroll}
-        onScrollBeginDrag={() => {
-          scrolledToSavedPath.current = true;
-          setFound(false);
-        }}
-        onScrollEndDrag={() => {
-          findCenterVerseId(scrollOffset.current);
-          onScrollEndDrag?.(scrollOffset.current);
-        }}
-        onMomentumScrollEnd={() => {
-          findCenterVerseId(scrollOffset.current);
-          onScrollEndDrag?.(scrollOffset.current);
-        }}
-        scrollEventThrottle={16}
-        decelerationRate="fast"
-        onStartShouldSetResponder={() => false}
-        onMoveShouldSetResponder={() => false}
-        removeClippedSubviews={true}
-        onLayout={handleViewportLayout}
-        onContentSizeChange={onContentSizeChange}
-      >
-        {pageContent}
-        {pathContent?.source?.pageNo < PATH_DATA.LAST_ANG_NUMBER && !isNavigating && (
-          <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
-        )}
-      </ScrollView>
-    </GestureRecognizer>
+      {pageContent}
+      {pathContent?.source?.pageNo < PATH_DATA.LAST_ANG_NUMBER && !isNavigating && (
+        <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
+      )}
+    </ScrollView>
   );
 };
 
