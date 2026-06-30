@@ -13,10 +13,10 @@ module.exports = {
     'react-native-linear-gradient': '<rootDir>/__mocks__/react-native-linear-gradient.js',
     'react-native-safe-area-context': '<rootDir>/__mocks__/react-native-safe-area-context.js',
     'react-native-svg': '<rootDir>/__mocks__/react-native-svg.js',
-    'react-native-swipe-gestures': '<rootDir>/__mocks__/react-native-swipe-gestures.js',
     '@react-native-async-storage/async-storage': '<rootDir>/__mocks__/async-storage.js',
     '@react-native-community/netinfo': '<rootDir>/__mocks__/netinfo.js',
     '@react-native-community/blur': '<rootDir>/__mocks__/blur.js',
+    '@react-native-firebase/.*': '<rootDir>/__mocks__/firebase-stub.js',
     '@rneui/themed': '<rootDir>/__mocks__/@rneui/themed.js',
   },
 
