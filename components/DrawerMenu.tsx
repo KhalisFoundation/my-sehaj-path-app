@@ -98,7 +98,7 @@ const DrawerMenuComponent = ({
             blurType="light"
             blurAmount={2}
             reducedTransparencyFallbackColor={UIConstants.DRAWER_REDUCED_TRANSPARENCY_FALLBACK}
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
           />
           <View style={DrawerMenuStyles.drawerRow}>
             <View style={DrawerMenuStyles.drawerSlot}>

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 import { SaveIcon } from '@icons';
 import { UIConstants } from '@constants';
 import {
@@ -102,41 +102,41 @@ const ParagraphTextForPathComponent = ({
   }, []);
 
   return (
-    <Text
-      onPress={handlePress}
-      accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      onLongPress={handleLongPress}
-      accessibilityHint="Tap to select, long press to save this line"
-      disabled={isSaved || found}
-      suppressHighlighting={true}
-      style={textStyle}
-      onLayout={onLayout}
-      onTextLayout={onTextLayout}
-    >
-      <Text style={selectedTextStyle}>
-        {isVishraam ? (
-          <VishraamsText
-            gurbaniLine={gurbaniLine}
-            renderWordSegments={renderWordSegments}
-            vishraams={vishraams}
-            vishraamsSource={vishraamsSource}
-          />
-        ) : (
-          gurbaniLine
-        )}{' '}
+    <>
+      <Text
+        onPress={handlePress}
+        accessibilityLabel={accessibilityLabel}
+        accessibilityRole="button"
+        onLongPress={handleLongPress}
+        accessibilityHint="Tap to select, long press to save this line"
+        disabled={isSaved || found}
+        suppressHighlighting={true}
+        style={textStyle}
+        onLayout={onLayout}
+        onTextLayout={onTextLayout}
+      >
+        <Text style={selectedTextStyle}>
+          {isVishraam ? (
+            <VishraamsText
+              gurbaniLine={gurbaniLine}
+              renderWordSegments={renderWordSegments}
+              vishraams={vishraams}
+              vishraamsSource={vishraamsSource}
+            />
+          ) : (
+            gurbaniLine
+          )}{' '}
+        </Text>
       </Text>
-      {isSelected && (
-        <Text>
+        {isSelected && (
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
-            style={{ transform: [{ translateY: fontSize * 0.2 }] }}
+            style={{ transform: [{ translateY: Platform.OS == 'ios' ? '-50%' : '50%' }] }}
           />
-        </Text>
-      )}
-    </Text>
+        )}
+    </>
   );
 };
 

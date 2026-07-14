@@ -40,7 +40,7 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
         blurType="light"
         blurAmount={2}
         reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <View style={PathRenameStyle.overlayContainer}>
         <View style={PathRenameStyle.renameContainer}>
