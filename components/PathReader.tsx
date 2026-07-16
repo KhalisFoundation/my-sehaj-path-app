@@ -5,42 +5,22 @@ import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { usePathReaderCentering } from './usePathReaderCentering';
 import { trackEvent } from '@utils/analytics';
-import { getLarivaarRenderData, type LarivaarRenderData } from '@utils';
-import { PATH_DATA } from '@constants';
+import { getLarivaarRenderData, showErrorAlert, type LarivaarRenderData } from '@utils';
+import { ErrorConstants, PATH_DATA } from '@constants';
+import { savePathProgress } from '../store/commands';
+import { useAppSelector } from '../store/hooks';
+import { usePathSelection } from './PathSelectionContext';
 import type { Verse, PathContent } from '@hooks';
 
 interface PathReaderProps {
   pathContent: PathContent;
-  isLarivaar: boolean;
-  isParagraphMode: boolean;
-  isSaving: boolean;
-  pressIndex: number;
-  savedPathVerseId: number;
   scrollRef: React.RefObject<ScrollView | null>;
   scrollOffset: React.RefObject<number>;
   isAngNavigation: boolean;
   debouncedScrollSave: () => void;
   handleRightArrow: (pageNo: number) => void;
-  setPressIndex: (index: number) => void;
-  setSavedPathVerseId: (verseId: number) => void;
-  handleUpdatePathWithErrorHandling: (
-    pathId: number,
-    pageNo: number,
-    verseId: number,
-    scrollPosition: number,
-    setIsSaved: (value: boolean) => void
-  ) => Promise<boolean>;
-  setIsSaving: (value: boolean) => void;
-  setIsSaved: (value: boolean) => void;
   pathId: number;
   isNavigating: boolean;
-  found: boolean;
-  setFound: (value: boolean) => void;
-  fontSize: number;
-  isSaved: boolean;
-  isVishraam: boolean;
-  vishraamsSource: string;
-  vishraamsStyle: string;
   onSaveCommit?: (
     angNumber: number,
     verseId: number,
@@ -68,30 +48,13 @@ type ParagraphShabadRender = {
 
 const PathReaderComponent = ({
   pathContent,
-  isLarivaar,
-  isParagraphMode,
-  isSaving,
-  pressIndex,
-  savedPathVerseId,
   scrollRef,
   scrollOffset,
   isAngNavigation,
   debouncedScrollSave,
   handleRightArrow,
-  setPressIndex,
-  setSavedPathVerseId,
-  handleUpdatePathWithErrorHandling,
-  setIsSaving,
-  setIsSaved,
   pathId,
   isNavigating,
-  found,
-  setFound,
-  fontSize,
-  isSaved,
-  isVishraam,
-  vishraamsSource,
-  vishraamsStyle,
   onSaveCommit,
   setCenterVerseId,
   scrollToVerseId,
@@ -100,6 +63,15 @@ const PathReaderComponent = ({
   onScrollEndDrag,
   onContentSizeChange,
 }: PathReaderProps) => {
+  // Selection state from context, display settings from the store: neither is
+  // drilled down from PathScreen any more.
+  const { isSaving, setIsSaving, setPressIndex, setSavedPathVerseId, setIsSaved, setFound } =
+    usePathSelection();
+  const isLarivaar = useAppSelector((state) => state.settings.larivaar);
+  const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
+  const isVishraam = useAppSelector((state) => state.settings.vishraam);
+  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+
   const {
     clearMeasuredVerses,
     createLayoutHandler,
@@ -145,14 +117,25 @@ const PathReaderComponent = ({
 
   const createSaveHandler = useCallback(
     (verseId: number) => async () => {
-      const saved = await handleUpdatePathWithErrorHandling(
+      const saved = await savePathProgress(
         pathId,
         pathContent?.source?.pageNo,
         verseId,
-        scrollOffset.current,
-        setIsSaved
+        scrollOffset.current
       );
-      if (saved && onSaveCommit) {
+      if (!saved) {
+        // Long-press optimistically marks the verse saved for instant feedback.
+        // The write failed, so undo that: never leave a "saved" state on screen
+        // for something that is not on disk.
+        setIsSaved(false);
+        setIsSaving(false);
+        setSavedPathVerseId(0);
+        setPressIndex(0);
+        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+        return;
+      }
+      setIsSaved(true);
+      if (onSaveCommit) {
         onSaveCommit(pathContent?.source?.pageNo ?? 0, verseId, scrollOffset.current, true);
       }
     },
@@ -160,8 +143,10 @@ const PathReaderComponent = ({
       pathId,
       pathContent?.source?.pageNo,
       scrollOffset,
-      handleUpdatePathWithErrorHandling,
       setIsSaved,
+      setIsSaving,
+      setSavedPathVerseId,
+      setPressIndex,
       onSaveCommit,
     ]
   );
@@ -279,23 +264,9 @@ const PathReaderComponent = ({
                       onSelection={createSelectionHandler(globalIndex - 1, verseId)}
                       onSave={createSaveHandler(verseId)}
                       onLayout={createParagraphVerseLayoutHandler(verseId, shabadIndex)}
-                      isSaving={isSaving}
-                      pressIndex={pressIndex}
                       index={globalIndex}
                       verseId={verseId}
-                      savedPathVerseId={savedPathVerseId}
-                      setIsSaving={setIsSaving}
-                      setIsSaved={setIsSaved}
-                      setPressIndex={setPressIndex}
-                      setSavedPathVerseId={setSavedPathVerseId}
-                      found={found}
-                      setFound={setFound}
-                      fontSize={fontSize}
-                      isSaved={isSaved}
-                      isVishraam={isVishraam}
                       vishraams={vishraam}
-                      vishraamsSource={vishraamsSource}
-                      vishraamsStyle={vishraamsStyle}
                     />
                   );
                 }
@@ -322,53 +293,28 @@ const PathReaderComponent = ({
           onSelection={createSelectionHandler(index, path.verseId)}
           onSave={createSaveHandler(path.verseId)}
           onLayout={createLayoutHandler(path.verseId)}
-          isSaving={isSaving}
-          pressIndex={pressIndex}
           index={index + 1}
           verseId={path.verseId}
-          savedPathVerseId={savedPathVerseId}
-          setIsSaving={setIsSaving}
-          setIsSaved={setIsSaved}
-          setPressIndex={setPressIndex}
-          setSavedPathVerseId={setSavedPathVerseId}
-          found={found}
-          setFound={setFound}
-          fontSize={fontSize}
-          isSaved={isSaved}
-          isVishraam={isVishraam}
           vishraams={vishraam}
           renderWordSegments={larivaarRenderData?.wordSegments}
-          vishraamsSource={vishraamsSource}
-          vishraamsStyle={vishraamsStyle}
         />
       );
     });
+    // Selection state is no longer a dependency: the verse components read it
+    // from context and re-render themselves when it changes.
   }, [
     pathContent?.page,
     isLarivaar,
-    isSaving,
-    pressIndex,
-    savedPathVerseId,
+    isVishraam,
     createSelectionHandler,
     createSaveHandler,
     createLayoutHandler,
     createParagraphVerseLayoutHandler,
     createParagraphVerseTextLayoutHandler,
     createShabadLayoutHandler,
-    setIsSaving,
-    setIsSaved,
-    setPressIndex,
-    setSavedPathVerseId,
-    found,
-    setFound,
-    fontSize,
     paragraphShabadTextStyle,
-    isSaved,
     isParagraphMode,
     paragraphShabads,
-    isVishraam,
-    vishraamsSource,
-    vishraamsStyle,
   ]);
 
   return (

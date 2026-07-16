@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text } from 'react-native';
 import { VishraamsTheme } from '@constants/VishraamsTheme';
-import { Visraams } from '@hooks/useLocal';
+import type { Visraams } from '../types';
 import { Constants } from '@constants/constant';
 
 type VishraamsTextProps = {

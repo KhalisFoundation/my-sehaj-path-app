@@ -8,9 +8,10 @@ interface Props {
   handleGoBack: () => void;
   setIsSaving: (isSaving: boolean) => void;
   fadeAnim: React.MutableRefObject<Animated.Value>;
-  navigation: any;
+  /** Persists the current position, then navigates to Settings. */
+  onSettings: () => void;
 }
-export const PathControls = ({ handleGoBack, setIsSaving, fadeAnim, navigation }: Props) => {
+export const PathControls = ({ handleGoBack, setIsSaving, fadeAnim, onSettings }: Props) => {
   return (
     <>
       <View style={PathScreenStyles.controlsContainer}>
@@ -32,11 +33,8 @@ export const PathControls = ({ handleGoBack, setIsSaving, fadeAnim, navigation }
             }}
           />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={PathScreenStyles.controlItem}
-          onPress={() => navigation.push('Setting')}
-        >
-          <NavContent navIcon={<SettingsIcon />} onPress={() => navigation.push('Setting')} />
+        <TouchableOpacity style={PathScreenStyles.controlItem} onPress={onSettings}>
+          <NavContent navIcon={<SettingsIcon />} onPress={onSettings} />
         </TouchableOpacity>
       </View>
     </>

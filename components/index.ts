@@ -22,3 +22,7 @@ export { Message } from './Message';
 export { ParagraphTextForPath } from './ParagraphTextForPath';
 export { DrawerMenu } from './DrawerMenu';
 export { ErrorBoundary } from './ErrorBoundary';
+export { BootSplash } from './BootSplash';
+export { HydrationRetry } from './HydrationRetry';
+export { PathSelectionProvider, usePathSelection } from './PathSelectionContext';
+export type { PathSelection } from './PathSelectionContext';

@@ -1,66 +1,22 @@
 import NetInfo from '@react-native-community/netinfo';
-import { useState, useEffect } from 'react';
 
+/**
+ * Imperative one-off connectivity probe.
+ *
+ * Reactive online/offline state now comes from the store
+ * (`useAppSelector((state) => state.network.isOnline)`), fed by the single
+ * NetInfo listener in App.tsx. This hook no longer holds state or subscribes,
+ * so screens no longer create a listener each.
+ */
 export const useInternet = () => {
-  const [isOnline, setIsOnline] = useState<boolean>(true);
-
-  const updateOnlineStatus = () => {
-    return new Promise<boolean>((resolve) => {
-      NetInfo.fetch()
-        .then((netInfo) => {
-          const isConnected = Boolean(netInfo.isConnected);
-          setIsOnline(isConnected);
-          resolve(isConnected);
-        })
-        .catch(() => {
-          setIsOnline(false);
-          resolve(false);
-        });
-    });
+  const checkNetwork = async (): Promise<boolean> => {
+    try {
+      const state = await NetInfo.fetch();
+      return Boolean(state.isConnected);
+    } catch {
+      return false;
+    }
   };
 
-  const checkNetwork = () => {
-    return new Promise<boolean>((resolve) => {
-      if (isOnline) {
-        resolve(true);
-        return;
-      }
-      const timeout = setTimeout(() => {
-        resolve(false);
-      }, 500);
-
-      NetInfo.fetch()
-        .then((netInfo) => {
-          clearTimeout(timeout);
-          const isConnected = Boolean(netInfo.isConnected);
-          setIsOnline(isConnected);
-          resolve(isConnected);
-        })
-        .catch(() => {
-          clearTimeout(timeout);
-          NetInfo.fetch()
-            .then((netInfo) => {
-              const fallbackConnected = Boolean(netInfo.isConnected);
-              setIsOnline(fallbackConnected);
-              resolve(fallbackConnected);
-            })
-            .catch(() => {
-              resolve(false);
-            });
-        });
-    });
-  };
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      const isConnected = Boolean(state.isConnected && state.isInternetReachable);
-      setIsOnline(isConnected);
-    });
-
-    updateOnlineStatus();
-
-    return () => unsubscribe();
-  }, []);
-
-  return { checkNetwork, isOnline, updateOnlineStatus };
+  return { checkNetwork };
 };

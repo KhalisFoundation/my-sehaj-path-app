@@ -12,34 +12,35 @@ import {
   createPressHandler,
   pathTextPropsAreEqual,
 } from '@utils';
+import { useAppSelector } from '../store/hooks';
+import { usePathSelection } from './PathSelectionContext';
 import { VishraamsText } from './VishraamsText';
 
 const SimpleTextForPathComponent = ({
   gurbaniLine,
   renderWordSegments,
   onSelection,
-  isSaving,
-  pressIndex,
   index,
   onSave,
   verseId,
-  savedPathVerseId,
-  setIsSaved,
-  setIsSaving,
-  setPressIndex,
-  setSavedPathVerseId,
-  found,
-  setFound,
-  fontSize,
-  isSaved,
-  isVishraam,
   vishraams,
-  vishraamsSource,
   onLayout,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
 
-  const isSelected = useIsSelected(verseId, savedPathVerseId, isSaving, pressIndex, index);
+  // Selection state from context; display settings from the store.
+  const selection = usePathSelection();
+  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const isVishraam = useAppSelector((state) => state.settings.vishraam);
+  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+
+  const isSelected = useIsSelected(
+    verseId,
+    selection.savedPathVerseId,
+    selection.isSaving,
+    selection.pressIndex,
+    index
+  );
   const accessibilityLabel = useAccessibilityLabel(index, isSelected);
   const textStyle = useTextStyle(fontSize);
   const containerStyle = useContainerStyle(isSelected);
@@ -47,14 +48,9 @@ const SimpleTextForPathComponent = ({
   const baseLongPressHandler = createLongPressHandler(
     index,
     verseId,
-    found,
+    selection,
     onSave,
-    onSelection,
-    setFound,
-    setPressIndex,
-    setSavedPathVerseId,
-    setIsSaving,
-    setIsSaved
+    onSelection
   );
 
   const handleLongPress = () => {
@@ -66,7 +62,7 @@ const SimpleTextForPathComponent = ({
     isLongPressingRef.current = false;
   };
 
-  const handlePress = createPressHandler(isSaving, onSelection, onSave);
+  const handlePress = createPressHandler(selection.isSaving, onSelection, onSave);
 
   return (
     <Pressable
@@ -78,10 +74,10 @@ const SimpleTextForPathComponent = ({
       delayLongPress={Platform.OS === 'ios' ? 350 : 500}
       pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
       accessibilityHint="Tap to select, long press to save this line"
-      disabled={isSaved || found}
+      disabled={selection.isSaved || selection.found}
       onLayout={onLayout}
     >
-      <Text suppressHighlighting={true} style={textStyle} >
+      <Text suppressHighlighting={true} style={textStyle}>
         {isVishraam ? (
           <VishraamsText
             gurbaniLine={gurbaniLine}
@@ -93,13 +89,13 @@ const SimpleTextForPathComponent = ({
           gurbaniLine
         )}
       </Text>
-        {isSelected && (
-          <SaveIcon
-            color={UIConstants.SAVE_ICON_COLOR}
-            width={fontSize * 1.2}
-            height={fontSize * 1.2}
-          />
-        )}
+      {isSelected && (
+        <SaveIcon
+          color={UIConstants.SAVE_ICON_COLOR}
+          width={fontSize * 1.2}
+          height={fontSize * 1.2}
+        />
+      )}
     </Pressable>
   );
 };

@@ -1,5 +1,5 @@
 module.exports = {
-  preset: '@react-native/jest-present',
+  preset: '@react-native/jest-preset',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     '^@assets/(.*)$': '<rootDir>/assets/$1',
@@ -13,7 +13,9 @@ module.exports = {
     'react-native-linear-gradient': '<rootDir>/__mocks__/react-native-linear-gradient.js',
     'react-native-safe-area-context': '<rootDir>/__mocks__/react-native-safe-area-context.js',
     'react-native-svg': '<rootDir>/__mocks__/react-native-svg.js',
-    '@react-native-async-storage/async-storage': '<rootDir>/__mocks__/async-storage.js',
+    // Anchored: an unanchored pattern also matches the mock's own internal
+    // require of `.../jest/async-storage-mock`, making it resolve to itself.
+    '^@react-native-async-storage/async-storage$': '<rootDir>/__mocks__/async-storage.js',
     '@react-native-community/netinfo': '<rootDir>/__mocks__/netinfo.js',
     '@react-native-community/blur': '<rootDir>/__mocks__/blur.js',
     '@react-native-firebase/.*': '<rootDir>/__mocks__/firebase-stub.js',

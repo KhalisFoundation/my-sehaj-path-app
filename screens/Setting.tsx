@@ -3,25 +3,77 @@ import { TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
 import { LeftArrowIcon } from '@icons';
-import { SettingScreenStyle, SafeAreaStyle, LarivaarStyles, ParagraphModeStyles, FontSizeStyle, AngsFormatStyles } from '@styles';
+import {
+  SettingScreenStyle,
+  SafeAreaStyle,
+  LarivaarStyles,
+  ParagraphModeStyles,
+  FontSizeStyle,
+  AngsFormatStyles,
+} from '@styles';
 import { RootStackParamList } from '../App';
-import { useScreenAnalytics, useLocal, FontSizeData, AngsFormat, VishraamsSource } from '@hooks';
-import { Constants, EDGES_ALL_SIDES, ErrorConstants, FontSizes, AngsFormatArray, VishraamsSourceArray, VishraamsSourceLabels } from '@constants';
+import { useScreenAnalytics, useSetting } from '@hooks';
+import {
+  Constants,
+  EDGES_ALL_SIDES,
+  ErrorConstants,
+  FontSizes,
+  AngsFormatArray,
+  VishraamsSourceArray,
+  VishraamsSourceLabels,
+} from '@constants';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { AngsFormat, FontSizeData, VishraamsSource } from '../types';
+import {
+  setAngsFormat,
+  setAnalyticsConsent,
+  setFontSize,
+  setLarivaar,
+  setParagraphMode,
+  setVishraam,
+  setVishraamsSource,
+} from '../store/slices/settingsSlice';
 
 type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 
 export const Settings = ({ navigation }: SettingProps) => {
   useScreenAnalytics('Settings', 'Settings');
-  const { 
-    saveFontSize, fetchFontSize,
-    saveAngsFormat, fetchAngsFormat,
-    saveParagraphMode, fetchParagraphMode,
-    saveLarivaar, fetchLarivaar,
-    saveConsent, fetchConsent,
-    saveVishraam, fetchVishraam,
-    saveVishraamsSource, fetchVishraamsSource,
-  } = useLocal();
+
+  const [fontSize, changeFontSize] = useSetting(
+    (state) => state.settings.fontSize,
+    setFontSize,
+    ErrorConstants.FAILED_TO_SAVE_FONT_SIZE
+  );
+  const [angsFormat, changeAngsFormat] = useSetting(
+    (state) => state.settings.angsFormat,
+    setAngsFormat,
+    ErrorConstants.FAILED_TO_SAVE_ANG_FORMAT
+  );
+  const [paragraphMode, changeParagraphMode] = useSetting(
+    (state) => state.settings.paragraphMode,
+    setParagraphMode,
+    ErrorConstants.FAILED_TO_SAVE_PARAGRAPH_MODE
+  );
+  const [vishraam, changeVishraam] = useSetting(
+    (state) => state.settings.vishraam,
+    setVishraam,
+    ErrorConstants.FAILED_TO_SAVE_VISHRAAM
+  );
+  const [vishraamsSource, changeVishraamsSource] = useSetting(
+    (state) => state.settings.vishraamsSource,
+    setVishraamsSource,
+    ErrorConstants.FAILED_TO_SAVE_VISHRAAM_SOURCE
+  );
+  const [larivaar, changeLarivaar] = useSetting(
+    (state) => state.settings.larivaar,
+    setLarivaar,
+    ErrorConstants.FAILED_TO_SAVE_LARIVAAR
+  );
+  const [analyticsConsent, changeAnalyticsConsent] = useSetting(
+    (state) => state.settings.analyticsConsent,
+    setAnalyticsConsent,
+    ErrorConstants.FAILED_TO_SAVE_ANALYTICS
+  );
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
@@ -46,19 +98,14 @@ export const Settings = ({ navigation }: SettingProps) => {
             <View>
               <SimpleText simpleText={Constants.DISPLAY_OPTIONS} />
             </View>
-            
+
             <DropdownSettingItem<FontSizeData>
               settingKey="fontSize"
               label={Constants.FONT_SIZE}
               overlayTitle={Constants.SELECT_YOUR_FONT_SIZE}
-              options={FontSizes.map(size => ({ value: size, label: size.fontSize }))}
-              saveFn={saveFontSize}
-              fetchFn={fetchFontSize}
-              errorMessages={{
-                loadError: ErrorConstants.FAILED_TO_LOAD_FONT_SIZE,
-                saveError: ErrorConstants.FAILED_TO_SAVE_FONT_SIZE,
-              }}
-              defaultValue={{ fontSize: 'Small (Default)', number: 18 }}
+              options={FontSizes.map((size) => ({ value: size, label: size.fontSize }))}
+              value={fontSize}
+              onValueChange={changeFontSize}
               containerStyle={FontSizeStyle.container}
               textStyle={FontSizeStyle.fontSizeText}
               overlayHeaderStyle={FontSizeStyle.overlayHeader}
@@ -69,19 +116,14 @@ export const Settings = ({ navigation }: SettingProps) => {
               getDisplayValue={(value: FontSizeData) => value.fontSize || 'Default'}
               isEqual={(a: FontSizeData, b: FontSizeData) => a.fontSize === b.fontSize}
             />
-            
+
             <DropdownSettingItem<AngsFormat>
               settingKey="angsFormat"
               label={Constants.ANG_NUMBERING}
               overlayTitle={Constants.SELECT_YOUR_ANG_FORMAT}
-              options={AngsFormatArray.map(format => ({ value: format, label: format.format }))}
-              saveFn={saveAngsFormat}
-              fetchFn={fetchAngsFormat}
-              errorMessages={{
-                loadError: ErrorConstants.FAILED_TO_LOAD_ANG_FORMAT,
-                saveError: ErrorConstants.FAILED_TO_SAVE_ANG_FORMAT,
-              }}
-              defaultValue={{ format: 'Punjabi' }}
+              options={AngsFormatArray.map((format) => ({ value: format, label: format.format }))}
+              value={angsFormat}
+              onValueChange={changeAngsFormat}
               containerStyle={AngsFormatStyles.container}
               textStyle={AngsFormatStyles.angsText}
               overlayHeaderStyle={AngsFormatStyles.overlayHeader}
@@ -91,17 +133,12 @@ export const Settings = ({ navigation }: SettingProps) => {
               isEqual={(a: AngsFormat, b: AngsFormat) => a.format === b.format}
               showCheckmark={false}
             />
-            
+
             <SwitchSettingItem
               settingKey="paragraphMode"
               label={Constants.PARAGRAPH_MODE}
-              saveFn={saveParagraphMode}
-              fetchFn={fetchParagraphMode}
-              errorMessages={{
-                loadError: ErrorConstants.FAILED_TO_LOAD_PARAGRAPH_MODE,
-                saveError: ErrorConstants.FAILED_TO_SAVE_PARAGRAPH_MODE,
-              }}
-              defaultValue={false}
+              value={paragraphMode}
+              onValueChange={changeParagraphMode}
               containerStyle={ParagraphModeStyles.container}
               textStyle={ParagraphModeStyles.fontSizeText}
             />
@@ -109,13 +146,8 @@ export const Settings = ({ navigation }: SettingProps) => {
             <SwitchSettingItem
               settingKey="vishraam"
               label={Constants.VISHRAAM}
-              saveFn={saveVishraam}
-              fetchFn={fetchVishraam}
-              errorMessages={{
-                loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM,
-                saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM,
-              }}
-              defaultValue={false}
+              value={vishraam}
+              onValueChange={changeVishraam}
               containerStyle={ParagraphModeStyles.container}
               textStyle={ParagraphModeStyles.fontSizeText}
             />
@@ -124,14 +156,12 @@ export const Settings = ({ navigation }: SettingProps) => {
               settingKey="vishraamsSource"
               label="Vishraam Source"
               overlayTitle="Select Vishraam Source"
-              options={VishraamsSourceArray.map(source => ({ value: source, label: VishraamsSourceLabels[source.source] }))}
-              saveFn={saveVishraamsSource}
-              fetchFn={fetchVishraamsSource}
-              errorMessages={{
-                loadError: ErrorConstants.FAILED_TO_LOAD_VISHRAAM_SOURCE,
-                saveError: ErrorConstants.FAILED_TO_SAVE_VISHRAAM_SOURCE,
-              }}
-              defaultValue={{ source: Constants.DEFAULT_VISHRAAM_SOURCE }}
+              options={VishraamsSourceArray.map((source) => ({
+                value: source,
+                label: VishraamsSourceLabels[source.source],
+              }))}
+              value={vishraamsSource}
+              onValueChange={changeVishraamsSource}
               containerStyle={AngsFormatStyles.container}
               textStyle={AngsFormatStyles.angsText}
               overlayHeaderStyle={AngsFormatStyles.overlayHeader}
@@ -142,7 +172,7 @@ export const Settings = ({ navigation }: SettingProps) => {
               showCheckmark={false}
             />
           </View>
-          
+
           <View>
             <View>
               <SimpleText simpleText={Constants.BANI_OPTIONS} />
@@ -150,31 +180,21 @@ export const Settings = ({ navigation }: SettingProps) => {
             <SwitchSettingItem
               settingKey="larivaar"
               label={Constants.LARIVAAR}
-              saveFn={saveLarivaar}
-              fetchFn={fetchLarivaar}
-              errorMessages={{
-                loadError: ErrorConstants.FAILED_TO_LOAD_LARIVAAR,
-                saveError: ErrorConstants.FAILED_TO_SAVE_LARIVAAR,
-              }}
-              defaultValue={false}
+              value={larivaar}
+              onValueChange={changeLarivaar}
               containerStyle={LarivaarStyles.container}
               textStyle={LarivaarStyles.fontSizeText}
             />
           </View>
-          
+
           <View>
             <SimpleText simpleText={'Other Settings'} />
           </View>
           <SwitchSettingItem
             settingKey="analytics"
             label={Constants.ANALYTICS}
-            saveFn={saveConsent}
-            fetchFn={fetchConsent}
-            errorMessages={{
-              loadError: ErrorConstants.FAILED_TO_LOAD_ANALYTICS,
-              saveError: ErrorConstants.FAILED_TO_SAVE_ANALYTICS,
-            }}
-            defaultValue={true}
+            value={analyticsConsent}
+            onValueChange={changeAnalyticsConsent}
             containerStyle={LarivaarStyles.container}
             textStyle={LarivaarStyles.fontSizeText}
           />

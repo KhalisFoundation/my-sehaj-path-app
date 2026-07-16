@@ -28,6 +28,7 @@ export const Constants: Constant = {
   DISPLAY_OPTIONS: 'Display Options',
   BANI_OPTIONS: 'Bani Options',
   SELECT_A_PANKTEE_TO_SAVE_PROGRESS: 'Select a panktee to save progress.',
+  SAVING_THE_HIGHLIGHTED_PANKTEE: 'Saving …',
   SAVED_THE_HIGHLIGHTED_PANKTEE: 'Saved the highlighted panktee!',
   RESUMING_SAVED_PROGRESS: 'Resuming saved progress',
   SELECT_YOUR_FONT_SIZE: 'Select your font size',

@@ -16,8 +16,9 @@ import {
 } from '@components';
 import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, PATH_DATA } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { PathData, useLocal, useScreenAnalytics, useInternet } from '@hooks';
+import { PathData, useScreenAnalytics, useInternet } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
+import { useAppSelector } from '../store/hooks';
 import { LeftArrowIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
 
@@ -52,7 +53,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   });
 
   const streak = useRef<number>(0);
-  const { fetchFromLocal } = useLocal();
+  const matchedPath = useAppSelector((state) =>
+    state.paths.paths.find((path: PathData) => path.pathId === pathId)
+  );
   const { checkNetwork } = useInternet();
   const previousRoute = useNavigationState((state) => state.routes[state.index - 1]?.name);
   const isFromPath = previousRoute === Routes.Path;
@@ -61,13 +64,13 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
   }, []);
 
-  const calculatePathCompletion = useCallback((matchedPath: PathData) => {
+  const calculatePathCompletion = useCallback((path: PathData) => {
     const today = dayjs();
-    const startDate = dayjs(matchedPath.startDate, 'D-MMMM-YYYY');
+    const startDate = dayjs(path.startDate, 'D-MMMM-YYYY');
     const days = today.diff(startDate, 'day');
-    const averageMatchedAngs = (matchedPath.saveData.angNumber || 0) / (days ? days : 1);
+    const averageMatchedAngs = (path.saveData.angNumber || 0) / (days ? days : 1);
 
-    const remainingAngs = PATH_DATA.LAST_ANG_NUMBER - matchedPath.saveData.angNumber;
+    const remainingAngs = PATH_DATA.LAST_ANG_NUMBER - path.saveData.angNumber;
     const remainingDays = remainingAngs / (averageMatchedAngs ? averageMatchedAngs : 1);
     const completionDate = today.add(remainingDays, 'day');
 
@@ -78,49 +81,28 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     };
   }, []);
 
-  const fetchPath = useCallback(async () => {
-    try {
-      const { pathDataArray } = await fetchFromLocal();
-      const matchedPath = pathDataArray.find((path: PathData) => path.pathId === pathId);
-      return { matchedPath };
-    } catch (error) {
+  const updateTheData = useCallback(() => {
+    if (!matchedPath) {
       showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA, () => navigation.goBack(), 'Retry');
-      return { matchedPath: undefined };
+      return;
     }
-  }, [fetchFromLocal, navigation, pathId]);
+    const pathAng = matchedPath.saveData.angNumber || 0;
+    const pathPercentage = parseFloat(((pathAng / PATH_DATA.LAST_ANG_NUMBER) * 100).toFixed(2));
+    const { finishDate, daysAgo, averageAngs } = calculatePathCompletion(matchedPath);
 
-  const updateTheData = useCallback(async () => {
-    try {
-      const { matchedPath } = await fetchPath();
-      if (matchedPath) {
-        const show = matchedPath?.saveData.angNumber < 10 ? false : true;
-        const pathAng = matchedPath?.saveData.angNumber || 0;
-        const pathPercentage = parseFloat(
-          (((matchedPath?.saveData.angNumber || 0) / PATH_DATA.LAST_ANG_NUMBER) * 100).toFixed(2)
-        );
-        const { finishDate, daysAgo, averageAngs } = calculatePathCompletion(matchedPath);
+    setPathState({
+      pathData: matchedPath,
+      pathAng,
+      pathPercentage,
+      daysAgo,
+      averageAngs,
+      finishDate,
+      showData: pathAng >= 10,
+      pathName: matchedPath.pathName,
+    });
+  }, [matchedPath, navigation, calculatePathCompletion]);
 
-        setPathState({
-          pathData: matchedPath,
-          pathAng,
-          pathPercentage,
-          daysAgo,
-          averageAngs,
-          finishDate,
-          showData: show,
-          pathName: matchedPath.pathName,
-        });
-      }
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_UPDATE_PATH_DATA, () => navigation.goBack(), 'Retry');
-    }
-  }, [fetchPath, navigation, calculatePathCompletion]);
-
-  useFocusEffect(
-    useCallback(() => {
-      updateTheData();
-    }, [updateTheData])
-  );
+  useFocusEffect(updateTheData);
 
   const handleContinue = useCallback(async () => {
     try {

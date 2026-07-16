@@ -15,7 +15,8 @@ interface UseScrollToSavedPathProps {
   setFound: (value: boolean) => void;
   setIsSaving: (value: boolean) => void;
   setIsSaved: (value: boolean) => void;
-  fetchFontSize: () => Promise<{ number: number }>;
+  /** Current font size from the store — no longer fetched from disk here. */
+  fontSize: number;
 }
 
 export const useScrollToSavedPath = ({
@@ -29,7 +30,7 @@ export const useScrollToSavedPath = ({
   setFound,
   setIsSaving,
   setIsSaved,
-  fetchFontSize,
+  fontSize,
 }: UseScrollToSavedPathProps) => {
   const runFadeSequence = useCallback(() => {
     setFound(true);
@@ -69,8 +70,7 @@ export const useScrollToSavedPath = ({
         const scrollIndex = pathContent?.page?.findIndex(
           (page: any) => page.verseId === savedPathVerseId
         );
-        const fontSize = await fetchFontSize();
-        const fontSizeNumber = fontSize.number;
+        const fontSizeNumber = fontSize;
         let scrollHeight;
         if (fontSizeNumber <= 18) {
           scrollHeight = 25;
@@ -106,7 +106,7 @@ export const useScrollToSavedPath = ({
     scrollOffset,
     fadeAnim,
     runFadeSequence,
-    fetchFontSize,
+    fontSize,
   ]);
 
   return { scrollToSavedPathData };
