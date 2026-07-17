@@ -101,7 +101,7 @@ export const AngsNavigation = ({
         blurType="light"
         blurAmount={2}
         reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <View style={AngsNavigationStyle.overlayContainer}>
         <View style={AngsNavigationStyle.angsNavigationContainer}>

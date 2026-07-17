@@ -92,15 +92,14 @@ const SimpleTextForPathComponent = ({
         ) : (
           gurbaniLine
         )}
+      </Text>
         {isSelected && (
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
-            style={{ transform: [{ translateY: fontSize * 0.2 }] }}
           />
         )}
-      </Text>
     </Pressable>
   );
 };
