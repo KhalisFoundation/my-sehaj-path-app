@@ -63,6 +63,42 @@
       }
     },
     {
+      "shapeId": "shape-6key",
+      "provenance": "device-captured",
+      "origin": "Android emulator capture from archived signed release APK android/app/release/app-release.apk (SHA-256 a96e65c4aeccdd934fe91784668e60165bef474b2da22c09223b7eb1250e97ff)",
+      "platforms": [{ "platform": "android", "appVersion": "1.0.3", "build": 7 }],
+      "source": {
+        "pathDetails": "[{\"pathId\":1,\"progress\":1,\"saveData\":{\"angNumber\":0,\"verseId\":0},\"startDate\":\"28-July-2026\",\"completionDate\":\"\",\"pathName\":\"Path #1\"}]",
+        "pathDateDetails": "[{\"pathid\":1,\"dates\":[],\"scrollPosition\":0}]",
+        "fontSize": "{\"fontSize\":\"Medium\",\"number\":24}",
+        "larivaar": "true",
+        "angsFormat": "{\"format\":\"English\"}",
+        "consent": "false"
+      },
+      "expected": {
+        "paths": [
+          {
+            "pathId": 1,
+            "progress": 1,
+            "saveData": { "angNumber": 0, "verseId": 0 },
+            "startDate": "28-July-2026",
+            "completionDate": "",
+            "pathName": "Path #1"
+          }
+        ],
+        "dates": [{ "pathid": 1, "dates": [], "scrollPosition": 0 }],
+        "settings": {
+          "fontSize": { "fontSize": "Medium", "number": 24 },
+          "larivaar": true,
+          "paragraphMode": false,
+          "vishraam": false,
+          "vishraamsSource": { "source": "sttm" },
+          "angsFormat": { "format": "English" },
+          "analyticsConsent": false
+        }
+      }
+    },
+    {
       "shapeId": "shape-9key",
       "provenance": "derived",
       "origin": "derived from origin/dev useLocal.ts write code",
@@ -101,6 +137,45 @@
           "vishraamsSource": { "source": "igurbani" },
           "angsFormat": { "format": "Punjabi" },
           "analyticsConsent": true
+        }
+      }
+    },
+    {
+      "shapeId": "shape-9key",
+      "provenance": "device-captured",
+      "origin": "Android emulator capture from release APK built at production release commit aadc7588aea89f273cf19d72e0dd4e6868ea0846 (SHA-256 b5d3c6750e40a39aac79222f1bcb9ab04d88dcbf0abdb732caa0755578f2c779)",
+      "platforms": [{ "platform": "android", "appVersion": "1.0.5", "build": 10 }],
+      "source": {
+        "pathDetails": "[{\"pathId\":1,\"progress\":1,\"saveData\":{\"angNumber\":0,\"verseId\":0},\"startDate\":\"28-July-2026\",\"completionDate\":\"\",\"pathName\":\"Path #1\"}]",
+        "pathDateDetails": "[{\"pathid\":1,\"dates\":[],\"scrollPosition\":0}]",
+        "fontSize": "{\"fontSize\":\"Large\",\"number\":30}",
+        "larivaar": "true",
+        "angsFormat": "{\"format\":\"English\"}",
+        "consent": "false",
+        "paragraphMode": "true",
+        "vishraam": "true",
+        "vishraamsSource": "{\"source\":\"igurbani\"}"
+      },
+      "expected": {
+        "paths": [
+          {
+            "pathId": 1,
+            "progress": 1,
+            "saveData": { "angNumber": 0, "verseId": 0 },
+            "startDate": "28-July-2026",
+            "completionDate": "",
+            "pathName": "Path #1"
+          }
+        ],
+        "dates": [{ "pathid": 1, "dates": [], "scrollPosition": 0 }],
+        "settings": {
+          "fontSize": { "fontSize": "Large", "number": 30 },
+          "larivaar": true,
+          "paragraphMode": true,
+          "vishraam": true,
+          "vishraamsSource": { "source": "igurbani" },
+          "angsFormat": { "format": "English" },
+          "analyticsConsent": false
         }
       }
     }

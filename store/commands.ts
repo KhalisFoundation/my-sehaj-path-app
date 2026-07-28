@@ -1,5 +1,5 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import { MonthConstant, PATH_DATA } from '@constants';
+import { ErrorConstants, MonthConstant, PATH_DATA } from '@constants';
 import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
@@ -15,6 +15,7 @@ import {
   updatePath,
 } from './slices/pathsSlice';
 import { hydrateSettings, type SettingsState } from './slices/settingsSlice';
+import { showErrorAlert } from '@utils/Error';
 
 /**
  * Acknowledged operations.
@@ -73,22 +74,27 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
   const saved = await persistence.flush();
 
   if (!saved) {
-    // Restore both slices; the untouched one is a no-op. Restoring settings
-    // as well keeps this usable for setting commands.
+    // Roll the store back in memory immediately so the UI can report failure
+    // without waiting. The restored state is persisted in the BACKGROUND (the
+    // dispatches invalidate the baseline, so the coordinator rewrites it and
+    // clears the stale journal on its own). We do NOT await it — awaiting a
+    // second full retry cycle here is what made failures take several seconds.
     store.dispatch(setAll({ paths: previousPaths.paths, dates: previousPaths.dates }));
     store.dispatch(hydrateSettings(previousSettings));
 
-    // The rollback must itself be durable: the failed commit left a stale
-    // journal on disk, and only a successful flush of the restored state
-    // clears it. If even this fails, surface it — a boot-time journal replay
-    // could otherwise resurrect the change the UI reported as failed.
-    const restored = await persistence.flush();
-    if (!restored) {
-      recordError(
-        new Error('rollback flush failed; on-disk journal may be stale'),
-        'commands: rollback not durable'
-      );
-    }
+    persistence
+      .flush()
+      .then((restored) => {
+        if (!restored) {
+          recordError(
+            new Error('rollback flush failed; on-disk journal may be stale'),
+            'commands: rollback not durable'
+          );
+        }
+      })
+      .catch(() => {
+        // flush never rejects, but keep the floating promise safe.
+      });
   }
   return saved;
 };
@@ -104,6 +110,24 @@ const commitOrRollback = (build: () => UnknownAction): Promise<boolean> =>
 /** Serialized, rolled-back setting change. Used by useSetting. */
 export const commitSettingChange = (action: UnknownAction): Promise<boolean> =>
   commitOrRollback(() => action);
+
+/**
+ * Like `commitOrRollback`, but for a mutation that targets an existing path.
+ *
+ * The reducers no-op when the pathId is not found. Without this guard that
+ * no-op leaves the store unchanged, so the coordinator sees nothing to write
+ * and `flush()` returns true — the UI would report "Saved" for a save that
+ * never happened. Checking existence inside the lock turns a missing target
+ * into an honest failure that the command then alerts on.
+ */
+const runPathMutation = (pathId: number, build: () => UnknownAction): Promise<boolean> =>
+  runExclusive(async () => {
+    const exists = store.getState().paths.paths.some((path) => path.pathId === pathId);
+    if (!exists) {
+      return false;
+    }
+    return dispatchDurable(build());
+  });
 
 /**
  * Creates a new path. Resolves with its id, or null if it could not be saved.
@@ -130,16 +154,23 @@ export const createPath = (): Promise<number | null> =>
     return saved ? pathId : null;
   });
 
-/** Saves reading progress. Mirrors the old handleUpdatePath semantics. */
+/**
+ * Saves reading progress. Mirrors the old handleUpdatePath semantics.
+ *
+ * On failure it alerts the user (path-not-found vs write-failed) — matching the
+ * old code, which threw + alerted. `silent` suppresses the alert for the
+ * background scroll auto-save, which fires too often to alert on each attempt.
+ */
 export const savePathProgress = async (
   pathId: number,
   angNumber: number,
   verseId: number,
-  scrollPosition: number
+  scrollPosition: number,
+  options: { silent?: boolean } = {}
 ): Promise<boolean> => {
   const completed = isPathCompleted(angNumber, verseId);
 
-  const saved = await commitOrRollback(() =>
+  const saved = await runPathMutation(pathId, () =>
     updatePath({
       pathId,
       angNumber,
@@ -151,18 +182,36 @@ export const savePathProgress = async (
     })
   );
 
+  // Same message the old code used. Suppressed for the background scroll
+  // auto-save, which fires too often to alert on each transient failure.
+  if (!saved && !options.silent) {
+    showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+  }
+
   if (saved && completed) {
     trackEvent('PathCompleted', 'completed', 'path completed');
   }
   return saved;
 };
 
-export const renamePathCommand = (pathId: number, name: string): Promise<boolean> =>
-  commitOrRollback(() => renamePath({ pathId, name }));
+export const renamePathCommand = async (pathId: number, name: string): Promise<boolean> => {
+  const saved = await runPathMutation(pathId, () => renamePath({ pathId, name }));
+  if (!saved) {
+    showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
+  }
+  return saved;
+};
 
-export const undoPathCompletion = (
+export const undoPathCompletion = async (
   pathId: number,
   angNumber?: number,
   scrollPosition?: number
-): Promise<boolean> =>
-  commitOrRollback(() => clearPathCompletion({ pathId, angNumber, scrollPosition }));
+): Promise<boolean> => {
+  const saved = await runPathMutation(pathId, () =>
+    clearPathCompletion({ pathId, angNumber, scrollPosition })
+  );
+  if (!saved) {
+    showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+  }
+  return saved;
+};

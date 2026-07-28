@@ -13,7 +13,7 @@ import {
   DrawerMenu,
 } from '@components';
 import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
-import { showErrorAlert, trackEvent } from '@utils';
+import { recordError, showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
@@ -64,7 +64,6 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
       return;
     }
     isCreatingRef.current = true;
-    trackEvent('PathCreated', 'click', 'start new path');
     try {
       // Only navigate once the new path is actually durable on disk.
       const newPathId = await createPath();
@@ -72,7 +71,11 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
         showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
         return;
       }
+      trackEvent('PathCreated', 'click', 'start new path');
       navigation.push(Routes.Continue, { pathId: newPathId });
+    } catch (error) {
+      recordError(error, 'HomeScreen: failed to create new sehaj path');
+      showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
     } finally {
       isCreatingRef.current = false;
     }

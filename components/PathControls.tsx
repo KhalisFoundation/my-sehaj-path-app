@@ -8,7 +8,7 @@ interface Props {
   handleGoBack: () => void;
   setIsSaving: (isSaving: boolean) => void;
   fadeAnim: React.MutableRefObject<Animated.Value>;
-  /** Persists the current position, then navigates to Settings. */
+  /** Opens Settings immediately, matching the legacy navigation behavior. */
   onSettings: () => void;
 }
 export const PathControls = ({ handleGoBack, setIsSaving, fadeAnim, onSettings }: Props) => {

@@ -2,7 +2,7 @@ import React from 'react';
 import { ImageBackground, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EDGES_ALL_SIDES } from '@constants';
-import { SafeAreaStyle, SplashScreenStyles } from '@styles';
+import { SafeAreaStyle, HydrationRetryStyles } from '@styles';
 import { PrimaryButton } from './PrimaryButton';
 
 interface HydrationRetryProps {
@@ -17,20 +17,23 @@ interface HydrationRetryProps {
  * on disk at this point, so a retry (or a later app launch) can still recover.
  *
  * Presentational only — it renders outside NavigationContainer. There is no
- * destructive "reset data" action here by design.
+ * destructive "reset data" action here by design. The tone is reassuring: the
+ * headline of this screen is that the user's data is safe.
  */
 export const HydrationRetry = ({ onRetry }: HydrationRetryProps) => (
   <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
     <ImageBackground
       source={require('../assets/Images/SplashScreenBg.png')}
-      style={SplashScreenStyles.backgroundImage}
+      style={HydrationRetryStyles.background}
     >
-      <View style={SplashScreenStyles.overlayBg}>
-        <Text style={SplashScreenStyles.mainHeadline}>
-          We couldn&apos;t safely load your saved paths
+      <View style={HydrationRetryStyles.overlay}>
+        <Text style={HydrationRetryStyles.title}>We couldn&apos;t load your saved paths</Text>
+
+        <Text style={HydrationRetryStyles.reassurance}>
+          Don&apos;t worry — your saved data is safe and has not been changed.
         </Text>
-        <Text style={SplashScreenStyles.tagline}>Your saved data has not been changed.</Text>
-        <Text style={SplashScreenStyles.tagline}>Please try again.</Text>
+        <Text style={HydrationRetryStyles.hint}>Please try again.</Text>
+
         <PrimaryButton buttonTitle="Retry" onPress={onRetry} />
       </View>
     </ImageBackground>

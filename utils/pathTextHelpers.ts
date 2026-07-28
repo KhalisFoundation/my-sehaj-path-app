@@ -128,6 +128,7 @@ export const createLongPressHandler = (
     unstable_batchedUpdates(() => {
       selection.setPressIndex(index);
       selection.setSavedPathVerseId(verseId);
+      selection.setHasPendingVerseSelection(true);
       selection.setIsSaving(true);
       selection.setIsSaved(false);
     });

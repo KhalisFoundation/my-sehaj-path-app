@@ -26,10 +26,10 @@ export const LEGACY_KEYS = [
 ] as const;
 
 export type LegacyKey = (typeof LEGACY_KEYS)[number];
+export type LegacySettingKey = Exclude<LegacyKey, 'pathDetails' | 'pathDateDetails'>;
 
-/** App-private keys. Older binaries ignore unknown keys, so these are safe to add. */
+/** App-private key. Older binaries ignore unknown keys, so this is safe to add. */
 export const JOURNAL_KEY = 'reduxWriteJournal_v1';
-export const META_KEY = 'reduxLegacyMeta_v1';
 
 export type RawLegacy = Record<LegacyKey, string | null>;
 
@@ -39,7 +39,25 @@ export interface LegacyData {
   dates: DateData[];
 }
 
-export type ParseResult = { ok: true; value: LegacyData } | { ok: false; issues: string[] };
+/**
+ * Raw JSON values excluded from Redux because they could not be validated.
+ * These stay app-private but must be written back alongside valid records so a
+ * later save cannot permanently erase data that a future repair may recover.
+ */
+export interface QuarantinedLegacyRecords {
+  paths: unknown[];
+  dates: unknown[];
+}
+
+export type ParseResult =
+  | {
+      ok: true;
+      value: LegacyData;
+      quarantined: string[];
+      quarantinedRecords: QuarantinedLegacyRecords;
+      settingsToRepair: LegacySettingKey[];
+    }
+  | { ok: false; issues: string[] };
 
 // ---------------------------------------------------------------------------
 // primitives
@@ -95,22 +113,34 @@ const parseJson = (raw: string): { ok: true; value: unknown } | { ok: false } =>
 // ---------------------------------------------------------------------------
 // record validation
 //
-// Validators CHECK required fields; they never rebuild the object. Unknown
-// additive fields written by a newer/other build therefore survive untouched.
-//
 // Documented compatibility upgrades are applied for fields that an older build
 // could legitimately have omitted and that have a safe deterministic value.
-// Anything else is malformed and fails closed.
+// An invalid individual record is quarantined so one damaged path cannot prevent
+// every other path from loading. Malformed path containers still fail closed;
+// malformed settings fall back independently because they contain no progress.
 //
 // NOTE: the exact set of historical shapes must be confirmed by Step 0.0
 // (production storage audit). Until then these upgrades are the conservative
 // superset of the current TypeScript models.
 // ---------------------------------------------------------------------------
 
-const upgradePath = (raw: unknown, issues: string[], index: number): PathData | null => {
+/**
+ * Upgrades one path record, or returns null to quarantine only that record.
+ *
+ * Production binaries could write partial records such as
+ * `saveData: { verseId: N }` or `progress: null`. Those values cannot be repaired
+ * without guessing the user's position, so the record is quarantined while valid
+ * sibling records continue to hydrate.
+ */
+const upgradePath = (
+  raw: unknown,
+  index: number,
+  quarantined: string[],
+  invalidPathIds: Set<number>
+): PathData | null => {
   const at = `pathDetails[${index}]`;
   if (!isObject(raw)) {
-    issues.push(`${at} is not an object`);
+    quarantined.push(`${at} is not an object`);
     return null;
   }
 
@@ -128,45 +158,39 @@ const upgradePath = (raw: unknown, issues: string[], index: number): PathData | 
     ...rest
   } = raw;
   if (!isFiniteNumber(pathId) || pathId <= 0) {
-    issues.push(`${at}.pathId is missing or invalid`);
+    quarantined.push(`${at}.pathId is missing or invalid`);
     return null;
   }
 
-  // Compatibility upgrade for the earliest shape (pre-April-2025), where the
-  // progress position was a top-level `angNumber` with no `saveData` and no
-  // verseId. Confirmed from git history: commit 8167721 introduced `saveData`
-  // with no migration.
-  //
-  // The fallback fires ONLY when saveData is ABSENT. A transitional record can
-  // legitimately carry both fields (the newer writer added saveData without
-  // deleting angNumber); if such a record's saveData is present-but-damaged we
-  // must fail closed rather than silently restore the stale top-level angNumber
-  // (which would drop the newer verseId/progress).
+  const quarantine = (reason: string): null => {
+    quarantined.push(`${at}.${reason}`);
+    invalidPathIds.add(pathId);
+    return null;
+  };
+
+  // Resolve the resume position. Prefer a present `saveData` (the newer,
+  // authoritative field); only fall back to a legacy top-level `angNumber` when
+  // saveData is entirely ABSENT, so a transitional record never loses its newer
+  // verseId to a stale angNumber.
   let saveData = rawSaveData;
   if (saveData === undefined && isFiniteNumber(legacyAngNumber)) {
     saveData = { angNumber: legacyAngNumber, verseId: 0 };
   }
   if (!isSaveData(saveData)) {
-    issues.push(`${at}.saveData is missing or invalid`);
-    return null;
+    return quarantine('saveData is missing or invalid');
   }
 
-  // A wrong type is malformed. An absent value gets a deterministic upgrade.
   if (progress !== undefined && !isFiniteNumber(progress)) {
-    issues.push(`${at}.progress is invalid`);
-    return null;
-  }
-  if (pathName !== undefined && !isString(pathName)) {
-    issues.push(`${at}.pathName is invalid`);
-    return null;
+    return quarantine('progress is invalid');
   }
   if (startDate !== undefined && !isString(startDate)) {
-    issues.push(`${at}.startDate is invalid`);
-    return null;
+    return quarantine('startDate is invalid');
   }
   if (completionDate !== undefined && !isString(completionDate)) {
-    issues.push(`${at}.completionDate is invalid`);
-    return null;
+    return quarantine('completionDate is invalid');
+  }
+  if (pathName !== undefined && !isString(pathName)) {
+    return quarantine('pathName is invalid');
   }
 
   // `...rest` preserves unknown additive fields written by a newer/other build;
@@ -182,41 +206,35 @@ const upgradePath = (raw: unknown, issues: string[], index: number): PathData | 
   };
 };
 
-const upgradeDate = (raw: unknown, issues: string[], index: number): DateData | null => {
+/**
+ * Upgrades one date record, or returns null to quarantine only that record.
+ */
+const upgradeDate = (raw: unknown, index: number, quarantined: string[]): DateData | null => {
   const at = `pathDateDetails[${index}]`;
   if (!isObject(raw)) {
-    issues.push(`${at} is not an object`);
+    quarantined.push(`${at} is not an object`);
     return null;
   }
 
   const { pathid, dates, scrollPosition } = raw;
   if (!isFiniteNumber(pathid) || pathid <= 0) {
-    issues.push(`${at}.pathid is missing or invalid`);
+    quarantined.push(`${at}.pathid is missing or invalid`);
     return null;
   }
 
-  let upgradedDates: PathDate[] = [];
-  if (dates !== undefined) {
-    if (!Array.isArray(dates)) {
-      issues.push(`${at}.dates is not an array`);
-      return null;
-    }
-    if (!dates.every(isPathDate)) {
-      issues.push(`${at}.dates contains an invalid entry`);
-      return null;
-    }
-    upgradedDates = dates;
+  if (dates !== undefined && (!Array.isArray(dates) || !dates.every(isPathDate))) {
+    quarantined.push(`${at}.dates is invalid`);
+    return null;
   }
-
   if (scrollPosition !== undefined && !isFiniteNumber(scrollPosition)) {
-    issues.push(`${at}.scrollPosition is invalid`);
+    quarantined.push(`${at}.scrollPosition is invalid`);
     return null;
   }
 
   return {
     ...raw,
     pathid,
-    dates: upgradedDates,
+    dates: dates ?? [],
     scrollPosition: scrollPosition ?? 0,
   };
 };
@@ -228,24 +246,41 @@ const upgradeDate = (raw: unknown, issues: string[], index: number): DateData | 
 /**
  * Pure. Raw disk strings in, validated data out. Never throws.
  *
- * A MISSING key (null) is normal: it yields the legacy default.
- * A PRESENT but malformed value is an error: we fail closed rather than
- * silently substituting a default, because the caller would then persist that
- * default straight over the user's real bytes.
+ * A missing key is normal. A malformed path/date container fails closed. Invalid
+ * individual path/date records are returned in `quarantined` and omitted from
+ * the hydrated value so they cannot brick every valid record. Malformed settings
+ * are quarantined independently and scheduled for a best-effort default repair.
  */
 export const parseLegacy = (raw: RawLegacy): ParseResult => {
   const issues: string[] = [];
+  const quarantined: string[] = [];
+  const quarantinedRecords: QuarantinedLegacyRecords = { paths: [], dates: [] };
+  const settingsToRepair: LegacySettingKey[] = [];
+  const invalidPathIds = new Set<number>();
   const settings: Partial<SettingsState> = {};
 
+  const repairSetting = (key: LegacySettingKey, reason?: string) => {
+    if (!settingsToRepair.includes(key)) {
+      settingsToRepair.push(key);
+    }
+    if (reason) {
+      quarantined.push(reason);
+    }
+  };
+
   // --- boolean settings (raw 'true'/'false' strings)
-  const readBool = (key: LegacyKey, apply: (value: boolean) => void) => {
+  const readBool = (key: LegacySettingKey, apply: (value: boolean) => void) => {
     const value = raw[key];
     if (value == null) {
+      // The old fetchConsent() eagerly established the default on first boot.
+      if (key === 'consent') {
+        repairSetting(key);
+      }
       return;
     }
     const parsed = parseBool(value);
     if (parsed === null) {
-      issues.push(`${key} is not "true"/"false"`);
+      repairSetting(key, `${key} is not "true"/"false"; using default`);
       return;
     }
     apply(parsed);
@@ -259,7 +294,7 @@ export const parseLegacy = (raw: RawLegacy): ParseResult => {
 
   // --- JSON settings
   const readJson = <T>(
-    key: LegacyKey,
+    key: LegacySettingKey,
     guard: (value: unknown) => value is T,
     apply: (value: T) => void
   ) => {
@@ -269,11 +304,11 @@ export const parseLegacy = (raw: RawLegacy): ParseResult => {
     }
     const parsed = parseJson(value);
     if (!parsed.ok) {
-      issues.push(`${key} is not valid JSON`);
+      repairSetting(key, `${key} is not valid JSON; using default`);
       return;
     }
     if (!guard(parsed.value)) {
-      issues.push(`${key} has an invalid shape`);
+      repairSetting(key, `${key} has an invalid shape; using default`);
       return;
     }
     apply(parsed.value);
@@ -285,6 +320,7 @@ export const parseLegacy = (raw: RawLegacy): ParseResult => {
 
   // --- pathDetails
   const paths: PathData[] = [];
+  const seenPathIds = new Set<number>();
   if (raw.pathDetails != null) {
     const parsed = parseJson(raw.pathDetails);
     if (!parsed.ok) {
@@ -293,16 +329,25 @@ export const parseLegacy = (raw: RawLegacy): ParseResult => {
       issues.push('pathDetails is not an array');
     } else {
       parsed.value.forEach((entry, index) => {
-        const upgraded = upgradePath(entry, issues, index);
-        if (upgraded) {
-          paths.push(upgraded);
+        const upgraded = upgradePath(entry, index, quarantined, invalidPathIds);
+        if (!upgraded) {
+          quarantinedRecords.paths.push(entry);
+          return;
         }
+        if (seenPathIds.has(upgraded.pathId)) {
+          quarantined.push(`pathDetails[${index}] duplicates pathId ${upgraded.pathId}`);
+          quarantinedRecords.paths.push(entry);
+          return;
+        }
+        seenPathIds.add(upgraded.pathId);
+        paths.push(upgraded);
       });
     }
   }
 
   // --- pathDateDetails
   const dates: DateData[] = [];
+  const seenDateIds = new Set<number>();
   if (raw.pathDateDetails != null) {
     const parsed = parseJson(raw.pathDateDetails);
     if (!parsed.ok) {
@@ -311,27 +356,39 @@ export const parseLegacy = (raw: RawLegacy): ParseResult => {
       issues.push('pathDateDetails is not an array');
     } else {
       parsed.value.forEach((entry, index) => {
-        const upgraded = upgradeDate(entry, issues, index);
-        if (upgraded) {
-          dates.push(upgraded);
+        const upgraded = upgradeDate(entry, index, quarantined);
+        if (!upgraded) {
+          quarantinedRecords.dates.push(entry);
+          return;
         }
+        if (invalidPathIds.has(upgraded.pathid) && !seenPathIds.has(upgraded.pathid)) {
+          quarantined.push(
+            `pathDateDetails[${index}] belongs to quarantined pathId ${upgraded.pathid}`
+          );
+          quarantinedRecords.dates.push(entry);
+          return;
+        }
+        if (seenDateIds.has(upgraded.pathid)) {
+          quarantined.push(`pathDateDetails[${index}] duplicates pathid ${upgraded.pathid}`);
+          quarantinedRecords.dates.push(entry);
+          return;
+        }
+        seenDateIds.add(upgraded.pathid);
+        dates.push(upgraded);
       });
     }
-  }
-
-  // --- invariants
-  const seen = new Set<number>();
-  for (const path of paths) {
-    if (seen.has(path.pathId)) {
-      issues.push(`duplicate pathId ${path.pathId}`);
-    }
-    seen.add(path.pathId);
   }
 
   if (issues.length > 0) {
     return { ok: false, issues };
   }
-  return { ok: true, value: { settings, paths, dates } };
+  return {
+    ok: true,
+    value: { settings, paths, dates },
+    quarantined,
+    quarantinedRecords,
+    settingsToRepair,
+  };
 };
 
 // ---------------------------------------------------------------------------
@@ -342,6 +399,7 @@ export interface Snapshot {
   settings: SettingsState;
   paths: PathData[];
   dates: DateData[];
+  quarantinedRecords?: QuarantinedLegacyRecords;
 }
 
 /**
@@ -366,9 +424,9 @@ export const serializeKey = (key: LegacyKey, snapshot: Snapshot): string => {
     case 'angsFormat':
       return JSON.stringify(snapshot.settings.angsFormat);
     case 'pathDetails':
-      return JSON.stringify(snapshot.paths);
+      return JSON.stringify([...snapshot.paths, ...(snapshot.quarantinedRecords?.paths ?? [])]);
     case 'pathDateDetails':
-      return JSON.stringify(snapshot.dates);
+      return JSON.stringify([...snapshot.dates, ...(snapshot.quarantinedRecords?.dates ?? [])]);
   }
 };
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
-import { trackEvent } from '@utils';
+import { recordError, trackEvent } from '@utils';
 import { UIConstants } from '@constants';
 
 interface SwitchSettingItemProps {
@@ -10,7 +10,7 @@ interface SwitchSettingItemProps {
   settingKey: string;
   label: string;
   value: boolean;
-  onValueChange: (value: boolean) => void;
+  onValueChange: (value: boolean) => Promise<boolean>;
   analyticsCategory?: string;
   containerStyle?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
@@ -30,13 +30,20 @@ export const SwitchSettingItem = ({
   containerStyle,
   textStyle,
 }: SwitchSettingItemProps) => {
-  const handleToggle = (newValue: boolean) => {
-    onValueChange(newValue);
-    trackEvent(
-      analyticsCategory,
-      'click',
-      `changed ${settingKey} to ${newValue ? 'enabled' : 'disabled'}`
-    );
+  const handleToggle = async (newValue: boolean) => {
+    try {
+      const saved = await onValueChange(newValue);
+      if (!saved) {
+        return;
+      }
+      trackEvent(
+        analyticsCategory,
+        'click',
+        `changed ${settingKey} to ${newValue ? 'enabled' : 'disabled'}`
+      );
+    } catch (error) {
+      recordError(error, `SwitchSettingItem: failed to change ${settingKey}`);
+    }
   };
 
   return (

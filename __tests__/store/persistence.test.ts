@@ -5,9 +5,13 @@ import {
   hydrateStore,
   recoverPendingJournal,
 } from '../../store/persistence';
-import { JOURNAL_KEY, META_KEY, parseLegacy, type RawLegacy } from '../../store/legacyFormat';
-import { addPath, setScrollPosition, updatePath } from '../../store/slices/pathsSlice';
-import { setAnalyticsConsent, setLarivaar } from '../../store/slices/settingsSlice';
+import { JOURNAL_KEY, parseLegacy, type RawLegacy } from '../../store/legacyFormat';
+import { addPath, renamePath, setScrollPosition, updatePath } from '../../store/slices/pathsSlice';
+import {
+  SETTINGS_DEFAULTS,
+  setAnalyticsConsent,
+  setLarivaar,
+} from '../../store/slices/settingsSlice';
 
 jest.mock('../../utils/crashlytics', () => ({
   recordError: jest.fn(),
@@ -172,6 +176,11 @@ describe('hydrateStore', () => {
     expect(state.paths.hydrated).toBe(true);
     expect(state.settings.vishraamsSource).toEqual({ source: 'sttm' });
     expect(state.settings.analyticsConsent).toBe(true);
+    // Matches dev's fetchConsent(): establish the default eagerly.
+    expect(await AsyncStorage.getItem('consent')).toBe('true');
+    // Other absent preferences remain absent until the user changes them.
+    expect(await AsyncStorage.getItem('fontSize')).toBeNull();
+    expect(await AsyncStorage.getItem('pathDetails')).toBeNull();
   });
 
   it('partial legacy data: only pathDetails -> paths hydrate, settings default', async () => {
@@ -183,7 +192,7 @@ describe('hydrateStore', () => {
     expect(store.getState().settings.larivaar).toBe(false);
   });
 
-  // --- fail-closed cases: malformed must never become a default -------------
+  // --- fail-closed containers vs quarantined individual records -------------
 
   it('corrupt pathDetails JSON -> fails closed, no dispatch, bytes untouched', async () => {
     await AsyncStorage.setItem('pathDetails', '{not json');
@@ -205,18 +214,119 @@ describe('hydrateStore', () => {
     expect(await AsyncStorage.getItem('pathDetails')).toBe('{}');
   });
 
-  it('invalid record shape (missing required saveData) -> fails closed', async () => {
-    await AsyncStorage.setItem('pathDetails', JSON.stringify([{ pathId: 1 }]));
+  it('invalid path record is quarantined without blocking hydration', async () => {
+    await AsyncStorage.multiSet([
+      ['pathDetails', JSON.stringify([{ pathId: 1 }])],
+      ['consent', 'true'],
+    ]);
+    jest.clearAllMocks();
+    restoreStorageImpls();
     const store = makeStore();
 
-    expect(await hydrateStore(store)).toBe(false);
-    expect(store.getState().paths.hydrated).toBe(false);
+    expect(await hydrateStore(store)).toBe(true);
+    expect(store.getState().paths.hydrated).toBe(true);
+    expect(store.getState().paths.paths).toEqual([]);
+    expect(callsFor('setItem')).toHaveLength(0);
+    expect(callsFor('multiSet')).toHaveLength(0);
   });
 
-  it('malformed boolean -> fails closed rather than silently defaulting to false', async () => {
-    await AsyncStorage.setItem('larivaar', 'yes');
+  it('old partial saveData/progress record is quarantined while valid siblings hydrate', async () => {
+    const quarantinedPath = {
+      ...PATHS_FIXTURE[0],
+      pathId: 3,
+      saveData: { verseId: 4501 },
+      progress: null,
+    };
+    const quarantinedDate = { pathid: 3, dates: [], scrollPosition: 10 };
+    await AsyncStorage.multiSet([
+      ['pathDetails', JSON.stringify([quarantinedPath, PATHS_FIXTURE[1]])],
+      ['pathDateDetails', JSON.stringify([quarantinedDate, DATES_FIXTURE[1]])],
+      ['consent', 'true'],
+    ]);
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
     const store = makeStore();
-    expect(await hydrateStore(store)).toBe(false);
+    expect(await hydrateStore(store)).toBe(true);
+    expect(store.getState().paths.paths).toEqual([PATHS_FIXTURE[1]]);
+    expect(store.getState().paths.dates).toEqual([DATES_FIXTURE[1]]);
+    expect(callsFor('setItem')).toHaveLength(0);
+    expect(callsFor('multiSet')).toHaveLength(0);
+  });
+
+  it('malformed settings use defaults and repair only setting keys', async () => {
+    const rawPaths = JSON.stringify(PATHS_FIXTURE);
+    const rawDates = JSON.stringify(DATES_FIXTURE);
+    await AsyncStorage.multiSet([
+      ['pathDetails', rawPaths],
+      ['pathDateDetails', rawDates],
+      ['fontSize', '{not json'],
+      ['larivaar', 'yes'],
+      ['paragraphMode', '1'],
+      ['vishraam', 'TRUE'],
+      ['vishraamsSource', JSON.stringify({ source: 'unknown' })],
+      ['angsFormat', JSON.stringify({ format: 'French' })],
+      ['consent', 'maybe'],
+    ]);
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
+    const store = makeStore();
+    expect(await hydrateStore(store)).toBe(true);
+    expect(store.getState().settings).toEqual(SETTINGS_DEFAULTS);
+    expect(store.getState().paths.paths).toEqual(PATHS_FIXTURE);
+    expect(store.getState().paths.dates).toEqual(DATES_FIXTURE);
+
+    expect(await AsyncStorage.getItem('fontSize')).toBe(JSON.stringify(SETTINGS_DEFAULTS.fontSize));
+    expect(await AsyncStorage.getItem('larivaar')).toBe('false');
+    expect(await AsyncStorage.getItem('paragraphMode')).toBe('false');
+    expect(await AsyncStorage.getItem('vishraam')).toBe('false');
+    expect(await AsyncStorage.getItem('vishraamsSource')).toBe(
+      JSON.stringify(SETTINGS_DEFAULTS.vishraamsSource)
+    );
+    expect(await AsyncStorage.getItem('angsFormat')).toBe(
+      JSON.stringify(SETTINGS_DEFAULTS.angsFormat)
+    );
+    expect(await AsyncStorage.getItem('consent')).toBe('true');
+
+    const repairedKeys = callsFor('multiSet').flatMap((call) =>
+      (call[0] as Array<[string, string]>).map(([key]) => key)
+    );
+    expect(repairedKeys).toEqual(
+      expect.arrayContaining([
+        'fontSize',
+        'larivaar',
+        'paragraphMode',
+        'vishraam',
+        'vishraamsSource',
+        'angsFormat',
+        'consent',
+      ])
+    );
+    expect(repairedKeys).not.toContain('pathDetails');
+    expect(repairedKeys).not.toContain('pathDateDetails');
+    expect(await AsyncStorage.getItem('pathDetails')).toBe(rawPaths);
+    expect(await AsyncStorage.getItem('pathDateDetails')).toBe(rawDates);
+  });
+
+  it('a failed settings repair does not block boot or modify path data', async () => {
+    const rawPaths = JSON.stringify(PATHS_FIXTURE);
+    const rawDates = JSON.stringify(DATES_FIXTURE);
+    await AsyncStorage.multiSet([
+      ['pathDetails', rawPaths],
+      ['pathDateDetails', rawDates],
+      ['fontSize', '{not json'],
+      ['consent', 'false'],
+    ]);
+    (AsyncStorage.multiSet as jest.Mock).mockRejectedValueOnce(new Error('settings disk full'));
+
+    const store = makeStore();
+    expect(await hydrateStore(store)).toBe(true);
+    expect(store.getState().settings.fontSize).toEqual(SETTINGS_DEFAULTS.fontSize);
+    expect(store.getState().settings.analyticsConsent).toBe(false);
+    expect(await AsyncStorage.getItem('fontSize')).toBe('{not json');
+    expect(await AsyncStorage.getItem('pathDetails')).toBe(rawPaths);
+    expect(await AsyncStorage.getItem('pathDateDetails')).toBe(rawDates);
   });
 
   it('read failure past retries -> false, zero dispatches, not hydrated', async () => {
@@ -229,15 +339,20 @@ describe('hydrateStore', () => {
   });
 
   it('malformed data causes zero setItem calls (non-clobber)', async () => {
-    await AsyncStorage.setItem('pathDetails', '{not json');
+    await AsyncStorage.multiSet([
+      ['pathDetails', '{not json'],
+      ['fontSize', '{also not json'],
+    ]);
     jest.clearAllMocks();
     restoreStorageImpls();
 
     const store = makeStore();
-    await hydrateStore(store);
+    expect(await hydrateStore(store)).toBe(false);
 
     expect(callsFor('setItem')).toHaveLength(0);
     expect(callsFor('multiSet')).toHaveLength(0);
+    expect(await AsyncStorage.getItem('pathDetails')).toBe('{not json');
+    expect(await AsyncStorage.getItem('fontSize')).toBe('{also not json');
   });
 });
 
@@ -349,9 +464,9 @@ describe('parseLegacy', () => {
     }
   });
 
-  it('PRESENT-but-invalid saveData fails closed (does NOT fall back to stale angNumber)', () => {
-    // A transitional record whose saveData is damaged must not silently lose the
-    // newer progress by reverting to the older top-level angNumber.
+  it('PRESENT-but-invalid saveData quarantines only that record', () => {
+    // A transitional record whose saveData is damaged must not silently revert
+    // to the older top-level angNumber, and must not block a valid sibling.
     const raw = {
       ...emptyRaw(),
       pathDetails: JSON.stringify([
@@ -362,25 +477,117 @@ describe('parseLegacy', () => {
           progress: 8.4,
           pathName: 'Path #1',
         },
+        PATHS_FIXTURE[1],
       ]),
     };
-    expect(parseLegacy(raw).ok).toBe(false);
+    const result = parseLegacy(raw);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.paths).toEqual([PATHS_FIXTURE[1]]);
+      expect(result.quarantined).toContain('pathDetails[0].saveData is missing or invalid');
+    }
   });
 
-  it('still fails closed when neither saveData nor a top-level angNumber exists', () => {
+  it('quarantines a path when neither saveData nor a top-level angNumber exists', () => {
     const raw = {
       ...emptyRaw(),
-      pathDetails: JSON.stringify([{ pathId: 1, progress: 1, pathName: 'x' }]),
+      pathDetails: JSON.stringify([{ pathId: 1, progress: 1, pathName: 'x' }, PATHS_FIXTURE[1]]),
     };
-    expect(parseLegacy(raw).ok).toBe(false);
+    const result = parseLegacy(raw);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.paths).toEqual([PATHS_FIXTURE[1]]);
+      expect(result.quarantined).toContain('pathDetails[0].saveData is missing or invalid');
+    }
   });
 
-  it('rejects duplicate pathIds', () => {
+  it('quarantines progress:null written by an old NaN without blocking siblings', () => {
+    const raw = {
+      ...emptyRaw(),
+      pathDetails: JSON.stringify([
+        { ...PATHS_FIXTURE[0], pathId: 3, progress: null },
+        PATHS_FIXTURE[1],
+      ]),
+      pathDateDetails: JSON.stringify([
+        { pathid: 3, dates: [], scrollPosition: 10 },
+        DATES_FIXTURE[1],
+      ]),
+    };
+    const result = parseLegacy(raw);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.paths).toEqual([PATHS_FIXTURE[1]]);
+      expect(result.value.dates).toEqual([DATES_FIXTURE[1]]);
+      expect(result.quarantinedRecords.paths).toEqual([
+        { ...PATHS_FIXTURE[0], pathId: 3, progress: null },
+      ]);
+      expect(result.quarantinedRecords.dates).toEqual([
+        { pathid: 3, dates: [], scrollPosition: 10 },
+      ]);
+      expect(result.quarantined).toContain('pathDetails[0].progress is invalid');
+      expect(result.quarantined).toContain('pathDateDetails[0] belongs to quarantined pathId 3');
+    }
+  });
+
+  it('quarantines saveData with verseId but no angNumber and its paired date', () => {
+    const raw = {
+      ...emptyRaw(),
+      pathDetails: JSON.stringify([
+        {
+          ...PATHS_FIXTURE[0],
+          pathId: 3,
+          saveData: { verseId: 4501 },
+          progress: null,
+        },
+        PATHS_FIXTURE[1],
+      ]),
+      pathDateDetails: JSON.stringify([
+        { pathid: 3, dates: [], scrollPosition: 10 },
+        DATES_FIXTURE[1],
+      ]),
+    };
+    const result = parseLegacy(raw);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.paths).toEqual([PATHS_FIXTURE[1]]);
+      expect(result.value.dates).toEqual([DATES_FIXTURE[1]]);
+      expect(result.quarantined).toContain('pathDetails[0].saveData is missing or invalid');
+      expect(result.quarantined).toContain('pathDateDetails[0] belongs to quarantined pathId 3');
+    }
+  });
+
+  it('quarantines duplicate path and date records instead of failing the parse', () => {
     const raw = {
       ...emptyRaw(),
       pathDetails: JSON.stringify([PATHS_FIXTURE[0], PATHS_FIXTURE[0]]),
+      pathDateDetails: JSON.stringify([DATES_FIXTURE[0], DATES_FIXTURE[0]]),
     };
-    expect(parseLegacy(raw).ok).toBe(false);
+    const result = parseLegacy(raw);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.paths).toEqual([PATHS_FIXTURE[0]]);
+      expect(result.value.dates).toEqual([DATES_FIXTURE[0]]);
+      expect(result.quarantined).toContain('pathDetails[1] duplicates pathId 1');
+      expect(result.quarantined).toContain('pathDateDetails[1] duplicates pathid 1');
+    }
+  });
+
+  it('quarantines one malformed date record while keeping valid siblings', () => {
+    const raw = {
+      ...emptyRaw(),
+      pathDetails: JSON.stringify(PATHS_FIXTURE),
+      pathDateDetails: JSON.stringify([
+        { pathid: 1, dates: 'corrupt', scrollPosition: 10 },
+        DATES_FIXTURE[1],
+      ]),
+    };
+    const result = parseLegacy(raw);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.paths).toEqual(PATHS_FIXTURE);
+      expect(result.value.dates).toEqual([DATES_FIXTURE[1]]);
+      expect(result.quarantined).toContain('pathDateDetails[0].dates is invalid');
+    }
   });
 });
 
@@ -489,6 +696,63 @@ describe('write-through', () => {
     expect(fresh.getState().settings).toEqual(store.getState().settings);
     expect(fresh.getState().paths.paths).toEqual(store.getState().paths.paths);
     expect(fresh.getState().paths.dates).toEqual(store.getState().paths.dates);
+  });
+
+  it('preserves quarantined raw records through later valid path writes and reboots', async () => {
+    const quarantinedPath = {
+      ...PATHS_FIXTURE[0],
+      pathId: 3,
+      saveData: { verseId: 4501 },
+      progress: null,
+    };
+    const quarantinedDate = { pathid: 3, dates: [], scrollPosition: 10 };
+    await AsyncStorage.multiSet([
+      ['pathDetails', JSON.stringify([quarantinedPath, PATHS_FIXTURE[1]])],
+      ['pathDateDetails', JSON.stringify([quarantinedDate, DATES_FIXTURE[1]])],
+    ]);
+
+    const store = makeStore();
+    expect(await hydrateStore(store)).toBe(true);
+    const persistence = createLegacyPersistence(store);
+    persistence.start();
+    store.dispatch(
+      updatePath({
+        pathId: 2,
+        angNumber: 1400,
+        verseId: 59000,
+        progress: 97.9,
+        completionDate: '',
+        todayDate: '28-July-2026',
+        scrollPosition: 800,
+      })
+    );
+    expect(await persistence.flush()).toBe(true);
+    persistence.stop();
+
+    expect(JSON.parse((await AsyncStorage.getItem('pathDetails'))!)).toContainEqual(
+      quarantinedPath
+    );
+    expect(JSON.parse((await AsyncStorage.getItem('pathDateDetails'))!)).toContainEqual(
+      quarantinedDate
+    );
+
+    // A fresh boot must quarantine the same raw records again and continue to
+    // carry them through subsequent writes.
+    const fresh = makeStore();
+    expect(await hydrateStore(fresh)).toBe(true);
+    expect(fresh.getState().paths.paths).toHaveLength(1);
+    const freshPersistence = createLegacyPersistence(fresh);
+    freshPersistence.start();
+    fresh.dispatch(renamePath({ pathId: 2, name: 'Still Valid' }));
+    expect(await freshPersistence.flush()).toBe(true);
+    freshPersistence.stop();
+
+    expect(JSON.parse((await AsyncStorage.getItem('pathDetails'))!)).toContainEqual(
+      quarantinedPath
+    );
+    expect(JSON.parse((await AsyncStorage.getItem('pathDateDetails'))!)).toContainEqual(
+      quarantinedDate
+    );
   });
 
   it('selective writes: a settings-only change does not rewrite pathDetails', async () => {
@@ -696,6 +960,184 @@ describe('write-through', () => {
     persistence.stop();
   });
 
+  it('a write in flight when stop() is called still reports success (no false failure/divergence)', async () => {
+    const { store, persistence } = await hydratedStoreWithPersistence();
+    const real = ORIGINAL_IMPLS.get('multiSet') as (entries: any) => Promise<void>;
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first = true;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(async (entries: any) => {
+      if (first) {
+        first = false;
+        await gate; // hold the write in flight
+      }
+      await real(entries);
+    });
+
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: 4242 }));
+    await flushMicrotasks(); // write now in flight (held)
+    const flushPromise = persistence.flush();
+    await flushMicrotasks();
+
+    persistence.stop(); // app unmounts while the write is in flight
+
+    release(); // the in-flight write completes SUCCESSFULLY
+    const flushResult = await flushPromise;
+    await flushMicrotasks();
+
+    // The commit reached disk, so flush must report true — NOT a false failure
+    // that would make the caller roll Redux back and diverge from disk.
+    expect(flushResult).toBe(true);
+
+    const onDisk = JSON.parse((await AsyncStorage.getItem('pathDateDetails'))!);
+    expect(onDisk.find((d: any) => d.pathid === 1).scrollPosition).toBe(4242);
+    expect(store.getState().paths.dates.find((d: any) => d.pathid === 1)!.scrollPosition).toBe(
+      4242
+    );
+
+    restoreStorageImpls();
+  });
+
+  it('after stop() nothing more is written, and flush() no-ops (no rollback overwrite)', async () => {
+    const { store, persistence } = await hydratedStoreWithPersistence();
+    persistence.stop();
+
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
+    // A change + flush after stop must not touch disk. This is what prevents a
+    // rollback (triggered by a stop()-settled waiter) from overwriting a commit.
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: 555 }));
+    expect(await persistence.flush()).toBe(false);
+    await flushMicrotasks();
+
+    expect(callsFor('multiSet')).toHaveLength(0);
+    expect(callsFor('setItem')).toHaveLength(0);
+  });
+
+  it('a commit that FAILS after stop() settles false and does not hang', async () => {
+    const { store, persistence } = await hydratedStoreWithPersistence();
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first = true;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(async () => {
+      if (first) {
+        first = false;
+        await gate; // hold in flight
+      }
+      throw new Error('disk full'); // and then fail (on release + on retry)
+    });
+
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: 333 }));
+    await flushMicrotasks(); // write in flight (held)
+    const flushPromise = persistence.flush();
+    await flushMicrotasks();
+
+    persistence.stop();
+    release(); // the in-flight write now genuinely fails
+
+    // A real failure must resolve false (not true, not hang).
+    expect(await flushPromise).toBe(false);
+
+    restoreStorageImpls();
+  });
+
+  it('stop() then immediate start() while a commit is in flight stays consistent', async () => {
+    const { store, persistence } = await hydratedStoreWithPersistence();
+    const real = ORIGINAL_IMPLS.get('multiSet') as (entries: any) => Promise<void>;
+
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first = true;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(async (entries: any) => {
+      if (first) {
+        first = false;
+        await gate; // hold the first write in flight
+      }
+      await real(entries);
+    });
+
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: 111 })); // in flight (held)
+    await flushMicrotasks();
+    const flushInFlight = persistence.flush();
+    await flushMicrotasks();
+
+    persistence.stop();
+    persistence.start(); // restart while the old commit is still active
+
+    release(); // the held commit completes
+    expect(await flushInFlight).toBe(true);
+    await flushMicrotasks();
+
+    // The restarted coordinator is live and a NEW write still persists.
+    expect(persistence.getStatus().running).toBe(true);
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: 222 }));
+    expect(await persistence.flush()).toBe(true);
+
+    const onDisk = JSON.parse((await AsyncStorage.getItem('pathDateDetails'))!);
+    expect(onDisk.find((d: any) => d.pathid === 1).scrollPosition).toBe(222);
+
+    restoreStorageImpls();
+    persistence.stop();
+  });
+
+  it('revert-to-baseline during an in-flight write is NOT dropped (store === disk)', async () => {
+    // Landmine: baseline advances only after commit, so a revert to baseline
+    // while a batch is in flight computes changedKeys===0 and used to be skipped
+    // -> store and disk diverged permanently. The revert must still be enqueued.
+    const { store, persistence } = await hydratedStoreWithPersistence();
+    const baselineScroll = store
+      .getState()
+      .paths.dates.find((d: any) => d.pathid === 1)!.scrollPosition;
+
+    const real = ORIGINAL_IMPLS.get('multiSet') as (entries: any) => Promise<void>;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let first = true;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(async (entries: any) => {
+      if (first) {
+        first = false;
+        await gate; // hold the first (B) write in flight
+      }
+      await real(entries);
+    });
+
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: 12345 })); // B (held)
+    await flushMicrotasks();
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: baselineScroll })); // revert to A
+    await flushMicrotasks();
+
+    release(); // let B commit
+    // Let the drain settle on its OWN. Do NOT call flush() here — a flush would
+    // re-enqueue the current state and repair the divergence, masking the bug.
+    await new Promise<void>((r) => setTimeout(() => r(), 100));
+
+    const onDisk = JSON.parse((await AsyncStorage.getItem('pathDateDetails'))!);
+    const diskScroll = onDisk.find((d: any) => d.pathid === 1).scrollPosition;
+    const storeScroll = store
+      .getState()
+      .paths.dates.find((d: any) => d.pathid === 1)!.scrollPosition;
+
+    // The coordinator must have settled with NO pending work but disk matching
+    // the store — the revert reached disk on its own.
+    expect(persistence.getStatus().dirty).toBe(false);
+    expect(storeScroll).toBe(baselineScroll);
+    expect(diskScroll).toBe(baselineScroll); // NOT 12345 — the revert reached disk
+
+    restoreStorageImpls();
+    persistence.stop();
+  });
+
   it('subscription lifecycle: start twice attaches once; stop unsubscribes', async () => {
     await seedFullLegacyUser();
     const store = makeStore();
@@ -716,15 +1158,44 @@ describe('write-through', () => {
     expect(callsFor('multiSet')).toHaveLength(0);
   });
 
-  it('journal is removed only after values and meta are durable', async () => {
+  it('journal is removed after a successful commit', async () => {
     const { store, persistence } = await hydratedStoreWithPersistence();
 
     store.dispatch(setLarivaar(false));
     expect(await persistence.flush()).toBe(true);
 
     expect(await AsyncStorage.getItem(JOURNAL_KEY)).toBeNull();
-    expect(await AsyncStorage.getItem(META_KEY)).not.toBeNull();
     persistence.stop();
+  });
+
+  it('journal `before` is the exact disk bytes at commit time, not the in-memory baseline', async () => {
+    // Guards the conflict detector: `before` must reflect what is actually on
+    // disk, not a re-serialization of the coordinator's baseline. If a foreign
+    // writer changed the bytes since the last commit, `before` must be THOSE
+    // bytes — otherwise the next crash-recovery misclassifies an interrupted
+    // write as a conflict (or vice versa).
+    const { store, persistence } = await hydratedStoreWithPersistence();
+
+    // First write advances the baseline and rewrites disk to the upgraded form.
+    store.dispatch(setLarivaar(false));
+    expect(await persistence.flush()).toBe(true);
+
+    // A foreign writer replaces pathDetails on disk; the baseline is now stale.
+    const foreignRaw = JSON.stringify([{ pathId: 1, angNumber: 5, note: 'foreign build' }]);
+    await AsyncStorage.setItem('pathDetails', foreignRaw);
+
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
+    // A rename touches pathDetails (and its pair), triggering a fresh journal.
+    store.dispatch(renamePath({ pathId: 1, name: 'Renamed' }));
+    expect(await persistence.flush()).toBe(true);
+    persistence.stop();
+
+    const journalWrite = callsFor('setItem').find(([key]) => key === JOURNAL_KEY);
+    expect(journalWrite).toBeDefined();
+    const journal = JSON.parse(journalWrite![1] as string);
+    expect(journal.before.pathDetails).toBe(foreignRaw); // disk bytes, NOT baseline
   });
 });
 
@@ -735,6 +1206,23 @@ describe('write-through', () => {
 describe('recoverPendingJournal', () => {
   it('no journal -> success', async () => {
     expect(await recoverPendingJournal()).toBe(true);
+  });
+
+  it('a journal whose values already match disk is removed WITHOUT rewriting', async () => {
+    // Crash after the write but before journal cleanup: disk already holds the
+    // journalled values, so recovery just drops the journal (no redundant write).
+    await AsyncStorage.setItem('larivaar', 'true'); // disk already = journal `after`
+    await AsyncStorage.setItem(
+      JOURNAL_KEY,
+      JSON.stringify({ before: { larivaar: 'false' }, after: { larivaar: 'true' } })
+    );
+
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
+    expect(await recoverPendingJournal()).toBe(true);
+    expect(await AsyncStorage.getItem(JOURNAL_KEY)).toBeNull();
+    expect(callsFor('multiSet')).toHaveLength(0); // no rewrite needed
   });
 
   it('replays a half-committed path pair, then hydration sees the full snapshot', async () => {
@@ -754,18 +1242,23 @@ describe('recoverPendingJournal', () => {
     const newDates = [...DATES_FIXTURE, { pathid: 3, dates: [], scrollPosition: 0 }];
 
     // Simulate a crash: journal written, only ONE of the pair landed.
+    // pathDetails is at `after`; pathDateDetails is still at `before` (stale) —
+    // recovery must complete the interrupted half.
     await AsyncStorage.setItem(
       JOURNAL_KEY,
       JSON.stringify({
-        revision: 7,
-        valuesByKey: {
+        before: {
+          pathDetails: JSON.stringify(PATHS_FIXTURE),
+          pathDateDetails: JSON.stringify(DATES_FIXTURE),
+        },
+        after: {
           pathDetails: JSON.stringify(newPaths),
           pathDateDetails: JSON.stringify(newDates),
         },
       })
     );
     await AsyncStorage.setItem('pathDetails', JSON.stringify(newPaths));
-    // pathDateDetails deliberately still stale
+    // pathDateDetails deliberately still stale (== before)
 
     const store = makeStore();
     expect(await hydrateStore(store)).toBe(true);
@@ -783,8 +1276,113 @@ describe('recoverPendingJournal', () => {
   });
 
   it('journal with an invalid shape -> fails closed', async () => {
-    await AsyncStorage.setItem(JOURNAL_KEY, JSON.stringify({ revision: 'x', valuesByKey: 5 }));
+    await AsyncStorage.setItem(JOURNAL_KEY, JSON.stringify({ before: 5, after: {} }));
     expect(await recoverPendingJournal()).toBe(false);
+  });
+
+  it('journal whose before/after key sets differ -> fails closed (not treated as null)', async () => {
+    // `after` touches pathDetails but `before` omits it. A missing `before`
+    // entry must NOT be read as `null` (which would misclassify recovery) —
+    // the journal is malformed and recovery fails closed, preserving the byte.
+    await AsyncStorage.setItem('pathDetails', JSON.stringify(PATHS_FIXTURE));
+    const rawJournal = JSON.stringify({
+      before: { larivaar: 'true' },
+      after: { pathDetails: '[]' },
+    });
+    await AsyncStorage.setItem(JOURNAL_KEY, rawJournal);
+
+    expect(await recoverPendingJournal()).toBe(false);
+    expect(await AsyncStorage.getItem(JOURNAL_KEY)).toBe(rawJournal); // not deleted
+    expect(await AsyncStorage.getItem('pathDetails')).toBe(JSON.stringify(PATHS_FIXTURE)); // untouched
+  });
+
+  it('journal containing only one path key -> fails closed as malformed', async () => {
+    const rawJournal = JSON.stringify({
+      before: { pathDetails: JSON.stringify(PATHS_FIXTURE) },
+      after: { pathDetails: '[]' },
+    });
+    await AsyncStorage.setItem(JOURNAL_KEY, rawJournal);
+
+    expect(await recoverPendingJournal()).toBe(false);
+    expect(await AsyncStorage.getItem(JOURNAL_KEY)).toBe(rawJournal);
+  });
+
+  it('MIXED conflict: one key applied, its pair foreign -> fails closed, preserves everything', async () => {
+    // Our build wrote pathDetails (== after) then crashed; an older build later
+    // changed pathDateDetails to something the journal never knew (foreign).
+    // The pair cannot be proven coherent, so recovery must NOT boot a half-mixed
+    // snapshot: it preserves BOTH bytes, keeps the journal, and fails closed.
+    const beforeDetails = JSON.stringify(PATHS_FIXTURE);
+    const afterDetails = JSON.stringify([...PATHS_FIXTURE].reverse());
+    const beforeDates = JSON.stringify(DATES_FIXTURE);
+    const afterDates = JSON.stringify([...DATES_FIXTURE].reverse());
+    const foreignDates = JSON.stringify([{ pathid: 9, dates: [], scrollPosition: 7 }]);
+
+    await AsyncStorage.setItem('pathDetails', afterDetails); // applied by us
+    await AsyncStorage.setItem('pathDateDetails', foreignDates); // foreign
+    const rawJournal = JSON.stringify({
+      before: { pathDetails: beforeDetails, pathDateDetails: beforeDates },
+      after: { pathDetails: afterDetails, pathDateDetails: afterDates },
+    });
+    await AsyncStorage.setItem(JOURNAL_KEY, rawJournal);
+
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
+    expect(await recoverPendingJournal()).toBe(false); // fail closed on ambiguity
+    expect(await AsyncStorage.getItem('pathDetails')).toBe(afterDetails); // preserved
+    expect(await AsyncStorage.getItem('pathDateDetails')).toBe(foreignDates); // preserved
+    expect(await AsyncStorage.getItem(JOURNAL_KEY)).toBe(rawJournal); // kept for recovery
+    expect(callsFor('multiSet')).toHaveLength(0); // nothing written
+  });
+
+  it('SINGLE-KEY foreign: preserves the value and drops the stale journal', async () => {
+    const before = JSON.stringify({ fontSize: 'Small', number: 18 });
+    const after = JSON.stringify({ fontSize: 'Large', number: 30 });
+    const foreign = JSON.stringify({ fontSize: 'Medium', number: 24 });
+    await AsyncStorage.setItem('fontSize', foreign);
+    await AsyncStorage.setItem(
+      JOURNAL_KEY,
+      JSON.stringify({ before: { fontSize: before }, after: { fontSize: after } })
+    );
+
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
+    expect(await recoverPendingJournal()).toBe(true);
+    expect(await AsyncStorage.getItem('fontSize')).toBe(foreign);
+    expect(await AsyncStorage.getItem(JOURNAL_KEY)).toBeNull(); // stale journal dropped
+    expect(callsFor('multiSet')).toHaveLength(0); // never replayed
+  });
+
+  it('ALL-FOREIGN multi-key journal -> fails closed because coherence is unprovable', async () => {
+    // The old writer saves these keys sequentially. Even though both values are
+    // foreign to this journal, they may come from different interrupted saves.
+    const foreignDetails = JSON.stringify([{ ...PATHS_FIXTURE[0], progress: 99.9 }]);
+    const foreignDates = JSON.stringify([{ pathid: 1, dates: [], scrollPosition: 987 }]);
+    const rawJournal = JSON.stringify({
+      before: {
+        pathDetails: JSON.stringify(PATHS_FIXTURE),
+        pathDateDetails: JSON.stringify(DATES_FIXTURE),
+      },
+      after: {
+        pathDetails: JSON.stringify([...PATHS_FIXTURE].reverse()),
+        pathDateDetails: JSON.stringify([...DATES_FIXTURE].reverse()),
+      },
+    });
+
+    await AsyncStorage.setItem('pathDetails', foreignDetails);
+    await AsyncStorage.setItem('pathDateDetails', foreignDates);
+    await AsyncStorage.setItem(JOURNAL_KEY, rawJournal);
+
+    jest.clearAllMocks();
+    restoreStorageImpls();
+
+    expect(await recoverPendingJournal()).toBe(false);
+    expect(await AsyncStorage.getItem('pathDetails')).toBe(foreignDetails);
+    expect(await AsyncStorage.getItem('pathDateDetails')).toBe(foreignDates);
+    expect(await AsyncStorage.getItem(JOURNAL_KEY)).toBe(rawJournal);
+    expect(callsFor('multiSet')).toHaveLength(0);
   });
 
   it('hydration fails closed when journal recovery fails', async () => {

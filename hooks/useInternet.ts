@@ -1,5 +1,7 @@
 import NetInfo from '@react-native-community/netinfo';
 
+const NETWORK_CHECK_TIMEOUT_MS = 500;
+
 /**
  * Imperative one-off connectivity probe.
  *
@@ -10,11 +12,21 @@ import NetInfo from '@react-native-community/netinfo';
  */
 export const useInternet = () => {
   const checkNetwork = async (): Promise<boolean> => {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
     try {
-      const state = await NetInfo.fetch();
-      return Boolean(state.isConnected);
+      const timeout = new Promise<boolean>((resolve) => {
+        timeoutId = setTimeout(() => resolve(false), NETWORK_CHECK_TIMEOUT_MS);
+      });
+      const networkState = NetInfo.fetch().then((state) => Boolean(state.isConnected));
+
+      return await Promise.race([networkState, timeout]);
     } catch {
       return false;
+    } finally {
+      if (timeoutId !== undefined) {
+        clearTimeout(timeoutId);
+      }
     }
   };
 

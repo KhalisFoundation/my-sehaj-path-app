@@ -4,38 +4,52 @@ import type { AppStore, RootState } from './index';
 import {
   JOURNAL_KEY,
   LEGACY_KEYS,
-  META_KEY,
   changedKeys,
   parseLegacy,
   serializeKey,
   type LegacyKey,
+  type LegacySettingKey,
+  type QuarantinedLegacyRecords,
   type RawLegacy,
   type Snapshot,
 } from './legacyFormat';
 import { setAll } from './slices/pathsSlice';
 import { hydrateSettings } from './slices/settingsSlice';
 
-const READ_ATTEMPTS = 3; // 1 initial + 2 retries, for transient I/O only
-const COMMIT_ATTEMPTS = 3; // capped retry for a failed write batch
-const RETRY_BASE_MS = 50;
+const READ_ATTEMPTS = 3;
+const COMMIT_ATTEMPTS = 2;
+const RETRY_BASE_MS = 20;
 
+/**
+ * Quarantined raw records are deliberately kept outside Redux: screens must not
+ * render or mutate invalid data. Associating them with the store still lets the
+ * persistence coordinator carry them through every later path write.
+ */
+const quarantinedRecordsByStore = new WeakMap<AppStore, QuarantinedLegacyRecords>();
+
+/**
+ * A pending write batch.
+ *
+ * `after` is what the write intends to store. `before` is what those keys held
+ * just before the write. Recording both lets recovery detect a CONFLICT: if the
+ * on-disk value matches neither, a different build changed the data since this
+ * journal was written (e.g. a downgrade wrote newer progress), and replaying
+ * would clobber it — so recovery preserves the disk instead.
+ */
 interface Journal {
-  revision: number;
-  valuesByKey: Partial<Record<LegacyKey, string>>;
+  before: Partial<Record<LegacyKey, string | null>>;
+  after: Partial<Record<LegacyKey, string>>;
 }
 
-/** Entries of a journal, typed — `Object.entries` widens keys to `string`. */
-const journalEntries = (journal: Journal): Array<[LegacyKey, string]> =>
-  LEGACY_KEYS.flatMap((key) => {
-    const value = journal.valuesByKey[key];
-    return value === undefined ? [] : [[key, value] as [LegacyKey, string]];
-  });
-
-const snapshotOf = (state: RootState): Snapshot => ({
-  settings: state.settings,
-  paths: state.paths.paths,
-  dates: state.paths.dates,
-});
+const snapshotOf = (store: AppStore): Snapshot => {
+  const state: RootState = store.getState();
+  return {
+    settings: state.settings,
+    paths: state.paths.paths,
+    dates: state.paths.dates,
+    quarantinedRecords: quarantinedRecordsByStore.get(store),
+  };
+};
 
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), ms));
 
@@ -53,28 +67,67 @@ const verifyWritten = async (entries: Array<[LegacyKey, string]>): Promise<boole
 const isLegacyKey = (value: string): value is LegacyKey =>
   (LEGACY_KEYS as readonly string[]).includes(value);
 
+const isKeyMap = (value: unknown, allowNull: boolean): boolean => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  return Object.entries(value).every(
+    ([key, entry]) =>
+      isLegacyKey(key) && (typeof entry === 'string' || (allowNull && entry === null))
+  );
+};
+
 const isJournal = (value: unknown): value is Journal => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false;
   }
-  const { revision, valuesByKey } = value as { revision?: unknown; valuesByKey?: unknown };
-  if (typeof revision !== 'number' || !Number.isFinite(revision)) {
+  const { before, after } = value as { before?: unknown; after?: unknown };
+  // `before` may hold nulls (a key that did not exist yet); `after` never does.
+  if (!isKeyMap(before, true) || !isKeyMap(after, false)) {
     return false;
   }
-  if (typeof valuesByKey !== 'object' || valuesByKey === null || Array.isArray(valuesByKey)) {
+  // Every touched key must appear in BOTH maps. A `before` entry missing for an
+  // `after` key would otherwise be read as `null` and silently misclassify the
+  // recovery, so reject the journal as malformed instead.
+  const beforeKeys = Object.keys(before as object);
+  const afterKeys = Object.keys(after as object);
+  const sameKeys =
+    beforeKeys.length === afterKeys.length && afterKeys.every((key) => key in (before as object));
+  if (!sameKeys) {
     return false;
   }
-  return Object.entries(valuesByKey).every(
-    ([key, entry]) => isLegacyKey(key) && typeof entry === 'string'
-  );
+
+  // Path data is one logical record split across two legacy keys. A trustworthy
+  // journal must contain both halves or neither; accepting only one would let
+  // recovery boot a path/date combination that was never committed together.
+  const hasPathDetails = afterKeys.includes('pathDetails');
+  const hasPathDateDetails = afterKeys.includes('pathDateDetails');
+  return hasPathDetails === hasPathDateDetails;
 };
 
 /**
- * Replays a pending write batch left behind by a process that died mid-commit.
+ * Resolves a pending write batch left behind by a process that died mid-commit.
  *
- * Returns false if a journal exists but cannot be trusted or replayed; the
- * caller must then fail closed rather than render the app against a
- * half-committed pathDetails/pathDateDetails pair.
+ * The journal records both the `before` and the `after` value of every key it
+ * touched, so recovery can tell three cases apart per key:
+ *   - disk === after   -> the write already landed; nothing to do.
+ *   - disk === before  -> the write was interrupted; complete it.
+ *   - disk === neither  -> FOREIGN: a different build changed this key since the
+ *                          journal was written (e.g. the app was downgraded to
+ *                          an older build that saved newer progress, then
+ *                          upgraded again).
+ *
+ * Foreign keys are never replayed (that would clobber the newer data):
+ *   - A single-key journal has no cross-key atomicity to prove. Preserve the
+ *     foreign value, remove the stale journal, and continue to hydration.
+ *   - A multi-key journal is ambiguous even when every key is foreign. Older
+ *     builds write pathDetails/pathDateDetails sequentially, so those values
+ *     cannot be proven to belong to one snapshot. Preserve EVERYTHING (including
+ *     the journal), write nothing, and fail hydration closed.
+ *
+ * Returns false when a journal exists but cannot be read/parsed, a genuine
+ * completion write cannot be verified, or a multi-key conflict is detected; the
+ * caller then fails closed.
  */
 export const recoverPendingJournal = async (): Promise<boolean> => {
   let raw: string | null;
@@ -102,19 +155,60 @@ export const recoverPendingJournal = async (): Promise<boolean> => {
     return false;
   }
 
-  const entries = journalEntries(parsed);
-  if (entries.length === 0) {
+  const keys = (Object.keys(parsed.after) as LegacyKey[]).filter(isLegacyKey);
+  if (keys.length === 0) {
     await AsyncStorage.removeItem(JOURNAL_KEY);
     return true;
   }
 
   try {
-    await AsyncStorage.multiSet(entries);
-    const verified = await verifyWritten(entries);
-    if (!verified) {
+    const found = await AsyncStorage.multiGet(keys);
+    const disk = new Map(found.map(([key, value]) => [key, value ?? null]));
+
+    const toComplete: Array<[LegacyKey, string]> = [];
+    let foreignCount = 0;
+    for (const key of keys) {
+      const current = disk.get(key) ?? null;
+      const after = parsed.after[key] as string;
+      const before = parsed.before[key] ?? null;
+
+      if (current === after) {
+        continue; // already applied
+      }
+      if (current === before) {
+        toComplete.push([key, after]); // interrupted write — finish it
+        continue;
+      }
+      foreignCount += 1; // a foreign writer moved this key off both known values
+    }
+
+    if (foreignCount > 0) {
+      if (keys.length === 1) {
+        // No paired state is involved. Keep the foreign value and discard the
+        // stale intent so future boots do not repeatedly report the conflict.
+        recordError(
+          new Error('single-key write journal superseded by foreign data; preserving disk'),
+          'persistence: journal conflict'
+        );
+        await AsyncStorage.removeItem(JOURNAL_KEY);
+        return true;
+      }
+      // Multiple keys were intended as one batch, but at least one is foreign.
+      // Even all-foreign values may come from interrupted sequential legacy
+      // writes, so preserve everything and fail closed rather than guess.
+      recordError(
+        new Error('multi-key write journal conflicts with on-disk data; failing closed'),
+        'persistence: journal multi-key conflict'
+      );
       return false;
     }
-    await AsyncStorage.setItem(META_KEY, JSON.stringify({ revision: parsed.revision }));
+
+    if (toComplete.length > 0) {
+      await AsyncStorage.multiSet(toComplete);
+      if (!(await verifyWritten(toComplete))) {
+        return false;
+      }
+    }
     // Journal is removed only once every value is durable and verified.
     await AsyncStorage.removeItem(JOURNAL_KEY);
     return true;
@@ -157,6 +251,31 @@ const readAllLegacy = async (): Promise<RawLegacy> => {
 };
 
 /**
+ * Repairs only settings that were malformed, plus the historically eager
+ * consent default. This intentionally cannot accept either path key.
+ *
+ * Settings are recoverable preferences, so failure is reported but never blocks
+ * boot. Path parsing has already succeeded before this runs.
+ */
+const repairLegacySettings = async (store: AppStore, keys: LegacySettingKey[]): Promise<void> => {
+  if (keys.length === 0) {
+    return;
+  }
+
+  const snapshot = snapshotOf(store);
+  const entries: Array<[LegacyKey, string]> = keys.map((key) => [key, serializeKey(key, snapshot)]);
+
+  try {
+    await AsyncStorage.multiSet(entries);
+    if (!(await verifyWritten(entries))) {
+      throw new Error('settings repair verification mismatch');
+    }
+  } catch (error) {
+    recordError(error, 'persistence: settings repair failed');
+  }
+};
+
+/**
  * Recover -> read -> validate -> dispatch.
  *
  * Parse-then-commit: nothing is dispatched until every key has been read and
@@ -174,8 +293,8 @@ export const hydrateStore = async (store: AppStore): Promise<boolean> => {
     const parsed = parseLegacy(raw);
 
     if (!parsed.ok) {
-      // Present-but-malformed data. Do NOT substitute defaults: the write
-      // coordinator would then persist those defaults over the user's bytes.
+      // Path containers are user progress. Never replace malformed path data
+      // with defaults or attempt settings repairs during a failed path boot.
       recordError(
         new Error(`legacy data is malformed: ${parsed.issues.join('; ')}`),
         'persistence: hydration failed closed'
@@ -183,8 +302,17 @@ export const hydrateStore = async (store: AppStore): Promise<boolean> => {
       return false;
     }
 
+    if (parsed.quarantined.length > 0) {
+      recordError(
+        new Error(`legacy values quarantined: ${parsed.quarantined.join('; ')}`),
+        'persistence: hydrated with quarantined values'
+      );
+    }
+
+    quarantinedRecordsByStore.set(store, parsed.quarantinedRecords);
     store.dispatch(hydrateSettings(parsed.value.settings));
     store.dispatch(setAll({ paths: parsed.value.paths, dates: parsed.value.dates }));
+    await repairLegacySettings(store, parsed.settingsToRepair);
     return true;
   } catch (error) {
     recordError(error, 'persistence: hydration failed');
@@ -196,12 +324,21 @@ export const hydrateStore = async (store: AppStore): Promise<boolean> => {
 // write coordinator
 // ---------------------------------------------------------------------------
 
+/** The production surface used by the app. */
 export interface LegacyPersistence {
   start: () => void;
   stop: () => void;
   /** Resolves true only once the snapshot current at call time is durable. */
   flush: () => Promise<boolean>;
-  getStatus: () => { running: boolean; dirty: boolean; lastError: unknown };
+}
+
+/**
+ * Adds diagnostics used only by tests. Kept off `LegacyPersistence` so the
+ * production surface stays minimal and no long-lived state is tracked just for
+ * assertions.
+ */
+export interface LegacyPersistenceInternal extends LegacyPersistence {
+  getStatus: () => { running: boolean; dirty: boolean };
 }
 
 /**
@@ -214,15 +351,14 @@ export interface LegacyPersistence {
  *   last, so a crash mid-commit is recoverable (landmine #12).
  * - Refuses to write until `paths.hydrated` is true (landmine #2).
  */
-export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
+export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInternal => {
   let unsubscribe: (() => void) | null = null;
   let baseline: Snapshot | null = null; // last snapshot verified on disk
   /** Newest un-persisted snapshot, tagged with its sequence number. */
   let pending: { snapshot: Snapshot; seq: number } | null = null;
   let draining = false;
-  let revision = 0;
+  let stopped = false;
   let seq = 0;
-  let lastError: unknown = null;
 
   /**
    * Waiters are keyed by sequence number, NOT by snapshot identity.
@@ -232,7 +368,10 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
    * forever whenever its snapshot was coalesced away by a newer one — which
    * happens routinely during auto-scroll.
    */
-  let waiters: Array<{ seq: number; resolve: (ok: boolean) => void }> = [];
+  // Each waiter also carries the snapshot it is waiting on, so the stop() path
+  // can resolve it TRUE when that exact data is already durable on disk (even if
+  // its sequence number is newer than the in-flight commit that made it durable).
+  let waiters: Array<{ seq: number; target: Snapshot; resolve: (ok: boolean) => void }> = [];
 
   const settleUpTo = (committedSeq: number) => {
     const remaining: typeof waiters = [];
@@ -252,6 +391,20 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
     current.forEach((waiter) => waiter.resolve(false));
   };
 
+  // Used when the coordinator stops. A waiter whose data already matches the
+  // durable baseline resolves TRUE (its save DID reach disk); the rest, whose
+  // writes will never run now, resolve false. This prevents a save that actually
+  // committed just before stop() from being reported as a false failure (which
+  // would make the command roll Redux back and diverge from disk).
+  const settleStopped = () => {
+    const current = waiters;
+    waiters = [];
+    current.forEach((waiter) => {
+      const durable = baseline !== null && changedKeys(baseline, waiter.target).length === 0;
+      waiter.resolve(durable);
+    });
+  };
+
   const enqueue = (snapshot: Snapshot): number => {
     seq += 1;
     pending = { snapshot, seq };
@@ -263,14 +416,29 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
       key,
       serializeKey(key, snapshot),
     ]);
-    revision += 1;
 
-    const valuesByKey: Partial<Record<LegacyKey, string>> = {};
+    const after: Partial<Record<LegacyKey, string>> = {};
     for (const [key, value] of entries) {
-      valuesByKey[key] = value;
+      after[key] = value;
     }
-    const journal: Journal = { revision, valuesByKey };
 
+    // Record what each key held before this write so recovery can distinguish an
+    // interrupted write from a conflicting one. `before` MUST be the exact raw
+    // bytes currently on disk — NOT a re-serialization of the in-memory
+    // baseline. Hydration upgrades old on-disk shapes (adds saveData/pathName/
+    // scrollPosition), so the baseline can serialize to something that differs
+    // byte-for-byte from the untouched legacy bytes; using it would make the
+    // first post-upgrade interrupted write look like a conflict.
+    const found = await AsyncStorage.multiGet(keys);
+    const before: Partial<Record<LegacyKey, string | null>> = {};
+    for (const [key, value] of found) {
+      before[key as LegacyKey] = value ?? null;
+    }
+
+    const journal: Journal = { before, after };
+
+    // Journal first, then the keys, then remove the journal — so a crash between
+    // the two path keys is recoverable (the journal replays the complete pair).
     await AsyncStorage.setItem(JOURNAL_KEY, JSON.stringify(journal));
     await AsyncStorage.multiSet(entries);
 
@@ -278,18 +446,24 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
       throw new Error('post-write verification mismatch');
     }
 
-    await AsyncStorage.setItem(META_KEY, JSON.stringify({ revision }));
     await AsyncStorage.removeItem(JOURNAL_KEY);
     return true;
   };
 
   const drain = async () => {
-    if (draining) {
+    if (draining || stopped) {
       return;
     }
     draining = true;
     try {
       while (pending) {
+        if (stopped) {
+          // Stopped mid-drain: do not write anything further. Waiters whose data
+          // is already durable resolve true; the rest resolve false so nothing
+          // hangs. (A write that just committed above must report success.)
+          settleStopped();
+          return;
+        }
         const target = pending;
         pending = null;
 
@@ -310,7 +484,6 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
             committed = true;
             break;
           } catch (error) {
-            lastError = error;
             recordError(error, `persistence: commit attempt ${attempt} failed`);
             if (attempt < COMMIT_ATTEMPTS) {
               await delay(RETRY_BASE_MS * attempt);
@@ -320,7 +493,6 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
 
         if (committed) {
           baseline = target.snapshot; // advance ONLY on verified success
-          lastError = null;
           settleUpTo(target.seq);
           continue;
         }
@@ -345,12 +517,20 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
   };
 
   const onStateChange = () => {
+    if (stopped) {
+      return;
+    }
     const state = store.getState();
     if (!state.paths.hydrated) {
       return; // landmine #2: never write from a blank/partial store
     }
-    const next = snapshotOf(state);
-    if (baseline && changedKeys(baseline, next).length === 0) {
+    const next = snapshotOf(store);
+    // Skip ONLY when truly idle and `next` already matches disk. `baseline` only
+    // advances after a commit, so during an in-flight (draining) or pending
+    // write a revert back to baseline still differs from what is being written —
+    // it must be enqueued, or the store and disk diverge permanently once the
+    // in-flight batch commits. This mirrors the guard flush() uses.
+    if (baseline && changedKeys(baseline, next).length === 0 && !pending && !draining) {
       return;
     }
     enqueue(next);
@@ -362,35 +542,48 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistence => {
       if (unsubscribe) {
         return; // idempotent: never attach two subscribers
       }
+      stopped = false; // re-activate after a previous stop() (e.g. root remount)
       const state = store.getState();
       // Baseline starts at the hydrated state so boot does not rewrite all keys.
-      baseline = state.paths.hydrated ? snapshotOf(state) : null;
+      baseline = state.paths.hydrated ? snapshotOf(store) : null;
       unsubscribe = store.subscribe(onStateChange);
     },
 
     stop: () => {
+      // Make the coordinator inert: after this, drain() and flush() no-op, so a
+      // rollback triggered downstream can never reach disk and overwrite a
+      // commit that actually succeeded.
+      stopped = true;
       unsubscribe?.();
       unsubscribe = null;
-      // Never leave a caller hanging on a coordinator that will no longer drain.
-      settleFailure();
+      // If a write is in flight, let the drain loop settle waiters truthfully
+      // (a commit that succeeds reports success). Only settle here when nothing
+      // is draining, so no waiter is left hanging and a just-committed save is
+      // still reported as success.
+      if (!draining) {
+        settleStopped();
+      }
     },
 
     flush: async () => {
+      if (stopped) {
+        return false;
+      }
       const state = store.getState();
       if (!state.paths.hydrated) {
         return false;
       }
-      const target = snapshotOf(state);
+      const target = snapshotOf(store);
       if (baseline && changedKeys(baseline, target).length === 0 && !pending && !draining) {
         return true; // already durable
       }
       const mySeq = enqueue(target);
       return new Promise<boolean>((resolve) => {
-        waiters.push({ seq: mySeq, resolve });
+        waiters.push({ seq: mySeq, target, resolve });
         drain();
       });
     },
 
-    getStatus: () => ({ running: unsubscribe !== null, dirty: pending !== null, lastError }),
+    getStatus: () => ({ running: unsubscribe !== null, dirty: pending !== null }),
   };
 };

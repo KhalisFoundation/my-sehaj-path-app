@@ -3,7 +3,7 @@ import { TouchableOpacity, View, StyleProp, ViewStyle, TextStyle } from 'react-n
 import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent, SimpleText } from '@components';
 import { LeftArrowIcon, RightChevronIcon, CheckMarkIcon } from '@icons';
-import { trackEvent } from '@utils';
+import { recordError, trackEvent } from '@utils';
 import { DropdownSettingItemStyles } from '@styles/DropdownSettingItemStyles';
 
 interface SelectionOption<T> {
@@ -24,7 +24,7 @@ interface DropdownSettingItemProps<T> {
 
   /** Current value (from the store) and its setter — see `useSetting`. */
   value: T;
-  onValueChange: (value: T) => void;
+  onValueChange: (value: T) => Promise<boolean>;
 
   // Optional configurations
   analyticsCategory?: string;
@@ -73,10 +73,17 @@ export const DropdownSettingItem = <T,>({
 
   const handleToggle = () => setIsVisible((prev) => !prev);
 
-  const handleSelect = (option: SelectionOption<T>) => {
-    onValueChange(option.value);
+  const handleSelect = async (option: SelectionOption<T>) => {
     handleToggle();
-    trackEvent(analyticsCategory, 'click', `changed ${settingKey} to ${option.label}`);
+    try {
+      const saved = await onValueChange(option.value);
+      if (!saved) {
+        return;
+      }
+      trackEvent(analyticsCategory, 'click', `changed ${settingKey} to ${option.label}`);
+    } catch (error) {
+      recordError(error, `DropdownSettingItem: failed to change ${settingKey}`);
+    }
   };
 
   return (

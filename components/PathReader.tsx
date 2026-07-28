@@ -5,8 +5,8 @@ import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
 import { usePathReaderCentering } from './usePathReaderCentering';
 import { trackEvent } from '@utils/analytics';
-import { getLarivaarRenderData, showErrorAlert, type LarivaarRenderData } from '@utils';
-import { ErrorConstants, PATH_DATA } from '@constants';
+import { getLarivaarRenderData, type LarivaarRenderData } from '@utils';
+import { PATH_DATA } from '@constants';
 import { savePathProgress } from '../store/commands';
 import { useAppSelector } from '../store/hooks';
 import { usePathSelection } from './PathSelectionContext';
@@ -27,6 +27,7 @@ interface PathReaderProps {
     scrollPosition?: number,
     clearAngNavigation?: boolean
   ) => void;
+  onSaveFailure: (angNumber: number) => void;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
   scrollToVerseRequestKey?: number;
@@ -56,6 +57,7 @@ const PathReaderComponent = ({
   pathId,
   isNavigating,
   onSaveCommit,
+  onSaveFailure,
   setCenterVerseId,
   scrollToVerseId,
   scrollToVerseRequestKey,
@@ -65,8 +67,15 @@ const PathReaderComponent = ({
 }: PathReaderProps) => {
   // Selection state from context, display settings from the store: neither is
   // drilled down from PathScreen any more.
-  const { isSaving, setIsSaving, setPressIndex, setSavedPathVerseId, setIsSaved, setFound } =
-    usePathSelection();
+  const {
+    isSaving,
+    setIsSaving,
+    setPressIndex,
+    setSavedPathVerseId,
+    setHasPendingVerseSelection,
+    setIsSaved,
+    setFound,
+  } = usePathSelection();
   const isLarivaar = useAppSelector((state) => state.settings.larivaar);
   const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
   const isVishraam = useAppSelector((state) => state.settings.vishraam);
@@ -110,9 +119,10 @@ const PathReaderComponent = ({
       if (isSaving) {
         setPressIndex(index + 1);
         setSavedPathVerseId(verseId);
+        setHasPendingVerseSelection(true);
       }
     },
-    [isSaving, setPressIndex, setSavedPathVerseId]
+    [isSaving, setPressIndex, setSavedPathVerseId, setHasPendingVerseSelection]
   );
 
   const createSaveHandler = useCallback(
@@ -126,14 +136,16 @@ const PathReaderComponent = ({
       if (!saved) {
         // Long-press optimistically marks the verse saved for instant feedback.
         // The write failed, so undo that: never leave a "saved" state on screen
-        // for something that is not on disk.
+        // for something that is not on disk. Restore the post-rollback durable
+        // verse instead of making existing progress appear lost.
         setIsSaved(false);
         setIsSaving(false);
-        setSavedPathVerseId(0);
+        onSaveFailure(pathContent?.source?.pageNo ?? 0);
         setPressIndex(0);
-        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+        setHasPendingVerseSelection(false);
         return;
       }
+      setHasPendingVerseSelection(false);
       setIsSaved(true);
       if (onSaveCommit) {
         onSaveCommit(pathContent?.source?.pageNo ?? 0, verseId, scrollOffset.current, true);
@@ -145,9 +157,10 @@ const PathReaderComponent = ({
       scrollOffset,
       setIsSaved,
       setIsSaving,
-      setSavedPathVerseId,
       setPressIndex,
+      setHasPendingVerseSelection,
       onSaveCommit,
+      onSaveFailure,
     ]
   );
 

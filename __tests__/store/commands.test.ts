@@ -19,7 +19,12 @@ jest.mock('../../utils/analytics', () => ({
 import { store, makeStore } from '../../store';
 import { hydrateStore } from '../../store/persistence';
 import { persistence } from '../../store/instance';
-import { createPath, renamePathCommand, savePathProgress } from '../../store/commands';
+import {
+  createPath,
+  renamePathCommand,
+  savePathProgress,
+  undoPathCompletion,
+} from '../../store/commands';
 import { setAll } from '../../store/slices/pathsSlice';
 
 const MOCKED_METHODS = [
@@ -139,6 +144,30 @@ describe('renamePathCommand', () => {
 
     expect(store.getState().paths.paths[0].pathName).toBe(original);
     restoreStorageImpls();
+  });
+});
+
+describe('missing target path (honest failure, not phantom "Saved")', () => {
+  // Reducers no-op on an unknown pathId; the command must report false rather
+  // than let flush() see no change and falsely report success.
+  it('savePathProgress returns false for an unknown pathId', async () => {
+    expect(await savePathProgress(999, 10, 5, 0)).toBe(false);
+  });
+
+  it('renamePathCommand returns false for an unknown pathId', async () => {
+    expect(await renamePathCommand(999, 'X')).toBe(false);
+  });
+
+  it('undoPathCompletion returns false for an unknown pathId', async () => {
+    expect(await undoPathCompletion(999)).toBe(false);
+  });
+
+  it('does not write anything to disk when the target path is missing', async () => {
+    jest.clearAllMocks();
+    restoreStorageImpls();
+    const saved = await savePathProgress(999, 10, 5, 0);
+    expect(saved).toBe(false);
+    expect((AsyncStorage.multiSet as jest.Mock).mock.calls).toHaveLength(0);
   });
 });
 

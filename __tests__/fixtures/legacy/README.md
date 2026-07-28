@@ -1,11 +1,13 @@
 # Legacy storage fixtures — PRODUCTION RELEASE BLOCKER
 
-`store/legacyFormat.ts::parseLegacy` uses **strict** validation: a present-but-
-malformed record fails closed (the app shows the hydration-retry screen rather
-than silently dropping or defaulting the data). That is the correct behaviour
-for protecting user data — but only if "malformed" is defined against the shapes
-that **real released builds actually wrote**, not just the current TypeScript
-models.
+`store/legacyFormat.ts::parseLegacy` uses **strict** validation for path/date
+containers because they hold reading progress: an unparseable container fails
+closed rather than being replaced with empty data. An identifiable malformed
+record is quarantined and preserved while valid siblings load. Settings are
+lower-risk preferences, so a malformed setting uses its production default and
+repairs only that setting key. These rules still need to be validated against
+the shapes that **real released builds actually wrote**, not just the current
+TypeScript models.
 
 This app is live. Before the Redux release ships, this directory MUST contain
 byte-for-byte AsyncStorage captures from every released version that can still

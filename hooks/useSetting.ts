@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import type { ActionCreatorWithPayload } from '@reduxjs/toolkit';
-import { showErrorAlert } from '@utils';
+import { recordError, showErrorAlert } from '@utils';
 import type { RootState } from '../store';
 import { commitSettingChange } from '../store/commands';
 import { useAppSelector } from '../store/hooks';
@@ -21,14 +21,21 @@ export const useSetting = <T>(
   select: (state: RootState) => T,
   actionCreator: ActionCreatorWithPayload<T>,
   saveError: string
-): [T, (next: T) => Promise<void>] => {
+): [T, (next: T) => Promise<boolean>] => {
   const value = useAppSelector(select);
 
   const set = useCallback(
     async (next: T) => {
-      const saved = await commitSettingChange(actionCreator(next));
-      if (!saved) {
+      try {
+        const saved = await commitSettingChange(actionCreator(next));
+        if (!saved) {
+          showErrorAlert(saveError);
+        }
+        return saved;
+      } catch (error) {
+        recordError(error, 'useSetting: setting change failed unexpectedly');
         showErrorAlert(saveError);
+        return false;
       }
     },
     [actionCreator, saveError]

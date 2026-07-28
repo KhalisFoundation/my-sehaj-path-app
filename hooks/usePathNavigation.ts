@@ -1,8 +1,6 @@
 import { useCallback } from 'react';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { showErrorAlert } from '@utils';
-import { showSaveProgressAlert } from '@utils/alerts';
-import { ErrorConstants } from '@constants';
+import { showLeaveAnywayAlert, showSaveProgressAlert } from '@utils/alerts';
 import { store } from '../store';
 import { RootStackParamList } from '../App';
 
@@ -31,10 +29,9 @@ export const usePathNavigation = ({
   const persistAndGoHome = useCallback(async () => {
     const saved = await persistCurrentScroll();
     if (!saved) {
-      // Do not leave the screen on a failed save: that is how the latest
-      // reading position gets lost after retry exhaustion. Staying here keeps
-      // it in memory and lets the coordinator retry.
-      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      // Never trap the user: let them retry (stay) or leave anyway. Leaving is
+      // their explicit choice, so we don't force them to stay on a broken disk.
+      showLeaveAnywayAlert({ onLeaveAnyway: () => navigation.push('Home') });
       return;
     }
     navigation.push('Home');

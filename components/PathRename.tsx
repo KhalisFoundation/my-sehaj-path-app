@@ -3,8 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from '
 import { BlurView } from '@react-native-community/blur';
 import { CrossIcon } from '@icons';
 import { PathRenameStyle } from '@styles';
-import { showErrorAlert, trackEvent } from '@utils';
-import { ErrorConstants } from '@constants';
+import { trackEvent } from '@utils';
 import { renamePathCommand } from '../store/commands';
 
 interface Props {
@@ -28,13 +27,14 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
     if (isUpdateButtonDisabled) {
       return;
     }
-    trackEvent('PathRename', 'click', `rename path ${newName}`);
     // Only close and report the new name once the rename is durable.
+    // renamePathCommand alerts on failure; keep the dialog open so the user
+    // can retry.
     const saved = await renamePathCommand(pathId, newName);
     if (!saved) {
-      showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
       return;
     }
+    trackEvent('PathRename', 'click', `rename path ${newName}`);
     setPathRename(false);
     setPathName(newName);
   };
