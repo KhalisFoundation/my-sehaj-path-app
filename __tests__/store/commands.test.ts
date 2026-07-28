@@ -20,12 +20,14 @@ import { store, makeStore } from '../../store';
 import { hydrateStore } from '../../store/persistence';
 import { persistence } from '../../store/instance';
 import {
+  commitSettingChange,
   createPath,
   renamePathCommand,
   savePathProgress,
   undoPathCompletion,
 } from '../../store/commands';
 import { setAll } from '../../store/slices/pathsSlice';
+import { setLarivaar } from '../../store/slices/settingsSlice';
 
 const MOCKED_METHODS = [
   'getItem',
@@ -114,6 +116,77 @@ describe('createPath', () => {
     const ok = await createPath();
     expect(ok).toBe(1); // next id starts fresh, no leaked id from the failure
     expect(store.getState().paths.paths).toHaveLength(1);
+  });
+
+  it('reserves ids belonging to orphan dates and quarantined records', async () => {
+    persistence.stop();
+    await AsyncStorage.clear();
+
+    const validPath = {
+      pathId: 2,
+      progress: 1,
+      saveData: { angNumber: 0, verseId: 0 },
+      startDate: '1-January-2026',
+      completionDate: '',
+      pathName: 'Path #2',
+    };
+    const quarantinedPath = {
+      pathId: 7,
+      progress: null,
+      saveData: { verseId: 100 },
+    };
+    await AsyncStorage.multiSet([
+      ['pathDetails', JSON.stringify([validPath, quarantinedPath])],
+      [
+        'pathDateDetails',
+        JSON.stringify([
+          { pathid: 2, dates: [], scrollPosition: 0 },
+          { pathid: 5, dates: [], scrollPosition: 0 },
+          { pathid: 7, dates: [], scrollPosition: 10 },
+        ]),
+      ],
+    ]);
+
+    expect(await hydrateStore(store)).toBe(true);
+    persistence.start();
+
+    // 5 belongs to a preserved orphan date and 7 to quarantined path data.
+    expect(await createPath()).toBe(8);
+
+    const diskPaths = JSON.parse((await AsyncStorage.getItem('pathDetails'))!);
+    expect(diskPaths.map((path: { pathId: number }) => path.pathId)).toEqual([2, 8, 7]);
+  });
+});
+
+describe('atomic rollback', () => {
+  it('never starts a successful rollback write with the failed setting value', async () => {
+    const realMultiSet = ORIGINAL_IMPLS.get('multiSet') as (
+      entries: Array<[string, string]>
+    ) => Promise<void>;
+    const successfulLarivaarWrites: string[] = [];
+    let attempts = 0;
+
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(
+      async (entries: Array<[string, string]>) => {
+        attempts += 1;
+        if (attempts <= 2) {
+          throw new Error('transient write failure');
+        }
+        const larivaar = entries.find(([key]) => key === 'larivaar')?.[1];
+        if (larivaar !== undefined) {
+          successfulLarivaarWrites.push(larivaar);
+        }
+        await realMultiSet(entries);
+      }
+    );
+
+    expect(await commitSettingChange(setLarivaar(true))).toBe(false);
+    expect(await persistence.flush()).toBe(true);
+
+    expect(store.getState().settings.larivaar).toBe(false);
+    expect(successfulLarivaarWrites).not.toContain('true');
+    expect(successfulLarivaarWrites).toContain('false');
+    expect(await AsyncStorage.getItem('larivaar')).toBe('false');
   });
 });
 

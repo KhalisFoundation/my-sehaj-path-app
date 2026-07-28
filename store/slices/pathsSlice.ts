@@ -38,8 +38,15 @@ export interface UpdatePathPayload {
  * removed, or ids are non-contiguous, length+1 collides with an existing id and
  * progress saves would silently target the wrong path.
  */
-export const getNextPathId = (paths: PathData[]): number =>
-  paths.reduce((max, path) => (path.pathId > max ? path.pathId : max), 0) + 1;
+export const getNextPathId = (paths: PathData[], reservedIds: Iterable<number> = []): number => {
+  let max = paths.reduce((current, path) => Math.max(current, path.pathId), 0);
+  for (const id of reservedIds) {
+    if (Number.isFinite(id) && id > max) {
+      max = id;
+    }
+  }
+  return Math.floor(max) + 1;
+};
 
 /**
  * A path legitimately created by an older build may have no `pathDateDetails`
@@ -131,6 +138,10 @@ export const pathsSlice = createSlice({
       state,
       action: PayloadAction<{ pathId: number; scrollPosition: number }>
     ) => {
+      const pathExists = state.paths.some((path) => path.pathId === action.payload.pathId);
+      if (!pathExists) {
+        return;
+      }
       ensureDateRecord(state, action.payload.pathId).scrollPosition = action.payload.scrollPosition;
     },
   },

@@ -84,6 +84,10 @@ describe('getNextPathId', () => {
     const next = getNextPathId(paths);
     expect(paths.some((path) => path.pathId === next)).toBe(false);
   });
+
+  it('also reserves ids that are not represented by valid path records', () => {
+    expect(getNextPathId([makePath({ pathId: 2 })], [5, 7])).toBe(8);
+  });
 });
 
 describe('pathsSlice addPath', () => {
@@ -329,6 +333,12 @@ describe('pathsSlice setScrollPosition', () => {
     const start = hydrated([makePath({ pathId: 1 })], []);
     const after = reducer(start, setScrollPosition({ pathId: 1, scrollPosition: 42 }));
     expect(after.dates).toEqual([{ pathid: 1, dates: [], scrollPosition: 42 }]);
+  });
+
+  it('does not create an orphan date record for an unknown path', () => {
+    const start = hydrated([makePath({ pathId: 1 })], []);
+    const after = reducer(start, setScrollPosition({ pathId: 999, scrollPosition: 42 }));
+    expect(after).toEqual(start);
   });
 });
 

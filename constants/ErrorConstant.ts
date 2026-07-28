@@ -3,11 +3,10 @@ interface ErrorConstant {
 }
 export const ErrorConstants: ErrorConstant = {
   FAILED_TO_SAVE_ANG_FORMAT: 'Failed to save your angs format preference. Please try again.',
-  FAILED_TO_LOAD_ANG_FORMAT: 'Failed to load your angs format preference. Please try again.',
   FAILED_TO_SAVE_FONT_SIZE: 'Failed to save your font size preference. Please try again.',
-  FAILED_TO_LOAD_FONT_SIZE: 'Failed to load your font size preference. Please try again.',
   FAILED_TO_SAVE_LARIVAAR: 'Failed to save your larivaar preference. Please try again.',
-  FAILED_TO_LOAD_LARIVAAR: 'Failed to load your larivaar preference. Please try again.',
+  FAILED_TO_LOAD_SETTINGS_RECOVERED:
+    'Some settings could not be loaded and were reset to their defaults. Your saved path progress was not changed.',
   FAILED_TO_SAVE_PATH_NAME: 'Failed to save your path name. Please try again.',
   FAILED_TO_LOAD_PATH_NAME: 'Failed to load your path name. Please try again.',
   FAILED_TO_LOAD_SEHAJ_PATHS_DATA: 'Failed to load your Sehaj Paths data. Please try again.',
@@ -29,13 +28,8 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_LOAD_PATH_DATA_GENERIC: 'Failed to load path data. Please try again.',
   ERROR_SCROLLING_TO_SAVED_PATH: 'Error scrolling to saved path:',
   FAILED_TO_SAVE_PARAGRAPH_MODE: 'Failed to save your paragraph mode preference. Please try again.',
-  FAILED_TO_LOAD_PARAGRAPH_MODE: 'Failed to load your paragraph mode preference. Please try again.',
   FAILED_TO_SAVE_VISHRAAM: 'Failed to save your vishraam preference. Please try again.',
-  FAILED_TO_LOAD_VISHRAAM: 'Failed to load your vishraam preference. Please try again.',
-  FAILED_TO_LOAD_VISHRAAM_SOURCE: 'Failed to load vishraam source',
   FAILED_TO_SAVE_VISHRAAM_SOURCE: 'Failed to save vishraam source',
-  FAILED_TO_LOAD_VISHRAAM_STYLE: 'Failed to load vishraam style',
   FAILED_TO_SAVE_VISHRAAM_STYLE: 'Failed to save vishraam style',
-  FAILED_TO_LOAD_ANALYTICS: 'Failed to load analytics',
   FAILED_TO_SAVE_ANALYTICS: 'Failed to save analytics',
 };

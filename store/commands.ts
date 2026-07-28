@@ -4,17 +4,17 @@ import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
 import type { DateData, PathData } from '../types';
-import { store } from './index';
+import { restoreDurableState, store } from './index';
 import { persistence } from './instance';
+import { getQuarantinedPathIds } from './persistence';
 import {
   addPath,
   clearPathCompletion,
   getNextPathId,
   renamePath,
-  setAll,
   updatePath,
 } from './slices/pathsSlice';
-import { hydrateSettings, type SettingsState } from './slices/settingsSlice';
+import type { SettingsState } from './slices/settingsSlice';
 import { showErrorAlert } from '@utils/Error';
 
 /**
@@ -79,8 +79,12 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
     // dispatches invalidate the baseline, so the coordinator rewrites it and
     // clears the stale journal on its own). We do NOT await it — awaiting a
     // second full retry cycle here is what made failures take several seconds.
-    store.dispatch(setAll({ paths: previousPaths.paths, dates: previousPaths.dates }));
-    store.dispatch(hydrateSettings(previousSettings));
+    store.dispatch(
+      restoreDurableState({
+        paths: previousPaths,
+        settings: previousSettings,
+      })
+    );
 
     persistence
       .flush()
@@ -138,7 +142,9 @@ const runPathMutation = (pathId: number, build: () => UnknownAction): Promise<bo
  */
 export const createPath = (): Promise<number | null> =>
   runExclusive(async () => {
-    const pathId = getNextPathId(store.getState().paths.paths);
+    const { paths, dates } = store.getState().paths;
+    const reservedIds = [...dates.map((date) => date.pathid), ...getQuarantinedPathIds(store)];
+    const pathId = getNextPathId(paths, reservedIds);
 
     const path: PathData = {
       pathId,

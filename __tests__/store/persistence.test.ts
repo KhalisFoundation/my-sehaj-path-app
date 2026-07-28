@@ -272,7 +272,8 @@ describe('hydrateStore', () => {
     restoreStorageImpls();
 
     const store = makeStore();
-    expect(await hydrateStore(store)).toBe(true);
+    const onSettingsRecovered = jest.fn();
+    expect(await hydrateStore(store, { onSettingsRecovered })).toBe(true);
     expect(store.getState().settings).toEqual(SETTINGS_DEFAULTS);
     expect(store.getState().paths.paths).toEqual(PATHS_FIXTURE);
     expect(store.getState().paths.dates).toEqual(DATES_FIXTURE);
@@ -307,6 +308,24 @@ describe('hydrateStore', () => {
     expect(repairedKeys).not.toContain('pathDateDetails');
     expect(await AsyncStorage.getItem('pathDetails')).toBe(rawPaths);
     expect(await AsyncStorage.getItem('pathDateDetails')).toBe(rawDates);
+    expect(onSettingsRecovered).toHaveBeenCalledTimes(1);
+    expect(onSettingsRecovered).toHaveBeenCalledWith([
+      'larivaar',
+      'paragraphMode',
+      'vishraam',
+      'consent',
+      'fontSize',
+      'vishraamsSource',
+      'angsFormat',
+    ]);
+  });
+
+  it('does not report normal missing settings as recovery errors', async () => {
+    const store = makeStore();
+    const onSettingsRecovered = jest.fn();
+
+    expect(await hydrateStore(store, { onSettingsRecovered })).toBe(true);
+    expect(onSettingsRecovered).not.toHaveBeenCalled();
   });
 
   it('a failed settings repair does not block boot or modify path data', async () => {

@@ -8,8 +8,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
 import { BootSplash, HydrationRetry } from '@components';
-import { Routes } from '@constants';
-import { allowTracking, allowCrashReporting } from '@utils';
+import { ErrorConstants, Routes } from '@constants';
+import { allowTracking, allowCrashReporting, showErrorAlert } from '@utils';
 import { store } from './store';
 import { useAppSelector } from './store/hooks';
 import { persistence } from './store/instance';
@@ -50,7 +50,9 @@ const App = () => {
 
   const hydrate = useCallback(async () => {
     setReady(null);
-    const ok = await hydrateStore(store);
+    const ok = await hydrateStore(store, {
+      onSettingsRecovered: () => showErrorAlert(ErrorConstants.FAILED_TO_LOAD_SETTINGS_RECOVERED),
+    });
     if (ok) {
       // Baseline starts at the hydrated state, so boot never rewrites the keys.
       persistence.start();

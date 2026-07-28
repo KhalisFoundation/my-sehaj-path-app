@@ -28,6 +28,32 @@ const RETRY_BASE_MS = 20;
 const quarantinedRecordsByStore = new WeakMap<AppStore, QuarantinedLegacyRecords>();
 
 /**
+ * Returns identifiable path IDs held outside Redux so createPath cannot reuse
+ * an identity belonging to preserved-but-quarantined user data.
+ */
+export const getQuarantinedPathIds = (store: AppStore): number[] => {
+  const records = quarantinedRecordsByStore.get(store);
+  if (!records) {
+    return [];
+  }
+
+  const ids: number[] = [];
+  const reserve = (value: unknown, key: 'pathId' | 'pathid') => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return;
+    }
+    const id = (value as Record<string, unknown>)[key];
+    if (typeof id === 'number' && Number.isFinite(id) && id > 0) {
+      ids.push(id);
+    }
+  };
+
+  records.paths.forEach((record) => reserve(record, 'pathId'));
+  records.dates.forEach((record) => reserve(record, 'pathid'));
+  return ids;
+};
+
+/**
  * A pending write batch.
  *
  * `after` is what the write intends to store. `before` is what those keys held
@@ -282,7 +308,15 @@ const repairLegacySettings = async (store: AppStore, keys: LegacySettingKey[]): 
  * validated, so a failure leaves the store (and therefore the disk) untouched.
  * Returns false on failure; the caller must show the fail-closed screen.
  */
-export const hydrateStore = async (store: AppStore): Promise<boolean> => {
+interface HydrateStoreOptions {
+  /** Called once when malformed settings were safely replaced with defaults. */
+  onSettingsRecovered?: (keys: LegacySettingKey[]) => void;
+}
+
+export const hydrateStore = async (
+  store: AppStore,
+  options: HydrateStoreOptions = {}
+): Promise<boolean> => {
   try {
     const recovered = await recoverPendingJournal();
     if (!recovered) {
@@ -313,6 +347,20 @@ export const hydrateStore = async (store: AppStore): Promise<boolean> => {
     store.dispatch(hydrateSettings(parsed.value.settings));
     store.dispatch(setAll({ paths: parsed.value.paths, dates: parsed.value.dates }));
     await repairLegacySettings(store, parsed.settingsToRepair);
+
+    // A missing consent key is normal on first install and is eagerly
+    // initialized for legacy compatibility. Notify only for keys that existed
+    // but were malformed and therefore had to be recovered.
+    const recoveredSettings = parsed.settingsToRepair.filter((key) => raw[key] !== null);
+    if (recoveredSettings.length > 0 && options.onSettingsRecovered) {
+      try {
+        options.onSettingsRecovered(recoveredSettings);
+      } catch (error) {
+        // A presentation callback must never turn a successful, data-safe
+        // hydration into a fail-closed boot.
+        recordError(error, 'persistence: settings recovery notification failed');
+      }
+    }
     return true;
   } catch (error) {
     recordError(error, 'persistence: hydration failed');
