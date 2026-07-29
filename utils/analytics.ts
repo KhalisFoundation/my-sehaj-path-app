@@ -6,7 +6,7 @@ import {
   logScreenView,
 } from '@react-native-firebase/analytics';
 import { getApp } from '@react-native-firebase/app';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { store } from '../store';
 
 let analytics: ReturnType<typeof getAnalytics> | null = null;
 try {
@@ -20,14 +20,11 @@ const sanitize = (value?: string): string =>
 
 const isAnalyticsReady = (): boolean => !!analytics;
 
-const checkConsent = async (): Promise<boolean> => {
-  try {
-    const consent = await AsyncStorage.getItem('consent');
-    return consent === 'true';
-  } catch (error) {
-    return false;
-  }
-};
+/**
+ * Consent now lives in the store, so this is a synchronous read instead of an
+ * AsyncStorage round-trip on every tracked event.
+ */
+const checkConsent = (): boolean => store.getState().settings.analyticsConsent;
 
 const allowTracking = async () => {
   if (!isAnalyticsReady()) {
@@ -47,7 +44,7 @@ const safeLogEvent = async (category: string, action: string, label: string) => 
     return;
   }
 
-  const hasConsent = await checkConsent();
+  const hasConsent = checkConsent();
   if (!hasConsent) {
     return;
   }
@@ -71,7 +68,7 @@ const trackScreenView = async (screenName: string, screenClass = screenName) => 
     return;
   }
 
-  const hasConsent = await checkConsent();
+  const hasConsent = checkConsent();
   if (!hasConsent) {
     return;
   }

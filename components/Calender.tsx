@@ -4,7 +4,7 @@ import dayjs from 'dayjs';
 import { CalenderStyles } from '@styles';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
 import { CalenderDays } from '@constants';
-import { DateData, useLocal } from '@hooks';
+import { useAppSelector } from '../store/hooks';
 
 interface Props {
   streak: React.MutableRefObject<number>;
@@ -15,8 +15,10 @@ interface Props {
 export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [days, setDays] = useState<string[]>([]);
-  const [progressDates, setProgressDates] = useState<DateData>();
-  const { fetchFromLocal } = useLocal();
+  // Reactive: no fetch-on-mount, and it updates as soon as progress is saved.
+  const progressDates = useAppSelector((state) =>
+    state.paths.dates.find((date) => date.pathid === pathId)
+  );
 
   const calculateStreak = useCallback((dates: string[]): number => {
     if (!dates || dates.length === 0) {
@@ -74,17 +76,6 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
   useEffect(() => {
     setDays(daysArray);
   }, [daysArray]);
-
-  useEffect(() => {
-    const fetchProgressDates = async () => {
-      const { pathDateDataArray } = await fetchFromLocal();
-      const pathDateData = pathDateDataArray.find((path: any) => path.pathid === pathId);
-      if (pathDateData) {
-        setProgressDates(pathDateData);
-      }
-    };
-    fetchProgressDates();
-  }, [fetchFromLocal, pathId]);
 
   useEffect(() => {
     if (currentStreak !== undefined) {

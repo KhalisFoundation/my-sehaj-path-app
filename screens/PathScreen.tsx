@@ -4,19 +4,26 @@ import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'reac
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { BaniDB, showErrorAlert, convertNumberToFormat, recordError } from '@utils';
+import {
+  BaniDB,
+  showErrorAlert,
+  showLeaveAnywayAlert,
+  convertNumberToFormat,
+  recordError,
+} from '@utils';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
   DateData,
   PathData,
-  useLocal,
   useInternet,
   useNavigation,
   usePathNavigation,
   useScrollToSavedPath,
-  AngsFormat,
   useDrawerNavigation,
 } from '@hooks';
+import { store } from '../store';
+import { useAppSelector } from '../store/hooks';
+import { savePathProgress, undoPathCompletion } from '../store/commands';
 import {
   AngsNavigation,
   Loading,
@@ -25,12 +32,30 @@ import {
   PathReader,
   PathNavigation,
   DrawerMenu,
+  PathSelectionProvider,
 } from '@components';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { ErrorConstants, Constants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
 
 type PathScreenProps = NativeStackScreenProps<RootStackParamList, 'Path'>;
+
+export const getPathSavingMessage = (
+  isSaved: boolean,
+  hasPendingVerseSelection: boolean
+): string => {
+  if (isSaved) {
+    return Constants.SAVED_THE_HIGHLIGHTED_PANKTEE;
+  }
+  return hasPendingVerseSelection
+    ? Constants.SAVING_THE_HIGHLIGHTED_PANKTEE
+    : Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS;
+};
+
+export const getDurableSavedVerseId = (
+  saveData: { angNumber: number; verseId: number } | undefined,
+  displayedAng: number
+): number => (saveData?.angNumber === displayedAng ? saveData.verseId : 0);
 
 export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) => {
   const [pathAng, setPathAng] = useState<number>(0);
@@ -41,15 +66,16 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [savedAngNumber, setSavedAngNumber] = useState<number>(0);
   const [centerVerseId, setCenterVerseId] = useState<number>(0);
   const [pressIndex, setPressIndex] = useState<number>(0);
+  const [hasPendingVerseSelection, setHasPendingVerseSelection] = useState<boolean>(false);
   const [found, setFound] = useState<boolean>(false);
-  const [isLarivaar, setIsLarivaar] = useState<boolean>(false);
-  const [isParagraphMode, setIsParagraphMode] = useState<boolean>(false);
-  const [isVishraam, setIsVishraam] = useState<boolean>(false);
-  const [vishraamsSource, setVishraamsSource] = useState<string>(Constants.DEFAULT_VISHRAAM_SOURCE);
-  const [vishraamsStyle] = useState<string>('colored-words');
+  // Settings are reactive from the store: no fetch-on-focus, and a change in the
+  // Settings screen is reflected here immediately. PathReader reads the display
+  // settings itself, so only the ones this screen actually uses are selected here.
+  const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
+  const angsFormat = useAppSelector((state) => state.settings.angsFormat);
+  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
-  const [angsFormat, setAngsFormat] = useState<AngsFormat>({ format: 'Punjabi' });
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
@@ -65,10 +91,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const scrollOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | void | null>(null);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
-  const debounceAnimValueRef = useRef(new Animated.Value(0));
-  const [fontSize, setFontSize] = useState<number>(18);
   const [readerContentHeight, setReaderContentHeight] = useState<number>(0);
   const previousFontSize = useRef<number>(18);
   const previousParagraphMode = useRef<boolean>(false);
@@ -83,6 +107,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setIsSaving(false);
     setIsSaved(false);
     setPressIndex(0);
+    setHasPendingVerseSelection(false);
     setFound(false);
   }, []);
 
@@ -95,20 +120,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [pathAng, angsFormat.format]
   );
 
-  const { checkNetwork, isOnline } = useInternet();
+  const { checkNetwork } = useInternet();
+  const isOnline = useAppSelector((state) => state.network.isOnline);
   const { handleDrawerNavigate } = useDrawerNavigation();
-  const {
-    fetchFromLocal,
-    handleUpdatePathWithErrorHandling,
-    handleUpdatePath,
-    clearPathCompletionAndSavedVerse,
-    fetchLarivaar,
-    fetchFontSize,
-    fetchAngsFormat,
-    fetchParagraphMode,
-    fetchVishraam,
-    fetchVishraamsSource,
-  } = useLocal();
 
   useScreenAnalytics('PathScreen', 'PathScreen');
 
@@ -134,7 +148,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         }
       }
       const currentDebounceTimer = debounceTimer.current;
-      if (currentDebounceTimer) {
+      if (currentDebounceTimer !== null) {
         clearTimeout(currentDebounceTimer);
         debounceTimer.current = null;
       }
@@ -173,6 +187,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       setSavedPathVerseId(0);
       setCenterVerseId(0);
       setPressIndex(0);
+      setHasPendingVerseSelection(false);
       setIsSaved(false);
       completionUndoStartScrollYRef.current = null;
     },
@@ -181,16 +196,22 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
   const undoCompletion = useCallback(
     async (angNumber: number) => {
-      if (debounceTimer.current) {
+      if (debounceTimer.current !== null) {
         clearTimeout(debounceTimer.current);
         debounceTimer.current = null;
       }
-      await clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current, angNumber);
+      const undone = await undoPathCompletion(route.params.pathId, angNumber, scrollOffset.current);
+      if (!undone) {
+        // The store rolled itself back to the completed state; do not reset the
+        // local completion view to match a change that was not saved.
+        // undoPathCompletion already alerted the user.
+        return;
+      }
       resetCompletionViewState(angNumber);
       completionUndoPendingRef.current = true;
       setSavedAngNumber(angNumber);
     },
-    [clearPathCompletionAndSavedVerse, resetCompletionViewState, route.params.pathId]
+    [resetCompletionViewState, route.params.pathId]
   );
 
   const commitSavedPathState = useCallback(
@@ -225,57 +246,50 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [scrollOffset, setIsAngNavigation]
   );
 
+  const restoreDurableSaveHighlight = useCallback(
+    (angNumber: number) => {
+      const durablePath = store
+        .getState()
+        .paths.paths.find((path) => path.pathId === route.params.pathId);
+      setSavedPathVerseId(getDurableSavedVerseId(durablePath?.saveData, angNumber));
+    },
+    [route.params.pathId]
+  );
+
   const debouncedScrollSave = useCallback(() => {
-    if (debounceTimer.current) {
+    if (debounceTimer.current !== null) {
       clearTimeout(debounceTimer.current);
     }
-    debounceAnimValueRef.current.setValue(0);
-    debounceTimer.current = Animated.timing(debounceAnimValueRef.current, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
+    debounceTimer.current = setTimeout(async () => {
+      debounceTimer.current = null;
       try {
-        if (completionUndoPendingRef.current) {
-          const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
-          handleUpdatePath(
-            route.params.pathId,
-            pathAng,
-            verseIdToKeep,
-            scrollOffset.current,
-            setIsSaved
-          );
+        const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
+        const wasUndoPending = completionUndoPendingRef.current;
+
+        // Background auto-save: silent so a transient failure while scrolling
+        // does not spam alerts. Explicit saves (long-press / save icon) alert.
+        const saved = await savePathProgress(
+          route.params.pathId,
+          pathAng,
+          verseIdToKeep,
+          scrollOffset.current,
+          { silent: true }
+        );
+        if (!saved) {
           return;
         }
 
-        handleUpdatePath(
-          route.params.pathId,
-          pathAng,
-          matchedPath.current?.saveData.verseId || savedPathVerseId,
-          scrollOffset.current,
-          () => {
-            setIsSaved(false);
-            commitSavedPathState(
-              pathAng,
-              matchedPath.current?.saveData.verseId || savedPathVerseId,
-              scrollOffset.current
-            );
-          }
-        );
-      } catch (error) {
-        // Silently handle error to prevent infinite loop in debounced function
-        // Error is already handled at the UI level where user initiated the action
+        if (wasUndoPending) {
+          setIsSaved(true);
+          return;
+        }
+        setIsSaved(false);
+        commitSavedPathState(pathAng, verseIdToKeep, scrollOffset.current);
+      } catch {
+        // Background auto-save remains silent; the command records the failure.
       }
-    });
-  }, [
-    handleUpdatePath,
-    clearPathCompletionAndSavedVerse,
-    route.params.pathId,
-    pathAng,
-    savedPathVerseId,
-    centerVerseId,
-    commitSavedPathState,
-  ]);
+    }, 200);
+  }, [route.params.pathId, pathAng, savedPathVerseId, commitSavedPathState]);
 
   const handleScrollEnd = useCallback(
     async (scrollY: number) => {
@@ -315,7 +329,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setFound,
     setIsSaving,
     setIsSaved,
-    fetchFontSize,
+    fontSize,
   });
 
   const updatePathAng = useCallback(
@@ -331,32 +345,33 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     [resetTransientUiState]
   );
 
-  const persistCurrentScrollPosition = useCallback(async () => {
+  // Returns whether the current position is durably saved. Callers that are
+  // leaving the screen use this to avoid silently losing the reading position.
+  const persistCurrentScrollPosition = useCallback(async (): Promise<boolean> => {
     if (!pathAng) {
-      return;
+      return true; // nothing to save
     }
 
     try {
       const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
-      await handleUpdatePath(
+      // Silent: the navigation handler shows the richer "leave anyway?" choice,
+      // so the command must not also pop a plain error alert.
+      const saved = await savePathProgress(
         route.params.pathId,
         pathAng,
         verseIdToKeep,
         scrollOffset.current,
-        () => {}
+        { silent: true }
       );
-      commitSavedPathState(pathAng, verseIdToKeep, scrollOffset.current);
+      // Only mirror the save into local refs when it actually reached disk.
+      if (saved) {
+        commitSavedPathState(pathAng, verseIdToKeep, scrollOffset.current);
+      }
+      return saved;
     } catch (error) {
-      // Leaving the screen should not be blocked by a background scroll-position save.
+      return false;
     }
-  }, [
-    handleUpdatePath,
-    route.params.pathId,
-    pathAng,
-    savedPathVerseId,
-    scrollOffset,
-    commitSavedPathState,
-  ]);
+  }, [route.params.pathId, pathAng, savedPathVerseId, scrollOffset, commitSavedPathState]);
 
   const { handleGoBack } = usePathNavigation({
     isAngNavigation,
@@ -370,11 +385,22 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
   const handlePathDrawerNavigate = useCallback(
     async (targetRoute: string, targetPathId?: number) => {
-      await persistCurrentScrollPosition();
+      const saved = await persistCurrentScrollPosition();
+      if (!saved) {
+        // Never trap the user: offer retry (stay) or leave anyway.
+        showLeaveAnywayAlert({
+          onLeaveAnyway: () => handleDrawerNavigate(targetRoute, targetPathId),
+        });
+        return;
+      }
       handleDrawerNavigate(targetRoute, targetPathId);
     },
     [persistCurrentScrollPosition, handleDrawerNavigate]
   );
+
+  const handleOpenSettings = useCallback(() => {
+    navigation.push(Routes.Setting);
+  }, [navigation]);
 
   const handleAngsRightArrow = useCallback(() => {
     handleRightArrow(pathAng);
@@ -389,63 +415,35 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   }, []);
 
   const savingMessage = useMemo(
-    () =>
-      !isSaved
-        ? Constants.SELECT_A_PANKTEE_TO_SAVE_PROGRESS
-        : Constants.SAVED_THE_HIGHLIGHTED_PANKTEE,
-    [isSaved]
+    () => getPathSavingMessage(isSaved, hasPendingVerseSelection),
+    [isSaved, hasPendingVerseSelection]
   );
 
   useEffect(() => {
     scrolledToSavedPath.current = false;
     const fetchPath = async () => {
       try {
-        // Paragraph mode, larivaar, vishraam, and font size all change the rendered
-        // text flow. We load them before fetching/opening the saved ang so the first
-        // restore uses the final layout instead of restoring scroll against defaults
-        // and then reflowing to a different position.
-        try {
-          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData, fontSizeData] =
-            await Promise.all([
-              fetchLarivaar(),
-              fetchAngsFormat(),
-              fetchParagraphMode(),
-              fetchVishraam(),
-              fetchVishraamsSource(),
-              fetchFontSize(),
-            ]);
+        // Settings already live in the store and are applied before this screen
+        // renders, so there is no pre-load step here any more. The first scroll
+        // restore therefore always runs against the final layout.
+        previousFontSize.current = fontSize;
+        previousParagraphMode.current = isParagraphMode;
 
-          const nextParagraphMode = paragraphMode || false;
-          const nextFontSize = fontSizeData.number;
-
-          setIsLarivaar(larivaar || false);
-          setAngsFormat(format);
-          setIsParagraphMode(nextParagraphMode);
-          setIsVishraam(vishraam || false);
-          setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
-          setFontSize(nextFontSize);
-          previousFontSize.current = nextFontSize;
-          previousParagraphMode.current = nextParagraphMode;
-        } catch (error) {
-          setIsLarivaar(false);
-          setAngsFormat({ format: 'Punjabi' });
-          setIsParagraphMode(false);
-          setIsVishraam(false);
-          setFontSize(18);
-          previousFontSize.current = 18;
-          previousParagraphMode.current = false;
-        }
-
-        const { pathDataArray, pathDateDataArray } = await fetchFromLocal();
-        const matchedPathData = pathDataArray.find(
-          (path: PathData) => path.pathId === route.params.pathId
-        );
-        const matchedPathDateData = pathDateDataArray.find(
+        const { paths, dates } = store.getState().paths;
+        const matchedPathData = paths.find((path: PathData) => path.pathId === route.params.pathId);
+        const matchedPathDateData = dates.find(
           (pathDate: DateData) => pathDate.pathid === route.params.pathId
         );
         if (matchedPathData) {
-          matchedPath.current = matchedPathData;
-          matchedPathDate.current = matchedPathDateData;
+          // Deep-copy: store objects are frozen by Immer, and this screen mutates
+          // these refs in place. Persisting happens through dispatches instead.
+          matchedPath.current = {
+            ...matchedPathData,
+            saveData: { ...matchedPathData.saveData },
+          };
+          matchedPathDate.current = matchedPathDateData
+            ? { ...matchedPathDateData, dates: [...matchedPathDateData.dates] }
+            : undefined;
           completionUndoPendingRef.current = false;
           completionUndoStartScrollYRef.current = null;
           const pathAngData =
@@ -495,14 +493,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         return;
       }
 
-      try {
-        await clearPathCompletionAndSavedVerse(route.params.pathId, scrollOffset.current);
-        resetCompletionViewState();
-        completionUndoPendingRef.current = false;
-        completionUndoStartScrollYRef.current = null;
-      } catch (error) {
-        showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+      const cleared = await undoPathCompletion(
+        route.params.pathId,
+        undefined,
+        scrollOffset.current
+      );
+      if (!cleared) {
+        // undoPathCompletion already alerted the user.
+        return;
       }
+      resetCompletionViewState();
+      completionUndoPendingRef.current = false;
+      completionUndoStartScrollYRef.current = null;
     };
 
     clearCompletionAfterLeavingLastAng();
@@ -565,38 +567,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     };
   }, [pathAng, pathContent, readerContentHeight, scrollToSavedPathData]);
 
-  useFocusEffect(
-    useCallback(() => {
-      const refreshDisplaySettings = async () => {
-        try {
-          const [larivaar, format, paragraphMode, vishraam, vishraamsSourceData, fontSizeData] =
-            await Promise.all([
-              fetchLarivaar(),
-              fetchAngsFormat(),
-              fetchParagraphMode(),
-              fetchVishraam(),
-              fetchVishraamsSource(),
-              fetchFontSize(),
-            ]);
-
-          setIsLarivaar(larivaar || false);
-          setAngsFormat(format);
-          setIsParagraphMode(paragraphMode || false);
-          setIsVishraam(vishraam || false);
-          setVishraamsSource(vishraamsSourceData?.source || Constants.DEFAULT_VISHRAAM_SOURCE);
-          setFontSize(fontSizeData.number);
-        } catch (error) {
-          setIsLarivaar(false);
-          setAngsFormat({ format: 'Punjabi' });
-          setIsParagraphMode(false);
-          setIsVishraam(false);
-          setFontSize(18);
-        }
-      };
-
-      refreshDisplaySettings();
-    }, [])
-  );
+  // Display settings come straight from the store, so there is no refresh-on-focus
+  // step: a change in the Settings screen is already reflected here.
 
   // Maintain scroll position when font size or paragraph mode changes
   useEffect(() => {
@@ -631,7 +603,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
   useEffect(() => {
     return () => {
-      if (debounceTimer.current) {
+      if (debounceTimer.current !== null) {
         clearTimeout(debounceTimer.current);
         debounceTimer.current = null;
       }
@@ -665,40 +637,39 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             onMenuPress={() => setIsDrawerVisible(true)}
           />
         </View>
-        <PathReader
-          pathContent={pathContent}
-          isLarivaar={isLarivaar}
-          isParagraphMode={isParagraphMode}
+        <PathSelectionProvider
           isSaving={isSaving}
+          isSaved={isSaved}
           pressIndex={pressIndex}
           savedPathVerseId={savedPathVerseId}
-          scrollRef={scrollRef}
-          scrollOffset={scrollOffset}
-          isAngNavigation={isAngNavigation}
-          debouncedScrollSave={debouncedScrollSave}
-          handleRightArrow={handleRightArrow}
-          setPressIndex={setPressIndex}
-          setSavedPathVerseId={setSavedPathVerseId}
-          handleUpdatePathWithErrorHandling={handleUpdatePathWithErrorHandling}
+          hasPendingVerseSelection={hasPendingVerseSelection}
+          found={found}
           setIsSaving={setIsSaving}
           setIsSaved={setIsSaved}
-          pathId={route.params.pathId}
-          isNavigating={isNavigating}
-          found={found}
+          setPressIndex={setPressIndex}
+          setSavedPathVerseId={setSavedPathVerseId}
+          setHasPendingVerseSelection={setHasPendingVerseSelection}
           setFound={setFound}
-          fontSize={fontSize}
-          isSaved={isSaved}
-          isVishraam={isVishraam}
-          vishraamsSource={vishraamsSource}
-          vishraamsStyle={vishraamsStyle}
-          onSaveCommit={commitSavedPathState}
-          setCenterVerseId={setCenterVerseId}
-          scrollToVerseId={scrollToVerseId}
-          scrollToVerseRequestKey={scrollToVerseRequestKey}
-          scrolledToSavedPath={scrolledToSavedPath}
-          onScrollEndDrag={handleScrollEnd}
-          onContentSizeChange={handleReaderContentSizeChange}
-        />
+        >
+          <PathReader
+            pathContent={pathContent}
+            scrollRef={scrollRef}
+            scrollOffset={scrollOffset}
+            isAngNavigation={isAngNavigation}
+            debouncedScrollSave={debouncedScrollSave}
+            handleRightArrow={handleRightArrow}
+            pathId={route.params.pathId}
+            isNavigating={isNavigating}
+            onSaveCommit={commitSavedPathState}
+            onSaveFailure={restoreDurableSaveHighlight}
+            setCenterVerseId={setCenterVerseId}
+            scrollToVerseId={scrollToVerseId}
+            scrollToVerseRequestKey={scrollToVerseRequestKey}
+            scrolledToSavedPath={scrolledToSavedPath}
+            onScrollEndDrag={handleScrollEnd}
+            onContentSizeChange={handleReaderContentSizeChange}
+          />
+        </PathSelectionProvider>
         {alertIndicator.current !== undefined ? (
           <Loading
             alertIndicator={alertIndicator.current}
@@ -712,7 +683,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
               handleGoBack={handleGoBack}
               setIsSaving={setIsSaving}
               fadeAnim={fadeAnim}
-              navigation={navigation}
+              onSettings={handleOpenSettings}
             />
           </View>
         ) : undefined}

@@ -10,6 +10,8 @@ import {
   createLongPressHandler,
   pathTextPropsAreEqual,
 } from '@utils';
+import { useAppSelector } from '../store/hooks';
+import { usePathSelection } from './PathSelectionContext';
 import { VishraamsText } from './VishraamsText';
 
 type ParagraphTextForPathProps = PathTextProps & {
@@ -20,23 +22,10 @@ const ParagraphTextForPathComponent = ({
   gurbaniLine,
   renderWordSegments,
   onSelection,
-  isSaving,
-  pressIndex,
   index,
   onSave,
   verseId,
-  savedPathVerseId,
-  setIsSaved,
-  setIsSaving,
-  setPressIndex,
-  setSavedPathVerseId,
-  found,
-  setFound,
-  fontSize,
-  isSaved,
-  isVishraam,
   vishraams,
-  vishraamsSource,
   onLayout,
   onTextLayout,
 }: ParagraphTextForPathProps) => {
@@ -44,7 +33,19 @@ const ParagraphTextForPathComponent = ({
   const longPressLock = useRef(false);
   const didLongPress = useRef(false);
 
-  const isSelected = useIsSelected(verseId, savedPathVerseId, isSaving, pressIndex, index);
+  // Selection state from context; display settings from the store.
+  const selection = usePathSelection();
+  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const isVishraam = useAppSelector((state) => state.settings.vishraam);
+  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+
+  const isSelected = useIsSelected(
+    verseId,
+    selection.savedPathVerseId,
+    selection.isSaving,
+    selection.pressIndex,
+    index
+  );
   const accessibilityLabel = useAccessibilityLabel(index, isSelected);
   const textStyle = useTextStyle(fontSize);
   const selectedTextStyle = isSelected
@@ -54,14 +55,9 @@ const ParagraphTextForPathComponent = ({
   const baseLongPressHandler = createLongPressHandler(
     index,
     verseId,
-    found,
+    selection,
     onSave,
-    onSelection,
-    setFound,
-    setPressIndex,
-    setSavedPathVerseId,
-    setIsSaving,
-    setIsSaved
+    onSelection
   );
 
   const handleLongPress = () => {
@@ -86,7 +82,7 @@ const ParagraphTextForPathComponent = ({
       didLongPress.current = false;
       return;
     }
-    if (isSaving) {
+    if (selection.isSaving) {
       onSelection();
       onSave();
     }
@@ -109,7 +105,7 @@ const ParagraphTextForPathComponent = ({
         accessibilityRole="button"
         onLongPress={handleLongPress}
         accessibilityHint="Tap to select, long press to save this line"
-        disabled={isSaved || found}
+        disabled={selection.isSaved || selection.found}
         suppressHighlighting={true}
         style={textStyle}
         onLayout={onLayout}
@@ -128,14 +124,14 @@ const ParagraphTextForPathComponent = ({
           )}{' '}
         </Text>
       </Text>
-        {isSelected && (
-          <SaveIcon
-            color={UIConstants.SAVE_ICON_COLOR}
-            width={fontSize * 1.2}
-            height={fontSize * 1.2}
-            style={{ transform: [{ translateY: Platform.OS == 'ios' ? '-50%' : '50%' }] }}
-          />
-        )}
+      {isSelected && (
+        <SaveIcon
+          color={UIConstants.SAVE_ICON_COLOR}
+          width={fontSize * 1.2}
+          height={fontSize * 1.2}
+          style={{ transform: [{ translateY: Platform.OS === 'ios' ? '-50%' : '50%' }] }}
+        />
+      )}
     </>
   );
 };

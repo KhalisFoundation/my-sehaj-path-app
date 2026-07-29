@@ -1,0 +1,151 @@
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import type { DateData, PathData } from '../../types';
+
+export interface PathsState {
+  paths: PathData[];
+  dates: DateData[];
+  /**
+   * False until legacy AsyncStorage has been successfully read into the store.
+   * The persistence coordinator MUST refuse to write while this is false,
+   * otherwise an empty store would overwrite the user's real data on disk.
+   */
+  hydrated: boolean;
+}
+
+const initialState: PathsState = {
+  paths: [],
+  dates: [],
+  hydrated: false,
+};
+
+export interface UpdatePathPayload {
+  pathId: number;
+  angNumber: number;
+  verseId: number;
+  /** Caller computes progress so this reducer stays pure. */
+  progress: number;
+  /** Caller decides completion; '' clears it. */
+  completionDate: string;
+  /** Caller supplies today's date string in the legacy 'D-Month-YYYY' format. */
+  todayDate: string;
+  scrollPosition?: number;
+}
+
+/**
+ * Next path id = max(existing) + 1.
+ *
+ * Never `paths.length + 1` (what the old `handleNewPath` did): once any path is
+ * removed, or ids are non-contiguous, length+1 collides with an existing id and
+ * progress saves would silently target the wrong path.
+ */
+export const getNextPathId = (paths: PathData[], reservedIds: Iterable<number> = []): number => {
+  let max = paths.reduce((current, path) => Math.max(current, path.pathId), 0);
+  for (const id of reservedIds) {
+    if (Number.isFinite(id) && id > max) {
+      max = id;
+    }
+  }
+  return Math.floor(max) + 1;
+};
+
+/**
+ * A path legitimately created by an older build may have no `pathDateDetails`
+ * record. The old code threw in that case, making the path permanently
+ * unsaveable. Synthesize a safe empty record instead.
+ */
+const ensureDateRecord = (state: PathsState, pathid: number): DateData => {
+  const existing = state.dates.find((date) => date.pathid === pathid);
+  if (existing) {
+    return existing;
+  }
+  const created: DateData = { pathid, dates: [], scrollPosition: 0 };
+  state.dates.push(created);
+  return created;
+};
+
+export const pathsSlice = createSlice({
+  name: 'paths',
+  initialState,
+  reducers: {
+    /** Boot hydration. Input is assumed already validated by the persistence layer. */
+    setAll: (state, action: PayloadAction<{ paths: PathData[]; dates: DateData[] }>) => {
+      state.paths = action.payload.paths;
+      state.dates = action.payload.dates;
+      state.hydrated = true;
+    },
+
+    addPath: (state, action: PayloadAction<{ path: PathData; date: DateData }>) => {
+      state.paths.push(action.payload.path);
+      state.dates.push(action.payload.date);
+    },
+
+    updatePath: (state, action: PayloadAction<UpdatePathPayload>) => {
+      const { pathId, angNumber, verseId, progress, completionDate, todayDate, scrollPosition } =
+        action.payload;
+
+      const path = state.paths.find((candidate) => candidate.pathId === pathId);
+      if (!path) {
+        return;
+      }
+
+      path.saveData = { angNumber, verseId };
+      path.progress = progress;
+      path.completionDate = completionDate;
+
+      const dateRecord = ensureDateRecord(state, pathId);
+      // Dedup today's entry, mirroring the old handleUpdatePath behaviour.
+      dateRecord.dates = [
+        ...dateRecord.dates.filter((entry) => entry.date !== todayDate),
+        { date: todayDate },
+      ];
+      if (scrollPosition !== undefined) {
+        dateRecord.scrollPosition = scrollPosition;
+      }
+    },
+
+    renamePath: (state, action: PayloadAction<{ pathId: number; name: string }>) => {
+      // Update the exact match in place. The old implementation used a
+      // filter/push pattern that reordered records (and matched with `!==`).
+      const path = state.paths.find((candidate) => candidate.pathId === action.payload.pathId);
+      if (path) {
+        path.pathName = action.payload.name;
+      }
+    },
+
+    clearPathCompletion: (
+      state,
+      action: PayloadAction<{ pathId: number; angNumber?: number; scrollPosition?: number }>
+    ) => {
+      const { pathId, angNumber, scrollPosition } = action.payload;
+      const path = state.paths.find((candidate) => candidate.pathId === pathId);
+      if (!path) {
+        return;
+      }
+
+      // Undo completion and clear verse selection, keeping current ang context.
+      path.completionDate = '';
+      path.saveData = {
+        angNumber: angNumber ?? path.saveData.angNumber,
+        verseId: 0,
+      };
+
+      if (scrollPosition !== undefined) {
+        ensureDateRecord(state, pathId).scrollPosition = scrollPosition;
+      }
+    },
+
+    setScrollPosition: (
+      state,
+      action: PayloadAction<{ pathId: number; scrollPosition: number }>
+    ) => {
+      const pathExists = state.paths.some((path) => path.pathId === action.payload.pathId);
+      if (!pathExists) {
+        return;
+      }
+      ensureDateRecord(state, action.payload.pathId).scrollPosition = action.payload.scrollPosition;
+    },
+  },
+});
+
+export const { setAll, addPath, updatePath, renamePath, clearPathCompletion, setScrollPosition } =
+  pathsSlice.actions;

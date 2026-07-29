@@ -1,33 +1,27 @@
 import { useMemo } from 'react';
 import { unstable_batchedUpdates } from 'react-native';
 import { SimpleTextForPathStyles } from '@styles';
-import { Visraams } from '@hooks/useLocal';
+import type { PathSelection } from '@components/PathSelectionContext';
+import type { Visraams } from '../types';
 
 /**
  * Common props interface for path text components
  */
+/**
+ * Per-verse props only.
+ *
+ * Selection/save state comes from PathSelectionContext and display settings
+ * come from the Redux store, so neither is drilled through here any more.
+ */
 export interface PathTextProps {
   gurbaniLine: string;
   renderWordSegments?: string[] | null;
-  onSelection: () => void;
-  isSaving: boolean;
-  pressIndex: number;
   index: number;
-  onSave: () => void;
   verseId: number;
-  savedPathVerseId: number;
-  setIsSaving: (value: boolean) => void;
-  setIsSaved: (value: boolean) => void;
-  setPressIndex: (value: number) => void;
-  setSavedPathVerseId: (value: number) => void;
-  found: boolean;
-  setFound: (value: boolean) => void;
-  fontSize: number;
-  isSaved: boolean;
-  isVishraam: boolean;
+  /** Vishraam markers for THIS verse (per-verse data, not a setting). */
   vishraams: Visraams;
-  vishraamsSource?: string;
-  vishraamsStyle?: string;
+  onSelection: () => void;
+  onSave: () => void;
   onLayout?: (event: any) => void;
 }
 
@@ -112,30 +106,31 @@ export const useContainerStyle = (isSelected: boolean) => {
 };
 
 /**
- * Creates a long press handler that saves the verse
+ * Creates a long press handler that saves the verse.
+ *
+ * The selection state it mutates now comes from PathSelectionContext, so this
+ * takes 3 arguments instead of the previous 10.
  */
 export const createLongPressHandler = (
   index: number,
   verseId: number,
-  found: boolean,
+  selection: PathSelection,
   onSave: () => void,
-  onSelection: () => void,
-  setFound: (value: boolean) => void,
-  setPressIndex: (value: number) => void,
-  setSavedPathVerseId: (value: number) => void,
-  setIsSaving: (value: boolean) => void,
-  setIsSaved: (value: boolean) => void
+  onSelection: () => void
 ) => {
   return () => {
-    if (found) {
-      setFound(false);
+    if (selection.found) {
+      selection.setFound(false);
     }
 
+    // Highlight the verse and enter saving mode, but do NOT claim it is saved
+    // yet: `isSaved` is only set once the write is durable (in the save handler).
     unstable_batchedUpdates(() => {
-      setPressIndex(index);
-      setSavedPathVerseId(verseId);
-      setIsSaving(true);
-      setIsSaved(true);
+      selection.setPressIndex(index);
+      selection.setSavedPathVerseId(verseId);
+      selection.setHasPendingVerseSelection(true);
+      selection.setIsSaving(true);
+      selection.setIsSaved(false);
     });
 
     onSelection();
@@ -162,20 +157,17 @@ export const createPressHandler = (
 /**
  * Comparison function for React.memo to prevent unnecessary re-renders
  */
+/**
+ * Only per-verse props are compared. Selection state and display settings now
+ * come from context/store, which re-render subscribers on their own.
+ */
 export const pathTextPropsAreEqual = (prevProps: PathTextProps, nextProps: PathTextProps) => {
   return (
     prevProps.gurbaniLine === nextProps.gurbaniLine &&
     prevProps.renderWordSegments === nextProps.renderWordSegments &&
-    prevProps.isSaving === nextProps.isSaving &&
-    prevProps.pressIndex === nextProps.pressIndex &&
     prevProps.index === nextProps.index &&
     prevProps.verseId === nextProps.verseId &&
-    prevProps.savedPathVerseId === nextProps.savedPathVerseId &&
-    prevProps.found === nextProps.found &&
-    prevProps.fontSize === nextProps.fontSize &&
-    prevProps.isVishraam === nextProps.isVishraam &&
-    prevProps.vishraamsSource === nextProps.vishraamsSource &&
-    prevProps.vishraamsStyle === nextProps.vishraamsStyle &&
+    prevProps.vishraams === nextProps.vishraams &&
     prevProps.onLayout === nextProps.onLayout
   );
 };

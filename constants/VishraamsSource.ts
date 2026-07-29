@@ -1,4 +1,4 @@
-import { VishraamsSource } from '@hooks/useLocal';
+import type { VishraamsSource } from '../types';
 
 export const VishraamsSourceArray: VishraamsSource[] = [
   { source: 'sttm' },

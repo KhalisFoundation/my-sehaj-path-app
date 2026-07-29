@@ -1,5 +1,4 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ImageBackground, ScrollView, BackHandler, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -13,64 +12,30 @@ import {
   Label,
   DrawerMenu,
 } from '@components';
-import { PathData, useLocal, useScreenAnalytics, useDrawerNavigation } from '@hooks';
-import { showErrorAlert, trackEvent, recordError } from '@utils';
+import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
+import { recordError, showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { MenuIcon } from '@icons';
+import { useAppSelector } from '../store/hooks';
+import { createPath } from '../store/commands';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
-  const [pathDataArrayFromLocal, setPathDataArrayFromLocal] = useState<PathData[]>([]);
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
-  const { fetchFromLocal, handleNewPath } = useLocal();
+  const paths = useAppSelector((state) => state.paths.paths);
   const { handleDrawerNavigate } = useDrawerNavigation();
-  const errorAlertShownRef = useRef(false);
-  const isLoadingRef = useRef(false);
+  const isCreatingRef = useRef(false);
   useScreenAnalytics('HomeScreen', 'HomeScreen');
+
   const { pathInProgress, pathCompleted } = useMemo(() => {
     // Keep "completed" strict: both completionDate and final checkpoint must match.
-    const completed = pathDataArrayFromLocal.filter((path: PathData) => path.completionDate !== '');
-    const inProgress = pathDataArrayFromLocal.filter(
-      (path: PathData) => path.completionDate === ''
-    );
+    const completed = paths.filter((path: PathData) => path.completionDate !== '');
+    const inProgress = paths.filter((path: PathData) => path.completionDate === '');
     return { pathInProgress: inProgress, pathCompleted: completed };
-  }, [pathDataArrayFromLocal]);
-
-  const loadData = useCallback(async () => {
-    if (isLoadingRef.current) {
-      return;
-    }
-    isLoadingRef.current = true;
-    errorAlertShownRef.current = false;
-    try {
-      const { pathDataArray } = await fetchFromLocal();
-      setPathDataArrayFromLocal(pathDataArray);
-    } catch (error) {
-      recordError(error, 'HomeScreen: failed to load sehaj paths data');
-      if (!errorAlertShownRef.current) {
-        errorAlertShownRef.current = true;
-        showErrorAlert(
-          ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA,
-          async () => {
-            errorAlertShownRef.current = false;
-            await loadData();
-          },
-          'Retry'
-        );
-      }
-    } finally {
-      isLoadingRef.current = false;
-    }
-  }, [fetchFromLocal]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  }, [paths]);
 
   useFocusEffect(
     useCallback(() => {
@@ -93,18 +58,28 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   );
 
   const handleStart = useCallback(async () => {
-    trackEvent('PathCreated', 'click', 'start new path');
+    // Guard against a rapid double-tap creating two paths (belt-and-braces with
+    // the id being allocated inside the command's lock).
+    if (isCreatingRef.current) {
+      return;
+    }
+    isCreatingRef.current = true;
     try {
-      const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
-      setPathDataArrayFromLocal(pathDataArray);
-      await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
-      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
-      navigation.push(Routes.Continue, { pathId: newPathid });
+      // Only navigate once the new path is actually durable on disk.
+      const newPathId = await createPath();
+      if (newPathId === null) {
+        showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
+        return;
+      }
+      trackEvent('PathCreated', 'click', 'start new path');
+      navigation.push(Routes.Continue, { pathId: newPathId });
     } catch (error) {
       recordError(error, 'HomeScreen: failed to create new sehaj path');
       showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
+    } finally {
+      isCreatingRef.current = false;
     }
-  }, [handleNewPath, navigation]);
+  }, [navigation]);
 
   const pathInProgressCards = useMemo(
     () =>

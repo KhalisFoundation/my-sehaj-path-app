@@ -17,6 +17,7 @@ export { SimpleTextStyles } from './SimpleTextStyles';
 export { SimpleTextForPathStyles } from './SimpleTextForPathStyles';
 export { SliderStyles } from './SliderStyles';
 export { SplashScreenStyles } from './SplashScreenStyles';
+export { HydrationRetryStyles } from './HydrationRetryStyles';
 export { StreakStyles } from './StreakStyles';
 export { ErrorScreenStyles } from './ErrorScreen';
 export { SafeAreaStyle } from './SafeAreaStyle';

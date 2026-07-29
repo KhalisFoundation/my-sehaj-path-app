@@ -1,88 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { View, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { Switch } from '@rneui/themed';
 import { SimpleText } from '@components';
-import { showErrorAlert, trackEvent } from '@utils';
+import { recordError, trackEvent } from '@utils';
 import { UIConstants } from '@constants';
 
 interface SwitchSettingItemProps {
-  // Unique identifier for this setting
+  /** Identifier used for the analytics label. */
   settingKey: string;
-  
-  // Display label
   label: string;
-  
-  // Storage functions
-  saveFn: (value: boolean) => Promise<void>;
-  fetchFn: () => Promise<boolean>;
-  
-  // Error messages
-  errorMessages: {
-    loadError: string;
-    saveError: string;
-  };
-  
-  // Optional configurations
-  defaultValue?: boolean;
+  value: boolean;
+  onValueChange: (value: boolean) => Promise<boolean>;
   analyticsCategory?: string;
   containerStyle?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
-  
-  // Optional callback when value changes
-  onValueChange?: (value: boolean) => void;
 }
 
+/**
+ * Controlled switch. The value comes from the store and saving/rollback is
+ * handled by `useSetting`, so this component holds no state and needs no
+ * storage functions, default value, or error-message props.
+ */
 export const SwitchSettingItem = ({
   settingKey,
   label,
-  saveFn,
-  fetchFn,
-  errorMessages,
-  defaultValue = false,
+  value,
+  onValueChange,
   analyticsCategory = 'Settings',
   containerStyle,
   textStyle,
-  onValueChange,
 }: SwitchSettingItemProps) => {
-  const [value, setValue] = useState<boolean>(defaultValue);
-
   const handleToggle = async (newValue: boolean) => {
     try {
-      setValue(newValue);
-      
-      // Save to storage
-      await saveFn(newValue);
-      
-      // Track analytics only after successful save
+      const saved = await onValueChange(newValue);
+      if (!saved) {
+        return;
+      }
       trackEvent(
         analyticsCategory,
         'click',
         `changed ${settingKey} to ${newValue ? 'enabled' : 'disabled'}`
       );
-      
-      // Call optional callback
-      if (onValueChange) {
-        onValueChange(newValue);
-      }
     } catch (error) {
-      // Revert on error
-      showErrorAlert(errorMessages.saveError);
-      setValue(!newValue);
+      recordError(error, `SwitchSettingItem: failed to change ${settingKey}`);
     }
   };
-
-  useEffect(() => {
-    const loadSetting = async () => {
-      try {
-        const savedValue = await fetchFn();
-        setValue(savedValue ?? defaultValue);
-      } catch (error) {
-        showErrorAlert(errorMessages.loadError);
-        setValue(defaultValue);
-      }
-    };
-    loadSetting();
-  }, [fetchFn, defaultValue]);
 
   return (
     <View style={containerStyle}>
@@ -94,7 +56,9 @@ export const SwitchSettingItem = ({
           false: UIConstants.SWITCH_TRACK_COLOR_FALSE,
           true: UIConstants.SWITCH_TRACK_COLOR_TRUE,
         }}
-        thumbColor={value ? UIConstants.SWITCH_THUMB_COLOR_TRUE : UIConstants.SWITCH_THUMB_COLOR_FALSE}
+        thumbColor={
+          value ? UIConstants.SWITCH_THUMB_COLOR_TRUE : UIConstants.SWITCH_THUMB_COLOR_FALSE
+        }
         accessibilityLabel={`${label} setting`}
         accessibilityRole="switch"
         accessibilityHint={`Tap to ${value ? 'disable' : 'enable'} ${label}`}

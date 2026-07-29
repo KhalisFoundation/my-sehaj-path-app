@@ -1,12 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { AppState } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
+import { Provider } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
-import { Routes } from '@constants';
-import { allowTracking, allowCrashReporting } from '@utils';
-import { useLocal } from '@hooks';
+import { BootSplash, HydrationRetry } from '@components';
+import { ErrorConstants, Routes } from '@constants';
+import { allowTracking, allowCrashReporting, showErrorAlert } from '@utils';
+import { store } from './store';
+import { useAppSelector } from './store/hooks';
+import { persistence } from './store/instance';
+import { hydrateStore } from './store/persistence';
+import { setOnline } from './store/slices/networkSlice';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -19,44 +27,92 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const App = () => {
-  const { fetchConsent } = useLocal();
+/**
+ * Enables analytics/crashlytics collection when the user has consented.
+ *
+ * Must render inside <Provider> and only once the store is hydrated, otherwise
+ * it would read the default consent instead of the user's saved choice.
+ */
+const AnalyticsConsent = () => {
+  const consent = useAppSelector((state) => state.settings.analyticsConsent);
   useEffect(() => {
-    const initAnalyticsConsent = async () => {
-      try {
-        await fetchConsent();
-        const consent = await fetchConsent();
-        if (consent) {
-          allowTracking();
-          allowCrashReporting();
-        }
-      } catch (_e) {
-        // ignore initialization errors; app works without analytics
+    if (consent) {
+      allowTracking();
+      allowCrashReporting();
+    }
+  }, [consent]);
+  return null;
+};
+
+const App = () => {
+  // null = hydrating, false = failed (fail-closed), true = ready
+  const [ready, setReady] = useState<boolean | null>(null);
+
+  const hydrate = useCallback(async () => {
+    setReady(null);
+    const ok = await hydrateStore(store, {
+      onSettingsRecovered: () => showErrorAlert(ErrorConstants.FAILED_TO_LOAD_SETTINGS_RECOVERED),
+    });
+    if (ok) {
+      // Baseline starts at the hydrated state, so boot never rewrites the keys.
+      persistence.start();
+    }
+    setReady(ok);
+  }, []);
+
+  useEffect(() => {
+    hydrate();
+
+    // One NetInfo subscription for the whole app.
+    const unsubscribeNetInfo = NetInfo.addEventListener((state) =>
+      store.dispatch(setOnline(Boolean(state.isConnected && state.isInternetReachable)))
+    );
+
+    // Best-effort durability when the app leaves the foreground. The on-disk
+    // journal covers a batch that had already started before suspension.
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'inactive' || state === 'background') {
+        persistence.flush();
       }
+    });
+
+    return () => {
+      unsubscribeNetInfo();
+      appStateSub.remove();
+      // Without this a root remount would re-hydrate while the previous writer
+      // is still subscribed to the same store.
+      persistence.stop();
     };
-    initAnalyticsConsent();
-  }, [fetchConsent]);
+  }, [hydrate]);
+
   return (
-    <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
-      <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName={Routes.Splash}
-          screenOptions={{
-            animation: 'default',
-            headerShown: false,
-            animationDuration: 250,
-            gestureDirection: 'horizontal',
-          }}
-        >
-          <Stack.Screen name={Routes.Splash} component={SplashScreen} />
-          <Stack.Screen name={Routes.Home} component={HomeScreen} />
-          <Stack.Screen name={Routes.Continue} component={Continue} />
-          <Stack.Screen name={Routes.Path} component={PathScreen} />
-          <Stack.Screen name={Routes.Setting} component={Settings} />
-          <Stack.Screen name={Routes.Error} component={Error} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <Provider store={store}>
+      {ready === null && <BootSplash />}
+      {ready === false && <HydrationRetry onRetry={hydrate} />}
+      {ready === true && (
+        <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
+          <AnalyticsConsent />
+          <NavigationContainer>
+            <Stack.Navigator
+              initialRouteName={Routes.Splash}
+              screenOptions={{
+                animation: 'default',
+                headerShown: false,
+                animationDuration: 250,
+                gestureDirection: 'horizontal',
+              }}
+            >
+              <Stack.Screen name={Routes.Splash} component={SplashScreen} />
+              <Stack.Screen name={Routes.Home} component={HomeScreen} />
+              <Stack.Screen name={Routes.Continue} component={Continue} />
+              <Stack.Screen name={Routes.Path} component={PathScreen} />
+              <Stack.Screen name={Routes.Setting} component={Settings} />
+              <Stack.Screen name={Routes.Error} component={Error} />
+            </Stack.Navigator>
+          </NavigationContainer>
+        </SafeAreaProvider>
+      )}
+    </Provider>
   );
 };
 
