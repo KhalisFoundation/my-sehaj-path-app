@@ -10,6 +10,8 @@ import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from 
 import { BootSplash, HydrationRetry } from '@components';
 import { ErrorConstants, Routes } from '@constants';
 import { allowTracking, allowCrashReporting, showErrorAlert } from '@utils';
+import { initAuth, useSSOLogin } from '@auth';
+import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
 import { useAppSelector } from './store/hooks';
 import { persistence } from './store/instance';
@@ -48,6 +50,10 @@ const App = () => {
   // null = hydrating, false = failed (fail-closed), true = ready
   const [ready, setReady] = useState<boolean | null>(null);
 
+  // Handle the SSO login return deep link (khalissehajpath://login?token=…).
+  // Registered once; independent of the store-hydration gate above.
+  useSSOLogin();
+
   const hydrate = useCallback(async () => {
     setReady(null);
     const ok = await hydrateStore(store, {
@@ -62,6 +68,15 @@ const App = () => {
 
   useEffect(() => {
     hydrate();
+
+    // Point the generated API client at the configured base URL and have it
+    // attach the current SSO token (held in the auth slice) on every request.
+    configureApiClient();
+    setTokenGetter(() => Promise.resolve(store.getState().auth.token));
+
+    // Resolve auth: consume a cold-start login callback, else hydrate the
+    // stored token (serialized so they can't race).
+    initAuth();
 
     // One NetInfo subscription for the whole app.
     const unsubscribeNetInfo = NetInfo.addEventListener((state) =>

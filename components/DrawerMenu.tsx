@@ -18,10 +18,12 @@ import {
   UIConstants,
 } from '@constants';
 import { DrawerMenuStyles } from '@styles';
-import { KhalisIcon } from '@icons';
+import { KhalisIcon, LoginIcon } from '@icons';
 import { trackEvent } from '@utils';
 import { DonationIcon } from '@icons/Donation.icon';
+import { startLogin, logout } from '@auth';
 import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
+import { useAppSelector } from '../store/hooks';
 
 interface DrawerMenuProps {
   isVisible: boolean;
@@ -45,6 +47,21 @@ const DrawerMenuComponent = ({
   onSavePress,
 }: DrawerMenuProps) => {
   const slideAnim = useRef(new Animated.Value(-300)).current;
+  const authStatus = useAppSelector((state) => state.auth.status);
+  const userEmail = useAppSelector((state) => state.auth.email);
+  const isSignedIn = authStatus === 'signedIn';
+
+  const handleLoginPress = () => {
+    trackEvent('AuthButton', 'click', 'Sign in pressed');
+    startLogin();
+    onClose();
+  };
+
+  const handleLogoutPress = () => {
+    trackEvent('AuthButton', 'click', 'Log out pressed');
+    logout();
+    onClose();
+  };
 
   useEffect(() => {
     if (isVisible) {
@@ -114,7 +131,6 @@ const DrawerMenuComponent = ({
                   </View>
                   <View style={DrawerMenuStyles.menuItems}>
                     {menuItems.map((item) => {
-                      const RowIcon = item.Icon;
                       return (
                         <TouchableOpacity
                           key={item.id}
@@ -124,7 +140,7 @@ const DrawerMenuComponent = ({
                           accessibilityRole="button"
                         >
                           <View style={DrawerMenuStyles.menuItemIcon}>
-                            <RowIcon />
+                            <item.Icon width={20} height={20} />
                           </View>
                           <Text
                             style={[
@@ -137,8 +153,32 @@ const DrawerMenuComponent = ({
                         </TouchableOpacity>
                       );
                     })}
+                    {!isSignedIn ? (
+                      <TouchableOpacity
+                        style={DrawerMenuStyles.menuItem}
+                        onPress={handleLoginPress}
+                        accessibilityLabel={Constants.LOGIN}
+                        accessibilityRole="button"
+                      >
+                        <View style={DrawerMenuStyles.menuItemIcon}>
+                          <LoginIcon width={20} height={20} />
+                        </View>
+                        <Text style={DrawerMenuStyles.menuItemText}>{Constants.LOGIN}</Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                   <View style={DrawerMenuStyles.footer}>
+                    {isSignedIn ? (
+                      <TouchableOpacity
+                        style={DrawerMenuStyles.logoutButton}
+                        onPress={handleLogoutPress}
+                        accessibilityLabel={Constants.LOGOUT}
+                        accessibilityRole="button"
+                      >
+                        <LoginIcon width={20} height={20} />
+                        <Text style={DrawerMenuStyles.logoutText}>{Constants.LOGOUT}</Text>
+                      </TouchableOpacity>
+                    ) : null}
                     <TouchableOpacity
                       style={DrawerMenuStyles.donateButton}
                       onPress={() => {
@@ -151,6 +191,11 @@ const DrawerMenuComponent = ({
                       <DonationIcon />
                       <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
                     </TouchableOpacity>
+                    {isSignedIn && userEmail ? (
+                      <Text style={DrawerMenuStyles.userEmail} numberOfLines={1}>
+                        {userEmail}
+                      </Text>
+                    ) : null}
                   </View>
                 </SafeAreaView>
               </Animated.View>

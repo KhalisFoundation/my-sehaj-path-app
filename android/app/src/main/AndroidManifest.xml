@@ -25,6 +25,16 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
+        <!-- SSO deep-link return. Android matches scheme AND host, so both the
+             login and logout hosts must be listed or the logout return opens a
+             blank page instead of the app. -->
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="khalissehajpath" android:host="login" />
+            <data android:scheme="khalissehajpath" android:host="logout" />
+        </intent-filter>
       </activity>
     </application>
 </manifest>

@@ -24,10 +24,15 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
 *.tsbuildinfo
+
+# generated API client — regenerated from api-spec/openapi.json via `yarn gen:api`
+# (runs on postinstall). The spec is committed; the output is not.
+api/generated/
 
 # Xcode
 #

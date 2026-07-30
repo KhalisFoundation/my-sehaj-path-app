@@ -1556,6 +1556,8 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - react-native-encrypted-storage (4.0.3):
+    - React-Core
   - react-native-netinfo (11.4.1):
     - React-Core
   - react-native-safe-area-context (5.8.0):
@@ -2278,6 +2280,7 @@ DEPENDENCIES:
   - React-microtasksnativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/microtasks`)
   - React-mutationobservernativemodule (from `../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver`)
   - "react-native-blur (from `../node_modules/@react-native-community/blur`)"
+  - react-native-encrypted-storage (from `../node_modules/react-native-encrypted-storage`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
@@ -2426,6 +2429,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver"
   react-native-blur:
     :path: "../node_modules/@react-native-community/blur"
+  react-native-encrypted-storage:
+    :path: "../node_modules/react-native-encrypted-storage"
   react-native-netinfo:
     :path: "../node_modules/@react-native-community/netinfo"
   react-native-safe-area-context:
@@ -2574,6 +2579,7 @@ SPEC CHECKSUMS:
   React-microtasksnativemodule: 354ab193a7ed66e42869c8a0c2c0d844e8e22f67
   React-mutationobservernativemodule: f53ad06cbe4b44d2a33df6aa3f01ca8e9b57e83b
   react-native-blur: 2c15b7e68450a2aa01a064f99d6045b86ee42fe0
+  react-native-encrypted-storage: 569d114e329b1c2c2d9f8c84bcdbe4478dda2258
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
   react-native-safe-area-context: 0bbcdfba5c4a1b3203276f1ed9128e3239fdf199
   React-NativeModulesApple: a092d89b58f635ebfab88048b0eda9fb516819fd

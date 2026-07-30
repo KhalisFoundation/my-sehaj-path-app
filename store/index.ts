@@ -4,6 +4,7 @@ import {
   createAction,
   type UnknownAction,
 } from '@reduxjs/toolkit';
+import { authSlice } from './slices/authSlice';
 import { networkSlice } from './slices/networkSlice';
 import { pathsSlice, type PathsState } from './slices/pathsSlice';
 import { settingsSlice, type SettingsState } from './slices/settingsSlice';
@@ -12,6 +13,7 @@ const combinedReducer = combineReducers({
   settings: settingsSlice.reducer,
   paths: pathsSlice.reducer,
   network: networkSlice.reducer,
+  auth: authSlice.reducer,
 });
 
 /**

@@ -1,4 +1,5 @@
 {
+  "ignorePatterns": ["api/generated/"],
   "extends": [
     "airbnb-typescript",
     "@react-native-community",

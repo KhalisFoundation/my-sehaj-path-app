@@ -1,0 +1,3074 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "AppController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthStatus"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Health check",
+        "tags": [
+          "health"
+        ]
+      }
+    },
+    "/folders": {
+      "get": {
+        "operationId": "FoldersController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserFolders"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No folders saved for this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get all of the current user's folders, across every source",
+        "tags": [
+          "folders"
+        ]
+      },
+      "put": {
+        "operationId": "FoldersController_upsert",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertFoldersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserFolders"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed or source mismatch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body exceeds 256 KB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the current user's folders for a single source. Folders of other\nsources are left untouched.",
+        "tags": [
+          "folders"
+        ]
+      },
+      "delete": {
+        "operationId": "FoldersController_remove",
+        "parameters": [
+          {
+            "name": "source",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "sundar-gutka",
+                "mypothi"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "400": {
+            "description": "source query parameter is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the current user's folders for a single source. `source` is\nrequired — there is no \"delete everything\" path by design.",
+        "tags": [
+          "folders"
+        ]
+      }
+    },
+    "/public/folders/{ownerId}/{folderId}": {
+      "get": {
+        "operationId": "PublicFoldersController_getPublic",
+        "parameters": [
+          {
+            "name": "ownerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "folderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicFolder"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No public folder at this link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Get a publicly-shared folder",
+        "tags": [
+          "public-folders"
+        ]
+      }
+    },
+    "/public/folders/{ownerId}/{folderId}/save": {
+      "post": {
+        "operationId": "PublicFoldersController_save",
+        "parameters": [
+          {
+            "name": "ownerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "folderId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No public folder at this link",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Save a copy of a shared folder into the caller's MyPothi (requires auth).",
+        "tags": [
+          "public-folders"
+        ]
+      }
+    },
+    "/shortcuts": {
+      "get": {
+        "operationId": "ShortcutsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserShortcuts"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No shortcuts saved for this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the current user's shortcut tray preferences",
+        "tags": [
+          "shortcuts"
+        ]
+      },
+      "put": {
+        "operationId": "ShortcutsController_upsert",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertShortcutsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserShortcuts"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the current user's shortcut tray preferences",
+        "tags": [
+          "shortcuts"
+        ]
+      },
+      "delete": {
+        "operationId": "ShortcutsController_remove",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete the current user's shortcut tray preferences",
+        "tags": [
+          "shortcuts"
+        ]
+      }
+    },
+    "/favorite-shabads": {
+      "get": {
+        "operationId": "FavoriteShabadsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FavoriteShabad"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List the current user's favorite shabads",
+        "tags": [
+          "favorite-shabads"
+        ]
+      },
+      "post": {
+        "operationId": "FavoriteShabadsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFavoriteShabadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FavoriteShabad"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Shabad is already favorited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Favorite a shabad",
+        "tags": [
+          "favorite-shabads"
+        ]
+      }
+    },
+    "/favorite-shabads/{shabadId}": {
+      "delete": {
+        "operationId": "FavoriteShabadsController_remove",
+        "parameters": [
+          {
+            "name": "shabadId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Shabad is not favorited",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a shabad from favorites",
+        "tags": [
+          "favorite-shabads"
+        ]
+      }
+    },
+    "/dashboard/cache": {
+      "post": {
+        "operationId": "DashboardController_cache",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDashboardCacheDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The day's snapshot was upserted with the latest payload",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardCacheResult"
+                },
+                "example": {
+                  "id": "clv1k2x3y0000abcd1234efgh",
+                  "syncedAt": "2025-06-11T21:45:00.000Z",
+                  "updated": true
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "First snapshot of the day stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardCacheResult"
+                },
+                "example": {
+                  "id": "clv1k2x3y0000abcd1234efgh",
+                  "syncedAt": "2025-06-11T09:30:00.000Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (missing deviceId / invalid capturedAt)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 400,
+                  "message": [
+                    "deviceId should not be empty"
+                  ],
+                  "error": "Bad Request"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Push a device dashboard snapshot",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/latest": {
+      "get": {
+        "operationId": "DashboardController_getLatest",
+        "parameters": [
+          {
+            "name": "deviceId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "550e8400-e29b-41d4-a716-446655440000",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Most recent snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardCacheLatest"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "deviceId is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "This device has never synced a snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "statusCode": 404,
+                  "message": "No cache found",
+                  "error": "Not Found"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Get a device's latest snapshot",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/daily-vaak": {
+      "get": {
+        "operationId": "DashboardContentController_dailyVaak",
+        "parameters": [
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "IST calendar day (`YYYY-MM-DD`); defaults to today.",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "example": "2026-06-19",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DailyVaakResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid date query (expects YYYY-MM-DD)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream Gurbani source unavailable — app shows offline fallback",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Today's Hukamnama (daily vaak)",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/random-shabad": {
+      "get": {
+        "operationId": "DashboardContentController_getRandomShabad",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShabadResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Upstream Gurbani source unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "A random shabad",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/word-of-day": {
+      "get": {
+        "operationId": "DashboardContentController_getWordOfDay",
+        "parameters": [
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "IST calendar day (`YYYY-MM-DD`); defaults to today.",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "example": "2026-06-19",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WordOfDayResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid date query (expects YYYY-MM-DD)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Word of the Day",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/dashboard/events": {
+      "get": {
+        "operationId": "DashboardContentController_getUpcomingEvents",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpcomingEventsResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Upcoming gurpurabs / events",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/seva/config": {
+      "get": {
+        "operationId": "SevaController_getConfig",
+        "parameters": [
+          {
+            "name": "v",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 3,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "ip",
+            "required": false,
+            "in": "query",
+            "description": "Accepted for backward compatibility; country is resolved from the CDN country header, so this value is not currently used for resolution.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Seva config",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SevaConfigResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Get Seva remote config",
+        "tags": [
+          "seva"
+        ]
+      }
+    },
+    "/audios/list": {
+      "get": {
+        "operationId": "AudioController_list",
+        "parameters": [
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sundar-gutka",
+                "mypothi"
+              ]
+            }
+          },
+          {
+            "name": "artistId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 4,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audio catalog",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "List the audio catalog",
+        "tags": [
+          "audio"
+        ]
+      }
+    },
+    "/audios/{baaniId}": {
+      "get": {
+        "operationId": "AudioController_getByBaani",
+        "parameters": [
+          {
+            "name": "baaniId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "length",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "short",
+                "medium",
+                "long",
+                "xlong"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audio for the baani",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AudioBaniResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid baaniId / length",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Baani has no audio",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "summary": "Get audio for one baani",
+        "tags": [
+          "audio"
+        ]
+      }
+    },
+    "/sehaj-path/paths": {
+      "get": {
+        "operationId": "SehajPathsController_findAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SehajPath"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List all of the current user's Sehaj Paths (in progress and completed)",
+        "tags": [
+          "sehaj-path"
+        ]
+      },
+      "post": {
+        "operationId": "SehajPathsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSehajPathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Path already existed; returned unchanged",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SehajPath"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Path created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SehajPath"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a Sehaj Path. `201` when a new path is created; `200` when the\n`pathId` already exists (idempotent retry — the existing path is returned\nunchanged, the body is NOT applied; use PATCH to change progress).",
+        "tags": [
+          "sehaj-path"
+        ]
+      }
+    },
+    "/sehaj-path/paths/{pathId}": {
+      "get": {
+        "operationId": "SehajPathsController_findOne",
+        "parameters": [
+          {
+            "name": "pathId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SehajPath"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Path not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get one Sehaj Path by id",
+        "tags": [
+          "sehaj-path"
+        ]
+      },
+      "patch": {
+        "operationId": "SehajPathsController_update",
+        "parameters": [
+          {
+            "name": "pathId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSehajPathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SehajPath"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Path not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Path was modified by another device",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a Sehaj Path (progress, rename, scroll position)",
+        "tags": [
+          "sehaj-path"
+        ]
+      },
+      "delete": {
+        "operationId": "SehajPathsController_remove",
+        "parameters": [
+          {
+            "name": "pathId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Path not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a Sehaj Path",
+        "tags": [
+          "sehaj-path"
+        ]
+      }
+    },
+    "/sehaj-path/settings": {
+      "get": {
+        "operationId": "SehajPathSettingsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SehajPathSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No Sehaj Path settings saved for this user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the current user's Sehaj Path settings",
+        "tags": [
+          "sehaj-path"
+        ]
+      },
+      "put": {
+        "operationId": "SehajPathSettingsController_upsert",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertSehajPathSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SehajPathSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace the current user's Sehaj Path settings",
+        "tags": [
+          "sehaj-path"
+        ]
+      }
+    },
+    "/sehaj-path/sync": {
+      "post": {
+        "operationId": "SehajPathSyncController_sync",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SyncSehajPathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SehajPathSyncResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Bulk two-way sync: merge the device's local paths and settings into the\nserver and return the authoritative live set plus ids to delete locally.",
+        "tags": [
+          "sehaj-path"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Khalis User Store",
+    "description": "Per-user data store for Khalis apps: sundar gutka folders, shortcut tray preferences and favorite shabads. Authenticate with a JWT issued by the Khalis SSO service.",
+    "version": "2.1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [
+    {
+      "url": "http://localhost:3500"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
+    "schemas": {
+      "HealthStatus": {
+        "type": "object",
+        "properties": {}
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": {
+            "type": "integer",
+            "description": "HTTP status code",
+            "example": 404
+          },
+          "message": {
+            "description": "Error message — validation errors return one message per violation",
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "example": "No folders saved for this user"
+          },
+          "error": {
+            "type": "string",
+            "description": "HTTP error name",
+            "example": "Not Found"
+          }
+        },
+        "required": [
+          "statusCode",
+          "message"
+        ]
+      },
+      "ShabadItemDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Discriminator",
+            "example": "shabad",
+            "enum": [
+              "shabad"
+            ]
+          },
+          "shabadId": {
+            "type": "integer",
+            "description": "Shabad identifier",
+            "example": 3589,
+            "minimum": 1
+          },
+          "verseId": {
+            "type": "integer",
+            "description": "Highlighted verse to deep-link (optional)",
+            "example": 38951,
+            "minimum": 1
+          },
+          "id": {
+            "type": "string",
+            "description": "Client-generated item identifier (UUID v4)",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title; client renders this verbatim",
+            "example": "Deh Shiva",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "type",
+          "shabadId",
+          "id",
+          "title"
+        ]
+      },
+      "BaniItemDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Discriminator",
+            "example": "bani",
+            "enum": [
+              "bani"
+            ]
+          },
+          "baaniId": {
+            "type": "integer",
+            "description": "Baani identifier",
+            "example": 6,
+            "minimum": 1
+          },
+          "id": {
+            "type": "string",
+            "description": "Client-generated item identifier (UUID v4)",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title; client renders this verbatim",
+            "example": "Anand Sahib",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "type",
+          "baaniId",
+          "id",
+          "title"
+        ]
+      },
+      "FolderDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "description": "Product surface that owns this folder",
+            "example": "sundar-gutka",
+            "enum": [
+              "sundar-gutka",
+              "mypothi"
+            ],
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "description": "Ordered items in this folder (drag-to-sort). A `type`-discriminated\nunion of shabad and baani items.",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ShabadItemDto"
+                },
+                {
+                  "$ref": "#/components/schemas/BaniItemDto"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "shabad": "#/components/schemas/ShabadItemDto",
+                  "bani": "#/components/schemas/BaniItemDto"
+                }
+              }
+            },
+            "maxItems": 500
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Creation timestamp (ms since epoch, client-stamped)",
+            "example": 1717500000000,
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "updatedAt": {
+            "type": "integer",
+            "description": "Last-modified timestamp (ms since epoch, client-stamped)",
+            "example": 1717500000000,
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "isPublic": {
+            "type": "boolean",
+            "description": "Whether the folder is publicly shareable via its link. Client-controlled\n(rides the sync PUT). Only mypothi folders may be public. Defaults to false.",
+            "example": false,
+            "default": false
+          },
+          "id": {
+            "type": "string",
+            "description": "Client-generated folder identifier",
+            "example": "f-1717500000000",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the folder",
+            "example": "Morning Nitnem",
+            "minLength": 1,
+            "maxLength": 50
+          }
+        },
+        "required": [
+          "source",
+          "items",
+          "createdAt",
+          "updatedAt",
+          "id",
+          "name"
+        ]
+      },
+      "UserFolders": {
+        "type": "object",
+        "properties": {
+          "folders": {
+            "description": "All folders for this user, across every source",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FolderDto"
+            }
+          },
+          "userId": {
+            "type": "string",
+            "description": "Owner of the folders",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Server-set last-write timestamp (ISO 8601), for \"last synced\" UI",
+            "example": "2026-06-04T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "folders",
+          "userId",
+          "updatedAt"
+        ]
+      },
+      "UpsertFoldersDto": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "description": "Scope of the replacement — only folders of this source are replaced;\nfolders of other sources are left untouched.",
+            "example": "mypothi",
+            "enum": [
+              "sundar-gutka",
+              "mypothi"
+            ],
+            "type": "string"
+          },
+          "folders": {
+            "description": "Full replacement set of the user's folders for `source`.\nEvery folder MUST have `folder.source === source`.",
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FolderDto"
+            }
+          }
+        },
+        "required": [
+          "source",
+          "folders"
+        ]
+      },
+      "PublicFolder": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "Ordered items in the pothi",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ShabadItemDto"
+                },
+                {
+                  "$ref": "#/components/schemas/BaniItemDto"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "shabad": "#/components/schemas/ShabadItemDto",
+                  "bani": "#/components/schemas/BaniItemDto"
+                }
+              }
+            }
+          },
+          "updatedAt": {
+            "type": "integer",
+            "description": "Last-modified timestamp (ms since epoch)",
+            "example": 1717500000000
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the pothi",
+            "example": "Morning Nitnem"
+          }
+        },
+        "required": [
+          "items",
+          "updatedAt",
+          "name"
+        ]
+      },
+      "CustomShabadDto": {
+        "type": "object",
+        "properties": {
+          "shabadId": {
+            "type": "integer",
+            "description": "Shabad identifier",
+            "example": 3589,
+            "minimum": 1
+          },
+          "verseId": {
+            "type": "integer",
+            "description": "Optional verse to deep-link when the shortcut is opened",
+            "example": 38951,
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title for the shortcut",
+            "example": "Deh Shiva",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "shabadId",
+          "title"
+        ]
+      },
+      "CustomBaaniDto": {
+        "type": "object",
+        "properties": {
+          "baaniId": {
+            "type": "integer",
+            "description": "Baani identifier",
+            "example": 6,
+            "minimum": 1
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title for the shortcut",
+            "example": "Anand Sahib",
+            "minLength": 1
+          },
+          "slug": {
+            "type": "string",
+            "description": "URL-safe slug of the baani",
+            "example": "anand-sahib",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        },
+        "required": [
+          "baaniId",
+          "title",
+          "slug"
+        ]
+      },
+      "UserShortcuts": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string",
+            "description": "Owner of the shortcuts document",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e"
+          },
+          "enabledIds": {
+            "description": "Ids of the built-in shortcuts enabled in the tray",
+            "example": [
+              "japji-sahib",
+              "chaupai-sahib"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "customShabads": {
+            "description": "Custom shabad shortcuts pinned to the tray",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomShabadDto"
+            }
+          },
+          "customBaanis": {
+            "description": "Custom baani shortcuts pinned to the tray",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomBaaniDto"
+            }
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Last modification timestamp",
+            "example": "2026-06-04T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "userId",
+          "enabledIds",
+          "customShabads",
+          "customBaanis",
+          "updatedAt"
+        ]
+      },
+      "UpsertShortcutsDto": {
+        "type": "object",
+        "properties": {
+          "enabledIds": {
+            "description": "Ids of the built-in shortcuts enabled in the tray",
+            "example": [
+              "japji-sahib",
+              "chaupai-sahib"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "customShabads": {
+            "description": "Custom shabad shortcuts pinned to the tray",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomShabadDto"
+            }
+          },
+          "customBaanis": {
+            "description": "Custom baani shortcuts pinned to the tray",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomBaaniDto"
+            }
+          }
+        },
+        "required": [
+          "enabledIds",
+          "customShabads",
+          "customBaanis"
+        ]
+      },
+      "FavoriteShabad": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "Unique identifier of the favorite",
+            "example": 1
+          },
+          "shabadId": {
+            "type": "integer",
+            "description": "Favorited shabad identifier",
+            "example": 3589
+          },
+          "verseId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Optional verse highlighted within the shabad",
+            "example": 38951
+          },
+          "comment": {
+            "type": "string",
+            "nullable": true,
+            "description": "Free-text note about the favorite (null if none)",
+            "example": "morning paath note"
+          },
+          "userId": {
+            "type": "string",
+            "description": "Owner of the favorite",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Creation timestamp",
+            "example": "2026-06-04T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "shabadId",
+          "verseId",
+          "comment",
+          "userId",
+          "createdAt"
+        ]
+      },
+      "CreateFavoriteShabadDto": {
+        "type": "object",
+        "properties": {
+          "shabadId": {
+            "type": "integer",
+            "description": "Shabad identifier to favorite",
+            "example": 3589,
+            "minimum": 1
+          },
+          "verseId": {
+            "type": "integer",
+            "description": "Optional verse to highlight within the shabad",
+            "example": 38951,
+            "minimum": 1
+          },
+          "comment": {
+            "type": "string",
+            "description": "Optional free-text note about the favorite",
+            "example": "morning paath note",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "shabadId"
+        ]
+      },
+      "CreateDashboardCacheDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "App/schema version that produced this snapshot",
+            "example": "1.0.0"
+          },
+          "capturedAt": {
+            "type": "string",
+            "description": "When the snapshot was captured client-side (ISO-8601). Its calendar day is\nthe idempotency key — same-day re-syncs upsert (last-write-wins).",
+            "example": "2025-06-11T09:00:00.000Z"
+          },
+          "deviceId": {
+            "type": "string",
+            "description": "Device identifier — the sync identity (no login required). One row per\ndevice per calendar day.",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "userId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Reserved for a future external SSO identity (Google/Apple). Accepted so the\napp may send `userId: null` today, but not yet persisted — the row is always\nowned by the JWT-resolved account. Wired to `sso_user_id` when SSO is live."
+          },
+          "payload": {
+            "type": "object",
+            "description": "Opaque dashboard snapshot. Stored verbatim; the original blocks\n(`streaks`, `month`, `read`, `listen`, …) and the v2 blocks (`totals`,\n`nitnem`, `profile`, `reminders`, `layout`) all live here. Only\n`streaks.current/longest` and `totals.banisCompleted/daysActive` are read\nout into indexed columns.",
+            "additionalProperties": true,
+            "example": {
+              "lastVisitedBaaniId": 4,
+              "streaks": {
+                "current": 14,
+                "longest": 31
+              },
+              "month": {
+                "key": "2025-06",
+                "days": [
+                  [
+                    1,
+                    1240,
+                    890
+                  ]
+                ]
+              },
+              "read": {
+                "top5": [
+                  [
+                    2,
+                    42,
+                    15600
+                  ]
+                ],
+                "last": {
+                  "baaniId": 5
+                }
+              },
+              "listen": {
+                "top5": [
+                  [
+                    1,
+                    27,
+                    9800
+                  ]
+                ],
+                "last": {
+                  "baaniId": 1
+                }
+              },
+              "totals": {
+                "banisCompleted": 540,
+                "readingSeconds": 360000,
+                "listeningSeconds": 250000,
+                "daysActive": 88,
+                "audioSessions": 300
+              },
+              "nitnem": {
+                "selectedBaaniIds": [
+                  2,
+                  3,
+                  4,
+                  9,
+                  5,
+                  21,
+                  1
+                ],
+                "completed": {
+                  "2025-06-11": [
+                    2,
+                    3
+                  ]
+                },
+                "completedCount": 12
+              },
+              "profile": {
+                "name": "Harpreet Kaur"
+              },
+              "reminders": {
+                "enabled": true,
+                "sound": "default",
+                "items": [
+                  {
+                    "baaniId": 2,
+                    "time": "03:30",
+                    "enabled": true
+                  }
+                ]
+              },
+              "layout": {
+                "order": [
+                  "streak",
+                  "nitnem",
+                  "explore",
+                  "practice"
+                ],
+                "hidden": [
+                  "weekChart"
+                ]
+              }
+            }
+          }
+        },
+        "required": [
+          "version",
+          "capturedAt",
+          "deviceId",
+          "payload"
+        ]
+      },
+      "DashboardCacheResult": {
+        "type": "object",
+        "properties": {
+          "updated": {
+            "type": "boolean",
+            "description": "Present and `true` when a snapshot already existed for the day and was\nupserted with this one (HTTP 200 instead of 201).",
+            "example": true
+          },
+          "id": {
+            "type": "string",
+            "description": "Identifier of the stored dashboard-cache record",
+            "example": "clv1k2x3y0000abcd1234efgh"
+          },
+          "syncedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the record was persisted server-side",
+            "example": "2025-06-11T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "syncedAt"
+        ]
+      },
+      "DashboardCacheLatest": {
+        "type": "object",
+        "properties": {
+          "payload": {
+            "type": "object",
+            "description": "The full dashboard snapshot, returned verbatim. Contains the original\nblocks plus the v2 blocks (`totals`, `nitnem`, `profile`, `reminders`,\n`layout`) that the app applies back on restore.",
+            "additionalProperties": true
+          },
+          "syncedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "When the record was last persisted server-side",
+            "example": "2025-06-11T09:30:00.000Z"
+          }
+        },
+        "required": [
+          "payload",
+          "syncedAt"
+        ]
+      },
+      "DailyVaakResponse": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "description": "First two content verses (header/title verses skipped), Unicode Gurmukhi",
+            "example": [
+              "ਤੂੰ ਮੇਰਾ ਪਿਤਾ ਤੂੰਹੈ ਮੇਰਾ ਮਾਤਾ ॥",
+              "ਤੂੰ ਮੇਰਾ ਬੰਧਪੁ ਤੂੰ ਮੇਰਾ ਭ੍ਰਾਤਾ ॥"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transliteration": {
+            "description": "Optional English transliteration, one entry per line (null where missing)",
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "raag": {
+            "type": "string",
+            "nullable": true,
+            "description": "Raag in Unicode Gurmukhi (null if the source has none)",
+            "example": "ਰਾਗੁ ਮਾਝ"
+          },
+          "ang": {
+            "type": "integer",
+            "description": "Ang (page number) in Sri Guru Granth Sahib Ji",
+            "example": 103
+          },
+          "shabadId": {
+            "type": "integer",
+            "description": "STTM-compatible shabad id — drives the \"Read Shabad\" deep link\n`https://www.sikhitothemax.org/shabad?id={shabadId}`",
+            "example": 246
+          },
+          "source": {
+            "type": "string",
+            "description": "Origin of the daily Hukamnama",
+            "example": "Sri Darbar Sahib"
+          },
+          "date": {
+            "type": "string",
+            "description": "The IST calendar day this vaak is for",
+            "example": "2026-06-19"
+          },
+          "translation": {
+            "type": "string",
+            "description": "English translation of those lines",
+            "example": "You are my father, You are my mother; You are my kin, You are my brother."
+          }
+        },
+        "required": [
+          "lines",
+          "transliteration",
+          "raag",
+          "ang",
+          "shabadId",
+          "source",
+          "date",
+          "translation"
+        ]
+      },
+      "ShabadResponse": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "description": "First two content verses (header/title verses skipped), Unicode Gurmukhi",
+            "example": [
+              "ਤੂੰ ਮੇਰਾ ਪਿਤਾ ਤੂੰਹੈ ਮੇਰਾ ਮਾਤਾ ॥",
+              "ਤੂੰ ਮੇਰਾ ਬੰਧਪੁ ਤੂੰ ਮੇਰਾ ਭ੍ਰਾਤਾ ॥"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "transliteration": {
+            "description": "Optional English transliteration, one entry per line (null where missing)",
+            "nullable": true,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "raag": {
+            "type": "string",
+            "nullable": true,
+            "description": "Raag in Unicode Gurmukhi (null if the source has none)",
+            "example": "ਰਾਗੁ ਮਾਝ"
+          },
+          "ang": {
+            "type": "integer",
+            "description": "Ang (page number) in Sri Guru Granth Sahib Ji",
+            "example": 103
+          },
+          "shabadId": {
+            "type": "integer",
+            "description": "STTM-compatible shabad id — drives the \"Read Shabad\" deep link\n`https://www.sikhitothemax.org/shabad?id={shabadId}`",
+            "example": 246
+          },
+          "translation": {
+            "type": "string",
+            "description": "English translation of those lines",
+            "example": "You are my father, You are my mother; You are my kin, You are my brother."
+          }
+        },
+        "required": [
+          "lines",
+          "transliteration",
+          "raag",
+          "ang",
+          "shabadId",
+          "translation"
+        ]
+      },
+      "WordOfDayResponse": {
+        "type": "object",
+        "properties": {
+          "gurmukhi": {
+            "type": "string",
+            "description": "The word in Unicode Gurmukhi",
+            "example": "ਨਦਰਿ"
+          },
+          "date": {
+            "type": "string",
+            "description": "IST calendar day this word is for",
+            "example": "2026-06-19"
+          },
+          "transliteration": {
+            "type": "string",
+            "description": "Roman transliteration",
+            "example": "nadar"
+          },
+          "meaning": {
+            "type": "string",
+            "description": "Concise English meaning (kept short — the card shows ~2 lines)",
+            "example": "The glance of grace; divine mercy."
+          }
+        },
+        "required": [
+          "gurmukhi",
+          "date",
+          "transliteration",
+          "meaning"
+        ]
+      },
+      "UpcomingEvent": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Parkash Sri Guru Nanak Dev Ji"
+          },
+          "subtitle": {
+            "type": "string",
+            "example": "24 Maghar"
+          },
+          "daysAway": {
+            "type": "integer",
+            "description": "Days from today (IST); 0 = today.",
+            "example": 159
+          },
+          "date": {
+            "type": "string",
+            "description": "Gregorian date of the next occurrence, IST.",
+            "example": "2026-11-24"
+          }
+        },
+        "required": [
+          "name",
+          "subtitle",
+          "daysAway",
+          "date"
+        ]
+      },
+      "UpcomingEventsResponse": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UpcomingEvent"
+            }
+          }
+        },
+        "required": [
+          "events"
+        ]
+      },
+      "SevaPayment": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "description": "Payment flow mode",
+            "example": "qgiv_prefill_open"
+          },
+          "qgivFormKey": {
+            "type": "string",
+            "description": "Qgiv form key",
+            "example": "khalisfoundation"
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "Qgiv base URL",
+            "example": "https://secure.qgiv.com/for/khalisfoundation"
+          }
+        },
+        "required": [
+          "mode",
+          "qgivFormKey",
+          "baseUrl"
+        ]
+      },
+      "SevaConfigResponse": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "integer",
+            "description": "Current config version — the app stores this and sends it back as `?v`",
+            "example": 6
+          },
+          "missedVersions": {
+            "type": "integer",
+            "description": "Versions missed since the app's last cached `v` (0 if up to date / not sent)",
+            "example": 3
+          },
+          "redDot": {
+            "type": "integer",
+            "description": "Indicator value (= missedVersions): 0 none, 1 dot, 2+ numbered badge",
+            "example": 3
+          },
+          "country": {
+            "description": "Resolved from IP server-side",
+            "example": "US",
+            "enum": [
+              "US",
+              "CA",
+              "OTHER"
+            ],
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "description": "Optional campaign/announcement HTML (\"\" when nothing to show)",
+            "example": "<div>…campaign HTML…</div>"
+          },
+          "payment": {
+            "description": "Backend-owned payment config",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SevaPayment"
+              }
+            ]
+          },
+          "source": {
+            "description": "Where the data came from (client debug)",
+            "enum": [
+              "db",
+              "cache",
+              "fallback"
+            ],
+            "type": "string",
+            "example": "db"
+          }
+        },
+        "required": [
+          "version",
+          "missedVersions",
+          "redDot",
+          "country",
+          "content",
+          "payment",
+          "source"
+        ]
+      },
+      "AudioArtistEntry": {
+        "type": "object",
+        "properties": {
+          "artistId": {
+            "type": "integer",
+            "description": "Reciter id",
+            "example": 4
+          },
+          "trackId": {
+            "type": "integer",
+            "description": "Track id",
+            "example": 1002
+          },
+          "lyricsUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Full CDN lyrics-JSON URL (null if none)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Canonical reciter name",
+            "example": "Bhai Jarnail Singh"
+          },
+          "link": {
+            "type": "string",
+            "description": "Full CDN audio URL",
+            "example": "https://gurbani-audios-c4abhzghhnccd5gj.z01.azurefd.net/audios/BhaiJarnailSingh/JapjiSahib.m4a"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "description": "Track length in seconds",
+            "example": 985.547
+          },
+          "sizeMb": {
+            "type": "number",
+            "description": "Track size in MB",
+            "example": 15.39
+          }
+        },
+        "required": [
+          "artistId",
+          "trackId",
+          "lyricsUrl",
+          "name",
+          "link",
+          "durationSeconds",
+          "sizeMb"
+        ]
+      },
+      "AudioLengthGroup": {
+        "type": "object",
+        "properties": {
+          "artists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioArtistEntry"
+            }
+          }
+        },
+        "required": [
+          "artists"
+        ]
+      },
+      "AudioData": {
+        "type": "object",
+        "properties": {
+          "short": {
+            "$ref": "#/components/schemas/AudioLengthGroup"
+          },
+          "medium": {
+            "$ref": "#/components/schemas/AudioLengthGroup"
+          },
+          "long": {
+            "$ref": "#/components/schemas/AudioLengthGroup"
+          },
+          "xlong": {
+            "$ref": "#/components/schemas/AudioLengthGroup"
+          }
+        }
+      },
+      "AudioListItem": {
+        "type": "object",
+        "properties": {
+          "baaniId": {
+            "type": "integer",
+            "description": "Baani id",
+            "example": 2
+          },
+          "artistCount": {
+            "type": "integer",
+            "description": "Distinct reciters available for this baani",
+            "example": 3
+          },
+          "audios": {
+            "description": "Reciters grouped by length",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AudioData"
+              }
+            ]
+          },
+          "baaniName": {
+            "type": "string",
+            "description": "Baani display name",
+            "example": "Japji Sahib"
+          },
+          "source": {
+            "type": "string",
+            "description": "Product surface",
+            "example": "sundar-gutka"
+          }
+        },
+        "required": [
+          "baaniId",
+          "artistCount",
+          "audios",
+          "baaniName",
+          "source"
+        ]
+      },
+      "AudioListResponse": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "description": "Total matching baanis (across all pages)",
+            "example": 8
+          },
+          "page": {
+            "type": "integer",
+            "description": "Current page",
+            "example": 1
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Items per page",
+            "example": 20
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioListItem"
+            }
+          }
+        },
+        "required": [
+          "total",
+          "page",
+          "limit",
+          "items"
+        ]
+      },
+      "AudioBaniResponse": {
+        "type": "object",
+        "properties": {
+          "baaniId": {
+            "type": "integer",
+            "description": "Baani id (maps to Banis.ID)",
+            "example": 2
+          },
+          "data": {
+            "description": "Available reciters grouped by length",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AudioData"
+              }
+            ]
+          },
+          "baaniName": {
+            "type": "string",
+            "description": "Baani display name",
+            "example": "Japji Sahib"
+          },
+          "source": {
+            "type": "string",
+            "description": "Product surface",
+            "example": "sundar-gutka"
+          }
+        },
+        "required": [
+          "baaniId",
+          "data",
+          "baaniName",
+          "source"
+        ]
+      },
+      "SehajPath": {
+        "type": "object",
+        "properties": {
+          "angNumber": {
+            "type": "integer",
+            "description": "Last saved ang (page)",
+            "example": 42
+          },
+          "verseId": {
+            "type": "integer",
+            "description": "Last saved verse id within the ang",
+            "example": 1234
+          },
+          "scrollPosition": {
+            "type": "integer",
+            "description": "Saved scroll offset (ScrollView contentOffset.y, pixels) for resume",
+            "example": 820
+          },
+          "startDate": {
+            "type": "integer",
+            "description": "When the path was started (ms since epoch)",
+            "example": 1717500000000
+          },
+          "completionDate": {
+            "type": "integer",
+            "nullable": true,
+            "description": "When the path was completed (ms since epoch), or null if still in progress"
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "Creation timestamp (ms since epoch)",
+            "example": 1717500000000
+          },
+          "updatedAt": {
+            "type": "integer",
+            "description": "Last-modified timestamp (ms since epoch). Use as `baseUpdatedAt` on the\nnext update to detect conflicting concurrent edits.",
+            "example": 1717500000000
+          },
+          "pathId": {
+            "type": "string",
+            "description": "Server-authoritative path identifier",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the path",
+            "example": "Path #1"
+          },
+          "progress": {
+            "type": "number",
+            "description": "Completion percentage, derived from angNumber (0–100)",
+            "example": 2.94
+          },
+          "readDates": {
+            "description": "Distinct days the path was read (ISO \"YYYY-MM-DD\"), powering the streak chart",
+            "example": [
+              "2026-07-01",
+              "2026-07-02"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "angNumber",
+          "verseId",
+          "scrollPosition",
+          "startDate",
+          "completionDate",
+          "createdAt",
+          "updatedAt",
+          "pathId",
+          "name",
+          "progress",
+          "readDates"
+        ]
+      },
+      "CreateSehajPathDto": {
+        "type": "object",
+        "properties": {
+          "angNumber": {
+            "type": "integer",
+            "description": "Last saved ang (page). 0 for a fresh path.",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 1430
+          },
+          "verseId": {
+            "type": "integer",
+            "description": "Last saved verse id within the ang. 0 when no panktee is selected.",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 60403
+          },
+          "scrollPosition": {
+            "type": "integer",
+            "description": "Saved scroll offset (ScrollView contentOffset.y, pixels) for resume.",
+            "example": 0,
+            "minimum": 0
+          },
+          "readDates": {
+            "description": "Distinct days the path was read, as ISO \"YYYY-MM-DD\" strings.",
+            "example": [
+              "2026-07-01",
+              "2026-07-02"
+            ],
+            "maxItems": 4000,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "startDate": {
+            "type": "integer",
+            "description": "When the path was started (ms since epoch, client-stamped). Defaults to\nthe server's now if omitted.",
+            "example": 1717500000000,
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "pathId": {
+            "type": "string",
+            "description": "Client-generated path id (uuid). Supply this so the app can create the\npath locally and use it instantly, then sync whenever the network allows —\nretries with the same id are idempotent (no duplicate paths). Omit to let\nthe server mint one.",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the path",
+            "example": "Path #1",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "UpdateSehajPathDto": {
+        "type": "object",
+        "properties": {
+          "angNumber": {
+            "type": "integer",
+            "description": "Last saved ang (page)",
+            "example": 42,
+            "minimum": 0,
+            "maximum": 1430
+          },
+          "verseId": {
+            "type": "integer",
+            "description": "Last saved verse id within the ang",
+            "example": 1234,
+            "minimum": 0,
+            "maximum": 60403
+          },
+          "scrollPosition": {
+            "type": "integer",
+            "description": "Saved scroll offset (ScrollView contentOffset.y, pixels) for resume",
+            "example": 820,
+            "minimum": 0
+          },
+          "readDates": {
+            "description": "Days the path was read (ISO \"YYYY-MM-DD\"). Merged by union with the\nserver's set — reading days are monotonic and are never removed, so a\ndevice that is behind cannot wipe days recorded elsewhere.",
+            "example": [
+              "2026-07-01",
+              "2026-07-02"
+            ],
+            "maxItems": 4000,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "baseUpdatedAt": {
+            "type": "integer",
+            "description": "The `updatedAt` the client last saw for this path (ms since epoch). When\nprovided, the update is rejected with 409 if the server row is newer —\noptimistic concurrency for multi-device edits.",
+            "example": 1717500000000,
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "name": {
+            "type": "string",
+            "description": "New display name",
+            "example": "For Grandfather",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        }
+      },
+      "SehajPathSettings": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "description": "The user's Sehaj Path preferences, returned verbatim as they were saved.\nKeys are app-owned (see UpsertSehajPathSettingsDto); the server does not\ninterpret them.",
+            "additionalProperties": true,
+            "example": {
+              "fontSize": {
+                "fontSize": "Small (Default)",
+                "number": 18
+              },
+              "larivaar": false,
+              "paragraphMode": false,
+              "vishraam": false,
+              "vishraamsSource": "sttm",
+              "angsFormat": "Punjabi",
+              "consent": true
+            }
+          },
+          "userId": {
+            "type": "string",
+            "description": "Owner of the settings document",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string",
+            "description": "Last modification timestamp",
+            "example": "2026-07-04T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "settings",
+          "userId",
+          "updatedAt"
+        ]
+      },
+      "UpsertSehajPathSettingsDto": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "description": "The user's Sehaj Path preferences, stored verbatim. Keys are owned by the\napp so new toggles can ship without a backend change — the server never\ninterprets these values, it only persists and echoes them. The known keys\ntoday are `fontSize`, `larivaar`, `paragraphMode`, `vishraam`,\n`vishraamsSource`, `angsFormat` and `consent`, but any JSON object is\naccepted. Overall request size is bounded by the global body-parser limit.",
+            "additionalProperties": true,
+            "example": {
+              "fontSize": {
+                "fontSize": "Small (Default)",
+                "number": 18
+              },
+              "larivaar": false,
+              "paragraphMode": false,
+              "vishraam": false,
+              "vishraamsSource": "sttm",
+              "angsFormat": "Punjabi",
+              "consent": true
+            }
+          }
+        },
+        "required": [
+          "settings"
+        ]
+      },
+      "SyncPathDto": {
+        "type": "object",
+        "properties": {
+          "angNumber": {
+            "type": "integer",
+            "description": "Last saved ang (page)",
+            "example": 42,
+            "minimum": 0,
+            "maximum": 1430
+          },
+          "verseId": {
+            "type": "integer",
+            "description": "Last saved verse id within the ang",
+            "example": 1234,
+            "minimum": 0,
+            "maximum": 60403
+          },
+          "scrollPosition": {
+            "type": "integer",
+            "description": "Saved scroll offset (ScrollView contentOffset.y, pixels)",
+            "example": 820,
+            "minimum": 0
+          },
+          "readDates": {
+            "description": "Days the path was read (ISO \"YYYY-MM-DD\"); merged by union across devices.",
+            "example": [
+              "2026-07-01",
+              "2026-07-02"
+            ],
+            "maxItems": 4000,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          "startDate": {
+            "type": "integer",
+            "description": "When the path was started (ms since epoch)",
+            "example": 1717500000000,
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "completionDate": {
+            "type": "integer",
+            "nullable": true,
+            "description": "When the path was completed (ms since epoch), or null/absent if not.",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "updatedAt": {
+            "type": "integer",
+            "description": "The device's last-modified clock for this path (ms since epoch). Required —\nthe merge compares it against the server's copy to decide the winner.",
+            "example": 1717500000000,
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "deletedAt": {
+            "type": "integer",
+            "nullable": true,
+            "description": "Set when the device deleted this path offline (ms since epoch). Propagates\nthe deletion to the server and other devices.",
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "pathId": {
+            "type": "string",
+            "description": "Stable path id (uuid) — the match key between this device and the server.",
+            "example": "0f8fad5b-d9cb-469f-a165-70867728950e",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "description": "Display name of the path",
+            "example": "Path #1",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "angNumber",
+          "verseId",
+          "startDate",
+          "updatedAt",
+          "pathId",
+          "name"
+        ]
+      },
+      "SyncSehajPathDto": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "description": "The device's full set of local paths (including ones it deleted offline).",
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SyncPathDto"
+            }
+          },
+          "lastSyncedAt": {
+            "type": "integer",
+            "description": "When this device last synced (ms since epoch); 0/absent on first sync.\nServer tombstones newer than this are returned in `deletedPathIds`.",
+            "example": 0,
+            "minimum": 0,
+            "maximum": 8640000000000000
+          },
+          "settings": {
+            "type": "object",
+            "description": "The device's current settings snapshot (opaque). When present it is applied\nand stamped with the SERVER clock — last write to the server wins (no\ndevice clocks involved). Include it only when settings changed locally\nsince the last sync; omit it otherwise so a stale device cannot overwrite\nnewer settings from another device."
+          }
+        },
+        "required": [
+          "paths"
+        ]
+      },
+      "SehajPathSyncResult": {
+        "type": "object",
+        "properties": {
+          "paths": {
+            "description": "The authoritative set of the user's live (non-deleted) paths after the\nmerge. The client should replace its local set with these.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SehajPath"
+            }
+          },
+          "settings": {
+            "nullable": true,
+            "description": "The authoritative settings document after the last-write-wins merge, or\nnull if the user has none.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SehajPathSettings"
+              }
+            ]
+          },
+          "syncedAt": {
+            "type": "integer",
+            "description": "Server time of this sync (ms since epoch). Store it verbatim and send it\nas `lastSyncedAt` on the next sync — never use the device clock, which may\nbe skewed against the server's tombstone/merge timestamps.",
+            "example": 1717500000000
+          },
+          "deletedPathIds": {
+            "description": "Ids of paths that are deleted server-side (tombstoned by this or another\ndevice). The client should remove these locally.",
+            "example": [
+              "0f8fad5b-d9cb-469f-a165-70867728950e"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "paths",
+          "settings",
+          "syncedAt",
+          "deletedPathIds"
+        ]
+      }
+    }
+  }
+}

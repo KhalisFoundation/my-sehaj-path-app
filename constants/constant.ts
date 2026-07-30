@@ -46,6 +46,8 @@ export const Constants: Constant = {
   DEFAULT_VISHRAAM_SOURCE: 'sttm',
   KHALIS_SEHAJ_PATH: 'Khalis Sehaj Path',
   DONATE: 'Donate',
+  LOGIN: 'Login',
+  LOGOUT: 'Logout',
   CLOSE_MENU: 'Close menu',
   ALL_PATHS: 'All Paths',
   PROGRESS: 'Progress',
