@@ -82,8 +82,15 @@ export const DrawerMenuStyles = StyleSheet.create({
   footer: {
     flexDirection: 'column',
     marginTop: 'auto',
+    paddingTop: 0,
+    paddingBottom: UIConstants.RHYTHM * 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#B8C5D6',
+    gap: 0,
+  },
+  emailRow: {
+    marginTop: UIConstants.RHYTHM * 0.5,
     paddingHorizontal: UIConstants.RHYTHM * 3,
-    paddingVertical: UIConstants.RHYTHM * 2,
   },
   userEmail: {
     fontSize: 13,
@@ -95,7 +102,8 @@ export const DrawerMenuStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: UIConstants.RHYTHM * 1.5,
-    paddingVertical: UIConstants.RHYTHM * 1.5,
+    marginHorizontal: UIConstants.RHYTHM * 3,
+    paddingVertical: UIConstants.RHYTHM,
   },
   donateIcon: {
     fontSize: 20,
@@ -110,7 +118,8 @@ export const DrawerMenuStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: UIConstants.RHYTHM * 0.5,
-    paddingVertical: UIConstants.RHYTHM * 1.5,
+    marginHorizontal: UIConstants.RHYTHM * 3,
+    paddingVertical: UIConstants.RHYTHM,
   },
   logoutText: {
     fontSize: 15,

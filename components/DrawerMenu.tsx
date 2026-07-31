@@ -153,6 +153,18 @@ const DrawerMenuComponent = ({
                         </TouchableOpacity>
                       );
                     })}
+                    <TouchableOpacity
+                      style={DrawerMenuStyles.donateButton}
+                      onPress={() => {
+                        trackEvent('DonateButton', 'click', 'Donate button pressed');
+                        Linking.openURL(KHALIS_FOUNDATION_DONATE_URL);
+                      }}
+                      accessibilityLabel={Constants.DONATE}
+                      accessibilityRole="button"
+                    >
+                      <DonationIcon width={20} height={20} />
+                      <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
+                    </TouchableOpacity>
                     {!isSignedIn ? (
                       <TouchableOpacity
                         style={DrawerMenuStyles.menuItem}
@@ -167,36 +179,26 @@ const DrawerMenuComponent = ({
                       </TouchableOpacity>
                     ) : null}
                   </View>
-                  <View style={DrawerMenuStyles.footer}>
-                    {isSignedIn ? (
+                  {isSignedIn ? (
+                    <View style={DrawerMenuStyles.footer}>
                       <TouchableOpacity
                         style={DrawerMenuStyles.logoutButton}
                         onPress={handleLogoutPress}
                         accessibilityLabel={Constants.LOGOUT}
                         accessibilityRole="button"
                       >
-                        <LoginIcon width={20} height={20} />
+                        <LoginIcon width={20} height={20} color="#11336A" />
                         <Text style={DrawerMenuStyles.logoutText}>{Constants.LOGOUT}</Text>
                       </TouchableOpacity>
-                    ) : null}
-                    <TouchableOpacity
-                      style={DrawerMenuStyles.donateButton}
-                      onPress={() => {
-                        trackEvent('DonateButton', 'click', 'Donate button pressed');
-                        Linking.openURL(KHALIS_FOUNDATION_DONATE_URL);
-                      }}
-                      accessibilityLabel={Constants.DONATE}
-                      accessibilityRole="button"
-                    >
-                      <DonationIcon />
-                      <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
-                    </TouchableOpacity>
-                    {isSignedIn && userEmail ? (
-                      <Text style={DrawerMenuStyles.userEmail} numberOfLines={1}>
-                        {userEmail}
-                      </Text>
-                    ) : null}
-                  </View>
+                      {userEmail ? (
+                        <View style={DrawerMenuStyles.emailRow}>
+                          <Text style={DrawerMenuStyles.userEmail} numberOfLines={1}>
+                            {userEmail}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </SafeAreaView>
               </Animated.View>
             </View>
