@@ -69,6 +69,7 @@ const runExclusive = <T>(task: () => Promise<T>): Promise<T> => {
 const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
   const previousPaths = store.getState().paths;
   const previousSettings: SettingsState = store.getState().settings;
+  const previousSync = store.getState().sync;
 
   store.dispatch(action);
   const saved = await persistence.flush();
@@ -83,6 +84,7 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
       restoreDurableState({
         paths: previousPaths,
         settings: previousSettings,
+        sync: previousSync,
       })
     );
 

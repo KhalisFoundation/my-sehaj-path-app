@@ -8,22 +8,26 @@ import {
   Pressable,
   Linking,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   Constants,
   EDGES_DRAWER_MENU,
+  ErrorConstants,
   KHALIS_FOUNDATION_DONATE_URL,
   UIConstants,
 } from '@constants';
 import { DrawerMenuStyles } from '@styles';
-import { KhalisIcon, LoginIcon } from '@icons';
-import { trackEvent } from '@utils';
+import { KhalisIcon, LoginIcon, SaveIcon } from '@icons';
+import { showErrorAlert, trackEvent } from '@utils';
 import { DonationIcon } from '@icons/Donation.icon';
 import { startLogin, logout } from '@auth';
 import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
 import { useAppSelector } from '../store/hooks';
+import { store } from '../store';
+import { resetSyncMetadataAndSync, runManualSync } from '../store/manualSync';
 
 interface DrawerMenuProps {
   isVisible: boolean;
@@ -49,6 +53,7 @@ const DrawerMenuComponent = ({
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const authStatus = useAppSelector((state) => state.auth.status);
   const userEmail = useAppSelector((state) => state.auth.email);
+  const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
   const isSignedIn = authStatus === 'signedIn';
 
   const handleLoginPress = () => {
@@ -61,6 +66,36 @@ const DrawerMenuComponent = ({
     trackEvent('AuthButton', 'click', 'Log out pressed');
     logout();
     onClose();
+  };
+
+  const performSync = async (repair = false) => {
+    if (!userEmail) {
+      return;
+    }
+    trackEvent('ManualSync', 'click', repair ? 'Reset sync metadata' : 'Sync now');
+    const ok = repair
+      ? await resetSyncMetadataAndSync(store, userEmail)
+      : await runManualSync(store, userEmail);
+    if (!ok) {
+      showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+    }
+  };
+
+  const handleSyncPress = () => {
+    if (!recoveryNeeded) {
+      performSync();
+      return;
+    }
+    Alert.alert(
+      'Reset sync?',
+      `Your saved paths will stay on this device. Resetting damaged sync information may add duplicate server paths when you sync again to ${
+        userEmail ?? 'the signed-in account'
+      }.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Reset and sync', onPress: () => performSync(true), style: 'destructive' },
+      ]
+    );
   };
 
   useEffect(() => {
@@ -181,6 +216,15 @@ const DrawerMenuComponent = ({
                   </View>
                   {isSignedIn ? (
                     <View style={DrawerMenuStyles.footer}>
+                      <TouchableOpacity
+                        style={DrawerMenuStyles.logoutButton}
+                        onPress={handleSyncPress}
+                        accessibilityLabel={Constants.SYNC_NOW}
+                        accessibilityRole="button"
+                      >
+                        <SaveIcon width={20} height={20} color="#11336A" />
+                        <Text style={DrawerMenuStyles.logoutText}>{Constants.SYNC_NOW}</Text>
+                      </TouchableOpacity>
                       <TouchableOpacity
                         style={DrawerMenuStyles.logoutButton}
                         onPress={handleLogoutPress}

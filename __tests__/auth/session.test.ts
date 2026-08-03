@@ -1,5 +1,5 @@
 import EncryptedStorage from 'react-native-encrypted-storage';
-import { establishSession } from '@auth/session';
+import { establishSession, retrySessionProfile } from '@auth/session';
 import { getCurrentToken, saveCurrentToken } from '@auth/tokenUtils';
 import { store } from '../../store';
 
@@ -42,6 +42,51 @@ describe('establishSession', () => {
     await establishSession('tok');
     expect(store.getState().auth.status).toBe('signedIn');
     expect(store.getState().auth.email).toBeNull();
+  });
+
+  it('fills in the profile on a later retry after a transient failure', async () => {
+    await saveCurrentToken('tok');
+    mockFetch(async () => {
+      throw new Error('offline');
+    });
+    await establishSession('tok');
+
+    mockFetch(async () => ({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ email: 'a@b.com', firstname: 'A', lastname: 'B' }),
+    }));
+    await retrySessionProfile();
+
+    expect(store.getState().auth.email).toBe('a@b.com');
+  });
+
+  it('does not let an older same-token failure overwrite a newer successful retry', async () => {
+    await saveCurrentToken('tok');
+    let rejectOld!: (error: Error) => void;
+    let resolveNew!: (value: unknown) => void;
+    const oldRequest = new Promise((_, reject) => {
+      rejectOld = reject;
+    });
+    const newRequest = new Promise((resolve) => {
+      resolveNew = resolve;
+    });
+    const requests = [oldRequest, newRequest];
+    let call = 0;
+    globalThis.fetch = jest.fn(() => requests[call++]) as unknown as typeof fetch;
+
+    const first = establishSession('tok');
+    const retry = establishSession('tok');
+    resolveNew({
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ email: 'a@b.com', firstname: 'A', lastname: 'B' }),
+    });
+    await retry;
+    rejectOld(new Error('old network failure'));
+    await first;
+
+    expect(store.getState().auth.email).toBe('a@b.com');
   });
 
   it('an invalid stale token does NOT delete a different (newer) stored token', async () => {

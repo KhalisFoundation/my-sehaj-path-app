@@ -7,6 +7,8 @@ import type {
   VishraamsSource,
 } from '../types';
 import { SETTINGS_DEFAULTS, type SettingsState } from './slices/settingsSlice';
+import type { PersistedSyncState } from './slices/syncSlice';
+import { SYNC_META_KEY, serializeSyncMeta } from './syncFormat';
 
 /**
  * The nine keys written by every production build to date. Phase 1 freezes
@@ -27,6 +29,14 @@ export const LEGACY_KEYS = [
 
 export type LegacyKey = (typeof LEGACY_KEYS)[number];
 export type LegacySettingKey = Exclude<LegacyKey, 'pathDetails' | 'pathDateDetails'>;
+
+/**
+ * Every key the write coordinator owns: the nine frozen legacy keys plus the
+ * app-private sync-bookkeeping key. Path/date data and the sync intent that
+ * describes it are committed through one journal so they stay atomic.
+ */
+export const DURABLE_KEYS = [...LEGACY_KEYS, SYNC_META_KEY] as const;
+export type DurableKey = (typeof DURABLE_KEYS)[number];
 
 /** App-private key. Older binaries ignore unknown keys, so this is safe to add. */
 export const JOURNAL_KEY = 'reduxWriteJournal_v1';
@@ -399,16 +409,19 @@ export interface Snapshot {
   settings: SettingsState;
   paths: PathData[];
   dates: DateData[];
+  sync: PersistedSyncState;
   quarantinedRecords?: QuarantinedLegacyRecords;
 }
 
 /**
- * Produces the exact legacy on-disk representation for one key.
+ * Produces the exact on-disk representation for one durable key.
  * Booleans MUST be raw 'true'/'false', not JSON-quoted, or an older binary
  * reading `larivaar === 'true'` would silently see false.
  */
-export const serializeKey = (key: LegacyKey, snapshot: Snapshot): string => {
+export const serializeKey = (key: DurableKey, snapshot: Snapshot): string => {
   switch (key) {
+    case SYNC_META_KEY:
+      return serializeSyncMeta(snapshot.sync);
     case 'larivaar':
       return String(snapshot.settings.larivaar);
     case 'paragraphMode':
@@ -430,22 +443,27 @@ export const serializeKey = (key: LegacyKey, snapshot: Snapshot): string => {
   }
 };
 
-/** Which legacy keys differ between two snapshots. */
-export const changedKeys = (from: Snapshot | null, to: Snapshot): LegacyKey[] => {
+/** Which durable keys differ between two snapshots. */
+export const changedKeys = (from: Snapshot | null, to: Snapshot): DurableKey[] => {
   if (!from) {
-    return [...LEGACY_KEYS];
+    return [...DURABLE_KEYS];
   }
-  const changed: LegacyKey[] = [];
-  for (const key of LEGACY_KEYS) {
+  const changed: DurableKey[] = [];
+  for (const key of DURABLE_KEYS) {
     if (serializeKey(key, from) !== serializeKey(key, to)) {
       changed.push(key);
     }
   }
-  // Landmine #12: pathDetails and pathDateDetails must commit as a pair so a
-  // crash can never leave a path without its date record (or vice versa).
-  const pathPair: LegacyKey[] = ['pathDetails', 'pathDateDetails'];
-  if (changed.some((key) => pathPair.includes(key))) {
-    for (const key of pathPair) {
+  // Landmine #12 + sync atomicity (asymmetric): a change to EITHER path key
+  // pulls in its pair AND the sync key, so a path mutation and the UUID mapping /
+  // pending op describing it are always durable together (and a crash never
+  // leaves a path without its date record). A sync-only change — an ack, or a
+  // settings-driven stamp — does NOT drag in the path pair, so a settings save
+  // never rewrites path data.
+  const atomicGroup: DurableKey[] = ['pathDetails', 'pathDateDetails', SYNC_META_KEY];
+  const pathChanged = changed.includes('pathDetails') || changed.includes('pathDateDetails');
+  if (pathChanged) {
+    for (const key of atomicGroup) {
       if (!changed.includes(key)) {
         changed.push(key);
       }

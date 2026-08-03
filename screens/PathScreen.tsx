@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
+import { View, ScrollView, ActivityIndicator, Animated, AppState, BackHandler } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,6 +24,7 @@ import {
 import { store } from '../store';
 import { useAppSelector } from '../store/hooks';
 import { savePathProgress, undoPathCompletion } from '../store/commands';
+import { onScreenBlur, setActiveReaderPath } from '../store/syncLifecycle';
 import {
   AngsNavigation,
   Loading,
@@ -263,7 +264,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     debounceTimer.current = setTimeout(async () => {
       debounceTimer.current = null;
       try {
-        const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
+        // The verse belongs to the ang it was saved on. After navigating to a
+        // different ang, keeping it would store/send an impossible checkpoint
+        // (new ang + old ang's verse), so it resets to 0.
+        const verseIdToKeep = getDurableSavedVerseId(matchedPath.current?.saveData, pathAng);
         const wasUndoPending = completionUndoPendingRef.current;
 
         // Background auto-save: silent so a transient failure while scrolling
@@ -353,7 +357,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
 
     try {
-      const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
+      // Same rule as the auto-save: a verse from another ang must not be paired
+      // with the ang being displayed now.
+      const verseIdToKeep = getDurableSavedVerseId(matchedPath.current?.saveData, pathAng);
       // Silent: the navigation handler shows the richer "leave anyway?" choice,
       // so the command must not also pop a plain error alert.
       const saved = await savePathProgress(
@@ -372,6 +378,17 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       return false;
     }
   }, [route.params.pathId, pathAng, savedPathVerseId, scrollOffset, commitSavedPathState]);
+
+  const checkpointScrollBeforeBackground = useCallback(async () => {
+    // Do not let the 200ms debounce race the app suspension. Persist the newest
+    // in-memory offset now, then let the normal lifecycle code queue/flush it.
+    if (debounceTimer.current !== null) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+    await persistCurrentScrollPosition();
+    onScreenBlur();
+  }, [persistCurrentScrollPosition]);
 
   const { handleGoBack } = usePathNavigation({
     isAngNavigation,
@@ -611,6 +628,35 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       fadeAnim.current.stopAnimation();
     };
   }, []);
+
+  // Leaving the reader: promote any dirty scroll to an update and flush, so the
+  // final scroll position is synced (a scroll-only change never queues an op).
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('blur', () => {
+      onScreenBlur();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  // While the reader is focused: register it as the active path (so a foreground
+  // GET /paths refresh never overwrites/removes the path being read), and run the
+  // scroll checkpoint on background — the 'blur' event above doesn't fire when the
+  // app is backgrounded with the reader still focused.
+  useFocusEffect(
+    useCallback(() => {
+      const { pathId } = route.params;
+      setActiveReaderPath(pathId);
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'inactive' || state === 'background') {
+          checkpointScrollBeforeBackground();
+        }
+      });
+      return () => {
+        setActiveReaderPath(null);
+        subscription.remove();
+      };
+    }, [route.params.pathId, checkpointScrollBeforeBackground])
+  );
 
   useEffect(() => {
     if (isOnline && retryState.needsRetry && retryState.lastFailedAng !== null) {

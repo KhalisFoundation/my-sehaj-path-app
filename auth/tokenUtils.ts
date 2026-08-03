@@ -4,6 +4,20 @@ import { SP_API } from './constants';
 // Same key gurdham/mobile uses, so the pattern is consistent across Khalis apps.
 const TOKEN_KEY = 'USER_TOKEN';
 
+// Keychain/EncryptedStorage replacement is a remove+set sequence. Serialize
+// reads and mutations so an older invalid session cannot delete a newer login's
+// token between those two native calls.
+let tokenStorageQueue: Promise<unknown> = Promise.resolve();
+
+const withTokenStorageLock = <T>(task: () => Promise<T>): Promise<T> => {
+  const run = tokenStorageQueue.then(task, task);
+  tokenStorageQueue = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+};
+
 export interface UserData {
   email: string;
   firstname: string;
@@ -15,12 +29,14 @@ export interface UserData {
 }
 
 export async function getCurrentToken(): Promise<string | null> {
-  try {
-    const value = await EncryptedStorage.getItem(TOKEN_KEY);
-    return value || null;
-  } catch {
-    return null;
-  }
+  return withTokenStorageLock(async () => {
+    try {
+      const value = await EncryptedStorage.getItem(TOKEN_KEY);
+      return value || null;
+    } catch {
+      return null;
+    }
+  });
 }
 
 /**
@@ -33,26 +49,39 @@ export async function getCurrentToken(): Promise<string | null> {
  * (Mirrors gurdham/mobile's tokenUtils.saveCurrentToken.)
  */
 export async function saveCurrentToken(token: string): Promise<void> {
-  try {
-    await EncryptedStorage.removeItem(TOKEN_KEY);
-  } catch (error) {
-    const code = String((error as { code?: string | number })?.code ?? '');
-    // -25300 is errSecItemNotFound: nothing to replace.
-    if (code !== '-25300') {
-      throw error;
+  return withTokenStorageLock(async () => {
+    try {
+      await EncryptedStorage.removeItem(TOKEN_KEY);
+    } catch (error) {
+      const code = String((error as { code?: string | number })?.code ?? '');
+      // -25300 is errSecItemNotFound: nothing to replace.
+      if (code !== '-25300') {
+        throw error;
+      }
     }
-  }
-  await EncryptedStorage.setItem(TOKEN_KEY, token);
+    await EncryptedStorage.setItem(TOKEN_KEY, token);
+  });
 }
 
-/** Remove the stored token. The caller can report the uncommon storage error. */
-export async function clearCurrentToken(): Promise<boolean> {
-  try {
-    await EncryptedStorage.removeItem(TOKEN_KEY);
-    return true;
-  } catch {
-    return false;
-  }
+/**
+ * Remove the stored token. When `expectedToken` is supplied, a newer login is
+ * left untouched if it replaced the token while an old request was in flight.
+ */
+export async function clearCurrentToken(expectedToken?: string): Promise<boolean> {
+  return withTokenStorageLock(async () => {
+    try {
+      if (expectedToken !== undefined) {
+        const current = await EncryptedStorage.getItem(TOKEN_KEY);
+        if (current !== expectedToken) {
+          return true;
+        }
+      }
+      await EncryptedStorage.removeItem(TOKEN_KEY);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 }
 
 /**

@@ -11,6 +11,9 @@ import {
   SecondaryCard,
   Label,
   DrawerMenu,
+  SyncPopup,
+  SignInPopup,
+  SyncUnavailablePopup,
 } from '@components';
 import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
 import { recordError, showErrorAlert, trackEvent } from '@utils';
@@ -20,6 +23,7 @@ import { RootStackParamList } from '../App';
 import { MenuIcon } from '@icons';
 import { useAppSelector } from '../store/hooks';
 import { createPath } from '../store/commands';
+import { onForeground } from '../store/syncLifecycle';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -54,6 +58,16 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
         }
         backHandler.remove();
       };
+    }, [])
+  );
+
+  // Home is the safe place to pull another device's progress. The lifecycle
+  // helper first uploads any local work; it never applies a stale GET response
+  // over offline edits.
+  useFocusEffect(
+    useCallback(() => {
+      onForeground();
+      return undefined;
     }, [])
   );
 
@@ -111,6 +125,9 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
+      <SyncPopup mode="unowned" />
+      <SignInPopup />
+      <SyncUnavailablePopup />
       <ImageBackground
         source={require('../assets/Images/HomeScreenBg.png')}
         resizeMode="cover"
@@ -121,6 +138,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
           onPress={() => setIsDrawerVisible(true)}
           accessibilityLabel="Menu"
           accessibilityRole="button"
+          hitSlop={12}
         >
           <MenuIcon color="#0D2346" />
         </TouchableOpacity>

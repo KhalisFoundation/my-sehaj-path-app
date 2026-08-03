@@ -2,6 +2,8 @@ import { Linking } from 'react-native';
 import { recordError } from '@utils';
 import { store } from '../store';
 import { setSignedOut } from '../store/slices/authSlice';
+import { showSignInPopupAgain, resetSyncPopup } from '../store/slices/syncSlice';
+import { writeSyncPrefs } from '../store/syncPrefs';
 import { getSSOLogoutUrl } from './constants';
 import { clearLoginPending } from './loginPending';
 import { clearCurrentToken, getCurrentToken } from './tokenUtils';
@@ -18,12 +20,17 @@ import { clearCurrentToken, getCurrentToken } from './tokenUtils';
  */
 export async function logout(): Promise<void> {
   const token = await getCurrentToken();
-  const cleared = await clearCurrentToken();
+  const cleared = await clearCurrentToken(token ?? undefined);
   if (!cleared) {
     recordError(new Error('logout: token could not be cleared'), 'auth: logout token-clear failed');
   }
   await clearLoginPending();
   store.dispatch(setSignedOut());
+  // Reset the per-session sync prompt so the next login asks again.
+  store.dispatch(resetSyncPopup());
+  // Re-arm the signed-out sign-in popup so it re-appears after logging out.
+  await writeSyncPrefs({ signInPopupDismissed: false });
+  store.dispatch(showSignInPopupAgain());
 
   if (token) {
     try {

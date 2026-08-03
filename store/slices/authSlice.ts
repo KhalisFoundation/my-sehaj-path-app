@@ -33,6 +33,17 @@ const initialState: AuthState = {
   lastname: null,
 };
 
+/**
+ * The email is this app's account key: `sync.account` is compared against it to
+ * decide whether the local dataset belongs to the signed-in user. Those checks
+ * are exact equality, so the value is normalized once here rather than trusting
+ * every login to return identical casing — a differently-cased email from the
+ * identity provider would otherwise read as a *different account* and silently
+ * disable sync (or trigger an account switch) for the same person.
+ */
+export const normalizeAccountEmail = (email: string | null): string | null =>
+  email === null ? null : email.trim().toLowerCase();
+
 export const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -40,7 +51,7 @@ export const authSlice = createSlice({
     setSignedIn: (state, action: PayloadAction<AuthUser>) => {
       state.status = 'signedIn';
       state.token = action.payload.token;
-      state.email = action.payload.email;
+      state.email = normalizeAccountEmail(action.payload.email);
       state.firstname = action.payload.firstname;
       state.lastname = action.payload.lastname;
     },
