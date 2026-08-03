@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Constants, ErrorConstants } from '@constants';
 import { logout } from '@auth';
@@ -32,6 +32,8 @@ interface SyncPopupProps {
   /** Clears a reader that may still hold the previous account's path in refs. */
   onAccountSwitched?: () => void;
 }
+
+const ignoreRequestClose = () => undefined;
 
 const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupProps) => {
   const dispatch = useAppDispatch();
@@ -137,9 +139,9 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     }
   };
 
-  const onNotNow = () => {
+  const onNotNow = useCallback(() => {
     dispatch(declineSync());
-  };
+  }, [dispatch]);
 
   const onUseCloudData = async () => {
     if (!email || syncing) {
@@ -176,7 +178,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       visible={isVisible}
       // A different signed-in account must not dismiss the guard and expose the
       // previous account's active dataset. It can sync/switch or log out.
-      onRequestClose={mode === 'accountSwitch' ? () => undefined : onNotNow}
+      onRequestClose={mode === 'accountSwitch' ? ignoreRequestClose : onNotNow}
     >
       <Text style={styles.title}>
         {Constants.WELCOME}

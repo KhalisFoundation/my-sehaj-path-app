@@ -419,6 +419,19 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     navigation.push(Routes.Setting);
   }, [navigation]);
 
+  const handleCloseDrawer = useCallback(() => {
+    setIsDrawerVisible(false);
+  }, []);
+
+  const handleGoToAngPress = useCallback(() => {
+    setIsAngsNavigationVisible(true);
+  }, []);
+
+  const handleSavePress = useCallback(() => {
+    setIsSaving(true);
+    fadeAnim.current.setValue(1);
+  }, []);
+
   const handleAngsRightArrow = useCallback(() => {
     handleRightArrow(pathAng);
   }, [handleRightArrow, pathAng]);
@@ -751,15 +764,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         )}
         <DrawerMenu
           isVisible={isDrawerVisible}
-          onClose={() => setIsDrawerVisible(false)}
+          onClose={handleCloseDrawer}
           onNavigate={handlePathDrawerNavigate}
           currentRoute={Routes.Path}
           pathId={route.params.pathId}
-          onGoToAngPress={() => setIsAngsNavigationVisible(true)}
-          onSavePress={() => {
-            setIsSaving(true);
-            fadeAnim.current.setValue(1);
-          }}
+          onGoToAngPress={handleGoToAngPress}
+          onSavePress={handleSavePress}
         />
       </View>
     </SafeAreaView>

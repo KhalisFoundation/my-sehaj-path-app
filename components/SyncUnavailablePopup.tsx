@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { isApiConfigured } from '@api/config';
 import { Constants } from '@constants';
@@ -21,15 +21,16 @@ const SyncUnavailablePopupComponent = () => {
   const status = useAppSelector((state) => state.auth.status);
 
   const isVisible = !isApiConfigured() && status === 'signedIn' && !dismissed;
+  const dismiss = useCallback(() => setDismissed(true), []);
 
   return (
-    <Dialog visible={isVisible} onRequestClose={() => setDismissed(true)}>
+    <Dialog visible={isVisible} onRequestClose={dismiss}>
       <Text style={styles.title}>{Constants.SYNC_UNAVAILABLE_TITLE}</Text>
       <Text style={styles.message}>{Constants.SYNC_UNAVAILABLE_MESSAGE}</Text>
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={() => setDismissed(true)}
+          onPress={dismiss}
           accessibilityRole="button"
           accessibilityLabel={Constants.OK}
         >

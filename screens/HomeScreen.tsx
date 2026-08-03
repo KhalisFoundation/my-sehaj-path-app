@@ -95,6 +95,10 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
     }
   }, [navigation]);
 
+  const handleCloseDrawer = useCallback(() => {
+    setIsDrawerVisible(false);
+  }, []);
+
   const pathInProgressCards = useMemo(
     () =>
       pathInProgress?.map((path: PathData) => (
@@ -163,7 +167,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
         </ScrollView>
         <DrawerMenu
           isVisible={isDrawerVisible}
-          onClose={() => setIsDrawerVisible(false)}
+          onClose={handleCloseDrawer}
           onNavigate={handleDrawerNavigate}
           currentRoute={Routes.Home}
           showOnlyHomeItems={true}

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Constants } from '@constants';
 import { startLogin } from '@auth';
@@ -21,15 +21,15 @@ const SignInPopupComponent = () => {
 
   const isVisible = status === 'signedOut' && checked && !dismissed;
 
-  const dismiss = () => {
+  const dismiss = useCallback(() => {
     dispatch(dismissSignInPopup());
     writeSyncPrefs({ signInPopupDismissed: true });
-  };
+  }, [dispatch]);
 
-  const onLogin = () => {
+  const onLogin = useCallback(() => {
     dismiss();
     startLogin();
-  };
+  }, [dismiss]);
 
   return (
     <Dialog visible={isVisible} onRequestClose={dismiss}>
