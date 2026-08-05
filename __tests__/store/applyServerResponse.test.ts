@@ -477,6 +477,23 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().paths.paths).toEqual([]);
   });
 
+  it('treats 304 Not Modified as a successful refresh, not a failure', async () => {
+    // Device report: "unable to sync" after an account switch, cleared by a
+    // manual Sync. The server had answered 304 (Express adds ETags by default),
+    // axios counts only 2xx as success, and the client called it a network
+    // failure for a refresh that had worked.
+    const store = signedInStore();
+    mockFindAll.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'Not Modified' },
+      response: { status: 304 },
+    });
+
+    expect(await refreshPathsFromServer(store)).toBe(true);
+    expect(store.getState().sync.lastError).toBeNull();
+    expect(store.getState().sync.status).not.toBe('error');
+  });
+
   it('always clears the pulling flag, so the status notice cannot spin forever', async () => {
     // Device report: an infinite "Syncing…" with no error, while the data had in
     // fact reached the server. `pulling` had been left set, so the notice was

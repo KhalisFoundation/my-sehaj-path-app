@@ -90,10 +90,6 @@ const SyncStatusNoticeComponent = () => {
     (state) =>
       state.sync.pendingSettingsUpdatedAt != null && Object.keys(state.sync.pathOps).length === 0
   );
-  const hasOnlyNewPathCreates = useAppSelector((state) => {
-    const ops = Object.values(state.sync.pathOps);
-    return ops.length > 0 && ops.every((op) => op.kind === 'create');
-  });
   const accountMatches = useAppSelector(
     (state) => !!state.auth.email && state.sync.account === state.auth.email
   );
@@ -148,11 +144,13 @@ const SyncStatusNoticeComponent = () => {
       // Rising edge: real work queued, the user explicitly asked, or this is the
       // once-per-launch catch-up — the one sync the user may actually be waiting
       // on, since they just opened the app and want to know it is current.
-      meaningful.current =
-        hasNoticeWorthyPendingWork ||
-        confirmNextSync ||
-        (catchUpSyncRunning && !hasOnlyNewPathCreates) ||
-        showedError.current;
+      // Deliberately NOT "a catch-up is running". The catch-up runs on every
+      // login and every app open, including on a brand-new account with nothing
+      // on the device and nothing in the cloud — announcing that is a sync of
+      // nothing. `syncLifecycle` already decides whether a catch-up is worth
+      // reporting and says so via `confirmNextSync`; trust that instead of
+      // re-deriving it here from the fact that work is merely happening.
+      meaningful.current = hasNoticeWorthyPendingWork || confirmNextSync || showedError.current;
       // Only a settings-ONLY run is described as settings. Anything touching
       // paths is "progress", since that is the bigger of the two.
       kind.current = settingsOnly ? 'settings' : 'progress';
@@ -170,7 +168,6 @@ const SyncStatusNoticeComponent = () => {
     confirmNextSync,
     settingsOnly,
     hasNoticeWorthyPendingWork,
-    hasOnlyNewPathCreates,
     pendingCount,
   ]);
 

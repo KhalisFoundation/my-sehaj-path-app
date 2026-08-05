@@ -80,9 +80,13 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const dispatch = useAppDispatch();
   const [busy, setBusy] = useState<BusyAction>(null);
   const syncing = busy !== null;
+  /** A connect attempt is running — the device's state is still settling. */
+  const associating = busy === 'sync';
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(false);
   const [automaticSwitchFailed, setAutomaticSwitchFailed] = useState(false);
+  /** The account just put away — keeps the closing notice on screen to be read. */
+  const [switchedFrom, setSwitchedFrom] = useState<string | null>(null);
   const automaticSwitchTarget = useRef<string | null>(null);
   const silentAssociationTarget = useRef<string | null>(null);
 
@@ -92,6 +96,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const answered = useAppSelector((state) => state.sync.syncPopupAnswered);
   const account = useAppSelector((state) => state.sync.account);
   const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
+  const isOnline = useAppSelector((state) => state.network.isOnline);
   // Not `paths.length`: an orphan date record is real reading history too, and
   // quarantined records live outside Redux entirely.
   const deviceHasData = useAppSelector((state) => hasLocalData(store, state));
@@ -132,33 +137,48 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     !confirmingDiscard &&
     (mode === 'accountSwitch'
       ? isAccountSwitch
-      : account === null && !answered && !recoveryNeeded && deviceHasData);
+      : account === null &&
+        !answered &&
+        !recoveryNeeded &&
+        deviceHasData &&
+        // A silent association may be in flight for a device that was empty a
+        // moment ago. Creating a path during that window flips `deviceHasData`
+        // and would ask "what about your local progress?" about a path the user
+        // just made, while it is already being connected.
+        !associating);
 
   const completeAccountSwitch = async (addPreviousProgress: boolean, automatic = false) => {
     if (!email || syncing) {
       return;
     }
+    // Captured before anything changes: `switchAccountData` moves the account to
+    // B, so by the time the closing notice renders this value is already gone.
+    const previousAccount = account;
     setBusy(addPreviousProgress ? 'addCopy' : 'keepForPrevious');
-    const ok = await switchAccountData(store, email, addPreviousProgress);
-    if (!ok) {
-      setBusy(null);
-      if (automatic) {
-        setAutomaticSwitchFailed(true);
-      }
-      showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
-      return;
-    }
-    dispatch(approveSync(email));
-    // B's saved local data may replace A's visible data immediately, followed
-    // by a cloud refresh. Keep that transition behind one clear loading dialog
-    // rather than briefly showing an old screen plus the small sync notice.
-    setLoadingProgress(true);
+    let switched = false;
     try {
+      const ok = await switchAccountData(store, email, addPreviousProgress);
+      if (!ok) {
+        if (automatic) {
+          setAutomaticSwitchFailed(true);
+        }
+        showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+        return;
+      }
+      switched = true;
+      dispatch(approveSync(email));
+      setLoadingProgress(true);
       if (mode === 'accountSwitch') {
         onAccountSwitched?.();
       }
+      // B's saved data replaces A's immediately, then a cloud refresh follows.
       await onForeground();
     } finally {
+      // Set together so React batches them into ONE render: loading gives way
+      // to the confirmation with no frame in between.
+      if (switched && previousAccount) {
+        setSwitchedFrom(previousAccount);
+      }
       setLoadingProgress(false);
       setBusy(null);
     }
@@ -171,11 +191,23 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       }
       setBusy('sync');
       const ok = await runConfirmedAccountSync(store, email);
-      setBusy(null);
       if (ok) {
         dispatch(approveSync(email));
+        // Pull once more before releasing the busy state. Home's focus effect
+        // does NOT re-fire when the user was already standing on Home as they
+        // signed in, so nothing else would fetch what another device synced
+        // while this one was signed out — the list would sit stale until the
+        // screen happened to be re-focused.
+        setLoadingProgress(true);
+        try {
+          await onForeground();
+        } finally {
+          setLoadingProgress(false);
+          setBusy(null);
+        }
         return;
       }
+      setBusy(null);
       // A silent association that fails must stay silent: the data is untouched
       // and still readable, and the next foreground or reconnect retries it.
       if (!silent) {
@@ -215,12 +247,23 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   ]);
 
   // Cases 1 & 2: associate an empty device without a prompt.
+  //
+  // The attempt is keyed by account AND connectivity, not by account alone. The
+  // key used to be the email, set before the request and never cleared — so a
+  // single failure (a cold start, a blip) meant the device was never associated
+  // for the rest of the session. The user would then create a path and be asked
+  // about "local progress" on what should have been a connected account.
+  //
+  // Keying on connectivity too gives a natural retry: coming back online is a
+  // new opportunity, and the attempt runs again. It cannot spin, because the key
+  // only changes when the network state actually changes.
+  const attemptKey = `${email ?? ''}:${isOnline ? 'online' : 'offline'}`;
   useEffect(() => {
-    if (canAssociateSilently && silentAssociationTarget.current !== email && !syncing) {
-      silentAssociationTarget.current = email;
+    if (canAssociateSilently && silentAssociationTarget.current !== attemptKey && !syncing) {
+      silentAssociationTarget.current = attemptKey;
       associate(true);
     }
-  }, [canAssociateSilently, email, syncing, associate]);
+  }, [canAssociateSilently, attemptKey, syncing, associate]);
 
   const onNotNow = useCallback(() => {
     dispatch(declineSync());
@@ -258,7 +301,66 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   // Signing out must dismiss this. `auth.email` clears before `sync.account`
   // does, so the switch condition alone stays true after logout and would pin
   // the dialog on screen forever — making Logout look broken.
-  if (mode === 'accountSwitch' && isAccountSwitch && status === 'signedIn' && !!email) {
+  // The switch is done. Hold the explanation until the user dismisses it — a
+  // silent switch is exactly the moment they need to be told their other
+  // account's reading was not lost, and that message used to flash past.
+  if (mode === 'accountSwitch' && switchedFrom && status === 'signedIn' && !!email) {
+    return (
+      <Dialog visible onRequestClose={() => setSwitchedFrom(null)}>
+        <Text style={styles.title}>{Constants.SWITCHED_ACCOUNT_TITLE}</Text>
+        <Text style={styles.message}>
+          <Text style={styles.strong}>{switchedFrom}</Text>
+          {`'s progress is saved on this device and comes back when you sign in as that account.`}
+        </Text>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={() => setSwitchedFrom(null)}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.OK}
+          >
+            <Text style={styles.primaryText}>{Constants.OK}</Text>
+          </TouchableOpacity>
+        </View>
+      </Dialog>
+    );
+  }
+
+  // A switch that needs no decision has nothing to say while it runs. Showing
+  // "Switching account…" and then the loading dialog is two waiting screens back
+  // to back, for an account whose reading is already safely backed up. Render
+  // the loading state directly so the whole thing reads as one step, ending in
+  // the explanation of where that account's reading went.
+  const switchNeedsNoDecision =
+    mode === 'accountSwitch' &&
+    (isAccountSwitch || syncing) &&
+    status === 'signedIn' &&
+    !!email &&
+    !accountSwitchNeedsChoice &&
+    !automaticSwitchFailed &&
+    !recoveryNeeded;
+  if (switchNeedsNoDecision) {
+    return (
+      <Dialog visible onRequestClose={ignoreRequestClose}>
+        <View style={styles.loadingState} accessibilityLabel={Constants.LOADING_PROGRESS}>
+          <ActivityIndicator size="large" color="#11336A" />
+          <Text style={styles.message}>{Constants.LOADING_PROGRESS}</Text>
+        </View>
+      </Dialog>
+    );
+  }
+
+  // `|| syncing` is what removes the flash. `switchAccountData` sets the account
+  // to B, so `isAccountSwitch` goes false the moment it succeeds — closing this
+  // dialog for one render before the loading dialog replaced it. Staying up
+  // while the switch is still running keeps the sequence continuous, and keeps
+  // the per-button progress and the Logout escape available throughout.
+  if (
+    mode === 'accountSwitch' &&
+    (isAccountSwitch || syncing) &&
+    status === 'signedIn' &&
+    !!email
+  ) {
     const blockedByRecovery = recoveryNeeded;
     // Title and body must describe the SAME state. A silent switch showing
     // "Unsynced progress found" tells the user their progress is at risk when

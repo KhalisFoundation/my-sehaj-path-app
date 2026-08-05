@@ -64,7 +64,29 @@ export const configureApiClient = (): boolean => {
     return false;
   }
   configured = true;
-  client.setConfig({ baseURL: SEHAJ_API_BASE_URL, timeout: REQUEST_TIMEOUT_MS });
+  client.setConfig({
+    baseURL: SEHAJ_API_BASE_URL,
+    timeout: REQUEST_TIMEOUT_MS,
+    // Never let the platform HTTP cache store these responses.
+    //
+    // Two problems it solves, both caused by the same thing. Express sends
+    // ETags by default, so iOS/Android revalidate with `If-None-Match` and the
+    // server answers 304 Not Modified with no body:
+    //
+    //  1. Axios counts only 2xx as success, so a 304 arrived as a transport
+    //     error and the user was told "unable to sync" about a sync that
+    //     worked.
+    //  2. Worse, an HTTP cache keys on URL. These endpoints return DIFFERENT
+    //     data per account at the SAME url, distinguished only by the bearer
+    //     token — and the responses carry no `Vary: Authorization`. A cached
+    //     entry from one account could therefore be revalidated, or served,
+    //     for another.
+    //
+    // `no-store` stops the response being cached at all, so no conditional
+    // request is ever made and neither problem can arise. These payloads are
+    // small and already coalesced; there is nothing to gain from caching them.
+    headers: { 'Cache-Control': 'no-store', Pragma: 'no-cache' },
+  });
   client.instance.interceptors.request.use(async (requestConfig) => {
     const token = await tokenGetter();
     // A sync operation may pin the token that owned its local snapshot. Do not

@@ -9,7 +9,7 @@ import {
   requestSyncConfirmation,
   setCatchUpSyncRunning,
 } from './slices/syncSlice';
-import { hasWorkBlockingPull, isPathOpBlocked } from './syncWork';
+import { hasLocalData, hasWorkBlockingPull, isPathOpBlocked } from './syncWork';
 
 /**
  * Sync lifecycle triggers (Step 10). App.tsx / screens call these at the right
@@ -32,6 +32,17 @@ export const canSyncNow = (): boolean => {
 };
 
 const hasPendingWork = (): boolean => hasWorkBlockingPull(store);
+
+/**
+ * A cheap signature of the reading the user can see, used to tell whether the
+ * catch-up actually brought anything down.
+ */
+const pathSignature = (): string => {
+  const { paths } = store.getState();
+  return paths.paths
+    .map((path) => `${path.pathId}:${path.saveData.angNumber}.${path.saveData.verseId}`)
+    .join('|');
+};
 
 /**
  * Promote every scroll-only checkpoint before a full sync attempt.
@@ -94,11 +105,14 @@ export const onForeground = async (activePathId?: number): Promise<void> => {
   const isCatchUpSync = !store.getState().sync.catchUpSyncDone;
   if (isCatchUpSync) {
     store.dispatch(setCatchUpSyncRunning(true));
-    // The user just opened the app and may be waiting to know their reading is
-    // current, so this one always reports its outcome — unlike the background
-    // drains, which stay silent unless they carry something.
-    store.dispatch(requestSyncConfirmation());
+    // Confirm up front only when this device actually HAS reading to reconcile.
+    // A brand-new account has nothing on the device and nothing in the cloud, so
+    // "Synced" would be announcing something that never happened.
+    if (hasLocalData(store)) {
+      store.dispatch(requestSyncConfirmation());
+    }
   }
+  const before = isCatchUpSync ? pathSignature() : '';
 
   try {
     promoteDirtyScroll();
@@ -114,6 +128,12 @@ export const onForeground = async (activePathId?: number): Promise<void> => {
     recordError(error, 'syncLifecycle: foreground sync failed');
   } finally {
     if (isCatchUpSync) {
+      // Nothing locally, but another device's reading arrived. That IS worth
+      // reporting — it explains a list that just changed on screen. Requested
+      // late by necessity: a pull only knows what it fetched once it is done.
+      if (pathSignature() !== before) {
+        store.dispatch(requestSyncConfirmation());
+      }
       store.dispatch(markCatchUpSyncDone());
     }
   }

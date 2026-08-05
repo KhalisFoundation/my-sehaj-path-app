@@ -71,6 +71,13 @@ interface Options {
 type Outcome = 'acked' | 'conflict' | 'auth' | 'network' | 'permanent' | 'stale';
 
 const classify = (status: number | undefined): Outcome => {
+  // 304 Not Modified means the server has nothing new — the request succeeded.
+  // Axios counts only 2xx as success, so without this a conditional response
+  // (Express sends ETags by default, and proxies add them) falls through to the
+  // catch-all below and reports a transport failure for a sync that worked.
+  if (status === 304) {
+    return 'acked';
+  }
   if (status === 401) {
     return 'auth';
   }

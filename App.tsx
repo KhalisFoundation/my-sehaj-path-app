@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Provider } from 'react-redux';
-import { createNavigationContainerRef, NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
@@ -20,6 +20,7 @@ import { outbox, persistence } from './store/instance';
 import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syncLifecycle';
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -31,7 +32,6 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 /**
  * Enables analytics/crashlytics collection when the user has consented.
@@ -53,12 +53,6 @@ const AnalyticsConsent = () => {
 const App = () => {
   // null = hydrating, false = failed (fail-closed), true = ready
   const [ready, setReady] = useState<boolean | null>(null);
-
-  const resetToHomeAfterAccountSwitch = useCallback(() => {
-    if (navigationRef.isReady()) {
-      navigationRef.reset({ index: 0, routes: [{ name: Routes.Home }] });
-    }
-  }, []);
 
   // Handle the SSO login return deep link (khalissehajpath://login?token=…).
   // Registered once; independent of the store-hydration gate above.
@@ -148,6 +142,21 @@ const App = () => {
     };
   }, [hydrate]);
 
+  if (__DEV__) {
+    (globalThis as any).storageKeys = () => AsyncStorage.getAllKeys();
+
+    (globalThis as any).readStorage = async () => {
+      const keys = await AsyncStorage.getAllKeys();
+      return AsyncStorage.multiGet(keys);
+    };
+
+    (globalThis as any).writeStorage = (key: string, value: string) =>
+      AsyncStorage.setItem(key, value);
+    (globalThis as any).authState = () => store.getState().auth;
+    (globalThis as any).syncState = () => store.getState().sync;
+    (globalThis as any).removeStorage = (key: string) => AsyncStorage.removeItem(key);
+  }
+
   return (
     <Provider store={store}>
       {ready === null && <BootSplash />}
@@ -159,8 +168,8 @@ const App = () => {
           {/* A known-account switch is a data boundary, not only a Home-screen
               prompt. Keep it app-wide so B can never continue editing A's
               active paths from the reader while the switch is unresolved. */}
-          <SyncPopup mode="accountSwitch" onAccountSwitched={resetToHomeAfterAccountSwitch} />
-          <NavigationContainer ref={navigationRef}>
+          <SyncPopup mode="accountSwitch" />
+          <NavigationContainer>
             <Stack.Navigator
               initialRouteName={Routes.Splash}
               screenOptions={{

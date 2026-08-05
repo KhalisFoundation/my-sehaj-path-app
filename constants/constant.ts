@@ -82,6 +82,8 @@ export const Constants: Constant = {
   ACCOUNT_SWITCH_TITLE: 'Unsaved progress',
   /** Case 4 — a backed-up account is being replaced, nothing is at risk. */
   SWITCHING_ACCOUNT_TITLE: 'Switching account',
+  /** Shown after a silent switch, so the user learns where A's reading went. */
+  SWITCHED_ACCOUNT_TITLE: 'Switched account',
   LOADING_PROGRESS: 'Loading your progress…',
   /** The switch could not complete; the previous account is still safe. */
   ACCOUNT_SWITCH_FAILED_TITLE: 'Could not switch',

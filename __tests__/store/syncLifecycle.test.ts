@@ -186,19 +186,43 @@ describe('post-login catch-up', () => {
     expect(types()).not.toContain(setCatchUpSyncRunning.type);
   });
 
-  it('always reports its outcome, so a reload confirms it checked', async () => {
-    // The user just opened the app; unlike a background drain, this is the sync
-    // they may be waiting on. Requesting up front also matters because the pull
-    // only learns it downloaded something after it finishes.
+  it('says nothing on a brand-new account with nothing anywhere', async () => {
+    // Device report: signing in as a new user reported "Synced" — announcing a
+    // sync of nothing, on a device with no reading and an account with none.
+    await onForeground();
+
+    expect(types()).not.toContain(requestSyncConfirmation.type);
+  });
+
+  it('reports when this device has reading to reconcile', async () => {
+    mockState.paths.paths = [{ pathId: 1, saveData: { angNumber: 2, verseId: 0 }, pathName: 'P' }];
+
     await onForeground();
 
     expect(types()).toContain(requestSyncConfirmation.type);
   });
 
-  it('requests the confirmation before the work, not after it', async () => {
+  it("reports when another device's reading arrives on an empty device", async () => {
+    // Nothing locally, so nothing is requested up front — but the pull brings
+    // paths down, and that change on screen is worth explaining.
+    mockRefresh.mockImplementationOnce(async () => {
+      mockState.paths.paths = [
+        { pathId: 1, saveData: { angNumber: 9, verseId: 0 }, pathName: 'From cloud' },
+      ];
+      return true;
+    });
+
+    await onForeground();
+
+    expect(types()).toContain(requestSyncConfirmation.type);
+  });
+
+  it('requests the confirmation before finishing, not after', async () => {
     // Device report: a reload that downloaded another device's progress showed
     // nothing, because the request arrived after the notice had already decided
     // to stay quiet.
+    mockState.paths.paths = [{ pathId: 1, saveData: { angNumber: 2, verseId: 0 }, pathName: 'P' }];
+
     await onForeground();
 
     const order = types();

@@ -445,6 +445,14 @@ const performRefreshPathsFromServer = async (
       return false;
     }
     const settingsMissing = settingsResult.error && settingsResult.response?.status === 404;
+    // "Nothing changed" is a successful answer, not a failure. Without this the
+    // client reports "unable to sync" for a refresh the server answered fine.
+    const pathsUnchanged = pathsResult.error && pathsResult.response?.status === 304;
+    if (pathsUnchanged) {
+      store.dispatch(setSyncError(null));
+      store.dispatch(setSyncStatus('idle'));
+      return true;
+    }
     if (pathsResult.error || !pathsResult.data || (settingsResult.error && !settingsMissing)) {
       // A foreground refresh has no caller that can show its false result. Put
       // the failure in sync state so the in-app status notice can tell the user

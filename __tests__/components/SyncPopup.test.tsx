@@ -26,9 +26,11 @@ const mockState: {
     scrollDirty?: Record<string, unknown>;
     pendingSettingsUpdatedAt?: number | null;
   };
+  network: { isOnline: boolean };
 } = {
   auth: { status: 'signedIn', email: 'u@e.com', firstname: 'U' },
   paths: { paths: [], dates: [] },
+  network: { isOnline: true },
   sync: {
     syncPopupAnswered: false,
     account: null,
@@ -92,6 +94,7 @@ beforeEach(() => {
   mockState.sync.pathOps = {};
   mockState.sync.scrollDirty = {};
   mockState.sync.pendingSettingsUpdatedAt = null;
+  mockState.network.isOnline = true;
   // Case 3 is "unowned progress exists". Without local data the device has
   // nothing to ask about and associates silently instead.
   mockState.paths.paths = [{ pathId: 1 }];
@@ -164,6 +167,79 @@ describe('SyncPopup — unowned progress', () => {
       false
     );
     expect(mockRun).toHaveBeenCalledWith(expect.anything(), 'u@e.com');
+  });
+
+  it('does not ask about local progress while the account is still connecting', async () => {
+    // Device report: signed in with a new account and no reading, created a
+    // path, and was asked what to do with "local progress" — on an account that
+    // was in the middle of connecting silently.
+    mockState.paths.paths = [];
+    mockState.paths.dates = [];
+    let finish: (value: boolean) => void = () => undefined;
+    mockRun.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        })
+    );
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(<SyncPopup />);
+    });
+
+    // The user creates a path while the silent association is still running.
+    mockState.paths.paths = [{ pathId: 1 }];
+    await act(async () => {
+      renderer.update(<SyncPopup />);
+    });
+
+    expect(renderer.root.find((node) => node.type === ('Dialog' as never)).props.visible).toBe(
+      false
+    );
+    await act(async () => {
+      finish(true);
+    });
+  });
+
+  it('retries a failed silent association when the network returns', async () => {
+    // The attempt used to be keyed by email alone and marked before the request,
+    // so one failure meant the device was never connected again that session.
+    mockState.paths.paths = [];
+    mockState.paths.dates = [];
+    mockState.network.isOnline = false;
+    mockRun.mockResolvedValue(false);
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(<SyncPopup />);
+    });
+    const attemptsWhileOffline = mockRun.mock.calls.length;
+
+    mockState.network.isOnline = true;
+    mockRun.mockResolvedValue(true);
+    // A differing prop object so `React.memo` re-renders the SAME instance —
+    // the retry latch lives in a ref, so remounting would not test it.
+    await act(async () => {
+      renderer.update(<SyncPopup mode="unowned" />);
+    });
+
+    expect(mockRun.mock.calls.length).toBeGreaterThan(attemptsWhileOffline);
+  });
+
+  it("refreshes after connecting, so another phone's reading appears at once", async () => {
+    // Home's focus effect does not re-fire when the user was already on Home as
+    // they signed in, so without this the list sits stale until the screen
+    // happens to be re-focused.
+    mockState.paths.paths = [];
+    mockState.paths.dates = [];
+    mockRun.mockResolvedValue(true);
+
+    await act(async () => {
+      ReactTestRenderer.create(<SyncPopup />);
+    });
+
+    expect(mockOnForeground).toHaveBeenCalled();
   });
 
   it('still prompts when only an orphan date record remains', async () => {
@@ -340,8 +416,72 @@ describe('SyncPopup — account switch guard', () => {
     const titles = renderer.root
       .findAll((node) => typeof node.props.children === 'string')
       .map((node) => node.props.children as string);
+    // Nothing was unsynced, so it must never say so. Once the silent switch
+    // finishes it explains where A's reading went instead.
     expect(titles).not.toContain(Constants.ACCOUNT_SWITCH_TITLE);
-    expect(titles).toContain(Constants.SWITCHING_ACCOUNT_TITLE);
+    expect(titles).toContain(Constants.SWITCHED_ACCOUNT_TITLE);
+  });
+
+  it('shows no decision dialog when the previous account is fully backed up', async () => {
+    // Device report: a fully-synced account still produced a dialog, then a
+    // loading screen, then the confirmation — three screens for a switch that
+    // asks nothing. The first two are both "please wait".
+    mockState.auth.email = 'b@e.com';
+    mockState.sync.account = 'a@e.com';
+    mockState.sync.lastSyncedAt = 10;
+    mockState.sync.meta = { 1: { onServer: true, deletedAt: null } };
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(<SyncPopup mode="accountSwitch" />);
+    });
+
+    const titles = renderer.root
+      .findAll((node) => typeof node.props.children === 'string')
+      .map((node) => node.props.children as string);
+    // Never the "please wait" dialog that duplicates the loading state.
+    expect(titles).not.toContain(Constants.SWITCHING_ACCOUNT_TITLE);
+    // A choice is never offered either — there is nothing to decide.
+    expect(
+      renderer.root.findAll((node) => node.props.accessibilityLabel === `Keep it safe for a@e.com`)
+    ).toHaveLength(0);
+  });
+
+  it('keeps the switched-account explanation until it is dismissed', async () => {
+    // Device report: the switch message went by too fast to read. A restored
+    // local snapshot needs no network, so the switch can finish in well under a
+    // second and the explanation flashed past.
+    mockState.auth.email = 'b@e.com';
+    mockState.sync.account = 'a@e.com';
+    mockState.sync.lastSyncedAt = 10;
+    mockState.sync.meta = { 1: { onServer: true, deletedAt: null } };
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(<SyncPopup mode="accountSwitch" />);
+    });
+
+    // Still on screen after the switch completed, naming the account put away.
+    const dialog = renderer.root.find((node) => node.type === ('Dialog' as never));
+    expect(dialog.props.visible).toBe(true);
+    const texts = renderer.root
+      .findAll((node) => typeof node.props.children === 'string')
+      .map((node) => node.props.children as string);
+    expect(texts).toContain('a@e.com');
+
+    // The real switch sets the account to B; the mocked store cannot, so mirror
+    // it here before dismissing, or the switch guard still thinks it is running.
+    mockState.sync.account = 'b@e.com';
+
+    // And it closes on the user's terms, not a timer.
+    await act(async () => {
+      renderer.root.find((node) => node.props.accessibilityLabel === Constants.OK).props.onPress();
+    });
+    expect(
+      renderer.root
+        .findAll((node) => node.type === ('Dialog' as never))
+        .every((d) => d.props.visible === false)
+    ).toBe(true);
   });
 
   it('disappears once the user signs out', async () => {
