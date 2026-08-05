@@ -30,6 +30,11 @@ export const DialogStyles = StyleSheet.create({
     color: '#2C3E50',
     textAlign: 'center',
   },
+  /** Emphasis inside a message — used for the account emails being compared. */
+  strong: {
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    color: '#11336A',
+  },
   actions: {
     flexDirection: 'row',
     flexWrap: 'wrap',

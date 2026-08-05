@@ -25,21 +25,6 @@ export const SyncStatusNoticeStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  offlineIcon: {
-    width: 19,
-    height: 19,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  offlineIconText: {
-    fontFamily: font.Baloo_Paaji_2_Medium,
-    color: '#FFFFFF',
-    fontSize: 13,
-    lineHeight: 16,
-  },
   text: {
     fontFamily: font.Baloo_Paaji_2_Regular,
     color: '#FFFFFF',

@@ -263,28 +263,52 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     // Title and body must describe the SAME state. A silent switch showing
     // "Unsynced progress found" tells the user their progress is at risk when
     // nothing is wrong.
+    // Emails are the two things the user must actually tell apart here, so they
+    // are the only emphasised words. Each account is named ONCE — repeating a
+    // long address three times in four lines is what made this read as a wall of
+    // text rather than a question.
+    const who = <Text style={styles.strong}>{account}</Text>;
+    const signedIn = <Text style={styles.strong}>{email}</Text>;
+
     const switchContent = () => {
       if (blockedByRecovery) {
         return {
           title: Constants.ACCOUNT_SWITCH_BLOCKED_TITLE,
-          message: `This device has progress for ${account}, but its backup status could not be verified. Please sign in as that account first.`,
+          message: (
+            <>
+              Progress for {who} is on this device, but we could not confirm it is backed up. Please
+              sign in as that account first.
+            </>
+          ),
         };
       }
       if (accountSwitchNeedsChoice) {
         return {
           title: Constants.ACCOUNT_SWITCH_TITLE,
-          message: `This device has progress for ${account} that hasn’t been saved to their account yet. Keep it safe for ${account}, or add a copy to ${email}?`,
+          message: (
+            <>
+              {who} has progress on this device that was never saved to their account. Keep it for
+              them, or add a copy to {signedIn}?
+            </>
+          ),
         };
       }
       if (automaticSwitchFailed) {
         return {
           title: Constants.ACCOUNT_SWITCH_FAILED_TITLE,
-          message: `${account}’s progress is safe, but this device could not switch to ${email}. Please try again.`,
+          message: (
+            <>
+              Progress for {who} is safe, but this device could not switch to {signedIn}. Please try
+              again.
+            </>
+          ),
         };
       }
       return {
         title: Constants.SWITCHING_ACCOUNT_TITLE,
-        message: `${account}’s progress is saved on this device and returns when you sign in as that account.`,
+        message: (
+          <>Progress for {who} stays on this device and returns when you sign in as that account.</>
+        ),
       };
     };
     const { title, message } = switchContent();
@@ -359,7 +383,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
             accessibilityRole="button"
             accessibilityLabel={Constants.LOGOUT}
           >
-            <Text style={styles.linkText}>{Constants.LOGOUT}</Text>
+            <Text style={styles.destructiveLinkText}>{Constants.LOGOUT}</Text>
           </TouchableOpacity>
         </View>
       </Dialog>

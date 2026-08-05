@@ -177,18 +177,44 @@ export const savePathProgress = async (
   options: { silent?: boolean } = {}
 ): Promise<boolean> => {
   const completed = isPathCompleted(angNumber, verseId);
+  const todayDate = todayString();
+  const completionDate = completed ? todayDate : '';
 
-  const saved = await runPathMutation(pathId, () =>
-    updatePath({
-      pathId,
-      angNumber,
-      verseId,
-      progress: progressFor(angNumber),
-      completionDate: completed ? todayString() : '',
-      todayDate: todayString(),
-      scrollPosition,
-    })
-  );
+  const saved = await runExclusive(async () => {
+    const state = store.getState();
+    const path = state.paths.paths.find((candidate) => candidate.pathId === pathId);
+    if (!path) {
+      return false;
+    }
+    const date = state.paths.dates.find((candidate) => candidate.pathid === pathId);
+    const unchanged =
+      path.saveData.angNumber === angNumber &&
+      path.saveData.verseId === verseId &&
+      path.progress === progressFor(angNumber) &&
+      path.completionDate === completionDate &&
+      (date?.scrollPosition ?? 0) === scrollPosition &&
+      !!date?.dates.some((entry) => entry.date === todayDate);
+
+    // Back/navigation checkpoints often save the exact point that was already
+    // saved and uploaded from the reader. Treat that as a successful no-op:
+    // stamping it again would create a needless PATCH and a second sync notice
+    // when Home performs its normal background comparison.
+    if (unchanged) {
+      return true;
+    }
+
+    return dispatchDurable(
+      updatePath({
+        pathId,
+        angNumber,
+        verseId,
+        progress: progressFor(angNumber),
+        completionDate,
+        todayDate,
+        scrollPosition,
+      })
+    );
+  });
 
   // Same message the old code used. Suppressed for the background scroll
   // auto-save, which fires too often to alert on each transient failure.

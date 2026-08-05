@@ -191,6 +191,20 @@ describe('atomic rollback', () => {
 });
 
 describe('savePathProgress', () => {
+  it('does not create a second local update for an unchanged checkpoint', async () => {
+    const id = await createPath();
+    expect(id).not.toBeNull();
+
+    await savePathProgress(id!, 42, 100, 240);
+    const firstOperation = store.getState().sync.pathOps[id!];
+
+    await savePathProgress(id!, 42, 100, 240);
+
+    // Going Home after a reader save is a successful no-op, not a newer sync
+    // operation. This prevents a duplicate upload/notice for the same point.
+    expect(store.getState().sync.pathOps[id!]).toEqual(firstOperation);
+  });
+
   it('rolls back progress when the write fails', async () => {
     const id = await createPath();
     expect(id).not.toBeNull();

@@ -79,12 +79,12 @@ export const Constants: Constant = {
    * Only this one may mention unsynced progress; the others describe a switch
    * that is fine, so reusing this title would alarm the user for no reason.
    */
-  ACCOUNT_SWITCH_TITLE: 'Unsynced progress found',
+  ACCOUNT_SWITCH_TITLE: 'Unsaved progress',
   /** Case 4 — a backed-up account is being replaced, nothing is at risk. */
   SWITCHING_ACCOUNT_TITLE: 'Switching account',
   LOADING_PROGRESS: 'Loading your progress…',
   /** The switch could not complete; the previous account is still safe. */
-  ACCOUNT_SWITCH_FAILED_TITLE: 'Could not switch account',
+  ACCOUNT_SWITCH_FAILED_TITLE: 'Could not switch',
   /** Recovery blocks the switch until the previous account signs in. */
   ACCOUNT_SWITCH_BLOCKED_TITLE: 'Sign in to continue',
   KEEP_FOR_PREVIOUS: 'Keep it safe',

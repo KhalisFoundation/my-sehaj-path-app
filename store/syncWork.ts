@@ -28,6 +28,17 @@ interface BlockedWork {
    * body is rescheduled forever.
    */
   syncBodies: Set<string>;
+  /**
+   * Fingerprint of the settings document the server last confirmed — either by
+   * accepting a PUT or by returning it from a GET.
+   *
+   * Lets an upload be skipped when the local document already matches, which is
+   * what happens when a setting is toggled and toggled back before the debounce
+   * fires. Runtime-only on purpose: after a restart there is no record, so the
+   * next change uploads unconditionally. A stale baseline can therefore never
+   * survive long enough to suppress a real change.
+   */
+  confirmedSettings: string | null;
 }
 
 const registries = new WeakMap<AppStore, BlockedWork>();
@@ -37,7 +48,12 @@ const registryFor = (store: AppStore): BlockedWork => {
   if (existing) {
     return existing;
   }
-  const created: BlockedWork = { paths: new Map(), settings: null, syncBodies: new Set() };
+  const created: BlockedWork = {
+    paths: new Map(),
+    settings: null,
+    syncBodies: new Set(),
+    confirmedSettings: null,
+  };
   registries.set(store, created);
   return created;
 };
@@ -62,6 +78,15 @@ export const blockSyncBody = (store: AppStore, fingerprint: string): void => {
 
 export const isSyncBodyBlocked = (store: AppStore, fingerprint: string): boolean =>
   registryFor(store).syncBodies.has(fingerprint);
+
+/** Record the settings document the server has, after a PUT or a GET. */
+export const setConfirmedSettings = (store: AppStore, fingerprint: string): void => {
+  registryFor(store).confirmedSettings = fingerprint;
+};
+
+/** True when the server is already known to hold exactly this document. */
+export const settingsAlreadyConfirmed = (store: AppStore, fingerprint: string): boolean =>
+  registryFor(store).confirmedSettings === fingerprint;
 
 /**
  * Clear every runtime marker. MUST run on logout, owner change, hydration and

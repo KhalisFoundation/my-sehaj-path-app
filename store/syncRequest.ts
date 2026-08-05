@@ -17,6 +17,24 @@ export const toSettingsBody = (settings: SettingsState) => ({
 });
 
 /**
+ * Stable identity of a settings document.
+ *
+ * Keys are sorted so the string depends only on the VALUES — two objects that
+ * mean the same thing must produce the same fingerprint regardless of how they
+ * were built, since one side comes from local state and the other from a server
+ * response. Comparing object references, or `JSON.stringify` on unsorted keys,
+ * would report a difference that is not one.
+ */
+export const settingsFingerprint = (settings: SettingsState): string => {
+  const body = toSettingsBody(settings).settings as Record<string, unknown>;
+  return JSON.stringify(
+    Object.keys(body)
+      .sort()
+      .map((key) => [key, body[key]])
+  );
+};
+
+/**
  * Builds a full `POST /sehaj-path/sync` body from the current store: every local
  * path that has sync metadata (via the Step 4 adapter), the server-issued
  * `lastSyncedAt` (omitted on a first sync so the server treats it as 0), and the

@@ -29,7 +29,8 @@ import {
   type SyncMeta,
 } from './slices/syncSlice';
 import { fromServerPath } from './syncAdapters';
-import { clearBlockedWork, hasWorkBlockingPull } from './syncWork';
+import { clearBlockedWork, hasWorkBlockingPull, setConfirmedSettings } from './syncWork';
+import { settingsFingerprint } from './syncRequest';
 import { captureSyncSession, isCurrentSyncSession, syncSessionHeaders } from './syncSession';
 
 /** Identifies which local response applies — the operation the client sent. */
@@ -476,6 +477,13 @@ const performRefreshPathsFromServer = async (
       store.getState().sync.settingsUpdatedAt === settingsUpdatedAtAtStart
     ) {
       applyServerSettings(store, settingsResult.data.settings);
+      // Local settings now mirror the server's, so record that as the confirmed
+      // baseline. Without this, a settings change made on ANOTHER device would
+      // leave this one comparing against whatever it last uploaded itself —
+      // stale forever, and every later toggle-and-undo would upload needlessly.
+      // Only safe because nothing was pending: with a pending edit the apply is
+      // skipped above and local state does NOT match the server.
+      setConfirmedSettings(store, settingsFingerprint(store.getState().settings));
     }
     // A later successful pull clears any earlier refresh-only network notice.
     // (There may be no outbox operation to clear it for us.)

@@ -26,6 +26,7 @@ import { toCreateBody, toPatchBody, type LocalPath } from './syncAdapters';
 import {
   buildSyncRequest,
   checkSyncRequestSize,
+  settingsFingerprint,
   syncRequestFingerprint,
   toSettingsBody,
 } from './syncRequest';
@@ -38,6 +39,8 @@ import {
   isPathOpBlocked,
   isSettingsBlocked,
   isSyncBodyBlocked,
+  setConfirmedSettings,
+  settingsAlreadyConfirmed,
 } from './syncWork';
 import {
   captureSyncSession,
@@ -339,6 +342,17 @@ export const createOutboxCoordinator = (
     if (rev == null || isSettingsBlocked(store, rev)) {
       return 'acked'; // nothing pending, or this exact revision is permanently rejected
     }
+
+    // Toggled and toggled back before the debounce fired: the document is
+    // already what the server holds, so the PUT would be a no-op round trip.
+    // Clearing the marker is not optional — leaving it set keeps
+    // `hasSendableWork()` true and the coordinator reschedules for ever.
+    const fingerprint = settingsFingerprint(state().settings);
+    if (settingsAlreadyConfirmed(store, fingerprint)) {
+      store.dispatch(clearSettingsIfUnchanged(rev));
+      return 'acked';
+    }
+
     try {
       const res = await sehajPathSettingsControllerUpsert({
         body: toSettingsBody(state().settings),
@@ -358,6 +372,9 @@ export const createOutboxCoordinator = (
         }
         return outcome;
       }
+      // The server now holds exactly this document, so an identical upload can
+      // be skipped until something actually changes.
+      setConfirmedSettings(store, fingerprint);
       store.dispatch(clearSettingsIfUnchanged(rev));
       return 'acked';
     } catch (error) {

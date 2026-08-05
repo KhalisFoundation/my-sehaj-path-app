@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SyncStatusNoticeStyles as styles } from '@styles';
-import { SyncedCheckIcon } from '../icons';
+import { OfflineCloudIcon, SyncedCheckIcon } from '../icons';
 import { isApiConfigured } from '@api/config';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { clearSyncConfirmation } from '../store/slices/syncSlice';
@@ -85,6 +85,11 @@ const SyncStatusNoticeComponent = () => {
       state.sync.pendingSettingsUpdatedAt != null ||
       Object.values(state.sync.pathOps).some((op) => op.kind !== 'create')
   );
+  /** A settings edit with no path work queued alongside it. */
+  const settingsOnly = useAppSelector(
+    (state) =>
+      state.sync.pendingSettingsUpdatedAt != null && Object.keys(state.sync.pathOps).length === 0
+  );
   const hasOnlyNewPathCreates = useAppSelector((state) => {
     const ops = Object.values(state.sync.pathOps);
     return ops.length > 0 && ops.every((op) => op.kind === 'create');
@@ -111,6 +116,14 @@ const SyncStatusNoticeComponent = () => {
    * is not "is this slow?" but "does this carry anything?".
    */
   const meaningful = useRef(false);
+  /**
+   * What this run is carrying, captured when it starts.
+   *
+   * By the time it resolves the queue is empty, so the kind has to be recorded
+   * up front. A settings change announcing "Syncing your progress…" makes the
+   * user look for a reading position that never moved.
+   */
+  const kind = useRef<'progress' | 'settings'>('progress');
   const wasBusy = useRef(false);
   /** When the current resolved message appeared, so it can be protected. */
   const resolvedAt = useRef(0);
@@ -140,6 +153,9 @@ const SyncStatusNoticeComponent = () => {
         confirmNextSync ||
         (catchUpSyncRunning && !hasOnlyNewPathCreates) ||
         showedError.current;
+      // Only a settings-ONLY run is described as settings. Anything touching
+      // paths is "progress", since that is the bigger of the two.
+      kind.current = settingsOnly ? 'settings' : 'progress';
     }
     if (!meaningful.current) {
       return undefined; // a read-only refresh stays silent however long it takes
@@ -152,6 +168,7 @@ const SyncStatusNoticeComponent = () => {
     busy,
     catchUpSyncRunning,
     confirmNextSync,
+    settingsOnly,
     hasNoticeWorthyPendingWork,
     hasOnlyNewPathCreates,
     pendingCount,
@@ -279,9 +296,10 @@ const SyncStatusNoticeComponent = () => {
     lastError === 'network'
       ? 'Unable to sync. Your progress is safe on this device.'
       : 'Unable to sync some progress. Your local progress is safe.';
+  const isSettings = kind.current === 'settings';
   const messages: Record<string, string> = {
-    syncing: 'Syncing your progress…',
-    done: 'Synced',
+    syncing: isSettings ? 'Saving your settings…' : 'Syncing your progress…',
+    done: isSettings ? 'Settings saved' : 'Synced',
     offline: 'No internet connection',
   };
   const message = messages[renderedPhase] ?? errorMessage;
@@ -311,9 +329,7 @@ const SyncStatusNoticeComponent = () => {
     >
       {renderedPhase === 'offline' ? (
         <View style={styles.row}>
-          <View style={styles.offlineIcon}>
-            <Text style={styles.offlineIconText}>!</Text>
-          </View>
+          <OfflineCloudIcon />
           <View>
             <Text style={styles.text}>{message}</Text>
             <Text style={styles.offlineSubtext}>Sync paused</Text>

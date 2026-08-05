@@ -20,7 +20,6 @@ import { outbox, persistence } from './store/instance';
 import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syncLifecycle';
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -148,21 +147,6 @@ const App = () => {
       outbox.stop();
     };
   }, [hydrate]);
-
-  if (__DEV__) {
-    (globalThis as any).storageKeys = () => AsyncStorage.getAllKeys();
-
-    (globalThis as any).readStorage = async () => {
-      const keys = await AsyncStorage.getAllKeys();
-      return AsyncStorage.multiGet(keys);
-    };
-
-    (globalThis as any).writeStorage = (key: string, value: string) =>
-      AsyncStorage.setItem(key, value);
-    (globalThis as any).authState = () => store.getState().auth;
-    (globalThis as any).syncState = () => store.getState().sync;
-    (globalThis as any).removeStorage = (key: string) => AsyncStorage.removeItem(key);
-  }
 
   return (
     <Provider store={store}>

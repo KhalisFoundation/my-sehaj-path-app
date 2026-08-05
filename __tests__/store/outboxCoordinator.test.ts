@@ -426,6 +426,51 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
+  it('skips a settings PUT when the document already matches the server', async () => {
+    const { store, coordinator } = setup();
+
+    store.dispatch(setLarivaar(true));
+    await coordinator.flushNow();
+    expect(mockSettings).toHaveBeenCalledTimes(1);
+
+    // Toggled and toggled back before the next drain: the document is identical
+    // to what the server just confirmed, so there is nothing to send.
+    mockSettings.mockClear();
+    store.dispatch(setLarivaar(false));
+    store.dispatch(setLarivaar(true));
+    await coordinator.flushNow();
+
+    expect(mockSettings).not.toHaveBeenCalled();
+    // Clearing the marker is what stops the coordinator rescheduling for ever.
+    expect(store.getState().sync.pendingSettingsUpdatedAt).toBeNull();
+    coordinator.stop();
+  });
+
+  it('still sends when the settings genuinely changed', async () => {
+    const { store, coordinator } = setup();
+    store.dispatch(setLarivaar(true));
+    await coordinator.flushNow();
+
+    mockSettings.mockClear();
+    store.dispatch(setLarivaar(false));
+    await coordinator.flushNow();
+
+    expect(mockSettings).toHaveBeenCalledTimes(1);
+    coordinator.stop();
+  });
+
+  it('does not skip when the baseline is unknown, as after a restart', async () => {
+    // The record is runtime-only, so a fresh launch must upload unconditionally
+    // rather than assume the server already agrees.
+    const { store, coordinator } = setup();
+    store.dispatch(setLarivaar(true));
+
+    await coordinator.flushNow();
+
+    expect(mockSettings).toHaveBeenCalledTimes(1);
+    coordinator.stop();
+  });
+
   it('a 401 signs the user out (clears token) and stops further sync attempts', async () => {
     const { store, coordinator } = setup();
     store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
