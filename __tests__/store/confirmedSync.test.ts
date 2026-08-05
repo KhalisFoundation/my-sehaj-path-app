@@ -319,6 +319,60 @@ describe('runConfirmedAccountSync', () => {
     expect(serializeKey('pathDetails', captureDurableSnapshot(store))).toContain('99');
   });
 
+  it('never uploads the reading it was asked to discard', async () => {
+    const store = setup([makePath(1, 'Being discarded')]);
+    mockSync.mockImplementationOnce(async ({ body }) => {
+      // Download-only. Sending the local paths would push the very data the user
+      // just chose to throw away into their account.
+      expect(body.paths).toEqual([]);
+      return syncOk([serverSehaj({ pathId: OTHER_UUID, name: 'From account' })]);
+    });
+
+    expect(await discardLocalDataAndSync(store, 'u@e.com')).toBe(true);
+    expect(store.getState().paths.paths.map((path) => path.pathName)).toEqual(['From account']);
+    expect(store.getState().sync.account).toBe('u@e.com');
+  });
+
+  it('does not remove anything until the replacement has arrived', async () => {
+    // Regression: the device used to be cleared and that emptiness written to
+    // disk BEFORE the request. A crash mid-request left the reading gone with
+    // nothing to roll back to.
+    const store = setup([makePath(1, 'Local only')]);
+    let resolveSync: (value: ReturnType<typeof syncOk>) => void = () => undefined;
+    mockSync.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSync = resolve;
+        })
+    );
+
+    const pending = discardLocalDataAndSync(store, 'u@e.com');
+    await Promise.resolve();
+
+    // Mid-request: the reading is still here and nothing has been persisted.
+    expect(store.getState().paths.paths.map((path) => path.pathName)).toEqual(['Local only']);
+    expect(mockFlush).not.toHaveBeenCalled();
+
+    resolveSync(syncOk([serverSehaj({ pathId: OTHER_UUID, name: 'From account' })]));
+    expect(await pending).toBe(true);
+  });
+
+  it('leaves the device untouched when the account cannot be reached', async () => {
+    const store = setup([makePath(1, 'Local only')]);
+    mockSync.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'offline' },
+      response: { status: 500 },
+    });
+
+    expect(await discardLocalDataAndSync(store, 'u@e.com')).toBe(false);
+
+    expect(store.getState().paths.paths.map((path) => path.pathName)).toEqual(['Local only']);
+    expect(store.getState().sync.account).toBeNull();
+    // Nothing was written at all — there is no rollback to depend on.
+    expect(mockFlush).not.toHaveBeenCalled();
+  });
+
   it('does not upload settings on login, but applies the account settings returned by the server', async () => {
     const store = setup([makePath(1)]);
     mockSync.mockImplementationOnce(async ({ body }) => {

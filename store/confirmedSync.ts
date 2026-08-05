@@ -324,14 +324,68 @@ export const discardLocalDataAndSync = async (store: AppStore, email: string): P
     return false;
   }
 
-  if (!(await clearActiveAccountDataDurably(store))) {
+  const session = captureSyncSession(before);
+  if (!session) {
     return false;
   }
-  // The confirmed flow is defined below; keeping this small destructive helper
-  // next to its durable-clear primitive makes its rollback guarantees explicit.
-  // eslint-disable-next-line @typescript-eslint/no-use-before-define
-  const synced = await runConfirmedAccountSync(store, email);
-  if (synced) {
+
+  // 1. Fetch the replacement BEFORE removing anything.
+  //
+  // An earlier version cleared the device durably and then fetched. The rollback
+  // covered a failed request, but not the app dying mid-request — and the empty
+  // state was already on disk, so the reading was gone with nothing left to
+  // restore. Fetching first means a crash at any point here leaves the device
+  // exactly as the user left it.
+  //
+  // `paths: []` makes this download-only. The account's full state comes back
+  // without uploading the very reading the user asked to discard.
+  let result;
+  try {
+    result = await sehajPathSyncControllerSync({
+      body: { paths: [] },
+      headers: syncSessionHeaders(session),
+      timeout: SYNC_REQUEST_TIMEOUT_MS,
+    });
+  } catch (error) {
+    recordError(error, 'confirmedSync: discard fetch failed');
+    return false;
+  }
+
+  const afterRequest = store.getState();
+  if (
+    !isCurrentSyncSession(afterRequest, session) ||
+    afterRequest.sync.account !== null ||
+    afterRequest.sync.recoveryNeeded
+  ) {
+    return false; // the session or ownership changed mid-request — touch nothing
+  }
+  if (result.error || !result.data) {
+    if (result.error && result.response?.status === 401) {
+      store.dispatch(setSignedOut());
+      if (!(await clearCurrentToken(session.token))) {
+        recordError(
+          new Error('token could not be cleared after 401'),
+          'confirmedSync: clearing token after 401 failed'
+        );
+      }
+    }
+    return false; // nothing was removed
+  }
+
+  // 2. Swap old for new. These dispatches are synchronous, so there is no moment
+  //    at which an empty dataset could reach disk on its own.
+  const snapshot = captureSyncSnapshot(store.getState());
+  store.dispatch(clearActiveAccountData());
+  setQuarantinedRecords(store, undefined);
+  // Blocked markers are keyed by local path id, and those ids are about to be
+  // reused by the account's downloaded paths. Carrying them over would silently
+  // suppress an unrelated operation on the replacement data.
+  clearBlockedWork(store);
+  applySyncResult(store, result.data, snapshot, { serverSettingsWin: true });
+  store.dispatch(setAccount(email));
+
+  // 3. One durable write for the whole swap.
+  if (await persistence.flush()) {
     return true;
   }
 

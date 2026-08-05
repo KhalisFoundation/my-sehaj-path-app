@@ -650,14 +650,22 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     };
   }, []);
 
-  // Leaving the reader: promote any dirty scroll to an update and flush, so the
-  // final scroll position is synced (a scroll-only change never queues an op).
+  // Leaving the reader — back press, the drawer, or the home icon all land here.
+  //
+  // Runs the SAME checkpoint the app-background path uses, rather than calling
+  // `onScreenBlur` alone: the scroll save is debounced by 200 ms, so closing
+  // mid-debounce left the newest offset only in memory. Promotion then found
+  // nothing to queue and the reader's final position was not sent until some
+  // later trigger. Cancelling the debounce and persisting first makes closing
+  // the path sync exactly where the user stopped, immediately.
   useEffect(() => {
     const unsubscribe = navigation.addListener('blur', () => {
-      onScreenBlur();
+      checkpointScrollBeforeBackground().catch((error) =>
+        recordError(error, 'PathScreen: leaving the reader failed to checkpoint')
+      );
     });
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, checkpointScrollBeforeBackground]);
 
   // While the reader is focused: register it as the active path (so a foreground
   // GET /paths refresh never overwrites/removes the path being read), and run the
