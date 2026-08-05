@@ -73,6 +73,27 @@ describe('runManualSync', () => {
     expect(mockRefresh).toHaveBeenCalledWith(store, undefined);
   });
 
+  it('always asks the notice to report the outcome, even with nothing to send', async () => {
+    const store = setup();
+
+    await runManualSync(store, 'u@e.com');
+
+    // The user pressed a button, so they get an answer either way — a Sync now
+    // that finds nothing still confirms it checked.
+    expect(store.getState().sync.confirmNextSync).toBe(true);
+  });
+
+  it('reports a failure when it cannot even start', async () => {
+    const store = setup();
+    store.dispatch(setOnline(false));
+
+    expect(await runManualSync(store, 'u@e.com')).toBe(false);
+
+    // Otherwise the tap produces nothing visible and reads as a dead button.
+    expect(store.getState().sync.lastError).toBe('network');
+    expect(store.getState().sync.status).toBe('error');
+  });
+
   it('uses the confirmed flow when this device is not associated with the signed-in account', async () => {
     const store = setup();
     store.dispatch(setAccount(null));

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Constants, ErrorConstants } from '@constants';
 import { logout } from '@auth';
 import { showErrorAlert } from '@utils';
@@ -13,14 +13,23 @@ import {
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { approveSync, declineSync } from '../store/slices/syncSlice';
 import { onForeground } from '../store/syncLifecycle';
+import { hasLocalData } from '../store/syncWork';
 import { Dialog } from './Dialog';
 
 /**
- * Signed-in account-sync confirmation (Step 9). Shown for a claim / fresh-device /
- * switch — i.e. when the loaded data isn't already associated with the signed-in
- * account (`sync.account !== email`). A known account (case C) resumes silently,
- * so it never appears. Recovery mode has its own repair flow, so it's excluded
- * too. Nothing syncs until the user taps "Sync now".
+ * The login/sync decision, reduced to a small tree.
+ *
+ * Which case applies is decided by two questions only — who owns the data that is
+ * currently loaded, and whether that owner has anything the server has not seen:
+ *
+ *   no owner + no data      → nothing to ask. Associate silently (cases 1 & 2).
+ *   no owner + data         → ask before uploading it (case 3).
+ *   other owner, backed up  → switch silently, with a notice (case 4).
+ *   other owner, unsynced   → ask what happens to that work (case 5).
+ *
+ * Every dialog here shows at most TWO main buttons. Secondary and destructive
+ * actions are text links underneath, and anything destructive gets its own
+ * confirmation. Nothing uploads or is removed without an explicit choice.
  */
 interface SyncPopupProps {
   /**
@@ -35,18 +44,57 @@ interface SyncPopupProps {
 
 const ignoreRequestClose = () => undefined;
 
+/**
+ * Label for a button that may be running. Shows a spinner beside "Syncing…" so
+ * the wait reads as progress rather than a button whose text simply changed.
+ */
+const ActionLabel = ({
+  running,
+  idle,
+  textStyle,
+  spinnerColor,
+}: {
+  running: boolean;
+  idle: string;
+  textStyle: object;
+  spinnerColor: string;
+}) =>
+  running ? (
+    <View style={styles.busyLabel}>
+      <ActivityIndicator size="small" color={spinnerColor} />
+      <Text style={textStyle}>{Constants.SYNCING}</Text>
+    </View>
+  ) : (
+    <Text style={textStyle}>{idle}</Text>
+  );
+
+/**
+ * Which action is currently running. A single `syncing` boolean is not enough:
+ * it puts the busy label on whichever button owns it, so pressing "Add a copy"
+ * would show "Syncing…" on "Keep it safe" instead. Only the pressed button shows
+ * progress; the rest are disabled but keep their own labels.
+ */
+type BusyAction = 'sync' | 'discard' | 'keepForPrevious' | 'addCopy' | null;
+
 const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupProps) => {
   const dispatch = useAppDispatch();
-  const [syncing, setSyncing] = useState(false);
+  const [busy, setBusy] = useState<BusyAction>(null);
+  const syncing = busy !== null;
+  const [confirmingDiscard, setConfirmingDiscard] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(false);
   const [automaticSwitchFailed, setAutomaticSwitchFailed] = useState(false);
   const automaticSwitchTarget = useRef<string | null>(null);
+  const silentAssociationTarget = useRef<string | null>(null);
+
   const status = useAppSelector((state) => state.auth.status);
   const email = useAppSelector((state) => state.auth.email);
   const firstname = useAppSelector((state) => state.auth.firstname);
   const answered = useAppSelector((state) => state.sync.syncPopupAnswered);
   const account = useAppSelector((state) => state.sync.account);
   const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
-  const hasLocalPaths = useAppSelector((state) => state.paths.paths.length > 0);
+  // Not `paths.length`: an orphan date record is real reading history too, and
+  // quarantined records live outside Redux entirely.
+  const deviceHasData = useAppSelector((state) => hasLocalData(store, state));
   const previousAccountHasUnsyncedData = useAppSelector(
     (state) =>
       state.sync.account !== null &&
@@ -68,20 +116,32 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const isAccountSwitch = account !== null && account !== email;
   const accountSwitchNeedsChoice =
     isAccountSwitch &&
-    (previousAccountHasUnsyncedData || (hasLocalPaths && !previousAccountIsFullySynced));
+    (previousAccountHasUnsyncedData || (deviceHasData && !previousAccountIsFullySynced));
+
+  /**
+   * Cases 1 & 2: unowned but empty. There is no progress to ask about, so a
+   * prompt would only be noise — and leaving `sync.account` null keeps the outbox
+   * disabled, meaning nothing the user creates afterwards would ever sync.
+   */
+  const canAssociateSilently =
+    mode === 'unowned' && account === null && !deviceHasData && !recoveryNeeded && !!email;
+
   const isVisible =
     status === 'signedIn' &&
     !!email &&
-    (mode === 'accountSwitch' ? isAccountSwitch : account === null && !answered && !recoveryNeeded);
+    !confirmingDiscard &&
+    (mode === 'accountSwitch'
+      ? isAccountSwitch
+      : account === null && !answered && !recoveryNeeded && deviceHasData);
 
   const completeAccountSwitch = async (addPreviousProgress: boolean, automatic = false) => {
     if (!email || syncing) {
       return;
     }
-    setSyncing(true);
+    setBusy(addPreviousProgress ? 'addCopy' : 'keepForPrevious');
     const ok = await switchAccountData(store, email, addPreviousProgress);
-    setSyncing(false);
     if (!ok) {
+      setBusy(null);
       if (automatic) {
         setAutomaticSwitchFailed(true);
       }
@@ -89,12 +149,43 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       return;
     }
     dispatch(approveSync(email));
-    if (mode === 'accountSwitch') {
-      onAccountSwitched?.();
+    // B's saved local data may replace A's visible data immediately, followed
+    // by a cloud refresh. Keep that transition behind one clear loading dialog
+    // rather than briefly showing an old screen plus the small sync notice.
+    setLoadingProgress(true);
+    try {
+      if (mode === 'accountSwitch') {
+        onAccountSwitched?.();
+      }
+      await onForeground();
+    } finally {
+      setLoadingProgress(false);
+      setBusy(null);
     }
-    onForeground();
   };
 
+  const associate = useCallback(
+    async (silent: boolean) => {
+      if (!email) {
+        return;
+      }
+      setBusy('sync');
+      const ok = await runConfirmedAccountSync(store, email);
+      setBusy(null);
+      if (ok) {
+        dispatch(approveSync(email));
+        return;
+      }
+      // A silent association that fails must stay silent: the data is untouched
+      // and still readable, and the next foreground or reconnect retries it.
+      if (!silent) {
+        showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+      }
+    },
+    [dispatch, email]
+  );
+
+  // Case 4: a provably backed-up account is replaced without asking.
   useEffect(() => {
     const target = `${account ?? ''}->${email ?? ''}`;
     if (
@@ -123,33 +214,26 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     syncing,
   ]);
 
-  const onSyncNow = async () => {
-    if (!email || syncing) {
-      return;
+  // Cases 1 & 2: associate an empty device without a prompt.
+  useEffect(() => {
+    if (canAssociateSilently && silentAssociationTarget.current !== email && !syncing) {
+      silentAssociationTarget.current = email;
+      associate(true);
     }
-    setSyncing(true);
-    // Wait for the result: only close the popup on success. On failure (offline
-    // or a server error) keep it open and alert, so the user can retry.
-    const ok = await runConfirmedAccountSync(store, email);
-    setSyncing(false);
-    if (ok) {
-      dispatch(approveSync(email));
-    } else {
-      showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
-    }
-  };
+  }, [canAssociateSilently, email, syncing, associate]);
 
   const onNotNow = useCallback(() => {
     dispatch(declineSync());
   }, [dispatch]);
 
-  const onUseCloudData = async () => {
+  const onDiscardConfirmed = async () => {
     if (!email || syncing) {
       return;
     }
-    setSyncing(true);
+    setBusy('discard');
     const ok = await discardLocalDataAndSync(store, email);
-    setSyncing(false);
+    setBusy(null);
+    setConfirmingDiscard(false);
     if (ok) {
       dispatch(approveSync(email));
     } else {
@@ -158,115 +242,216 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   };
 
   const name = firstname?.trim() || email || '';
-  let syncMessage = `${Constants.SIGNED_IN_AS} ${email}. ${Constants.SYNC_ACCOUNT_PROMPT}`;
-  if (recoveryNeeded && isAccountSwitch) {
-    syncMessage = `This device has progress for ${account}, but its backup status could not be verified. Please log in as that account first.`;
-  } else if (previousAccountHasUnsyncedData) {
-    syncMessage = `This device has unsynced progress saved for ${account}. Would you like to add a copy to ${email}, or keep it for ${account}?`;
-  } else if (isAccountSwitch && !previousAccountIsFullySynced) {
-    syncMessage = `This device has progress saved for ${account}, but its cloud backup could not be verified. Add a copy to ${email}, or keep it safely for ${account}.`;
-  } else if (isAccountSwitch) {
-    syncMessage = automaticSwitchFailed
-      ? `Your previous progress is safe, but this device could not switch to ${email}. Please try again.`
-      : `Switching to ${email}…`;
-  } else if (account === null && hasLocalPaths) {
-    syncMessage = `${Constants.SIGNED_IN_AS} ${email}. Sync these local paths to this account, or use this account's cloud data instead. Using cloud data deletes these local paths from this device.`;
+
+  if (loadingProgress) {
+    return (
+      <Dialog visible onRequestClose={ignoreRequestClose}>
+        <View style={styles.loadingState} accessibilityLabel={Constants.LOADING_PROGRESS}>
+          <ActivityIndicator size="large" color="#11336A" />
+          <Text style={styles.message}>{Constants.LOADING_PROGRESS}</Text>
+        </View>
+      </Dialog>
+    );
   }
 
+  // --- Case 5: the previous account has work the server has never seen -------
+  // Signing out must dismiss this. `auth.email` clears before `sync.account`
+  // does, so the switch condition alone stays true after logout and would pin
+  // the dialog on screen forever — making Logout look broken.
+  if (mode === 'accountSwitch' && isAccountSwitch && status === 'signedIn' && !!email) {
+    const blockedByRecovery = recoveryNeeded;
+    // Title and body must describe the SAME state. A silent switch showing
+    // "Unsynced progress found" tells the user their progress is at risk when
+    // nothing is wrong.
+    const switchContent = () => {
+      if (blockedByRecovery) {
+        return {
+          title: Constants.ACCOUNT_SWITCH_BLOCKED_TITLE,
+          message: `This device has progress for ${account}, but its backup status could not be verified. Please sign in as that account first.`,
+        };
+      }
+      if (accountSwitchNeedsChoice) {
+        return {
+          title: Constants.ACCOUNT_SWITCH_TITLE,
+          message: `This device has progress for ${account} that hasn’t been saved to their account yet. Keep it safe for ${account}, or add a copy to ${email}?`,
+        };
+      }
+      if (automaticSwitchFailed) {
+        return {
+          title: Constants.ACCOUNT_SWITCH_FAILED_TITLE,
+          message: `${account}’s progress is safe, but this device could not switch to ${email}. Please try again.`,
+        };
+      }
+      return {
+        title: Constants.SWITCHING_ACCOUNT_TITLE,
+        message: `${account}’s progress is saved on this device and returns when you sign in as that account.`,
+      };
+    };
+    const { title, message } = switchContent();
+
+    return (
+      <Dialog visible onRequestClose={ignoreRequestClose}>
+        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.message}>{message}</Text>
+
+        {accountSwitchNeedsChoice && !blockedByRecovery ? (
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => completeAccountSwitch(true)}
+              disabled={syncing}
+              accessibilityRole="button"
+              accessibilityLabel={`Add a copy to ${email}`}
+            >
+              <ActionLabel
+                running={busy === 'addCopy'}
+                idle={Constants.ADD_COPY_TO_ACCOUNT}
+                textStyle={styles.secondaryText}
+                spinnerColor="#7F8C8D"
+              />
+            </TouchableOpacity>
+            {/* Keeping A's work is the safe default, so it gets the primary slot. */}
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => completeAccountSwitch(false)}
+              disabled={syncing}
+              accessibilityRole="button"
+              accessibilityLabel={`Keep it safe for ${account}`}
+            >
+              <ActionLabel
+                running={busy === 'keepForPrevious'}
+                idle={Constants.KEEP_FOR_PREVIOUS}
+                textStyle={styles.primaryText}
+                spinnerColor="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        {automaticSwitchFailed && !accountSwitchNeedsChoice ? (
+          <View style={styles.actions}>
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={() => completeAccountSwitch(false)}
+              disabled={syncing}
+              accessibilityRole="button"
+              accessibilityLabel={`Continue as ${email}`}
+            >
+              <ActionLabel
+                running={busy === 'keepForPrevious'}
+                idle="Try again"
+                textStyle={styles.primaryText}
+                spinnerColor="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        <View style={styles.links}>
+          {/*
+            Never disabled. This dialog cannot be dismissed any other way, so if a
+            switch hangs or keeps failing, disabling Logout while `syncing` is
+            true traps the user in a modal with no way out.
+          */}
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={() => logout()}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.LOGOUT}
+          >
+            <Text style={styles.linkText}>{Constants.LOGOUT}</Text>
+          </TouchableOpacity>
+        </View>
+      </Dialog>
+    );
+  }
+
+  // --- Case 3 → Discard confirmation ----------------------------------------
+  if (confirmingDiscard) {
+    return (
+      <Dialog visible onRequestClose={() => setConfirmingDiscard(false)}>
+        <Text style={styles.title}>{Constants.DISCARD_CONFIRM_TITLE}</Text>
+        <Text style={styles.message}>{Constants.DISCARD_CONFIRM_MESSAGE}</Text>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => setConfirmingDiscard(false)}
+            disabled={syncing}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.CANCEL}
+          >
+            <Text style={styles.secondaryText}>{Constants.CANCEL}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.destructiveButton}
+            onPress={onDiscardConfirmed}
+            disabled={syncing}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.DISCARD_CONFIRM_ACTION}
+          >
+            <ActionLabel
+              running={busy === 'discard'}
+              idle={Constants.DISCARD_CONFIRM_ACTION}
+              textStyle={styles.primaryText}
+              spinnerColor="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
+      </Dialog>
+    );
+  }
+
+  // --- Case 3: unowned progress exists and an account just signed in --------
   return (
-    <Dialog
-      visible={isVisible}
-      // A different signed-in account must not dismiss the guard and expose the
-      // previous account's active dataset. It can sync/switch or log out.
-      onRequestClose={mode === 'accountSwitch' ? ignoreRequestClose : onNotNow}
-    >
+    <Dialog visible={isVisible} onRequestClose={onNotNow}>
       <Text style={styles.title}>
         {Constants.WELCOME}
         {name ? `, ${name}` : ''}!
       </Text>
-      <Text style={styles.message}>{syncMessage}</Text>
+      <Text style={styles.message}>
+        {`This device has reading progress that isn’t saved to any account. Add it to ${email}, or continue without syncing?`}
+      </Text>
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.secondaryButton}
-          onPress={logout}
+          onPress={onNotNow}
           disabled={syncing}
           accessibilityRole="button"
-          accessibilityLabel={Constants.LOGOUT}
+          accessibilityLabel={Constants.NOT_NOW}
         >
-          <Text style={styles.secondaryText}>{Constants.LOGOUT}</Text>
+          <Text style={styles.secondaryText}>{Constants.NOT_NOW}</Text>
         </TouchableOpacity>
-        {mode !== 'accountSwitch' ? (
-          <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={onNotNow}
-            disabled={syncing}
-            accessibilityRole="button"
-            accessibilityLabel={Constants.NOT_NOW}
-          >
-            <Text style={styles.secondaryText}>{Constants.NOT_NOW}</Text>
-          </TouchableOpacity>
-        ) : null}
-        {mode === 'accountSwitch' && accountSwitchNeedsChoice && !recoveryNeeded ? (
-          <>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => completeAccountSwitch(false)}
-              disabled={syncing}
-              accessibilityRole="button"
-              accessibilityLabel={`Keep for ${account}`}
-            >
-              <Text style={styles.secondaryText}>Keep separate</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={() => completeAccountSwitch(true)}
-              disabled={syncing}
-              accessibilityRole="button"
-              accessibilityLabel={`Add to ${email}`}
-            >
-              <Text style={styles.primaryText}>
-                {syncing ? Constants.SYNCING : 'Add to this account'}
-              </Text>
-            </TouchableOpacity>
-          </>
-        ) : null}
-        {mode === 'accountSwitch' && automaticSwitchFailed ? (
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => completeAccountSwitch(false)}
-            disabled={syncing}
-            accessibilityRole="button"
-            accessibilityLabel={`Continue as ${email}`}
-          >
-            <Text style={styles.primaryText}>{syncing ? Constants.SYNCING : 'Continue'}</Text>
-          </TouchableOpacity>
-        ) : null}
-        {mode !== 'accountSwitch' && (
-          <>
-            {account === null && hasLocalPaths ? (
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={onUseCloudData}
-                disabled={syncing}
-                accessibilityRole="button"
-                accessibilityLabel="Use cloud data"
-              >
-                <Text style={styles.secondaryText}>Use cloud data</Text>
-              </TouchableOpacity>
-            ) : null}
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={onSyncNow}
-              disabled={syncing}
-              accessibilityRole="button"
-              accessibilityLabel={Constants.SYNC_NOW}
-            >
-              <Text style={styles.primaryText}>
-                {syncing ? Constants.SYNCING : Constants.SYNC_NOW}
-              </Text>
-            </TouchableOpacity>
-          </>
-        )}
+        <TouchableOpacity
+          style={styles.primaryButton}
+          onPress={() => associate(false)}
+          disabled={syncing}
+          accessibilityRole="button"
+          accessibilityLabel={Constants.SYNC_LOCAL_ACTION}
+        >
+          <ActionLabel
+            running={busy === 'sync'}
+            idle={Constants.SYNC_LOCAL_ACTION}
+            textStyle={styles.primaryText}
+            spinnerColor="#FFFFFF"
+          />
+        </TouchableOpacity>
+      </View>
+      {/*
+        Three actions only, and no Logout here. This progress belongs to nobody
+        yet, so signing out resolves nothing — it just leaves the same question
+        waiting at the next login. Logout stays on the account-switch dialog,
+        where "wrong account" is a real answer.
+      */}
+      <View style={styles.links}>
+        <TouchableOpacity
+          style={styles.linkButton}
+          onPress={() => setConfirmingDiscard(true)}
+          disabled={syncing}
+          accessibilityRole="button"
+          accessibilityLabel={Constants.DISCARD_LOCAL_LINK}
+        >
+          <Text style={styles.destructiveLinkText}>{Constants.DISCARD_LOCAL_LINK}</Text>
+        </TouchableOpacity>
       </View>
     </Dialog>
   );

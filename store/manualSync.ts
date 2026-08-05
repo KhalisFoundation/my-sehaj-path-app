@@ -8,6 +8,8 @@ import {
   markPathEdited,
   hydrateEmptySync,
   hydrateSyncRecovery,
+  requestSyncConfirmation,
+  setSyncError,
   upsertMeta,
 } from './slices/syncSlice';
 import {
@@ -18,14 +20,16 @@ import {
 } from './syncFormat';
 import { legacyToMs } from './syncDateUtils';
 import { getActiveReaderPath } from './syncLifecycle';
+import { clearBlockedWork, hasWorkBlockingPull } from './syncWork';
 import { recordError } from '../utils/crashlytics';
 
-const hasPendingWork = (store: AppStore): boolean => {
-  const { sync } = store.getState();
-  return Object.keys(sync.pathOps).length > 0 || sync.pendingSettingsUpdatedAt != null;
-};
-
-/** Promote dirty reader positions so an explicit Sync now includes them. */
+/**
+ * Promote dirty reader positions so an explicit Sync now includes them.
+ *
+ * No blocked-op special case is needed here: `runManualSync` clears the runtime
+ * blocks first, so every existing op is sendable again and the scroll piggybacks
+ * on it as usual.
+ */
 const queueDirtyScroll = (store: AppStore): void => {
   const state = store.getState();
   Object.keys(state.sync.scrollDirty).forEach((key) => {
@@ -50,6 +54,10 @@ export const runManualSync = async (store: AppStore, email: string): Promise<boo
     !state.network.isOnline ||
     state.sync.recoveryNeeded
   ) {
+    // The user pressed a button; a tap that produces no visible result reads as
+    // a broken button. Surface it through the normal status notice so every
+    // outcome of Sync now arrives in the same place.
+    store.dispatch(setSyncError('network'));
     return false;
   }
 
@@ -57,9 +65,21 @@ export const runManualSync = async (store: AppStore, email: string): Promise<boo
     return runConfirmedAccountSync(store, email);
   }
 
+  // Manual Sync is the user's escape hatch for work the automatic path has given
+  // up on, so it must not consult `hasSendableWork()` to decide whether to run.
+  // Clearing the runtime blocks gives every rejected op, the settings revision and
+  // any blocked bulk body exactly one fresh attempt. Anything that fails again is
+  // simply re-blocked by the drain.
+  clearBlockedWork(store);
+
+  // The user tapped Sync now, so confirm the result to them.
+  store.dispatch(requestSyncConfirmation());
+
   queueDirtyScroll(store);
   await outbox.flushNow();
-  if (hasPendingWork(store)) {
+  // Re-blocked work must not stop the pull — rule 9. `hasWorkBlockingPull` ignores
+  // ops that will never send while still respecting a genuinely dirty scroll.
+  if (hasWorkBlockingPull(store)) {
     return false;
   }
   return refreshPathsFromServer(store, getActiveReaderPath() ?? undefined);

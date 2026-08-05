@@ -1,7 +1,9 @@
 import { sehajPathSyncControllerSync } from '@api/generated/sdk.gen';
 import { clearCurrentToken } from '../../auth/tokenUtils';
 import type { SehajPath } from '@api/generated/types.gen';
+import { SYNC_REQUEST_TIMEOUT_MS } from '@api/config';
 import { makeStore } from '../../store';
+import { MAX_SYNC_PATHS } from '../../store/syncRequest';
 import {
   discardLocalDataAndSync,
   runConfirmedAccountSync,
@@ -27,7 +29,10 @@ import type { DateData, PathData } from '../../types';
 const mockFlush = jest.fn();
 
 // These suites never call configureApiClient(), so treat the build as configured.
-jest.mock('@api/config', () => ({ isApiConfigured: () => true }));
+jest.mock('@api/config', () => ({
+  isApiConfigured: () => true,
+  SYNC_REQUEST_TIMEOUT_MS: 60_000,
+}));
 jest.mock('@api/generated/sdk.gen', () => ({ sehajPathSyncControllerSync: jest.fn() }));
 jest.mock('../../auth/tokenUtils', () => ({
   clearCurrentToken: jest.fn().mockResolvedValue(true),
@@ -256,6 +261,36 @@ describe('runConfirmedAccountSync', () => {
     expect(meta.serverPathId).toMatch(/^[0-9a-f-]{36}$/i);
     expect(meta.onServer).toBe(true);
     expect(store.getState().sync.lastSyncedAt).toBe(999);
+  });
+
+  it('sends the login sync with the long timeout, not the 25s default', async () => {
+    // A first login carries the device's whole history through a serializable
+    // server transaction; aborting at 25s abandons work the server completes.
+    const store = setup([makePath(1, 'Morning')]);
+    mockSync.mockImplementationOnce(async ({ body }) =>
+      syncOk(body.paths.map((p: { pathId: string; name: string }) => serverSehaj(p)))
+    );
+
+    await runConfirmedAccountSync(store, 'u@e.com');
+
+    expect(mockSync).toHaveBeenCalledWith(
+      expect.objectContaining({ timeout: SYNC_REQUEST_TIMEOUT_MS })
+    );
+    expect(SYNC_REQUEST_TIMEOUT_MS).toBe(60_000);
+  });
+
+  it('refuses an oversized first login instead of sending it, keeping the data unowned', async () => {
+    // Regression: without a local check this becomes a 413 the user cannot act
+    // on, and the claim can never succeed. Refuse locally and stay unowned so
+    // reading continues and nothing is lost.
+    const tooMany = Array.from({ length: MAX_SYNC_PATHS + 1 }, (_, i) => makePath(i + 1));
+    const store = setup(tooMany);
+
+    expect(await runConfirmedAccountSync(store, 'u@e.com')).toBe(false);
+
+    expect(mockSync).not.toHaveBeenCalled();
+    expect(store.getState().sync.account).toBeNull(); // still unowned
+    expect(store.getState().paths.paths).toHaveLength(MAX_SYNC_PATHS + 1); // nothing lost
   });
 
   it('case B: downloads cloud paths to a fresh device and associates the account', async () => {

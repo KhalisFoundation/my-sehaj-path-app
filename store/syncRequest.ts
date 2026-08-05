@@ -43,3 +43,77 @@ export const buildSyncRequest = (state: RootState, includeSettings = true): Sync
   }
   return body;
 };
+
+/** The server rejects a body above either of these, permanently. */
+export const MAX_SYNC_PATHS = 1000;
+export const MAX_SYNC_BODY_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Identity of a bulk `/sync` body, used to stop an unbounded retry loop.
+ *
+ * A bulk request has no single offending operation to blame, so a permanent 4xx
+ * leaves nothing blocked and the identical body is rescheduled forever. Any local
+ * edit advances a `localUpdatedAt` and therefore changes this fingerprint, so a
+ * genuine change is retried naturally.
+ */
+export const syncRequestFingerprint = (body: SyncSehajPathDto): string => {
+  const paths = body.paths
+    .map((path) => `${path.pathId}:${path.updatedAt}`)
+    .sort()
+    .join(',');
+  return `${body.lastSyncedAt ?? 0}|${body.settings ? 'S' : '-'}|${paths}`;
+};
+
+/**
+ * UTF-8 byte length of a string, counted directly from code points.
+ *
+ * `TextEncoder` is NOT available on Hermes and this app ships no polyfill, so
+ * using it would throw a `ReferenceError` on device while passing under Jest,
+ * where Node provides one. `Blob`/`Buffer` are equally unavailable.
+ *
+ * `JSON.stringify(...).length` is not a substitute either: it counts UTF-16 code
+ * units and undercounts every non-ASCII character. Path names here are routinely
+ * Gurmukhi at three UTF-8 bytes each, so a body "measuring" 1.9 MB can exceed
+ * 3 MB on the wire and be rejected by the guard that just approved it.
+ */
+export const utf8ByteLength = (value: string): number => {
+  let bytes = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code < 0x80) {
+      bytes += 1;
+    } else if (code < 0x800) {
+      bytes += 2;
+    } else if (code >= 0xd800 && code <= 0xdbff) {
+      // High surrogate: a well-formed pair is one 4-byte code point. Consume the
+      // low surrogate so it is not counted a second time.
+      const next = value.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        bytes += 4;
+        i += 1;
+      } else {
+        bytes += 3; // lone surrogate — encoders emit the 3-byte replacement char
+      }
+    } else {
+      bytes += 3;
+    }
+  }
+  return bytes;
+};
+
+/** Byte length of the serialized body, as the server will receive it. */
+export const syncRequestByteLength = (body: SyncSehajPathDto): number =>
+  utf8ByteLength(JSON.stringify(body));
+
+export interface SyncSizeCheck {
+  ok: boolean;
+  paths: number;
+  bytes: number;
+}
+
+/** Checks a body against both server limits before it is sent. */
+export const checkSyncRequestSize = (body: SyncSehajPathDto): SyncSizeCheck => {
+  const paths = body.paths.length;
+  const bytes = syncRequestByteLength(body);
+  return { ok: paths <= MAX_SYNC_PATHS && bytes <= MAX_SYNC_BODY_BYTES, paths, bytes };
+};

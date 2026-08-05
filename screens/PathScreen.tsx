@@ -89,6 +89,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     lastFailedAng: null,
   });
   const scrolledToSavedPath = useRef<boolean>(false);
+  const isRestoringScroll = useRef<boolean>(false);
   const scrollOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
@@ -263,6 +264,11 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
     debounceTimer.current = setTimeout(async () => {
       debounceTimer.current = null;
+      // A saved checkpoint can emit `onScroll` while the reader restores it.
+      // Do not turn that already-synced movement into another local update.
+      if (isRestoringScroll.current) {
+        return;
+      }
       try {
         // The verse belongs to the ang it was saved on. After navigating to a
         // different ang, keeping it would store/send an impossible checkpoint
@@ -327,6 +333,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,
+    isRestoringScroll,
     scrollRef,
     scrollOffset,
     fadeAnim: fadeAnim.current,
@@ -451,6 +458,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
   useEffect(() => {
     scrolledToSavedPath.current = false;
+    isRestoringScroll.current = false;
     const fetchPath = async () => {
       try {
         // Settings already live in the store and are applied before this screen
@@ -725,6 +733,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             scrollToVerseId={scrollToVerseId}
             scrollToVerseRequestKey={scrollToVerseRequestKey}
             scrolledToSavedPath={scrolledToSavedPath}
+            isRestoringScroll={isRestoringScroll}
             onScrollEndDrag={handleScrollEnd}
             onContentSizeChange={handleReaderContentSizeChange}
           />

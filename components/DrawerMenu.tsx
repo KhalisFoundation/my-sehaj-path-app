@@ -76,13 +76,22 @@ const DrawerMenuComponent = ({
     const ok = repair
       ? await resetSyncMetadataAndSync(store, userEmail)
       : await runManualSync(store, userEmail);
-    if (!ok) {
+    // A normal sync reports itself through the status notice — success and
+    // failure both. Adding a blocking alert on top would mean two messages for
+    // one tap. The repair path keeps the alert: it is a rare, explicit action
+    // whose failure the user must not miss.
+    if (!ok && repair) {
       showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
     }
   };
 
   const handleSyncPress = () => {
     if (!recoveryNeeded) {
+      // Close first. This drawer is a Modal, which renders in its own window
+      // above the app, so the status notice — an ordinary positioned View —
+      // cannot draw over it no matter its zIndex. Leaving the menu open would
+      // hide the very feedback this tap exists to produce.
+      onClose();
       performSync();
       return;
     }
@@ -93,7 +102,14 @@ const DrawerMenuComponent = ({
       }.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Reset and sync', onPress: () => performSync(true), style: 'destructive' },
+        {
+          text: 'Reset and sync',
+          onPress: () => {
+            onClose();
+            performSync(true);
+          },
+          style: 'destructive',
+        },
       ]
     );
   };

@@ -32,6 +32,19 @@ const RETRY_BASE_MS = 20;
 const quarantinedRecordsByStore = new WeakMap<AppStore, QuarantinedLegacyRecords>();
 
 /**
+ * True when this device is holding damaged path/date records.
+ *
+ * These are real user data that `legacyFormat` could not parse, kept so one bad
+ * record cannot lock the reader out. They are deliberately NOT in Redux (they must
+ * never render), so a plain selector cannot see them — which is why "does this
+ * device have local data?" has to be asked through the store, not the state.
+ */
+export const hasQuarantinedRecords = (store: AppStore): boolean => {
+  const records = quarantinedRecordsByStore.get(store);
+  return (records?.paths.length ?? 0) > 0 || (records?.dates.length ?? 0) > 0;
+};
+
+/**
  * Returns identifiable path IDs held outside Redux so createPath cannot reuse
  * an identity belonging to preserved-but-quarantined user data.
  */

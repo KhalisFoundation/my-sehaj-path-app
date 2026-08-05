@@ -4,6 +4,7 @@ import { store } from '../store';
 import { setSignedOut } from '../store/slices/authSlice';
 import { showSignInPopupAgain, resetSyncPopup } from '../store/slices/syncSlice';
 import { writeSyncPrefs } from '../store/syncPrefs';
+import { clearBlockedWork } from '../store/syncWork';
 import { getSSOLogoutUrl } from './constants';
 import { clearLoginPending } from './loginPending';
 import { clearCurrentToken, getCurrentToken } from './tokenUtils';
@@ -26,6 +27,11 @@ export async function logout(): Promise<void> {
   }
   await clearLoginPending();
   store.dispatch(setSignedOut());
+  // Runtime "the server rejected this" markers must not outlive the session.
+  // The next login may be a different account reusing the same local path ids,
+  // and even for the same account the work deserves a fresh attempt rather than
+  // staying skipped until the user happens to edit that path.
+  clearBlockedWork(store);
   // Reset the per-session sync prompt so the next login asks again.
   store.dispatch(resetSyncPopup());
   // Re-arm the signed-out sign-in popup so it re-appears after logging out.

@@ -477,6 +477,25 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().paths.paths).toEqual([]);
   });
 
+  it('always clears the pulling flag, so the status notice cannot spin forever', async () => {
+    // Device report: an infinite "Syncing…" with no error, while the data had in
+    // fact reached the server. `pulling` had been left set, so the notice was
+    // waiting on a download that had already finished.
+    const store = signedInStore();
+
+    await refreshPathsFromServer(store);
+    expect(store.getState().sync.pulling).toBe(false);
+
+    // Also on the failure path — a stuck spinner is worse than a wrong result.
+    mockFindAll.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'boom' },
+      response: { status: 500 },
+    });
+    await refreshPathsFromServer(store);
+    expect(store.getState().sync.pulling).toBe(false);
+  });
+
   it('coalesces overlapping refresh calls into one request', async () => {
     const store = signedInStore();
     let resolvePaths: (value: ReturnType<typeof findAllOk>) => void = () => undefined;

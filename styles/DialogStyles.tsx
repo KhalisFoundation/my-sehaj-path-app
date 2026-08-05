@@ -57,4 +57,49 @@ export const DialogStyles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
+  /**
+   * Secondary actions sit BELOW the two main buttons as plain text links, so a
+   * dialog never shows more than two equal-weight choices. A destructive action
+   * is a link rather than a button on purpose: it should be reachable but never
+   * look like the expected answer.
+   */
+  links: {
+    marginTop: 4,
+    alignItems: 'center',
+    gap: 10,
+  },
+  linkButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  linkText: {
+    fontFamily: font.Baloo_Paaji_2_Regular,
+    fontSize: 14,
+    color: '#7F8C8D',
+    textAlign: 'center',
+  },
+  destructiveLinkText: {
+    fontFamily: font.Baloo_Paaji_2_Regular,
+    fontSize: 14,
+    color: '#B03A2E',
+    textAlign: 'center',
+  },
+  /** Spinner + "Syncing…" laid out inline inside a button. */
+  busyLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingState: {
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 10,
+  },
+  destructiveButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#B03A2E',
+    borderRadius: 28,
+    justifyContent: 'center',
+  },
 });

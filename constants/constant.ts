@@ -57,6 +57,41 @@ export const Constants: Constant = {
   SYNC_NOW: 'Sync now',
   SYNCING: 'Syncing…',
   NOT_NOW: 'Not now',
+
+  // --- login/sync decision flow -------------------------------------------
+  // Every dialog below has at most two main buttons; anything destructive is a
+  // text link behind its own confirmation.
+
+  /** Case 3 — unowned progress on the device and an account just signed in. */
+  SYNC_LOCAL_TITLE: 'Save this progress?',
+  SYNC_LOCAL_ACTION: 'Sync to my account',
+  DISCARD_LOCAL_LINK: 'Discard this device’s progress',
+
+  /** Case 3 → Discard confirmation. */
+  DISCARD_CONFIRM_TITLE: 'Discard this device’s progress?',
+  DISCARD_CONFIRM_MESSAGE:
+    'This permanently removes the progress saved only on this device and loads your account’s progress instead. If your account has no saved progress, this device will start empty. This cannot be undone.',
+  DISCARD_CONFIRM_ACTION: 'Discard',
+  CANCEL: 'Cancel',
+
+  /**
+   * Case 5 — the previous account has work that never reached its cloud.
+   * Only this one may mention unsynced progress; the others describe a switch
+   * that is fine, so reusing this title would alarm the user for no reason.
+   */
+  ACCOUNT_SWITCH_TITLE: 'Unsynced progress found',
+  /** Case 4 — a backed-up account is being replaced, nothing is at risk. */
+  SWITCHING_ACCOUNT_TITLE: 'Switching account',
+  LOADING_PROGRESS: 'Loading your progress…',
+  /** The switch could not complete; the previous account is still safe. */
+  ACCOUNT_SWITCH_FAILED_TITLE: 'Could not switch account',
+  /** Recovery blocks the switch until the previous account signs in. */
+  ACCOUNT_SWITCH_BLOCKED_TITLE: 'Sign in to continue',
+  KEEP_FOR_PREVIOUS: 'Keep it safe',
+  ADD_COPY_TO_ACCOUNT: 'Add a copy',
+
+  /** Case 4 — a fully backed-up account was replaced silently. */
+  SWITCHED_ACCOUNT_NOTICE: 'progress is saved on this device and returns when you sign in again.',
   SIGNED_IN_AS: 'Signed in as',
   SYNC_ACCOUNT_PROMPT: 'Sync this device with this account?',
   LOGIN_SYNC_TITLE: 'Save your progress',

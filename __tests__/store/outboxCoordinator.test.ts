@@ -6,6 +6,7 @@ import {
   sehajPathsControllerUpdate,
 } from '@api/generated/sdk.gen';
 import type { SehajPath } from '@api/generated/types.gen';
+import { SYNC_REQUEST_TIMEOUT_MS } from '@api/config';
 import { makeStore } from '../../store';
 import { createOutboxCoordinator } from '../../store/outboxCoordinator';
 import { addPath, renamePath, setScrollPosition } from '../../store/slices/pathsSlice';
@@ -18,7 +19,10 @@ import { recordError } from '../../utils/crashlytics';
 import type { DateData, PathData } from '../../types';
 
 // These suites never call configureApiClient(), so treat the build as configured.
-jest.mock('@api/config', () => ({ isApiConfigured: () => true }));
+jest.mock('@api/config', () => ({
+  isApiConfigured: () => true,
+  SYNC_REQUEST_TIMEOUT_MS: 60_000,
+}));
 jest.mock('@api/generated/sdk.gen', () => ({
   sehajPathsControllerCreate: jest.fn(),
   sehajPathsControllerUpdate: jest.fn(),
@@ -301,6 +305,124 @@ describe('outboxCoordinator', () => {
     expect(store.getState().sync.pathOps[1]).toBeUndefined(); // reconciled + cleared
     expect(store.getState().sync.lastSyncedAt).toBe(999); // server clock stored
     expect(store.getState().sync.lastError).toBeNull();
+    coordinator.stop();
+  });
+
+  it('parks the conflicting op when the reconciling /sync is permanently rejected', async () => {
+    // Regression: PATCH 409 → /sync 400 used to leave the op sendable, so the
+    // next drain repeated PATCH → 409 → blocked /sync forever, and the path
+    // stopped receiving cloud updates because it still counted as pending work.
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(renamePath({ pathId: 1, name: 'A' }));
+    mockUpdate.mockResolvedValueOnce(fail(409));
+    mockSync.mockResolvedValueOnce(fail(400));
+
+    await coordinator.flushNow();
+
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    // The user's change is kept locally — never discarded.
+    expect(store.getState().paths.paths[0].pathName).toBe('A');
+    expect(store.getState().sync.pathOps[1]).toBeDefined();
+    expect(store.getState().sync.lastError).toBe('rejected');
+
+    // The cycle must not repeat: no further PATCH, and no second /sync.
+    mockUpdate.mockClear();
+    mockSync.mockClear();
+    await coordinator.flushNow();
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(mockSync).not.toHaveBeenCalled();
+
+    // And the path is free to sync again after a genuine local edit.
+    store.dispatch(renamePath({ pathId: 1, name: 'B' }));
+    mockUpdate.mockResolvedValueOnce(ok(200));
+    await coordinator.flushNow();
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    coordinator.stop();
+  });
+
+  it('does not re-send an identical /sync body the server already rejected', async () => {
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(renamePath({ pathId: 1, name: 'A' }));
+    mockUpdate.mockResolvedValue(fail(409));
+    mockSync.mockResolvedValueOnce(fail(400));
+
+    await coordinator.flushNow();
+    mockSync.mockClear();
+
+    // A second conflict on unchanged state must not reissue the same body.
+    store.dispatch(setScrollPosition({ pathId: 1, scrollPosition: 5 }));
+    await coordinator.flushNow();
+
+    expect(mockSync).not.toHaveBeenCalled();
+    coordinator.stop();
+  });
+
+  it('backs off instead of recursing when /sync itself returns 409', async () => {
+    // `/sync` IS the reconciliation, so calling it again immediately would
+    // recurse against a second device that is actively writing.
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(renamePath({ pathId: 1, name: 'A' }));
+    mockUpdate.mockResolvedValueOnce(fail(409));
+    mockSync.mockResolvedValueOnce(fail(409));
+
+    await coordinator.flushNow();
+
+    expect(mockSync).toHaveBeenCalledTimes(1); // not called again from its own failure
+    expect(store.getState().sync.lastError).toBe('network'); // transient → retried later
+    expect(store.getState().sync.pathOps[1]).toBeDefined();
+    coordinator.stop();
+  });
+
+  it('sends the reconciling /sync with the long timeout, not the 25s default', async () => {
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(renamePath({ pathId: 1, name: 'A' }));
+    mockUpdate.mockResolvedValueOnce(fail(409));
+
+    await coordinator.flushNow();
+
+    expect(mockSync).toHaveBeenCalledWith(
+      expect.objectContaining({ timeout: SYNC_REQUEST_TIMEOUT_MS })
+    );
+    expect(SYNC_REQUEST_TIMEOUT_MS).toBe(60_000);
+    coordinator.stop();
+  });
+
+  it('does not report a network failure when the server accepted but applying threw', async () => {
+    // Device report: created a path, saw "unable to sync", but a reload showed it
+    // already synced. The write had succeeded; folding the response in threw, and
+    // the shared catch reported that as a transport failure.
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    // A response the applier cannot handle.
+    mockCreate.mockResolvedValueOnce(ok(201, null));
+
+    await coordinator.flushNow();
+
+    expect(store.getState().sync.lastError).not.toBe('network');
+    expect(store.getState().sync.status).not.toBe('error');
+    coordinator.stop();
+  });
+
+  it('never leaves the status stuck on flushing when something throws mid-drain', async () => {
+    // Device report: an endless "Syncing…" with no error, while the path had
+    // reached the server. `status` is set to 'flushing' before the try, and
+    // everything that resets it lives after — so an escaping throw pinned the app
+    // in a syncing state for the rest of the session.
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    mockCreate.mockImplementationOnce(() => {
+      throw new Error('unexpected');
+    });
+
+    await coordinator.flushNow();
+
+    expect(store.getState().sync.status).not.toBe('flushing');
+    // The work is kept and retried rather than silently dropped.
+    expect(store.getState().sync.pathOps[1]).toBeDefined();
     coordinator.stop();
   });
 

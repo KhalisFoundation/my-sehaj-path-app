@@ -12,6 +12,23 @@ export const SEHAJ_API_BASE_URL: string | null = SEHAJ_API_URL
   ? SEHAJ_API_URL.replace(/\/+$/, '')
   : null;
 
+/**
+ * Without a timeout a hung request never settles, so every single-flight guard
+ * that waits on it (preflight, the outbox drain, an account switch) stays latched
+ * forever and sync silently stops. A timeout surfaces as an ordinary network
+ * error, so callers already handle it: retry with backoff, change no data, and
+ * never read it as "the account is empty".
+ */
+export const REQUEST_TIMEOUT_MS = 25_000;
+
+/**
+ * `/sync` carries up to 1000 paths and 2 MB through a serializable server
+ * transaction, so it legitimately runs longer than a CRUD call. Reusing the
+ * ordinary timeout would abort slow-but-valid merges and turn a working sync
+ * into a retry loop.
+ */
+export const SYNC_REQUEST_TIMEOUT_MS = 60_000;
+
 let tokenGetter: () => Promise<string | null> = async () => null;
 
 export const setTokenGetter = (getter: () => Promise<string | null>): void => {
@@ -47,7 +64,7 @@ export const configureApiClient = (): boolean => {
     return false;
   }
   configured = true;
-  client.setConfig({ baseURL: SEHAJ_API_BASE_URL });
+  client.setConfig({ baseURL: SEHAJ_API_BASE_URL, timeout: REQUEST_TIMEOUT_MS });
   client.instance.interceptors.request.use(async (requestConfig) => {
     const token = await tokenGetter();
     // A sync operation may pin the token that owned its local snapshot. Do not

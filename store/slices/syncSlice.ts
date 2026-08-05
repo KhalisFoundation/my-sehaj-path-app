@@ -52,6 +52,32 @@ export interface SyncState {
    */
   signInPopupChecked: boolean;
   signInPopupDismissed: boolean;
+  /**
+   * True when the NEXT successful drain should confirm itself to the user.
+   *
+   * Success is only worth announcing when the user did something that implies
+   * they want to know it landed — tapping Sync now, or leaving a path. The
+   * outbox also drains on a debounce while someone is simply reading, and a
+   * toast on every one of those is noise. Failures are always shown, requested
+   * or not. Runtime-only.
+   */
+  confirmNextSync: boolean;
+  /**
+   * The post-login catch-up sync.
+   *
+   * `loginSyncDone` keeps it to once per signed-in session — `HomeScreen` calls
+   * `onForeground` on every focus, so without this the banner would flash each
+   * time the user navigates back from the reader. `loginSyncRunning` drives that
+   * banner. Both reset on logout so signing in again runs it afresh.
+   */
+  catchUpSyncDone: boolean;
+  catchUpSyncRunning: boolean;
+  /**
+   * A `GET /paths` refresh is in flight. `status` only covers the push half, so
+   * without this the notice would call a sync finished while the download that
+   * may change what the user sees is still running.
+   */
+  pulling: boolean;
 }
 
 /** Persisted subset written to `sehajSyncMeta_v1`. Never contains the token. */
@@ -79,6 +105,10 @@ export const initialSyncState: SyncState = {
   lastError: null,
   recoveryNeeded: false,
   syncPopupAnswered: false,
+  confirmNextSync: false,
+  catchUpSyncDone: false,
+  catchUpSyncRunning: false,
+  pulling: false,
   syncApprovedForEmail: null,
   signInPopupChecked: false,
   signInPopupDismissed: false,
@@ -93,6 +123,9 @@ const resetRuntime = (state: SyncState) => {
   state.recoveryNeeded = false;
   state.syncPopupAnswered = false;
   state.syncApprovedForEmail = null;
+  state.catchUpSyncDone = false;
+  state.catchUpSyncRunning = false;
+  state.pulling = false;
 };
 
 export const syncSlice = createSlice({
@@ -279,6 +312,23 @@ export const syncSlice = createSlice({
     },
 
     // ---- runtime status --------------------------------------------------
+    /** The user asked for this sync, so confirm it when it succeeds. */
+    requestSyncConfirmation: (state) => {
+      state.confirmNextSync = true;
+    },
+    clearSyncConfirmation: (state) => {
+      state.confirmNextSync = false;
+    },
+    setCatchUpSyncRunning: (state, action: PayloadAction<boolean>) => {
+      state.catchUpSyncRunning = action.payload;
+    },
+    markCatchUpSyncDone: (state) => {
+      state.catchUpSyncDone = true;
+      state.catchUpSyncRunning = false;
+    },
+    setPulling: (state, action: PayloadAction<boolean>) => {
+      state.pulling = action.payload;
+    },
     setSyncStatus: (state, action: PayloadAction<SyncState['status']>) => {
       state.status = action.payload;
     },
@@ -291,6 +341,9 @@ export const syncSlice = createSlice({
     resetSyncPopup: (state) => {
       state.syncPopupAnswered = false;
       state.syncApprovedForEmail = null;
+      // Logout dispatches this, so the next login catches up again.
+      state.catchUpSyncDone = false;
+      state.catchUpSyncRunning = false;
     },
     approveSync: (state, action: PayloadAction<string>) => {
       state.syncPopupAnswered = true;
@@ -336,6 +389,11 @@ export const {
   clearSettingsIfUnchanged,
   setSyncStatus,
   setSyncError,
+  requestSyncConfirmation,
+  clearSyncConfirmation,
+  setCatchUpSyncRunning,
+  markCatchUpSyncDone,
+  setPulling,
   resetSyncPopup,
   approveSync,
   declineSync,

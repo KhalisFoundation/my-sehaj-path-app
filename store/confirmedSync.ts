@@ -1,5 +1,5 @@
 import { sehajPathSyncControllerSync } from '@api/generated/sdk.gen';
-import { isApiConfigured } from '@api/config';
+import { isApiConfigured, SYNC_REQUEST_TIMEOUT_MS } from '@api/config';
 import { clearCurrentToken } from '../auth/tokenUtils';
 import { generateUuid } from '@utils/pathIdUtils';
 import { recordError } from '../utils/crashlytics';
@@ -13,12 +13,13 @@ import { clearActiveAccountData, restoreDurableState, type AppStore } from './in
 import { persistence } from './instance';
 import type { Snapshot } from './legacyFormat';
 import { captureDurableSnapshot, setQuarantinedRecords } from './persistence';
+import { clearBlockedWork } from './syncWork';
 import { SETTINGS_DEFAULTS } from './slices/settingsSlice';
 import { setAccount, upsertMeta } from './slices/syncSlice';
 import { setSignedOut } from './slices/authSlice';
 import { emptyPersistedSync } from './syncFormat';
 import { legacyToMs } from './syncDateUtils';
-import { buildSyncRequest } from './syncRequest';
+import { buildSyncRequest, checkSyncRequestSize } from './syncRequest';
 import { captureSyncSession, isCurrentSyncSession, syncSessionHeaders } from './syncSession';
 
 let inFlight = false;
@@ -229,6 +230,10 @@ export const switchAccountData = async (
     })
   );
   setQuarantinedRecords(store, next.quarantinedRecords);
+  // Blocked markers are keyed by local pathId, which is per-device and reused
+  // across accounts. Carrying A's markers into B would silently suppress an
+  // unrelated B operation that happens to share an id.
+  clearBlockedWork(store);
   if (await persistence.flush()) {
     // B is now the durable active dataset, so its stash is a redundant copy.
     // Dropping it keeps the bag from accumulating a stale duplicate of every
@@ -270,6 +275,7 @@ const clearActiveAccountDataDurably = async (store: AppStore): Promise<boolean> 
   const beforeQuarantined = captureDurableSnapshot(store).quarantinedRecords;
   store.dispatch(clearActiveAccountData());
   setQuarantinedRecords(store, undefined);
+  clearBlockedWork(store);
   if (await persistence.flush()) {
     return true;
   }
@@ -500,9 +506,28 @@ export async function runConfirmedAccountSync(store: AppStore, email: string): P
     const snapshot = captureSyncSnapshot(flushed);
     // Account settings are downloaded on login. Do not let settings changed
     // before this account was selected overwrite that account's cloud settings.
+    const body = buildSyncRequest(flushed, false);
+
+    // A first login carries this device's entire history, so it is the request
+    // most likely to exceed the server's limits. Refuse locally instead of
+    // discovering it as a 413: the data stays unowned and readable, and the user
+    // is told, rather than being stuck in a claim that can never succeed.
+    const size = checkSyncRequestSize(body);
+    if (!size.ok) {
+      recordError(
+        new Error(`login sync body too large: ${size.paths} paths, ${size.bytes} bytes`),
+        'confirmedSync: sync body exceeds server limits'
+      );
+      return false;
+    }
+
     const res = await sehajPathSyncControllerSync({
-      body: buildSyncRequest(flushed, false),
+      body,
       headers: syncSessionHeaders(session),
+      // Same reasoning as the conflict reconcile: a whole-history merge through a
+      // serializable transaction legitimately outlasts the ordinary timeout, and
+      // aborting at 25 s would abandon a request the server is still completing.
+      timeout: SYNC_REQUEST_TIMEOUT_MS,
     });
     const afterRequest = store.getState();
     if (

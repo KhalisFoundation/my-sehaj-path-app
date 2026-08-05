@@ -23,11 +23,13 @@ import {
   dropMeta,
   setLastSyncedAt,
   setSyncError,
+  setPulling,
   setSyncStatus,
   upsertMeta,
   type SyncMeta,
 } from './slices/syncSlice';
 import { fromServerPath } from './syncAdapters';
+import { clearBlockedWork, hasWorkBlockingPull } from './syncWork';
 import { captureSyncSession, isCurrentSyncSession, syncSessionHeaders } from './syncSession';
 
 /** Identifies which local response applies — the operation the client sent. */
@@ -58,6 +60,8 @@ const signOutAfterUnauthorized = async (
   context: string
 ): Promise<void> => {
   store.dispatch(setSignedOut());
+  // The next login may be a different account reusing the same local path ids.
+  clearBlockedWork(store);
   if (!(await clearCurrentToken(token))) {
     recordError(new Error('token could not be cleared after 401'), context);
   }
@@ -197,6 +201,11 @@ export const applyServerPath = (store: AppStore, sp: SehajPath, sent?: SentOp): 
       // Do not acknowledge this remote clock without applying/merging its body.
       // Keeping the old baseUpdatedAt makes the pending PATCH receive 409 and
       // take the safe bulk-merge path instead of overwriting the remote edit.
+      //
+      // This also covers a PERMANENTLY-BLOCKED op, which stays in `pathOps`:
+      // `/sync` returns every server path, including ones excluded from the
+      // request, so without this the server's older copy would silently
+      // overwrite the very local change the block exists to preserve.
       return;
     }
     store.dispatch(
@@ -386,8 +395,10 @@ const performRefreshPathsFromServer = async (
     state.sync.recoveryNeeded ||
     !state.auth.email ||
     state.sync.account !== state.auth.email ||
-    Object.keys(state.sync.pathOps).length > 0 ||
-    Object.keys(state.sync.scrollDirty).length > 0
+    // Covers sendable ops AND dirty scroll. A permanently-blocked op must never
+    // count here: it stays in `pathOps` forever, so a raw key count would freeze
+    // cloud downloads on this device permanently.
+    hasWorkBlockingPull(store, state)
   ) {
     return false;
   }
@@ -494,7 +505,16 @@ export const refreshPathsFromServer = (
     if (refreshes.get(store) === request) {
       refreshes.delete(store);
     }
+    // ALWAYS cleared, even if this request is no longer the tracked one. It is a
+    // display flag: clearing it a moment early is invisible, while failing to
+    // clear it leaves the status notice spinning for the rest of the session
+    // with nothing to resolve it.
+    store.dispatch(setPulling(false));
   });
   refreshes.set(store, request);
+  // Dispatched only after the entry is tracked. `dispatch` runs subscribers
+  // synchronously, and one of them can call back into this function — before the
+  // map was populated that produced a second, untracked request.
+  store.dispatch(setPulling(true));
   return request;
 };

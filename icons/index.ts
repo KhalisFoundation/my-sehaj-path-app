@@ -1,4 +1,5 @@
 export { CheckMarkIcon } from './Checkmark.icon';
+export { SyncedCheckIcon } from './SyncedCheck.icon';
 export { ContinueIcon } from './Continue.icon';
 export { PauseIcon } from './Pause.icon';
 export { PlayIcon } from './Play.icon';

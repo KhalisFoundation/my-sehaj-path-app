@@ -9,6 +9,8 @@ interface UseScrollToSavedPathProps {
   pathContent: any;
   savedPathVerseId: number;
   scrolledToSavedPath: React.MutableRefObject<boolean>;
+  /** True only while this hook is moving the reader to an existing checkpoint. */
+  isRestoringScroll: React.MutableRefObject<boolean>;
   scrollRef: React.MutableRefObject<ScrollView | null>;
   scrollOffset: React.MutableRefObject<number>;
   fadeAnim: Animated.Value;
@@ -24,6 +26,7 @@ export const useScrollToSavedPath = ({
   pathContent,
   savedPathVerseId,
   scrolledToSavedPath,
+  isRestoringScroll,
   scrollRef,
   scrollOffset,
   fadeAnim,
@@ -55,6 +58,10 @@ export const useScrollToSavedPath = ({
     if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
       scrollOffset.current = matchedPathDate.scrollPosition;
       if (scrollRef.current) {
+        // `scrollTo` emits the same `onScroll` events as a finger drag. Mark
+        // this short auto-restore window so PathReader does not save an already
+        // synced position as fresh progress.
+        isRestoringScroll.current = true;
         scrollRef.current.scrollTo({
           y: scrollOffset.current,
           animated: true,
@@ -84,6 +91,7 @@ export const useScrollToSavedPath = ({
         if (scrollIndex !== -1) {
           scrollOffset.current = scrollIndex * scrollHeight;
           if (scrollRef.current) {
+            isRestoringScroll.current = true;
             scrollRef.current.scrollTo({
               y: scrollOffset.current,
               animated: true,
@@ -102,6 +110,7 @@ export const useScrollToSavedPath = ({
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,
+    isRestoringScroll,
     scrollRef,
     scrollOffset,
     fadeAnim,

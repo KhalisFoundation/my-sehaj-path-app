@@ -32,6 +32,7 @@ interface PathReaderProps {
   scrollToVerseId?: number;
   scrollToVerseRequestKey?: number;
   scrolledToSavedPath: React.MutableRefObject<boolean>;
+  isRestoringScroll: React.MutableRefObject<boolean>;
   onScrollEndDrag?: (scrollY: number) => void;
   onContentSizeChange?: (width: number, height: number) => void;
 }
@@ -62,6 +63,7 @@ const PathReaderComponent = ({
   scrollToVerseId,
   scrollToVerseRequestKey,
   scrolledToSavedPath,
+  isRestoringScroll,
   onScrollEndDrag,
   onContentSizeChange,
 }: PathReaderProps) => {
@@ -107,11 +109,11 @@ const PathReaderComponent = ({
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
 
-      if (!isAngNavigation) {
+      if (!isAngNavigation && !isRestoringScroll.current) {
         debouncedScrollSave();
       }
     },
-    [isAngNavigation, debouncedScrollSave, scrollOffset]
+    [isAngNavigation, debouncedScrollSave, isRestoringScroll, scrollOffset]
   );
 
   const createSelectionHandler = useCallback(
@@ -338,6 +340,9 @@ const PathReaderComponent = ({
       keyboardShouldPersistTaps="handled"
       onScroll={handleScroll}
       onScrollBeginDrag={() => {
+        // A finger drag takes over from an in-flight automatic restore and is a
+        // real position change that should be saved.
+        isRestoringScroll.current = false;
         scrolledToSavedPath.current = true;
         setFound(false);
       }}
@@ -346,6 +351,11 @@ const PathReaderComponent = ({
         onScrollEndDrag?.(scrollOffset.current);
       }}
       onMomentumScrollEnd={() => {
+        const wasRestoring = isRestoringScroll.current;
+        isRestoringScroll.current = false;
+        if (wasRestoring) {
+          return;
+        }
         findCenterVerseId(scrollOffset.current);
         onScrollEndDrag?.(scrollOffset.current);
       }}

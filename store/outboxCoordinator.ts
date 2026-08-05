@@ -5,7 +5,7 @@ import {
   sehajPathsControllerRemove,
   sehajPathsControllerUpdate,
 } from '@api/generated/sdk.gen';
-import { isApiConfigured } from '@api/config';
+import { isApiConfigured, SYNC_REQUEST_TIMEOUT_MS } from '@api/config';
 import { clearCurrentToken } from '../auth/tokenUtils';
 import { recordError } from '../utils/crashlytics';
 import { applyServerPath, applySyncResult, captureSyncSnapshot } from './applyServerResponse';
@@ -23,7 +23,22 @@ import {
   type PendingPathOp,
 } from './slices/syncSlice';
 import { toCreateBody, toPatchBody, type LocalPath } from './syncAdapters';
-import { buildSyncRequest, toSettingsBody } from './syncRequest';
+import {
+  buildSyncRequest,
+  checkSyncRequestSize,
+  syncRequestFingerprint,
+  toSettingsBody,
+} from './syncRequest';
+import {
+  blockPathOp,
+  blockSettings,
+  blockSyncBody,
+  clearBlockedWork,
+  hasSendableWork,
+  isPathOpBlocked,
+  isSettingsBlocked,
+  isSyncBodyBlocked,
+} from './syncWork';
 import {
   captureSyncSession,
   isCurrentSyncSession,
@@ -100,13 +115,14 @@ export const createOutboxCoordinator = (
   let activeDrain: Promise<void> | null = null;
   let backoffStep = 0;
   /**
-   * Ops the server rejected permanently (a 4xx it will always reject), keyed by
+   * Ops the server rejected permanently live in `syncWork.ts`, keyed by
    * pathId → the `localUpdatedAt` that failed. The op is KEPT locally (the user's
    * change is never discarded) but skipped, so it can't spin forever. Editing the
    * path changes its `localUpdatedAt`, which no longer matches and is retried.
+   *
+   * That registry is shared so `applyServerResponse` can consult it without
+   * importing this module, which would create a cycle.
    */
-  const blockedOps = new Map<number, number>();
-  let blockedSettingsRev: number | null = null;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
   let backoffTimer: ReturnType<typeof setTimeout> | null = null;
   let unsubscribe: (() => void) | null = null;
@@ -138,14 +154,7 @@ export const createOutboxCoordinator = (
    * (the user's change is preserved) but are NOT counted here — otherwise the
    * post-drain reschedule would spin on work the server will never accept.
    */
-  const hasPendingWork = (): boolean => {
-    const s = state();
-    const hasSendableOp = Object.entries(s.sync.pathOps).some(
-      ([key, op]) => blockedOps.get(Number(key)) !== op.localUpdatedAt
-    );
-    const rev = s.sync.pendingSettingsUpdatedAt;
-    return hasSendableOp || (rev != null && rev !== blockedSettingsRev);
-  };
+  const hasPendingWork = (): boolean => hasSendableWork(store, state());
 
   const clearDebounce = () => {
     if (debounceTimer) {
@@ -202,6 +211,24 @@ export const createOutboxCoordinator = (
       return null;
     }
     return { path, date: s.paths.dates.find((entry) => entry.pathid === pathId), meta };
+  };
+
+  /**
+   * Fold a successful write's response into local state.
+   *
+   * Deliberately swallows its own failure. By the time this runs the server has
+   * already accepted and stored the change, so a throw here — an unexpected
+   * shape, a bad field — must NOT be reported as a network error: that shows the
+   * user "unable to sync" for work that is safely saved, and sends them looking
+   * for a problem that does not exist. The op stays queued, the next drain
+   * replays it idempotently by UUID, and the next refresh reconciles local state.
+   */
+  const applyWriteResponse = (apply: () => void, context: string): void => {
+    try {
+      apply();
+    } catch (error) {
+      recordError(error, `outbox: applying ${context} response failed`);
+    }
   };
 
   const processPathOp = async (
@@ -267,8 +294,10 @@ export const createOutboxCoordinator = (
           store.dispatch(ackServerPathExists({ pathId, serverUpdatedAt: res.data.updatedAt }));
           return 'acked';
         }
-        applyServerPath(store, res.data, { pathId, sentLocalUpdatedAt, operation: 'create' });
-        clearScrollOnAck();
+        applyWriteResponse(() => {
+          applyServerPath(store, res.data, { pathId, sentLocalUpdatedAt, operation: 'create' });
+          clearScrollOnAck();
+        }, 'create');
         return 'acked';
       }
 
@@ -288,10 +317,15 @@ export const createOutboxCoordinator = (
         }
         return classify(res.response?.status);
       }
-      applyServerPath(store, res.data, { pathId, sentLocalUpdatedAt, operation: 'update' });
-      clearScrollOnAck();
+      applyWriteResponse(() => {
+        applyServerPath(store, res.data, { pathId, sentLocalUpdatedAt, operation: 'update' });
+        clearScrollOnAck();
+      }, 'update');
       return 'acked';
     } catch (error) {
+      // Only a genuine transport failure reaches here now — the response
+      // appliers above handle their own errors, so an accepted write is never
+      // reported as unreachable.
       recordError(error, `outbox: ${op.kind} failed`);
       return ownsCurrentSession(session) ? 'network' : 'stale';
     }
@@ -302,7 +336,7 @@ export const createOutboxCoordinator = (
       return 'stale';
     }
     const rev = state().sync.pendingSettingsUpdatedAt;
-    if (rev == null || rev === blockedSettingsRev) {
+    if (rev == null || isSettingsBlocked(store, rev)) {
       return 'acked'; // nothing pending, or this exact revision is permanently rejected
     }
     try {
@@ -320,7 +354,7 @@ export const createOutboxCoordinator = (
             new Error(`settings rejected (HTTP ${res.response?.status})`),
             'outbox: settings permanently rejected'
           );
-          blockedSettingsRev = rev; // keep the local value, stop retrying it
+          blockSettings(store, rev); // keep the local value, stop retrying it
         }
         return outcome;
       }
@@ -344,16 +378,55 @@ export const createOutboxCoordinator = (
       return 'stale';
     }
     const snapshot = captureSyncSnapshot(state());
+    const body = buildSyncRequest(state());
+    const fingerprint = syncRequestFingerprint(body);
+
+    // This exact body was already rejected permanently. Re-sending it cannot
+    // succeed and would loop; a later edit changes the fingerprint and retries.
+    if (isSyncBodyBlocked(store, fingerprint)) {
+      return 'permanent';
+    }
+
+    // Too large to ever be accepted, so treat it as permanent rather than
+    // discovering it as a 413 on every retry.
+    const size = checkSyncRequestSize(body);
+    if (!size.ok) {
+      recordError(
+        new Error(`sync body too large: ${size.paths} paths, ${size.bytes} bytes`),
+        'outbox: sync body exceeds server limits'
+      );
+      blockSyncBody(store, fingerprint);
+      return 'permanent';
+    }
+
     try {
       const res = await sehajPathSyncControllerSync({
-        body: buildSyncRequest(state()),
+        body,
         headers: syncSessionHeaders(session),
+        // A whole-state merge through a serializable transaction legitimately
+        // outlasts the ordinary request timeout.
+        timeout: SYNC_REQUEST_TIMEOUT_MS,
       });
       if (!ownsCurrentSession(session)) {
         return 'stale';
       }
       if (res.error) {
-        return classify(res.response?.status);
+        const status = res.response?.status;
+        // `/sync` IS the reconciliation, so a 409 from it cannot escalate to
+        // another `/sync` — that recurses against an actively-writing second
+        // device. Back off and retry with fresher state instead.
+        if (status === 409) {
+          return 'network';
+        }
+        const outcome = classify(status);
+        if (outcome === 'permanent') {
+          recordError(
+            new Error(`sync rejected (HTTP ${status})`),
+            'outbox: bulk sync permanently rejected'
+          );
+          blockSyncBody(store, fingerprint);
+        }
+        return outcome;
       }
       applySyncResult(store, res.data, snapshot);
       return 'acked';
@@ -372,6 +445,8 @@ export const createOutboxCoordinator = (
     store.dispatch(setSyncStatus('flushing'));
 
     let outcome: Outcome = 'acked';
+    /** The op whose 409 triggered the bulk reconcile, if any. */
+    let conflictSource: { pathId: number; localUpdatedAt: number } | null = null;
     try {
       const ops = { ...state().sync.pathOps };
       for (const [key, op] of Object.entries(ops)) {
@@ -386,24 +461,36 @@ export const createOutboxCoordinator = (
         const pathId = Number(key);
         // Skip an op the server already rejected permanently at this exact
         // timestamp; a later edit changes the timestamp and un-blocks it.
-        if (blockedOps.get(pathId) === op.localUpdatedAt) {
+        if (isPathOpBlocked(store, pathId, op.localUpdatedAt)) {
           continue;
         }
         const result = await processPathOp(pathId, op, session);
         if (result === 'permanent') {
           // Keep the user's change locally, but never loop on it.
-          blockedOps.set(pathId, op.localUpdatedAt);
+          blockPathOp(store, pathId, op.localUpdatedAt);
           outcome = 'permanent';
           continue; // other paths may still sync fine
         }
         // A conflict short-circuits: one bulk /sync reconciles the whole snapshot.
         if (result !== 'acked') {
           outcome = result;
+          if (result === 'conflict') {
+            conflictSource = { pathId, localUpdatedAt: op.localUpdatedAt };
+          }
           break;
         }
       }
       if (outcome === 'conflict') {
         outcome = await reconcileViaSync(session);
+        // The bulk merge is the ONLY way to resolve this path's 409, and the
+        // server rejected it permanently. Leaving the op sendable would loop
+        // forever: PATCH → 409 → blocked /sync → PATCH → 409 … Park the exact
+        // version so the cycle stops and unrelated paths keep syncing. It also
+        // lets `hasWorkBlockingPull` fall to false again so this device can
+        // resume downloading cloud changes. A later edit re-queues it.
+        if (outcome === 'permanent' && conflictSource) {
+          blockPathOp(store, conflictSource.pathId, conflictSource.localUpdatedAt);
+        }
       }
       // A permanently-rejected path must not stop unrelated settings from syncing.
       if (outcome === 'acked' || outcome === 'permanent') {
@@ -412,6 +499,15 @@ export const createOutboxCoordinator = (
           outcome = settingsResult;
         }
       }
+    } catch (error) {
+      // Nothing above is allowed to escape. `status` was set to 'flushing' before
+      // the try, and every line that resets it lives BELOW this block — so an
+      // escaping throw would leave the app permanently "syncing", with no error
+      // and no way back, even though the write itself may have succeeded.
+      // Treating it as a transient failure keeps the state machine closed: the
+      // status resolves, the work stays queued, and the backoff retries it.
+      recordError(error, 'outbox: drain failed unexpectedly');
+      outcome = 'network';
     } finally {
       draining = false;
     }
@@ -421,6 +517,8 @@ export const createOutboxCoordinator = (
       // slice and the persisted token — so `canDrain()` becomes false and we
       // stop retrying with a bad token. (Local only; no SSO browser redirect.)
       store.dispatch(setSignedOut());
+      // The next login may be a different account reusing the same local path ids.
+      clearBlockedWork(store);
       // clearCurrentToken never rejects — it returns false on a storage error.
       const cleared = await clearCurrentToken(session.token);
       if (!cleared) {
