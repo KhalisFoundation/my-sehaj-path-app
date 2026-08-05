@@ -269,6 +269,11 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     dispatch(declineSync());
   }, [dispatch]);
 
+  // `Dialog` is memoised, so an inline arrow here would be a fresh prop on every
+  // render and defeat the memo. Setter identity is stable, so these are too.
+  const dismissSwitchedNotice = useCallback(() => setSwitchedFrom(null), []);
+  const cancelDiscardConfirm = useCallback(() => setConfirmingDiscard(false), []);
+
   const onDiscardConfirmed = async () => {
     if (!email || syncing) {
       return;
@@ -306,7 +311,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   // account's reading was not lost, and that message used to flash past.
   if (mode === 'accountSwitch' && switchedFrom && status === 'signedIn' && !!email) {
     return (
-      <Dialog visible onRequestClose={() => setSwitchedFrom(null)}>
+      <Dialog visible onRequestClose={dismissSwitchedNotice}>
         <Text style={styles.title}>{Constants.SWITCHED_ACCOUNT_TITLE}</Text>
         <Text style={styles.message}>
           <Text style={styles.strong}>{switchedFrom}</Text>
@@ -495,7 +500,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   // --- Case 3 → Discard confirmation ----------------------------------------
   if (confirmingDiscard) {
     return (
-      <Dialog visible onRequestClose={() => setConfirmingDiscard(false)}>
+      <Dialog visible onRequestClose={cancelDiscardConfirm}>
         <Text style={styles.title}>{Constants.DISCARD_CONFIRM_TITLE}</Text>
         <Text style={styles.message}>{Constants.DISCARD_CONFIRM_MESSAGE}</Text>
         <View style={styles.actions}>
