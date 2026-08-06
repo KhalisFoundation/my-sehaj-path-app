@@ -1,12 +1,8 @@
 import EncryptedStorage from 'react-native-encrypted-storage';
 import { SP_API } from './constants';
 
-// Same key gurdham/mobile uses, so the pattern is consistent across Khalis apps.
 const TOKEN_KEY = 'USER_TOKEN';
 
-// Keychain/EncryptedStorage replacement is a remove+set sequence. Serialize
-// reads and mutations so an older invalid session cannot delete a newer login's
-// token between those two native calls.
 let tokenStorageQueue: Promise<unknown> = Promise.resolve();
 
 const withTokenStorageLock = <T>(task: () => Promise<T>): Promise<T> => {
