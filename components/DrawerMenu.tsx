@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -9,6 +9,7 @@ import {
   Linking,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -21,7 +22,7 @@ import {
 } from '@constants';
 import { DrawerMenuStyles } from '@styles';
 import { KhalisIcon, LoginIcon, SaveIcon } from '@icons';
-import { showErrorAlert, trackEvent } from '@utils';
+import { showErrorAlert, showLogoutConfirmAlert, trackEvent } from '@utils';
 import { DonationIcon } from '@icons/Donation.icon';
 import { startLogin, logout } from '@auth';
 import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
@@ -40,6 +41,24 @@ interface DrawerMenuProps {
   onSavePress?: () => void;
 }
 
+const logoutOverlayStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(13, 35, 70, 0.72)',
+  },
+  text: {
+    marginTop: 14,
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+});
+
 const DrawerMenuComponent = ({
   isVisible,
   onClose,
@@ -51,6 +70,7 @@ const DrawerMenuComponent = ({
   onSavePress,
 }: DrawerMenuProps) => {
   const slideAnim = useRef(new Animated.Value(-300)).current;
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const authStatus = useAppSelector((state) => state.auth.status);
   const userEmail = useAppSelector((state) => state.auth.email);
   const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
@@ -64,8 +84,19 @@ const DrawerMenuComponent = ({
 
   const handleLogoutPress = () => {
     trackEvent('AuthButton', 'click', 'Log out pressed');
-    logout();
-    onClose();
+    // Confirm first, then show a loading overlay while local logout settles.
+    // The best-effort SSO browser logout opens afterwards without holding UI.
+    showLogoutConfirmAlert({
+      onConfirm: async () => {
+        setIsLoggingOut(true);
+        try {
+          await logout();
+        } finally {
+          setIsLoggingOut(false);
+          onClose();
+        }
+      },
+    });
   };
 
   const performSync = async (repair = false) => {
@@ -269,6 +300,12 @@ const DrawerMenuComponent = ({
               accessibilityRole="button"
             />
           </View>
+          {isLoggingOut ? (
+            <View style={logoutOverlayStyles.overlay}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+              <Text style={logoutOverlayStyles.text}>{Constants.LOGGING_OUT}</Text>
+            </View>
+          ) : null}
         </View>
       </SafeAreaProvider>
     </Modal>

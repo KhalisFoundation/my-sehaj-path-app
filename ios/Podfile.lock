@@ -2121,6 +2121,8 @@ PODS:
     - ReactNativeDependencies
     - RNFBApp
     - Yoga
+  - RNInAppBrowser (3.7.1):
+    - React-Core
   - RNScreens (4.18.0):
     - hermes-engine
     - RCTRequired
@@ -2322,6 +2324,7 @@ DEPENDENCIES:
   - "RNFBAnalytics (from `../node_modules/@react-native-firebase/analytics`)"
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBCrashlytics (from `../node_modules/@react-native-firebase/crashlytics`)"
+  - RNInAppBrowser (from `../node_modules/react-native-inappbrowser-reborn`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
@@ -2513,6 +2516,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-firebase/app"
   RNFBCrashlytics:
     :path: "../node_modules/@react-native-firebase/crashlytics"
+  RNInAppBrowser:
+    :path: "../node_modules/react-native-inappbrowser-reborn"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   RNSVG:
@@ -2621,6 +2626,7 @@ SPEC CHECKSUMS:
   RNFBAnalytics: 4313f4a49191cc89afe8b1fdfc8b46d2c664f9bf
   RNFBApp: dc732c75a2db401ba790f25c82f6a47fd2ac7af6
   RNFBCrashlytics: 333eea535b5c1f697816589816a020be7fb1bd5d
+  RNInAppBrowser: 904d24dc75e8e6c6c98a3160329192608946f9df
   RNScreens: dd5c879d56b543c7ff8e593739eeb66093d60263
   RNSVG: 394cfd0518613b144c65ffe69045f827b78a7a7c
   RNVectorIcons: bd88db8836a8611aff4b44f061364c07002a6c2a

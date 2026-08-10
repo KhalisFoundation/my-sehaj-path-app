@@ -48,6 +48,7 @@ export const Constants: Constant = {
   DONATE: 'Donate',
   LOGIN: 'Login',
   LOGOUT: 'Logout',
+  LOGGING_OUT: 'Signing out…',
   WELCOME: 'Welcome',
   SYNC_PROGRESS_PROMPT: 'Do you want to sync your progress now?',
   OK: 'OK',

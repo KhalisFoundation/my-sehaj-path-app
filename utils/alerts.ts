@@ -31,6 +31,24 @@ export const showSaveProgressAlert = ({
 };
 
 /**
+ * Confirms an explicit sign-out before it runs. Logout ends the IdP session and
+ * clears the local account, so it should not fire on a single accidental tap.
+ */
+export const showLogoutConfirmAlert = ({ onConfirm }: { onConfirm: () => void }) => {
+  Alert.alert('Log out?', 'You will be signed out on this device.', [
+    {
+      text: 'Cancel',
+      style: 'cancel',
+    },
+    {
+      text: 'Log Out',
+      onPress: onConfirm,
+      style: 'destructive',
+    },
+  ]);
+};
+
+/**
  * Shown when the user is leaving the path screen but the position could not be
  * saved. We never trap the user: they can retry (stay) or leave anyway.
  */
