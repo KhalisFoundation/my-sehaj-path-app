@@ -140,6 +140,18 @@ const SyncStatusNoticeComponent = () => {
    * currently believe.
    */
   const showedError = useRef(false);
+  /** The next busy run is retrying a sync the user was already told failed. */
+  const retrying = useRef(false);
+  /** Prevent one unchanged `status: error` from re-showing after its timeout. */
+  const errorNoticeShown = useRef(false);
+
+  // A real new drain changes status to flushing. That is the boundary at which
+  // the next failure may earn one new error notice.
+  useEffect(() => {
+    if (status !== 'error') {
+      errorNoticeShown.current = false;
+    }
+  }, [status]);
 
   useEffect(() => {
     if (!busy) {
@@ -148,6 +160,7 @@ const SyncStatusNoticeComponent = () => {
     }
     if (!wasBusy.current) {
       wasBusy.current = true;
+      retrying.current = showedError.current;
       // Rising edge: real work queued, the user explicitly asked, or this is the
       // once-per-launch catch-up — the one sync the user may actually be waiting
       // on, since they just opened the app and want to know it is current.
@@ -195,6 +208,10 @@ const SyncStatusNoticeComponent = () => {
     // the whole thing as one run.
     const timer = setTimeout(() => {
       if (status === 'error') {
+        if (errorNoticeShown.current) {
+          return;
+        }
+        errorNoticeShown.current = true;
         meaningful.current = false;
         showedError.current = true;
         setPhase('error');
@@ -215,6 +232,7 @@ const SyncStatusNoticeComponent = () => {
       ) {
         meaningful.current = false;
         showedError.current = false; // the record is corrected
+        retrying.current = false;
         setPhase('done');
         dispatch(clearSyncConfirmation());
         return;
@@ -310,8 +328,12 @@ const SyncStatusNoticeComponent = () => {
       ? 'Unable to sync. Your progress is safe on this device.'
       : 'Unable to sync some progress. Your local progress is safe.';
   const isSettings = kind.current === 'settings';
+  let syncingMessage = isSettings ? 'Saving your settings…' : 'Syncing your progress…';
+  if (retrying.current) {
+    syncingMessage = isSettings ? 'Retrying your settings…' : 'Retrying sync…';
+  }
   const messages: Record<string, string> = {
-    syncing: isSettings ? 'Saving your settings…' : 'Syncing your progress…',
+    syncing: syncingMessage,
     done: isSettings ? 'Settings saved' : 'Synced',
     offline: 'No internet connection',
   };

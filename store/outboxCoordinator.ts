@@ -50,7 +50,7 @@ import {
 } from './syncSession';
 
 const DEFAULT_DEBOUNCE_MS = 5000;
-const DEFAULT_BACKOFF_MS = [5000, 30000, 120000];
+const DEFAULT_BACKOFF_MS = __DEV__ ? [2000, 2000, 2000] : [5000, 30000, 120000];
 
 export interface OutboxCoordinator {
   start: () => void;
@@ -125,6 +125,12 @@ export const createOutboxCoordinator = (
   let activeDrain: Promise<void> | null = null;
   let backoffStep = 0;
   /**
+   * A transport failure owns retry timing. While true, store updates such as
+   * `setSyncError` must not also schedule the ordinary five-second debounce —
+   * otherwise that debounce bypasses the retry cap and retries forever.
+   */
+  let retryScheduledOrPaused = false;
+  /**
    * Ops the server rejected permanently live in `syncWork.ts`, keyed by
    * pathId → the `localUpdatedAt` that failed. The op is KEPT locally (the user's
    * change is never discarded) but skipped, so it can't spin forever. Editing the
@@ -196,6 +202,8 @@ export const createOutboxCoordinator = (
     if (!started) {
       return;
     }
+    retryScheduledOrPaused = true;
+    clearDebounce();
     // After the planned retries, wait for a useful lifecycle event (foreground,
     // reconnect, or an explicit Sync now) instead of waking every two minutes
     // forever while the server is unavailable.
@@ -209,6 +217,7 @@ export const createOutboxCoordinator = (
     }
     backoffTimer = setTimeout(() => {
       backoffTimer = null;
+      retryScheduledOrPaused = false;
       runDrain();
     }, delay);
   }
@@ -562,8 +571,8 @@ export const createOutboxCoordinator = (
       return;
     }
     if (outcome === 'network') {
-      store.dispatch(setSyncError('network')); // also sets status = 'error'
       scheduleBackoff();
+      store.dispatch(setSyncError('network')); // also sets status = 'error'
       return;
     }
     if (outcome === 'permanent') {
@@ -572,11 +581,13 @@ export const createOutboxCoordinator = (
       // next local edit to that path clears the block and re-queues it.
       store.dispatch(setSyncError('rejected'));
       backoffStep = 0;
+      retryScheduledOrPaused = false;
       return;
     }
 
     // outcome === 'acked' (a conflict was already resolved via reconcileViaSync).
     backoffStep = 0;
+    retryScheduledOrPaused = false;
     store.dispatch(setSyncError(null));
     store.dispatch(setSyncStatus('idle'));
     if (hasPendingWork()) {
@@ -607,7 +618,7 @@ export const createOutboxCoordinator = (
     if (!started || draining) {
       return;
     }
-    if (hasPendingWork() && canDrain()) {
+    if (hasPendingWork() && canDrain() && !retryScheduledOrPaused) {
       scheduleFlush();
     }
   };
@@ -619,6 +630,7 @@ export const createOutboxCoordinator = (
       }
       started = true;
       backoffStep = 0;
+      retryScheduledOrPaused = false;
       unsubscribe = store.subscribe(onChange);
       if (hasPendingWork()) {
         scheduleFlush();
@@ -632,6 +644,7 @@ export const createOutboxCoordinator = (
         clearTimeout(backoffTimer);
         backoffTimer = null;
       }
+      retryScheduledOrPaused = false;
       unsubscribe?.();
       unsubscribe = null;
     },
@@ -640,6 +653,13 @@ export const createOutboxCoordinator = (
 
     flushNow: async () => {
       clearDebounce();
+      if (backoffTimer) {
+        clearTimeout(backoffTimer);
+        backoffTimer = null;
+      }
+      // Foreground, reconnect, and explicit Sync now are useful user/lifecycle
+      // events, so they deliberately get one fresh attempt after the retry cap.
+      retryScheduledOrPaused = false;
       await drain();
     },
 

@@ -520,6 +520,37 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
+  it('makes exactly three automatic retries after a network failure, then pauses', async () => {
+    jest.useFakeTimers();
+    try {
+      const store = makeStore();
+      store.dispatch(hydrateEmptySync());
+      store.dispatch(setSignedIn({ token: 't', email: 'u@e.com', firstname: 'U', lastname: 'X' }));
+      store.dispatch(setAccount('u@e.com'));
+      const coordinator = createOutboxCoordinator(store, {
+        debounceMs: 1,
+        backoffMs: [10, 20, 30],
+      });
+      coordinator.start();
+      store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+      mockCreate.mockRejectedValue(new Error('offline'));
+
+      await coordinator.flushNow(); // initial attempt
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+
+      await jest.advanceTimersByTimeAsync(10);
+      await jest.advanceTimersByTimeAsync(20);
+      await jest.advanceTimersByTimeAsync(30);
+      expect(mockCreate).toHaveBeenCalledTimes(4); // initial + three retries
+
+      await jest.advanceTimersByTimeAsync(1000);
+      expect(mockCreate).toHaveBeenCalledTimes(4);
+      coordinator.stop();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it.each([
     ['a 500 server error', () => mockUpdate.mockResolvedValueOnce(fail(500))],
     ['a 408 request timeout', () => mockUpdate.mockResolvedValueOnce(fail(408))],
