@@ -1,8 +1,8 @@
 import React from 'react';
-import { TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
-import { LeftArrowIcon } from '@icons';
+import { LeftArrowIcon, RightChevronIcon } from '@icons';
 import {
   SettingScreenStyle,
   SafeAreaStyle,
@@ -19,6 +19,7 @@ import {
   ErrorConstants,
   FontSizes,
   AngsFormatArray,
+  Routes,
   VishraamsSourceArray,
   VishraamsSourceLabels,
 } from '@constants';
@@ -198,6 +199,18 @@ export const Settings = ({ navigation }: SettingProps) => {
             containerStyle={LarivaarStyles.container}
             textStyle={LarivaarStyles.fontSizeText}
           />
+          <TouchableOpacity
+            style={SettingScreenStyle.databaseUpdateRow}
+            onPress={() => navigation.push(Routes.DatabaseUpdate)}
+            accessibilityRole="button"
+            accessibilityLabel="Update database"
+            accessibilityHint="Checks for a newer offline reading database"
+          >
+            <View style={SettingScreenStyle.databaseUpdateCopy}>
+              <Text style={SettingScreenStyle.databaseUpdateText}> Database</Text>
+            </View>
+            <RightChevronIcon />
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>

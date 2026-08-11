@@ -6,8 +6,22 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
-import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
-import { BootSplash, HydrationRetry, SyncPopup, SyncStatusNotice } from '@components';
+import {
+  SplashScreen,
+  HomeScreen,
+  Continue,
+  PathScreen,
+  Settings,
+  DatabaseUpdate,
+  Error,
+} from '@screens';
+import {
+  BootSplash,
+  HydrationRetry,
+  SyncPopup,
+  SyncStatusNotice,
+  OfflineDbNotice,
+} from '@components';
 import { ErrorConstants, Routes } from '@constants';
 import { allowTracking, allowCrashReporting, showErrorAlert } from '@utils';
 import { initAuth, retrySessionProfile, useSSOLogin } from '@auth';
@@ -20,6 +34,7 @@ import { outbox, persistence } from './store/instance';
 import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syncLifecycle';
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
+import { provisionDatabase } from './db';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type RootStackParamList = {
@@ -28,6 +43,7 @@ export type RootStackParamList = {
   Continue: { pathId: number; initialTab?: string };
   Path: { pathId: number };
   Setting: undefined;
+  DatabaseUpdate: undefined;
   Error: undefined;
 };
 
@@ -75,6 +91,11 @@ const App = () => {
       // and leave the sign-in popup permanently unchecked.
       const prefs = await readSyncPrefs();
       store.dispatch(hydrateSignInPopup(prefs.signInPopupDismissed));
+
+      // Provision the offline reading DB in the BACKGROUND (never awaited): the
+      // API fallback covers reading until it lands. The UI shows one simple
+      // confirmation popup after a new download completes.
+      provisionDatabase();
     }
     setReady(ok);
   }, []);
@@ -119,22 +140,25 @@ const App = () => {
       }
     });
 
-    // Cold start: AppState never emits 'active' on launch, so pull remote
-    // changes once the app FIRST becomes syncable (a returning known account on
-    // another device). Fires once, then unsubscribes itself.
-    let launchRefreshDone = false;
-    const unsubscribeLaunch = store.subscribe(() => {
-      if (launchRefreshDone || !canSyncNow()) {
-        return;
+    // Start catch-up immediately whenever this device becomes syncable. This
+    // covers cold start AND signing back into the same account after reading
+    // while signed out. Without this edge trigger, a known account's queued
+    // work waits for the normal five-second outbox debounce because Home was
+    // already focused and therefore does not receive another focus event.
+    let wasSyncable = canSyncNow();
+    const unsubscribeSyncable = store.subscribe(() => {
+      const isSyncable = canSyncNow();
+      const justBecameSyncable = isSyncable && !wasSyncable;
+      wasSyncable = isSyncable;
+      if (justBecameSyncable) {
+        onForeground();
       }
-      launchRefreshDone = true;
-      onForeground();
     });
 
     return () => {
       unsubscribeNetInfo();
       appStateSub.remove();
-      unsubscribeLaunch();
+      unsubscribeSyncable();
       // Without this a root remount would re-hydrate while the previous writer
       // is still subscribed to the same store.
       persistence.stop();
@@ -165,6 +189,7 @@ const App = () => {
         <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
           <AnalyticsConsent />
           <SyncStatusNotice />
+          <OfflineDbNotice />
           {/* A known-account switch is a data boundary, not only a Home-screen
               prompt. Keep it app-wide so B can never continue editing A's
               active paths from the reader while the switch is unresolved. */}
@@ -184,6 +209,7 @@ const App = () => {
               <Stack.Screen name={Routes.Continue} component={Continue} />
               <Stack.Screen name={Routes.Path} component={PathScreen} />
               <Stack.Screen name={Routes.Setting} component={Settings} />
+              <Stack.Screen name={Routes.DatabaseUpdate} component={DatabaseUpdate} />
               <Stack.Screen name={Routes.Error} component={Error} />
             </Stack.Navigator>
           </NavigationContainer>

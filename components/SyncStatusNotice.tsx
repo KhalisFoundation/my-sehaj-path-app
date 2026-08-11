@@ -6,6 +6,7 @@ import { OfflineCloudIcon, SyncedCheckIcon } from '../icons';
 import { isApiConfigured } from '@api/config';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { clearSyncConfirmation } from '../store/slices/syncSlice';
+import { isSilentPathOp } from '../store/syncWork';
 
 type Phase = 'hidden' | 'syncing' | 'done' | 'error';
 type RenderedPhase = Phase | 'offline';
@@ -33,6 +34,7 @@ const STALL_AFTER_MS = 20_000;
  */
 const DONE_DISMISS_MS = 2000;
 const ERROR_DISMISS_MS = 4000;
+const OFFLINE_DISMISS_MS = 3000;
 const ENTER_DURATION_MS = 220;
 const EXIT_DURATION_MS = 180;
 
@@ -83,7 +85,9 @@ const SyncStatusNoticeComponent = () => {
   const hasNoticeWorthyPendingWork = useAppSelector(
     (state) =>
       state.sync.pendingSettingsUpdatedAt != null ||
-      Object.values(state.sync.pathOps).some((op) => op.kind !== 'create')
+      Object.entries(state.sync.pathOps).some(
+        ([pathId, op]) => op.kind !== 'create' && !isSilentPathOp(Number(pathId), op.localUpdatedAt)
+      )
   );
   /** A settings edit with no path work queued alongside it. */
   const settingsOnly = useAppSelector(
@@ -97,6 +101,9 @@ const SyncStatusNoticeComponent = () => {
   // Uploading, downloading, or working through the session catch-up.
   const busy = status === 'flushing' || pulling || catchUpSyncRunning;
   const [phase, setPhase] = useState<Phase>('hidden');
+  // Show an offline notice once when connectivity drops. It must not become
+  // permanent furniture while somebody deliberately reads offline.
+  const [offlineDismissed, setOfflineDismissed] = useState(false);
   // Keep the last visible phase mounted briefly while its exit animation runs.
   // Without this separate render state, setting `phase` to hidden removes the
   // view immediately and there is nothing left for React Native to fade out.
@@ -254,10 +261,19 @@ const SyncStatusNoticeComponent = () => {
     return () => clearTimeout(timer);
   }, [phase]);
 
-  // Offline is a current connection state, rather than the outcome of one
-  // particular request. It takes priority over a stale sync/done phase and
-  // stays visible until the device reconnects.
-  const displayPhase: RenderedPhase = isOffline ? 'offline' : phase;
+  useEffect(() => {
+    if (!isOffline) {
+      setOfflineDismissed(false);
+      return undefined;
+    }
+    const timer = setTimeout(() => setOfflineDismissed(true), OFFLINE_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [isOffline]);
+
+  // Offline takes priority over a stale sync/done phase, but only briefly.
+  // Reading stays fully usable without a connection, so an always-visible
+  // warning would distract from the content.
+  const displayPhase: RenderedPhase = isOffline ? (offlineDismissed ? 'hidden' : 'offline') : phase;
 
   useEffect(() => {
     noticeAnimation.stopAnimation();

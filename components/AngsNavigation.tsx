@@ -3,9 +3,7 @@ import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from '
 import { BlurView } from '@react-native-community/blur';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
-import { useInternet } from '@hooks';
-import { showErrorAlert } from '@utils';
-import { ErrorConstants, PATH_DATA } from '@constants';
+import { PATH_DATA } from '@constants';
 
 interface Props {
   setIsAngsNavigationVisible: (isAngsNavigationVisible: boolean) => void;
@@ -14,7 +12,8 @@ interface Props {
   pathAng: number;
   isAngNavigation: boolean;
   setIsAngNavigation: (isAngNavigation: boolean) => void;
-  fetchAngData: (angNumber: number) => void;
+  /** True only when the requested ang was loaded successfully. */
+  fetchAngData: (angNumber: number) => Promise<boolean>;
   updatePathAng: (angNumber: number) => void;
 }
 
@@ -30,8 +29,6 @@ export const AngsNavigation = ({
   const [angNumber, setAngNumber] = useState<number>(pathAng);
   const [inputValue, setInputValue] = useState<string>(pathAng.toString());
   const [isValid, setIsValid] = useState<boolean>(true);
-  const { checkNetwork } = useInternet();
-
   useEffect(() => {
     setAngNumber(pathAng);
     setInputValue(pathAng.toString());
@@ -56,20 +53,8 @@ export const AngsNavigation = ({
   };
 
   const handleNavigation = (navigationFunction: () => void) => {
-    checkNetwork()
-      .then((isConnected) => {
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
-        }
-        navigationFunction();
-        setIsAngsNavigationVisible(false);
-      })
-      .catch((_error) => {
-        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-      });
+    navigationFunction();
+    setIsAngsNavigationVisible(false);
   };
 
   const handleGoToAng = async () => {
@@ -77,22 +62,16 @@ export const AngsNavigation = ({
       return;
     }
 
-    checkNetwork()
-      .then((isConnected) => {
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
-        }
-        fetchAngData(angNumber);
-        setIsAngNavigation(true);
-        setIsAngsNavigationVisible(false);
-        updatePathAng(angNumber);
-      })
-      .catch((_error) => {
-        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-      });
+    // The local DB is tried first. If it is unavailable, `fetchAngData` tries
+    // the API and performs the offline handling. Do not update the reader's
+    // displayed Ang unless one of those sources actually loaded it.
+    const loaded = await fetchAngData(angNumber);
+    if (!loaded) {
+      return;
+    }
+    setIsAngNavigation(true);
+    setIsAngsNavigationVisible(false);
+    updatePathAng(angNumber);
   };
 
   return (

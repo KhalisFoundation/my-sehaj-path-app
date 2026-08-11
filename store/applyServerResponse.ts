@@ -21,6 +21,7 @@ import {
   clearScrollIfUnchanged,
   clearSettingsIfUnchanged,
   dropMeta,
+  markSettingsDirty,
   setLastSyncedAt,
   setSyncError,
   setPulling,
@@ -492,6 +493,15 @@ const performRefreshPathsFromServer = async (
       // Only safe because nothing was pending: with a pending edit the apply is
       // skipped above and local state does NOT match the server.
       setConfirmedSettings(store, settingsFingerprint(store.getState().settings));
+    } else if (settingsMissing && store.getState().sync.pendingSettingsUpdatedAt == null) {
+      // The account has NO settings document on the server yet (a plain 404 —
+      // fresh account, or settings were never synced). Seed it with THIS
+      // device's current settings so the next login restores them instead of
+      // starting from defaults every time. Skipped when a local settings edit is
+      // already pending — the outbox will push that (newer) value on its own.
+      // `markSettingsDirty` stamps the current settings; the outbox's store
+      // subscription then uploads them (PUT /settings).
+      store.dispatch(markSettingsDirty({ at: Date.now() }));
     }
     // A later successful pull clears any earlier refresh-only network notice.
     // (There may be no outbox operation to clear it for us.)

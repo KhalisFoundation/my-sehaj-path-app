@@ -12,6 +12,7 @@ import {
   clearPathCompletion,
   getNextPathId,
   renamePath,
+  setScrollPosition,
   updatePath,
 } from './slices/pathsSlice';
 import type { SettingsState } from './slices/settingsSlice';
@@ -212,6 +213,7 @@ export const savePathProgress = async (
         completionDate,
         todayDate,
         scrollPosition,
+        silentSync: options.silent === true,
       })
     );
   });
@@ -227,6 +229,19 @@ export const savePathProgress = async (
   }
   return saved;
 };
+
+export const savePathScrollPosition = (pathId: number, scrollPosition: number): Promise<boolean> =>
+  runExclusive(async () => {
+    const current = store.getState().paths.dates.find((date) => date.pathid === pathId);
+    if ((current?.scrollPosition ?? 0) === scrollPosition) {
+      return store.getState().paths.paths.some((path) => path.pathId === pathId);
+    }
+    const exists = store.getState().paths.paths.some((path) => path.pathId === pathId);
+    if (!exists) {
+      return false;
+    }
+    return dispatchDurable(setScrollPosition({ pathId, scrollPosition }));
+  });
 
 export const renamePathCommand = async (pathId: number, name: string): Promise<boolean> => {
   const saved = await runPathMutation(pathId, () => renamePath({ pathId, name }));

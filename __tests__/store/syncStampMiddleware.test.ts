@@ -9,6 +9,7 @@ import {
 } from '../../store/slices/pathsSlice';
 import { setFontSize, setLarivaar } from '../../store/slices/settingsSlice';
 import { ackServerPath } from '../../store/slices/syncSlice';
+import { isSilentPathOp } from '../../store/syncWork';
 import type { DateData, PathData } from '../../types';
 
 const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -102,6 +103,23 @@ describe('syncStampMiddleware', () => {
     const { pathOps, scrollDirty } = store.getState().sync;
     expect(scrollDirty[1]).toBeGreaterThan(0);
     expect(pathOps[1]).toBeUndefined();
+  });
+
+  it('marks a debounced auto-scroll update as notification-silent', () => {
+    const store = makeStore();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const created = store.getState().sync.pathOps[1].localUpdatedAt;
+    store.dispatch(ackServerPath({ pathId: 1, sentLocalUpdatedAt: created, serverUpdatedAt: 100 }));
+
+    store.dispatch(
+      updatePath({
+        ...updateFor(1).payload,
+        silentSync: true,
+      })
+    );
+
+    const op = store.getState().sync.pathOps[1];
+    expect(isSilentPathOp(1, op.localUpdatedAt)).toBe(true);
   });
 
   it('a settings setter marks settings dirty without creating a path op', () => {

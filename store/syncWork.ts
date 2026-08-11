@@ -42,6 +42,10 @@ interface BlockedWork {
 }
 
 const registries = new WeakMap<AppStore, BlockedWork>();
+// The app has one Redux store. Unlike blocked work, this UI-only marker must be
+// available to the stamping middleware, which receives Redux's middleware API
+// object rather than the store instance used as the WeakMap key above.
+const silentPathOps = new Map<number, number>();
 
 const registryFor = (store: AppStore): BlockedWork => {
   const existing = registries.get(store);
@@ -64,6 +68,17 @@ export const blockPathOp = (store: AppStore, pathId: number, localUpdatedAt: num
 
 export const isPathOpBlocked = (store: AppStore, pathId: number, localUpdatedAt: number): boolean =>
   registryFor(store).paths.get(pathId) === localUpdatedAt;
+
+export const markSilentPathOp = (pathId: number, localUpdatedAt: number): void => {
+  silentPathOps.set(pathId, localUpdatedAt);
+};
+
+export const clearSilentPathOp = (pathId: number): void => {
+  silentPathOps.delete(pathId);
+};
+
+export const isSilentPathOp = (pathId: number, localUpdatedAt: number): boolean =>
+  silentPathOps.get(pathId) === localUpdatedAt;
 
 export const blockSettings = (store: AppStore, updatedAt: number): void => {
   registryFor(store).settings = updatedAt;
@@ -95,6 +110,7 @@ export const settingsAlreadyConfirmed = (store: AppStore, fingerprint: string): 
  */
 export const clearBlockedWork = (store: AppStore): void => {
   registries.delete(store);
+  silentPathOps.clear();
 };
 
 /**

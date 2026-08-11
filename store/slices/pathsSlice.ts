@@ -29,6 +29,8 @@ export interface UpdatePathPayload {
   /** Caller supplies today's date string in the legacy 'D-Month-YYYY' format. */
   todayDate: string;
   scrollPosition?: number;
+  /** Auto-scroll checkpoints sync silently; an explicit save remains visible. */
+  silentSync?: boolean;
 }
 
 /**

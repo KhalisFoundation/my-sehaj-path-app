@@ -415,6 +415,43 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().settings.larivaar).toBe(true);
   });
 
+  it('seeds the server with the device settings when it has none (settings 404)', async () => {
+    const store = signedInStore();
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockGetSettings.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'not found' },
+      response: { status: 404 },
+    });
+    // Nothing pending — the user never changed a setting this session.
+    expect(store.getState().sync.pendingSettingsUpdatedAt).toBeNull();
+
+    // A 404 is not a failure; the refresh still succeeds.
+    expect(await refreshPathsFromServer(store)).toBe(true);
+
+    // The device's current settings are now queued to upload (PUT /settings),
+    // so the next login restores them instead of defaults.
+    expect(store.getState().sync.pendingSettingsUpdatedAt).not.toBeNull();
+  });
+
+  it('does not re-stamp settings on a 404 when a local edit is already pending', async () => {
+    const store = signedInStore();
+    store.dispatch(setLarivaar(true));
+    store.dispatch(markSettingsDirty({ at: 1000 }));
+    const pendingBefore = store.getState().sync.pendingSettingsUpdatedAt;
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockGetSettings.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'not found' },
+      response: { status: 404 },
+    });
+
+    await refreshPathsFromServer(store);
+
+    // The already-pending edit is left as-is; the outbox will push it.
+    expect(store.getState().sync.pendingSettingsUpdatedAt).toBe(pendingBefore);
+  });
+
   it('does not report a refresh as successful when settings failed to load', async () => {
     const store = signedInStore();
     mockFindAll.mockResolvedValueOnce(findAllOk([]));

@@ -23,6 +23,7 @@ import {
   commitSettingChange,
   createPath,
   renamePathCommand,
+  savePathScrollPosition,
   savePathProgress,
   undoPathCompletion,
 } from '../../store/commands';
@@ -217,6 +218,20 @@ describe('savePathProgress', () => {
     // store restored to the last durable value, not the failed 42.
     expect(store.getState().paths.paths[0].saveData.angNumber).toBe(before);
     restoreStorageImpls();
+  });
+});
+
+describe('savePathScrollPosition', () => {
+  it('persists a scroll checkpoint without creating a new path operation', async () => {
+    const id = await createPath();
+    expect(id).not.toBeNull();
+    const existingOp = store.getState().sync.pathOps[id!];
+
+    expect(await savePathScrollPosition(id!, 480)).toBe(true);
+
+    expect(store.getState().paths.dates[0].scrollPosition).toBe(480);
+    expect(store.getState().sync.pathOps[id!]).toEqual(existingOp);
+    expect(store.getState().sync.scrollDirty[id!]).toBeDefined();
   });
 });
 

@@ -1,16 +1,19 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { View, ScrollView, ActivityIndicator, Animated, AppState, BackHandler } from 'react-native';
+import {
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Animated,
+  AppState,
+  BackHandler,
+  Alert,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  BaniDB,
-  showErrorAlert,
-  showLeaveAnywayAlert,
-  convertNumberToFormat,
-  recordError,
-} from '@utils';
+import { showErrorAlert, showLeaveAnywayAlert, convertNumberToFormat, recordError } from '@utils';
+import { getAngContent } from '../db';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
   DateData,
@@ -23,7 +26,7 @@ import {
 } from '@hooks';
 import { store } from '../store';
 import { useAppSelector } from '../store/hooks';
-import { savePathProgress, undoPathCompletion } from '../store/commands';
+import { savePathProgress, savePathScrollPosition, undoPathCompletion } from '../store/commands';
 import { onScreenBlur, setActiveReaderPath } from '../store/syncLifecycle';
 import {
   AngsNavigation,
@@ -132,23 +135,32 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     async (angNumber: number) => {
       alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
       setReaderContentHeight(0);
-      const pathFromBaniDB = await BaniDB(angNumber);
+      const pathFromBaniDB = await getAngContent(angNumber);
       alertIndicator.current = undefined;
-      setPathContent(pathFromBaniDB.data);
-      setRetryState({ needsRetry: false, lastFailedAng: null });
-      resetTransientUiState();
       if (pathFromBaniDB.success === false) {
+        // Local DB was missing or unreadable, and the API fallback failed.
+        // Only this fallback path needs a connectivity check.
         const isConnected = await checkNetwork();
         if (!isConnected) {
           setRetryState({ needsRetry: true, lastFailedAng: angNumber });
-          showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          Alert.alert(
+            'Error',
+            `${ErrorConstants.NO_INTERNET_TITLE}\n${ErrorConstants.NO_INTERNET_MESSAGE}\n\n`,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.replace(Routes.Home),
+              },
+            ]
           );
         } else {
           navigation.replace(Routes.Error);
-          return;
         }
+        return false;
       }
+      setPathContent(pathFromBaniDB.data);
+      setRetryState({ needsRetry: false, lastFailedAng: null });
+      resetTransientUiState();
       const currentDebounceTimer = debounceTimer.current;
       if (currentDebounceTimer !== null) {
         clearTimeout(currentDebounceTimer);
@@ -159,6 +171,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         y: 0,
         animated: false,
       });
+      return true;
     },
     [checkNetwork, navigation, resetTransientUiState]
   );
@@ -170,7 +183,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     scrollOffset,
     scrollRef,
     setPathAng,
-    checkNetwork,
     fetchFromBaniDB,
   });
 
@@ -270,36 +282,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         return;
       }
       try {
-        // The verse belongs to the ang it was saved on. After navigating to a
-        // different ang, keeping it would store/send an impossible checkpoint
-        // (new ang + old ang's verse), so it resets to 0.
-        const verseIdToKeep = getDurableSavedVerseId(matchedPath.current?.saveData, pathAng);
-        const wasUndoPending = completionUndoPendingRef.current;
-
-        // Background auto-save: silent so a transient failure while scrolling
-        // does not spam alerts. Explicit saves (long-press / save icon) alert.
-        const saved = await savePathProgress(
-          route.params.pathId,
-          pathAng,
-          verseIdToKeep,
-          scrollOffset.current,
-          { silent: true }
-        );
+        // Store reading position locally, but do not create an API operation
+        // while the user is still reading. Leaving/backgrounding/manual Sync
+        // promotes this latest checkpoint and uploads it once.
+        const saved = await savePathScrollPosition(route.params.pathId, scrollOffset.current);
         if (!saved) {
           return;
         }
-
-        if (wasUndoPending) {
-          setIsSaved(true);
-          return;
-        }
-        setIsSaved(false);
-        commitSavedPathState(pathAng, verseIdToKeep, scrollOffset.current);
       } catch {
         // Background auto-save remains silent; the command records the failure.
       }
     }, 200);
-  }, [route.params.pathId, pathAng, savedPathVerseId, commitSavedPathState]);
+  }, [route.params.pathId]);
 
   const handleScrollEnd = useCallback(
     async (scrollY: number) => {

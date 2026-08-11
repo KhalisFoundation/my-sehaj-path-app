@@ -315,9 +315,24 @@ describe('onScreenBlur (reader scroll checkpoint)', () => {
     expect(mockFlushNow).toHaveBeenCalledTimes(1); // still a checkpoint flush
   });
 
-  it('confirms only when leaving actually saved something', async () => {
+  it('does NOT confirm on a scroll-only leave (scroll syncs silently, no toast)', async () => {
+    // Device report: just scrolling and leaving popped a "Synced" toast, which
+    // is confusing — the user saved nothing. Scroll still syncs via the flush;
+    // only the message is suppressed.
     mockState.sync.meta = { 1: { onServer: true } };
-    mockState.sync.scrollDirty = { 1: 123 }; // the user read, so there is work
+    mockState.sync.scrollDirty = { 1: 123 }; // only scrolled — no real edit
+
+    await onScreenBlur();
+
+    expect(mockDispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: requestSyncConfirmation.type })
+    );
+    expect(mockFlushNow).toHaveBeenCalled(); // but the scroll IS still flushed
+  });
+
+  it('confirms when leaving after a real edit (a pending path op)', async () => {
+    mockState.sync.meta = { 1: { onServer: true } };
+    mockState.sync.pathOps = { 1: { kind: 'update', localUpdatedAt: 5 } }; // a real save
 
     await onScreenBlur();
 

@@ -27,6 +27,7 @@ export { HydrationRetry } from './HydrationRetry';
 export { Dialog } from './Dialog';
 export { SyncPopup } from './SyncPopup';
 export { SyncStatusNotice } from './SyncStatusNotice';
+export { OfflineDbNotice } from './OfflineDbNotice';
 export { SignInPopup } from './SignInPopup';
 export { SyncUnavailablePopup } from './SyncUnavailablePopup';
 export { PathSelectionProvider, usePathSelection } from './PathSelectionContext';

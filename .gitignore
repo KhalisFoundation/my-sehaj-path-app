@@ -27,6 +27,9 @@ yarn-error.*
 .env
 .env*.local
 
+# private npm token (if kept in a local file instead of a shell env var)
+.env.npm
+
 # typescript
 *.tsbuildinfo
 

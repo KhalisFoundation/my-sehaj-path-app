@@ -15,8 +15,9 @@ module.exports = {
     '^@auth$': '<rootDir>/auth',
     '^@env$': '<rootDir>/__mocks__/env.js',
     '^react-native-encrypted-storage$': '<rootDir>/__mocks__/react-native-encrypted-storage.js',
-    '^react-native-inappbrowser-reborn$':
-      '<rootDir>/__mocks__/react-native-inappbrowser-reborn.js',
+    '^react-native-inappbrowser-reborn$': '<rootDir>/__mocks__/react-native-inappbrowser-reborn.js',
+    '^@op-engineering/op-sqlite$': '<rootDir>/__mocks__/op-sqlite.js',
+    '^@dr.pogodin/react-native-fs$': '<rootDir>/__mocks__/dr-pogodin-react-native-fs.js',
     'react-native-linear-gradient': '<rootDir>/__mocks__/react-native-linear-gradient.js',
     'react-native-safe-area-context': '<rootDir>/__mocks__/react-native-safe-area-context.js',
     'react-native-svg': '<rootDir>/__mocks__/react-native-svg.js',

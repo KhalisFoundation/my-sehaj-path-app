@@ -11,6 +11,7 @@ import {
 import { hydrateSettings, settingsSlice } from './slices/settingsSlice';
 import { markPathEdited, markScrollDirty, markSettingsDirty, upsertMeta } from './slices/syncSlice';
 import { legacyToMs } from './syncDateUtils';
+import { clearSilentPathOp, markSilentPathOp } from './syncWork';
 
 /**
  * Turns local path/settings mutations into sync bookkeeping in ONE place, so the
@@ -84,6 +85,13 @@ export const syncStampMiddleware: Middleware<object, RootState> =
       if (api.getState().paths.paths.some((entry) => entry.pathId === pathId)) {
         ensureMeta(api, pathId, now);
         api.dispatch(markPathEdited({ pathId, at: now }));
+        const op = api.getState().sync.pathOps[pathId];
+        if (updatePath.match(action) && action.payload.silentSync === true && op) {
+          markSilentPathOp(pathId, op.localUpdatedAt);
+        } else {
+          // An explicit save supersedes any earlier auto-scroll checkpoint.
+          clearSilentPathOp(pathId);
+        }
       }
     } else if (setScrollPosition.match(action)) {
       // Scroll never drives a call: record the dirty flag and nothing else.

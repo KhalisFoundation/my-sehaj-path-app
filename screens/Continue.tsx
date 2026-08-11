@@ -16,7 +16,7 @@ import {
 } from '@components';
 import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, PATH_DATA } from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
-import { PathData, useScreenAnalytics, useInternet } from '@hooks';
+import { PathData, useScreenAnalytics } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
 import { useAppSelector } from '../store/hooks';
 import { LeftArrowIcon, ContinueIcon } from '@icons';
@@ -56,7 +56,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const matchedPath = useAppSelector((state) =>
     state.paths.paths.find((path: PathData) => path.pathId === pathId)
   );
-  const { checkNetwork } = useInternet();
   const previousRoute = useNavigationState((state) => state.routes[state.index - 1]?.name);
   const isFromPath = previousRoute === Routes.Path;
 
@@ -104,20 +103,11 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   useFocusEffect(updateTheData);
 
-  const handleContinue = useCallback(async () => {
-    try {
-      const isConnected = await checkNetwork();
-      if (!isConnected) {
-        showErrorAlert(
-          ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
-        );
-        return;
-      }
-      navigation.push('Path', { pathId: pathId });
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-    }
-  }, [navigation, pathId, checkNetwork]);
+  // The reader content is bundled with the app, so Continue must work fully
+  // offline. Network state only affects cloud sync, never opening a path.
+  const handleContinue = useCallback(() => {
+    navigation.push('Path', { pathId: pathId });
+  }, [navigation, pathId]);
 
   const handleTabPress = useCallback((tab: string) => {
     trackEvent('TabSwitch', 'click', `switch to ${tab} tab`);

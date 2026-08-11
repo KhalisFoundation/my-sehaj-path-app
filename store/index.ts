@@ -5,6 +5,7 @@ import {
   type UnknownAction,
 } from '@reduxjs/toolkit';
 import { authSlice } from './slices/authSlice';
+import { dbSlice } from './slices/dbSlice';
 import { networkSlice } from './slices/networkSlice';
 import { pathsSlice, type PathsState } from './slices/pathsSlice';
 import { SETTINGS_DEFAULTS, settingsSlice, type SettingsState } from './slices/settingsSlice';
@@ -17,6 +18,7 @@ const combinedReducer = combineReducers({
   network: networkSlice.reducer,
   auth: authSlice.reducer,
   sync: syncSlice.reducer,
+  db: dbSlice.reducer,
 });
 
 /**

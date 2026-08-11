@@ -4,5 +4,6 @@ export const Routes = {
   Continue: 'Continue',
   Path: 'Path',
   Setting: 'Setting',
+  DatabaseUpdate: 'DatabaseUpdate',
   Error: 'Error',
 } as const;
