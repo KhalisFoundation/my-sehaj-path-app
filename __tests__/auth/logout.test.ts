@@ -10,7 +10,7 @@ import { hydrateEmptySync } from '../../store/slices/syncSlice';
 import { blockPathOp, hasSendableWork } from '../../store/syncWork';
 import type { DateData, PathData } from '../../types';
 
-const mockedOpen = InAppBrowser.open as jest.MockedFunction<typeof InAppBrowser.open>;
+const mockedOpenAuth = InAppBrowser.openAuth as jest.MockedFunction<typeof InAppBrowser.openAuth>;
 
 const makePath = (pathId: number): PathData => ({
   pathId,
@@ -28,7 +28,7 @@ beforeEach(() => {
   (
     InAppBrowser.isAvailable as jest.MockedFunction<typeof InAppBrowser.isAvailable>
   ).mockResolvedValue(true);
-  mockedOpen.mockResolvedValue({ type: 'dismiss' });
+  mockedOpenAuth.mockResolvedValue({ type: 'cancel' });
   store.dispatch(hydrateEmptySync());
 });
 
@@ -47,19 +47,20 @@ describe('logout', () => {
     expect(await isLoginPending()).toBe(false);
     expect(store.getState().auth.status).toBe('signedOut');
     expect(store.getState().auth.token).toBeNull();
-    // Logout must visit /logout/all in the browser session to clear the IdP
-    // cookie — a headless call cannot, and the next login would silently re-auth.
-    expect(mockedOpen).toHaveBeenCalledWith(
+    // Logout must use the same secure browser session as login to clear the IdP
+    // cookie — a normal browser may not share it, and a headless call cannot.
+    expect(mockedOpenAuth).toHaveBeenCalledWith(
       expect.stringContaining('/logout/all?token=tok123'),
+      'khalissehajpath://logout',
       expect.any(Object)
     );
-    expect(InAppBrowser.openAuth).not.toHaveBeenCalled();
+    expect(InAppBrowser.open).not.toHaveBeenCalled();
   });
 
   it('still signs out locally when the logout session fails', async () => {
     // The browser logout is best-effort; a failure must not block local logout.
     await saveCurrentToken('tok123');
-    mockedOpen.mockRejectedValueOnce(new Error('session failed'));
+    mockedOpenAuth.mockRejectedValueOnce(new Error('session failed'));
     store.dispatch(
       setSignedIn({ token: 'tok123', email: 'a@b.com', firstname: 'A', lastname: 'B' })
     );
@@ -75,7 +76,7 @@ describe('logout', () => {
     await logout();
     await Promise.resolve();
     expect(store.getState().auth.status).toBe('signedOut');
-    expect(mockedOpen).not.toHaveBeenCalled();
+    expect(mockedOpenAuth).not.toHaveBeenCalled();
   });
 
   it('clears permanently-blocked work so the next login retries it', async () => {

@@ -386,7 +386,9 @@ describe('SyncPopup — account switch guard', () => {
   it('switches automatically when A is already fully backed up', async () => {
     mockState.auth.email = 'b@e.com';
     mockState.sync.account = 'a@e.com';
-    mockState.sync.lastSyncedAt = 10;
+    // A legacy account may have no incremental-pull cursor yet. Its paths are
+    // still safely backed up when each one was acknowledged by the server.
+    mockState.sync.lastSyncedAt = 0;
     // "Fully backed up" means every path is provably on the server, not just
     // that a sync happened once.
     mockState.sync.meta = { 1: { onServer: true, deletedAt: null } };

@@ -438,7 +438,6 @@ describe('runConfirmedAccountSync', () => {
         },
       })
     );
-    store.dispatch(setLastSyncedAt(10));
     mockSync.mockResolvedValueOnce(syncOk([serverSehaj({ name: 'B cloud path' })]));
 
     expect(await runConfirmedAccountSync(store, 'u@e.com')).toBe(true);

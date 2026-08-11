@@ -4,8 +4,8 @@ import { setSignedOut } from '../store/slices/authSlice';
 import { showSignInPopupAgain, resetSyncPopup } from '../store/slices/syncSlice';
 import { writeSyncPrefs } from '../store/syncPrefs';
 import { clearBlockedWork } from '../store/syncWork';
-import { openInAppBrowser } from './browser';
-import { getSSOLogoutUrl } from './constants';
+import { openAuthSession } from './browser';
+import { getSSOLogoutUrl, LOGOUT_REDIRECT_URL } from './constants';
 import { clearLoginPending } from './loginPending';
 import { clearCurrentToken, getCurrentToken } from './tokenUtils';
 
@@ -14,20 +14,18 @@ import { clearCurrentToken, getCurrentToken } from './tokenUtils';
  *   1. Capture the token (the SP needs it to identify the SAML session).
  *   2. Clear local state — token, auth slice, and any pending-login flag — so
  *      the app reflects signed-out immediately and can never be trapped.
- *   3. Open the SP `/logout/all` URL in a normal in-app browser to end the IdP
+ *   3. Open the SP `/logout/all` URL in the secure auth browser to end the IdP
  *      session. The endpoint redirects back to our scheme when it is done.
  *
- * Step 3 must go through the browser and cannot be a headless HTTP call: the
- * IdP session cookie lives in the browser's cookie jar (the same jar the login
- * session used), NOT in the app. Only a browser visit to `/logout/all` clears
- * it. Without it the next login replays the surviving cookie and the IdP
- * silently re-authenticates the SAME account — the user is never asked which
- * account to sign in as. (Confirmed on-device: a headless logout skipped the
- * account chooser.) A normal in-app browser avoids the OS authentication
- * consent prompt while keeping this inside the app.
+ * Step 3 must use the SAME secure browser session as login. A normal in-app
+ * browser does not reliably share its IdP cookies, so logout can appear to run
+ * while the next login silently restores the same account. A headless HTTP
+ * request cannot clear a browser-held IdP session either.
  *
- * Local logout completes immediately; the browser visit is best-effort and is
- * deliberately not awaited, so the UI is never held open while it is visible.
+ * Local data clears immediately. The caller then waits for the browser visit to
+ * finish before offering Login again. Android's in-app-browser auth polyfill
+ * has one active redirect listener; allowing a new login while logout still
+ * owns it can reopen the stale logout Custom Tab instead of starting login.
  */
 export async function logout(): Promise<void> {
   const token = await getCurrentToken();
@@ -49,11 +47,14 @@ export async function logout(): Promise<void> {
   store.dispatch(showSignInPopupAgain());
 
   if (token) {
-    // Ends the IdP session and clears its browser cookie. We don't consume the
-    // returned redirect — local logout is already done. Do not wait for the
-    // normal browser page to be dismissed before returning from logout.
-    openInAppBrowser(getSSOLogoutUrl(token)).catch(() => {
+    // Ends the IdP session in the same secure browser context as login. We do
+    // not consume the returned redirect — local logout is already complete.
+    // Awaiting it prevents Android from starting Login against an unfinished
+    // logout browser session.
+    try {
+      await openAuthSession(getSSOLogoutUrl(token), LOGOUT_REDIRECT_URL);
+    } catch {
       // Best-effort — local logout has already completed.
-    });
+    }
   }
 }

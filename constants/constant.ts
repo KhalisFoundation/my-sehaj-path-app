@@ -58,6 +58,7 @@ export const Constants: Constant = {
   SYNC_NOW: 'Sync now',
   SYNCING: 'Syncing…',
   NOT_NOW: 'Not now',
+  DATABASE: 'Database',
 
   // --- login/sync decision flow -------------------------------------------
   // Every dialog below has at most two main buttons; anything destructive is a

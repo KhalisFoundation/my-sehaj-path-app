@@ -111,7 +111,6 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const previousAccountIsFullySynced = useAppSelector(
     (state) =>
       !state.sync.recoveryNeeded &&
-      state.sync.lastSyncedAt > 0 &&
       state.paths.paths.every((path) => {
         const meta = state.sync.meta[path.pathId];
         return !!meta && meta.onServer && meta.deletedAt == null;

@@ -34,13 +34,14 @@ export const hasUnsentAccountData = (store: AppStore): boolean => {
   );
 };
 
-/** A dataset is clearable only when it is demonstrably the server's full copy. */
+/** A dataset is clearable only when every local path is demonstrably on the server. */
 export const isFullySyncedAccountData = (store: AppStore): boolean => {
   const state = store.getState();
   const { sync } = state;
   return (
     !sync.recoveryNeeded &&
-    sync.lastSyncedAt > 0 &&
+    // `lastSyncedAt` is a pull cursor, not proof of backup. Accounts created
+    // before that cursor existed can correctly have 0 here.
     state.paths.paths.every((path) => {
       const meta = sync.meta[path.pathId];
       return !!meta && meta.onServer && meta.deletedAt == null;
