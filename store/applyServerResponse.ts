@@ -385,7 +385,13 @@ export const applySyncResult = (
  * Per-path guards in `applyServerPath`/`reconcileDeletions` still protect the
  * active reader and any dirty scroll. Returns false when it was skipped or failed.
  */
-const refreshes = new WeakMap<AppStore, Promise<boolean>>();
+interface ActiveRefresh {
+  request: Promise<boolean>;
+  /** The reader path this request deliberately leaves untouched, if any. */
+  activePathId: number | undefined;
+}
+
+const refreshes = new WeakMap<AppStore, ActiveRefresh>();
 
 const performRefreshPathsFromServer = async (
   store: AppStore,
@@ -525,10 +531,17 @@ export const refreshPathsFromServer = (
 ): Promise<boolean> => {
   const existing = refreshes.get(store);
   if (existing) {
-    return existing;
+    if (existing.activePathId === activePathId) {
+      return existing.request;
+    }
+    // A refresh that began while a reader was open correctly skips that path.
+    // If Home becomes active before it finishes, joining that guarded request
+    // would fetch the newer data but never apply it until the next app open.
+    // Let it finish, then do exactly one fresh, unguarded refresh for Home.
+    return existing.request.then(() => refreshPathsFromServer(store, activePathId));
   }
   const request = performRefreshPathsFromServer(store, activePathId).finally(() => {
-    if (refreshes.get(store) === request) {
+    if (refreshes.get(store)?.request === request) {
       refreshes.delete(store);
     }
     // ALWAYS cleared, even if this request is no longer the tracked one. It is a
@@ -537,7 +550,7 @@ export const refreshPathsFromServer = (
     // with nothing to resolve it.
     store.dispatch(setPulling(false));
   });
-  refreshes.set(store, request);
+  refreshes.set(store, { request, activePathId });
   // Dispatched only after the entry is tracked. `dispatch` runs subscribers
   // synchronously, and one of them can call back into this function — before the
   // map was populated that produced a second, untracked request.

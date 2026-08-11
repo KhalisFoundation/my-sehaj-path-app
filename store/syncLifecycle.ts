@@ -80,7 +80,11 @@ export const setActiveReaderPath = (pathId: number | null): void => {
 
 export const getActiveReaderPath = (): number | null => activeReaderPathId;
 
-export const onForeground = async (activePathId?: number): Promise<void> => {
+// `undefined` means an app foreground event, so protect whichever reader is
+// currently open. `null` is Home's explicit signal that the reader was left and
+// its path is now safe to apply even if React Navigation has not yet run the
+// reader cleanup.
+export const onForeground = async (activePathId?: number | null): Promise<void> => {
   if (!canSyncNow()) {
     return;
   }
@@ -101,8 +105,11 @@ export const onForeground = async (activePathId?: number): Promise<void> => {
     if (hasPendingWork()) {
       return;
     }
-    // Default to the open reader path so it isn't reconciled mid-read.
-    await refreshPathsFromServer(store, activePathId ?? activeReaderPathId ?? undefined);
+    // Default to the open reader path so it isn't reconciled mid-read. Home
+    // passes `null` to deliberately override that default during navigation.
+    const pathToProtect =
+      activePathId === undefined ? activeReaderPathId ?? undefined : activePathId ?? undefined;
+    await refreshPathsFromServer(store, pathToProtect);
   } catch (error) {
     recordError(error, 'syncLifecycle: foreground sync failed');
   } finally {

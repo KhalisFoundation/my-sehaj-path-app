@@ -569,6 +569,35 @@ describe('refreshPathsFromServer', () => {
     await expect(second).resolves.toBe(true);
   });
 
+  it('refreshes again when Home joins a request that was guarded for an open reader', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolvePaths: (value: ReturnType<typeof findAllOk>) => void = () => undefined;
+    mockFindAll.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePaths = resolve;
+        })
+    );
+    mockFindAll.mockResolvedValueOnce(
+      findAllOk([serverPath(uuid, { name: 'Changed on another device', progress: 88 })])
+    );
+
+    const readerRefresh = refreshPathsFromServer(store, 1);
+    const homeRefresh = refreshPathsFromServer(store);
+
+    resolvePaths(
+      findAllOk([serverPath(uuid, { name: 'Changed on another device', progress: 88 })])
+    );
+    await expect(readerRefresh).resolves.toBe(true);
+    await expect(homeRefresh).resolves.toBe(true);
+
+    expect(mockFindAll).toHaveBeenCalledTimes(2);
+    expect(store.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
+      'Changed on another device'
+    );
+  });
+
   it('does not delete a path acknowledged while an older listing was in flight', async () => {
     const store = signedInStore();
     const uuid = addSyncedPath(store, 1);

@@ -358,9 +358,25 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
 
     try {
+      const current = store.getState().paths;
+      const durablePath = current.paths.find((path) => path.pathId === route.params.pathId);
+      const durableDate = current.dates.find((date) => date.pathid === route.params.pathId);
+      if (!durablePath) {
+        return false;
+      }
       // Same rule as the auto-save: a verse from another ang must not be paired
       // with the ang being displayed now.
-      const verseIdToKeep = getDurableSavedVerseId(matchedPath.current?.saveData, pathAng);
+      const verseIdToKeep = getDurableSavedVerseId(durablePath.saveData, pathAng);
+      // Opening a path restores its saved ang/scroll position. Leaving straight
+      // away must not turn that restore into a new "read today" update: it can
+      // block newer progress fetched from another device despite A doing nothing.
+      const unchangedSinceOpen =
+        durablePath.saveData.angNumber === pathAng &&
+        durablePath.saveData.verseId === verseIdToKeep &&
+        (durableDate?.scrollPosition ?? 0) === scrollOffset.current;
+      if (unchangedSinceOpen) {
+        return true;
+      }
       // Silent: the navigation handler shows the richer "leave anyway?" choice,
       // so the command must not also pop a plain error alert.
       const saved = await savePathProgress(

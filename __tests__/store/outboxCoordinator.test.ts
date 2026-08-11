@@ -391,17 +391,29 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
-  it('does not report a network failure when the server accepted but applying threw', async () => {
-    // Device report: created a path, saw "unable to sync", but a reload showed it
-    // already synced. The write had succeeded; folding the response in threw, and
-    // the shared catch reported that as a transport failure.
+  it('reconciles once instead of replaying a write when its success body cannot be applied', async () => {
+    // A write can succeed on the server even when a malformed success body makes
+    // local response application throw. Replaying that PATCH/create is unsafe:
+    // its clock is now stale. Reconcile once through /sync instead.
     const { store, coordinator } = setup();
     store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const uuid = store.getState().sync.meta[1].serverPathId;
     // A response the applier cannot handle.
     mockCreate.mockResolvedValueOnce(ok(201, null));
+    mockSync.mockResolvedValueOnce(
+      ok(200, {
+        paths: [serverSehaj({ pathId: uuid, updatedAt: 300_000 })],
+        deletedPathIds: [],
+        settings: null,
+        syncedAt: 999,
+      })
+    );
 
     await coordinator.flushNow();
 
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(store.getState().sync.pathOps[1]).toBeUndefined();
     expect(store.getState().sync.lastError).not.toBe('network');
     expect(store.getState().sync.status).not.toBe('error');
     coordinator.stop();

@@ -66,7 +66,10 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   // over offline edits.
   useFocusEffect(
     useCallback(() => {
-      onForeground();
+      // Home is reached only after leaving the reader. Explicitly request an
+      // unguarded pull so a response cannot be fetched then skipped because
+      // React Navigation has not yet run PathScreen's focus cleanup.
+      onForeground(null);
       return undefined;
     }, [])
   );

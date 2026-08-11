@@ -239,14 +239,17 @@ export const createOutboxCoordinator = (
    * already accepted and stored the change, so a throw here — an unexpected
    * shape, a bad field — must NOT be reported as a network error: that shows the
    * user "unable to sync" for work that is safely saved, and sends them looking
-   * for a problem that does not exist. The op stays queued, the next drain
-   * replays it idempotently by UUID, and the next refresh reconciles local state.
+   * for a problem that does not exist. A PATCH cannot simply be replayed: its
+   * baseUpdatedAt is now stale and the server correctly returns 409. Signal a
+   * bulk reconciliation instead, which safely reads/merges the accepted write.
    */
-  const applyWriteResponse = (apply: () => void, context: string): void => {
+  const applyWriteResponse = (apply: () => void, context: string): boolean => {
     try {
       apply();
+      return true;
     } catch (error) {
       recordError(error, `outbox: applying ${context} response failed`);
+      return false;
     }
   };
 
@@ -313,11 +316,12 @@ export const createOutboxCoordinator = (
           store.dispatch(ackServerPathExists({ pathId, serverUpdatedAt: res.data.updatedAt }));
           return 'acked';
         }
-        applyWriteResponse(() => {
+        return applyWriteResponse(() => {
           applyServerPath(store, res.data, { pathId, sentLocalUpdatedAt, operation: 'create' });
           clearScrollOnAck();
-        }, 'create');
-        return 'acked';
+        }, 'create')
+          ? 'acked'
+          : 'conflict';
       }
 
       // update
@@ -336,11 +340,12 @@ export const createOutboxCoordinator = (
         }
         return classify(res.response?.status);
       }
-      applyWriteResponse(() => {
+      return applyWriteResponse(() => {
         applyServerPath(store, res.data, { pathId, sentLocalUpdatedAt, operation: 'update' });
         clearScrollOnAck();
-      }, 'update');
-      return 'acked';
+      }, 'update')
+        ? 'acked'
+        : 'conflict';
     } catch (error) {
       // Only a genuine transport failure reaches here now — the response
       // appliers above handle their own errors, so an accepted write is never
