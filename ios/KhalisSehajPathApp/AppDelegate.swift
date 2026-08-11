@@ -3,6 +3,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Firebase
+import Security
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -13,6 +14,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
   private var pendingOpenURL: URL?
   private var pendingOpenURLOptions: [UIApplication.OpenURLOptionsKey: Any] = [:]
 
+  // The Keychain survives an app uninstall, unlike UserDefaults (wiped along with the rest of the app's sandbox) - so on a fresh install/reinstall a stale token would otherwise silently leave the user logged in from before. Runs before React Native's bridge starts below, so no JS code path (including a cold-start deep link resuming SSO) can read a stale token first - refrence react-native-encrypted-storage's README, "Note regarding Keychain persistence".
+  private func clearKeychainIfNecessary() {
+    let defaults = UserDefaults.standard
+    guard !defaults.bool(forKey: "HAS_RUN_BEFORE") else { return }
+    defaults.set(true, forKey: "HAS_RUN_BEFORE")
+
+    let secItemClasses: [CFString] = [
+      kSecClassGenericPassword,
+      kSecClassInternetPassword,
+      kSecClassCertificate,
+      kSecClassKey,
+      kSecClassIdentity,
+    ]
+    for secItemClass in secItemClasses {
+      let spec: [String: Any] = [kSecClass as String: secItemClass]
+      SecItemDelete(spec as CFDictionary)
+    }
+  }
   func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
@@ -20,6 +39,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     if FirebaseApp.app() == nil {
       FirebaseApp.configure()
     }
+    clearKeychainIfNecessary()
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
     delegate.dependencyProvider = RCTAppDependencyProvider()

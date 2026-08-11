@@ -207,7 +207,7 @@ export const Settings = ({ navigation }: SettingProps) => {
             accessibilityHint="Checks for a newer offline reading database"
           >
             <View style={SettingScreenStyle.databaseUpdateCopy}>
-              <Text style={SettingScreenStyle.databaseUpdateText}> Database</Text>
+              <Text style={SettingScreenStyle.databaseUpdateText}>{Constants.DATABASE}</Text>
             </View>
             <RightChevronIcon />
           </TouchableOpacity>
