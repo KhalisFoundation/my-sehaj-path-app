@@ -25,54 +25,57 @@ type UpdateState =
 
 const copyFor = (state: UpdateState, progress: number): { title: string; message: string } => {
   if (state === 'checking') {
-    return { title: DatabaseUpdateText.checkingTitle, message: DatabaseUpdateText.checkingMessage };
+    return {
+      title: DatabaseUpdateText.CHECKING_TITLE,
+      message: DatabaseUpdateText.CHECKING_MESSAGE,
+    };
   }
   if (state === 'downloadInProgress') {
     return {
-      title: DatabaseUpdateText.downloadInProgressTitle,
+      title: DatabaseUpdateText.DOWNLOAD_IN_PROGRESS_TITLE,
       message:
         progress > 0
-          ? DatabaseUpdateText.progressMessage(progress)
-          : DatabaseUpdateText.downloadInProgressMessage,
+          ? DatabaseUpdateText.PROGRESS_MESSAGE(progress)
+          : DatabaseUpdateText.DOWNLOAD_IN_PROGRESS_MESSAGE,
     };
   }
   if (state === 'updateAvailable') {
     return {
-      title: DatabaseUpdateText.updateAvailableTitle,
-      message: DatabaseUpdateText.updateAvailableMessage,
+      title: DatabaseUpdateText.UPDATE_AVAILABLE_TITLE,
+      message: DatabaseUpdateText.UPDATE_AVAILABLE_MESSAGE,
     };
   }
   if (state === 'updating') {
     return {
-      title: DatabaseUpdateText.updatingTitle,
+      title: DatabaseUpdateText.UPDATING_TITLE,
       message:
         progress > 0
-          ? DatabaseUpdateText.progressMessage(progress)
-          : DatabaseUpdateText.updatingStartMessage,
+          ? DatabaseUpdateText.PROGRESS_MESSAGE(progress)
+          : DatabaseUpdateText.UPDATING_START_MESSAGE,
     };
   }
   if (state === 'upToDate') {
     return {
-      title: DatabaseUpdateText.upToDateTitle,
-      message: DatabaseUpdateText.upToDateMessage,
+      title: DatabaseUpdateText.UP_TO_DATE_TITLE,
+      message: DatabaseUpdateText.UP_TO_DATE_MESSAGE,
     };
   }
   if (state === 'updated') {
-    return { title: DatabaseUpdateText.updatedTitle, message: DatabaseUpdateText.updatedMessage };
+    return { title: DatabaseUpdateText.UPDATED_TITLE, message: DatabaseUpdateText.UPDATED_MESSAGE };
   }
   if (state === 'unavailable') {
     return {
-      title: DatabaseUpdateText.unavailableTitle,
-      message: DatabaseUpdateText.unavailableMessage,
+      title: DatabaseUpdateText.UNAVAILABLE_TITLE,
+      message: DatabaseUpdateText.UNAVAILABLE_MESSAGE,
     };
   }
   if (state === 'checkFailed') {
     return {
-      title: DatabaseUpdateText.checkFailedTitle,
-      message: DatabaseUpdateText.checkFailedMessage,
+      title: DatabaseUpdateText.CHECK_FAILED_TITLE,
+      message: DatabaseUpdateText.CHECK_FAILED_MESSAGE,
     };
   }
-  return { title: DatabaseUpdateText.failedTitle, message: DatabaseUpdateText.failedMessage };
+  return { title: DatabaseUpdateText.FAILED_TITLE, message: DatabaseUpdateText.FAILED_MESSAGE };
 };
 
 export const DatabaseUpdate = ({ navigation }: Props) => {
@@ -137,18 +140,18 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
             onPress={() => navigation.goBack()}
             style={styles.backButton}
             accessibilityRole="button"
-            accessibilityLabel={DatabaseUpdateText.back}
+            accessibilityLabel={DatabaseUpdateText.BACK}
           >
             <NavContent
               navIcon={<LeftArrowIcon color="#fff" />}
               onPress={() => navigation.goBack()}
             />
-            <Text style={styles.navText}>{DatabaseUpdateText.navTitle}</Text>
+            <Text style={styles.navText}>{DatabaseUpdateText.NAV_TITLE}</Text>
           </TouchableOpacity>
         </View>
         <ScrollView contentContainerStyle={styles.content}>
           <Image source={require('../assets/Images/BaniDB.png')} style={styles.logo} />
-          <Text style={styles.subtitle}>{DatabaseUpdateText.subtitle}</Text>
+          <Text style={styles.subtitle}>{DatabaseUpdateText.SUBTITLE}</Text>
           <View style={styles.statusCard}>
             {isBusy && <ActivityIndicator size="small" color="#11336A" />}
             <Text style={styles.title}>{copy.title}</Text>
@@ -158,9 +161,9 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
                 style={styles.button}
                 onPress={startUpdate}
                 accessibilityRole="button"
-                accessibilityLabel={DatabaseUpdateText.updateNow}
+                accessibilityLabel={DatabaseUpdateText.UPDATE_NOW}
               >
-                <Text style={styles.buttonText}>{DatabaseUpdateText.updateNow}</Text>
+                <Text style={styles.buttonText}>{DatabaseUpdateText.UPDATE_NOW}</Text>
               </TouchableOpacity>
             )}
             {!isBusy && state !== 'updateAvailable' && (
@@ -168,9 +171,9 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
                 style={styles.button}
                 onPress={runCheck}
                 accessibilityRole="button"
-                accessibilityLabel={DatabaseUpdateText.checkUpdateA11y}
+                accessibilityLabel={DatabaseUpdateText.CHECK_UPDATE_A11Y}
               >
-                <Text style={styles.buttonText}>{DatabaseUpdateText.checkAgain}</Text>
+                <Text style={styles.buttonText}>{DatabaseUpdateText.CHECK_AGAIN}</Text>
               </TouchableOpacity>
             )}
           </View>
