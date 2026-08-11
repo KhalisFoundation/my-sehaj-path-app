@@ -23,24 +23,6 @@ const AUTH_SESSION_OPTIONS: InAppBrowserOptions = {
 };
 
 /**
- * Options for ordinary in-app pages. Logout uses this instead of the secure
- * auth-session sheet, so the OS does not show its authentication consent UI.
- * It still uses Safari View Controller / a Chrome Custom Tab and therefore the
- * shared cookie jar that the SSO logout endpoint needs.
- */
-const IN_APP_BROWSER_OPTIONS: InAppBrowserOptions = {
-  dismissButtonStyle: 'close',
-  showTitle: true,
-  enableUrlBarHiding: true,
-  enableDefaultShare: false,
-  // The SSO endpoint redirects to our app scheme once it has cleared the
-  // browser session. Use a separate task on Android so that redirect returns
-  // cleanly to the app.
-  forceCloseOnRedirection: true,
-  showInRecents: false,
-};
-
-/**
  * Result of opening an auth session.
  * - `callback`  — the in-app browser captured the redirect back to our scheme;
  *                 `url` carries the returned `?token=…` for the caller to consume.
@@ -100,30 +82,4 @@ export async function openAuthSession(
   // link, handled by the app's `url` listener / cold-start bootstrap.
   await Linking.openURL(url);
   return { type: 'external' };
-}
-
-/**
- * Opens a normal in-app browser page. Unlike `openAuthSession`, this does not
- * invoke the OS authentication-session consent UI. It is appropriate for the
- * logout URL because the app has already cleared its local session and does
- * not need to read a result from the redirect.
- */
-export async function openInAppBrowser(url: string): Promise<void> {
-  let available = false;
-  try {
-    available = await InAppBrowser.isAvailable();
-  } catch (error) {
-    recordError(error, 'auth: InAppBrowser.isAvailable() threw');
-  }
-
-  if (available) {
-    try {
-      await InAppBrowser.open(url, IN_APP_BROWSER_OPTIONS);
-      return;
-    } catch (error) {
-      recordError(error, 'auth: normal in-app browser failed; falling back to system browser');
-    }
-  }
-
-  await Linking.openURL(url);
 }
