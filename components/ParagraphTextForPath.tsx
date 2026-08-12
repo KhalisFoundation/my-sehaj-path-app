@@ -129,7 +129,7 @@ const ParagraphTextForPathComponent = ({
           color={UIConstants.SAVE_ICON_COLOR}
           width={fontSize * 1.2}
           height={fontSize * 1.2}
-          style={{ transform: [{ translateY: Platform.OS === 'ios' ? '-50%' : '50%' }] }}
+          style={{ transform: [{ translateY: Platform.OS === 'ios' ? '-25%' : '25%' }] }}
         />
       )}
     </>

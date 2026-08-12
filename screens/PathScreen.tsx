@@ -330,10 +330,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     isRestoringScroll,
     scrollRef,
     scrollOffset,
-    fadeAnim: fadeAnim.current,
     setFound,
-    setIsSaving,
-    setIsSaved,
     fontSize,
   });
 
@@ -597,20 +594,16 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
 
     let firstFrame: number | null = null;
-    let secondFrame: number | null = null;
-
+    // Content size has already reached the saved position. One frame lets the
+    // native ScrollView commit that layout; a second frame only delayed the
+    // resume animation and made the reader appear to hesitate on Android.
     firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        scrollToSavedPathData();
-      });
+      scrollToSavedPathData();
     });
 
     return () => {
       if (firstFrame !== null) {
         cancelAnimationFrame(firstFrame);
-      }
-      if (secondFrame !== null) {
-        cancelAnimationFrame(secondFrame);
       }
     };
   }, [pathAng, pathContent, readerContentHeight, scrollToSavedPathData]);

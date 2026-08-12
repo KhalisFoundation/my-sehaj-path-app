@@ -51,18 +51,20 @@ const ignoreRequestClose = () => undefined;
 const ActionLabel = ({
   running,
   idle,
+  runningLabel = Constants.SYNCING,
   textStyle,
   spinnerColor,
 }: {
   running: boolean;
   idle: string;
+  runningLabel?: string;
   textStyle: object;
   spinnerColor: string;
 }) =>
   running ? (
     <View style={styles.busyLabel}>
       <ActivityIndicator size="small" color={spinnerColor} />
-      <Text style={textStyle}>{Constants.SYNCING}</Text>
+      <Text style={textStyle}>{runningLabel}</Text>
     </View>
   ) : (
     <Text style={textStyle}>{idle}</Text>
@@ -522,6 +524,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
             <ActionLabel
               running={busy === 'discard'}
               idle={Constants.DISCARD_CONFIRM_ACTION}
+              runningLabel={Constants.DISCARDING}
               textStyle={styles.primaryText}
               spinnerColor="#FFFFFF"
             />

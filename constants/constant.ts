@@ -74,6 +74,7 @@ export const Constants: Constant = {
   DISCARD_CONFIRM_MESSAGE:
     'This permanently removes the progress saved only on this device and loads your account’s progress instead. If your account has no saved progress, this device will start empty. This cannot be undone.',
   DISCARD_CONFIRM_ACTION: 'Discard',
+  DISCARDING: 'Discarding…',
   CANCEL: 'Cancel',
 
   /**

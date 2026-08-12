@@ -186,7 +186,7 @@ const SyncStatusNoticeComponent = () => {
     const heldFor = Date.now() - resolvedAt.current;
     const onlineHold = Math.max(0, holdOnlineUntil.current - Date.now());
     const wait = Math.max(
-      SHOW_AFTER_MS,
+      confirmNextSync ? 0 : SHOW_AFTER_MS,
       resolvedAt.current ? MIN_VISIBLE_MS - heldFor : 0,
       onlineHold
     );
