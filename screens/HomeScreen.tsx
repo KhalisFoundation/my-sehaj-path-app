@@ -24,22 +24,25 @@ import { MenuIcon } from '@icons';
 import { useAppSelector } from '../store/hooks';
 import { createPath } from '../store/commands';
 import { onForeground } from '../store/syncLifecycle';
+import { sortPathsForHome } from '../store/pathOrdering';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const paths = useAppSelector((state) => state.paths.paths);
+  const syncMeta = useAppSelector((state) => state.sync.meta);
   const { handleDrawerNavigate } = useDrawerNavigation();
   const isCreatingRef = useRef(false);
   useScreenAnalytics('HomeScreen', 'HomeScreen');
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
+    const orderedPaths = sortPathsForHome(paths, syncMeta);
     // Keep "completed" strict: both completionDate and final checkpoint must match.
-    const completed = paths.filter((path: PathData) => path.completionDate !== '');
-    const inProgress = paths.filter((path: PathData) => path.completionDate === '');
+    const completed = orderedPaths.filter((path: PathData) => path.completionDate !== '');
+    const inProgress = orderedPaths.filter((path: PathData) => path.completionDate === '');
     return { pathInProgress: inProgress, pathCompleted: completed };
-  }, [paths]);
+  }, [paths, syncMeta]);
 
   useFocusEffect(
     useCallback(() => {

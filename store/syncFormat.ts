@@ -62,6 +62,7 @@ const META_KEYS = [
   'deletedAt',
   'onServer',
 ] as const;
+const META_KEYS_WITH_SERVER_CREATED_AT = [...META_KEYS, 'serverCreatedAt'] as const;
 
 const OP_KEYS = ['kind', 'localUpdatedAt'] as const;
 
@@ -78,12 +79,13 @@ const TOP_LEVEL_KEYS = [
 
 const isSyncMeta = (value: unknown): value is SyncMeta =>
   isObject(value) &&
-  hasExactKeys(value, META_KEYS) &&
+  (hasExactKeys(value, META_KEYS) || hasExactKeys(value, META_KEYS_WITH_SERVER_CREATED_AT)) &&
   typeof value.serverPathId === 'string' &&
   UUID_RE.test(value.serverPathId) &&
   isFiniteNonNegative(value.serverUpdatedAt) &&
   isFiniteNonNegative(value.localUpdatedAt) &&
   isFiniteNonNegative(value.startDate) &&
+  (value.serverCreatedAt === undefined || isFiniteNonNegative(value.serverCreatedAt)) &&
   isNullableTimestamp(value.deletedAt) &&
   typeof value.onServer === 'boolean';
 

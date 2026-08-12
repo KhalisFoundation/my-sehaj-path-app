@@ -29,6 +29,18 @@ import {
 } from '../../store/commands';
 import { setAll } from '../../store/slices/pathsSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
+import type { DateData, PathData } from '../../types';
+
+const pathWithId = (pathId: number): PathData => ({
+  pathId,
+  pathName: `Path #${pathId}`,
+  progress: 1,
+  saveData: { angNumber: 0, verseId: 0 },
+  startDate: '1-January-2026',
+  completionDate: '',
+});
+
+const dateWithId = (pathid: number): DateData => ({ pathid, dates: [], scrollPosition: 0 });
 
 const MOCKED_METHODS = [
   'getItem',
@@ -76,6 +88,25 @@ describe('createPath', () => {
 
     const onDisk = JSON.parse((await AsyncStorage.getItem('pathDetails'))!);
     expect(onDisk).toHaveLength(1);
+  });
+
+  it('uses the next visible default name even when local ids have a gap from another device', async () => {
+    store.dispatch(
+      setAll({
+        paths: [
+          { ...pathWithId(10), pathName: 'Path #10' },
+          { ...pathWithId(11), pathName: 'Path #10' },
+        ],
+        dates: [dateWithId(10), dateWithId(11)],
+      })
+    );
+
+    const id = await createPath();
+
+    expect(id).toBe(12);
+    expect(store.getState().paths.paths.find((path) => path.pathId === id)?.pathName).toBe(
+      'Path #11'
+    );
   });
 
   it('rolls the phantom path out of the store when the write fails', async () => {

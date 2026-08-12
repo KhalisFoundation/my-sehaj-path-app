@@ -175,9 +175,13 @@ export const onScreenBlur = async (): Promise<void> => {
       ([pathId, op]) => !isSilentPathOp(Number(pathId), op.localUpdatedAt)
     );
 
-  promoteDirtyScroll();
+  // Leaving the reader is an explicit checkpoint from the user's perspective.
+  // A changed scroll position is real reading progress, so promote it and let
+  // the status notice confirm that it is being synced after they return Home.
+  // Merely opening and closing a path still has nothing to announce.
+  const promotedDirtyScroll = promoteDirtyScroll();
 
-  if (hadRealEdit) {
+  if (hadRealEdit || promotedDirtyScroll) {
     store.dispatch(requestSyncConfirmation());
   }
   await onCheckpoint();

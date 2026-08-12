@@ -51,6 +51,22 @@ export const getNextPathId = (paths: PathData[], reservedIds: Iterable<number> =
 };
 
 /**
+ * The default label is user-facing, unlike `pathId`, which is a device-local
+ * key. A path received from another device can legitimately consume local id
+ * 11 while still be named "Path #10". Derive a new label from labels already
+ * shown to the user so the next created path is "Path #11", not "Path #12".
+ * Renamed paths intentionally do not affect this sequence.
+ */
+export const getNextDefaultPathNumber = (paths: PathData[]): number => {
+  const highest = paths.reduce((current, path) => {
+    const match = /^Path #(\d+)$/.exec(path.pathName.trim());
+    const number = match ? Number(match[1]) : 0;
+    return Number.isSafeInteger(number) ? Math.max(current, number) : current;
+  }, 0);
+  return highest + 1;
+};
+
+/**
  * A path legitimately created by an older build may have no `pathDateDetails`
  * record. The old code threw in that case, making the path permanently
  * unsaveable. Synthesize a safe empty record instead.

@@ -13,6 +13,8 @@ export interface SyncMeta {
   serverPathId: string;
   /** Last server `updatedAt` acknowledged locally; used as baseUpdatedAt. */
   serverUpdatedAt: number;
+  /** Server-owned creation time, used only to keep Home's path order consistent. */
+  serverCreatedAt?: number;
   /** Client clock required by SyncPathDto.updatedAt. */
   localUpdatedAt: number;
   /** Canonical start date in epoch milliseconds. */

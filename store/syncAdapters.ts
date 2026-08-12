@@ -148,6 +148,7 @@ export const fromServerPath = (server: SehajPath): Applied => ({
     scrollPosition: server.scrollPosition,
   },
   meta: {
+    serverCreatedAt: server.createdAt,
     serverUpdatedAt: server.updatedAt,
     onServer: true,
     startDate: server.startDate,

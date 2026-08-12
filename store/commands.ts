@@ -10,6 +10,7 @@ import { getQuarantinedPathIds } from './persistence';
 import {
   addPath,
   clearPathCompletion,
+  getNextDefaultPathNumber,
   getNextPathId,
   renamePath,
   setScrollPosition,
@@ -148,6 +149,7 @@ export const createPath = (): Promise<number | null> =>
     const { paths, dates } = store.getState().paths;
     const reservedIds = [...dates.map((date) => date.pathid), ...getQuarantinedPathIds(store)];
     const pathId = getNextPathId(paths, reservedIds);
+    const defaultPathNumber = getNextDefaultPathNumber(paths);
 
     const path: PathData = {
       pathId,
@@ -155,7 +157,7 @@ export const createPath = (): Promise<number | null> =>
       saveData: { angNumber: 0, verseId: 0 },
       startDate: todayString(),
       completionDate: '',
-      pathName: `Path #${pathId}`,
+      pathName: `Path #${defaultPathNumber}`,
     };
     const date: DateData = { pathid: pathId, dates: [], scrollPosition: 0 };
 

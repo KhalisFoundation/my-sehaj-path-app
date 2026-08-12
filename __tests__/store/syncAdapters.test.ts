@@ -193,6 +193,7 @@ describe('fromServerPath', () => {
   it('maps meta and path fields; marks the path on-server', () => {
     const applied = fromServerPath(server);
     expect(applied.meta).toEqual({
+      serverCreatedAt: Date.UTC(2026, 0, 1),
       serverUpdatedAt: 1700000005000,
       onServer: true,
       startDate: Date.UTC(2026, 0, 1),

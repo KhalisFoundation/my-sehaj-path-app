@@ -8,7 +8,7 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { clearSyncConfirmation } from '../store/slices/syncSlice';
 import { isSilentPathOp } from '../store/syncWork';
 
-type Phase = 'hidden' | 'syncing' | 'done' | 'error';
+type Phase = 'hidden' | 'online' | 'syncing' | 'done' | 'error';
 type RenderedPhase = Phase | 'offline';
 
 /** Long enough that a fast sync stays silent instead of flashing. */
@@ -35,6 +35,8 @@ const STALL_AFTER_MS = 20_000;
 const DONE_DISMISS_MS = 2000;
 const ERROR_DISMISS_MS = 4000;
 const OFFLINE_DISMISS_MS = 3000;
+/** Let the reconnect acknowledgement be read before beginning its sync status. */
+const ONLINE_VISIBLE_MS = 1000;
 const ENTER_DURATION_MS = 220;
 const EXIT_DURATION_MS = 180;
 
@@ -104,6 +106,9 @@ const SyncStatusNoticeComponent = () => {
   // Show an offline notice once when connectivity drops. It must not become
   // permanent furniture while somebody deliberately reads offline.
   const [offlineDismissed, setOfflineDismissed] = useState(false);
+  const wasOffline = useRef(isOffline);
+  /** Timestamp until which “Back online” keeps priority over the sync notice. */
+  const holdOnlineUntil = useRef(0);
   // Keep the last visible phase mounted briefly while its exit animation runs.
   // Without this separate render state, setting `phase` to hidden removes the
   // view immediately and there is nothing left for React Native to fade out.
@@ -179,7 +184,12 @@ const SyncStatusNoticeComponent = () => {
       return undefined; // a read-only refresh stays silent however long it takes
     }
     const heldFor = Date.now() - resolvedAt.current;
-    const wait = Math.max(SHOW_AFTER_MS, resolvedAt.current ? MIN_VISIBLE_MS - heldFor : 0);
+    const onlineHold = Math.max(0, holdOnlineUntil.current - Date.now());
+    const wait = Math.max(
+      SHOW_AFTER_MS,
+      resolvedAt.current ? MIN_VISIBLE_MS - heldFor : 0,
+      onlineHold
+    );
     const timer = setTimeout(() => setPhase('syncing'), wait);
     return () => clearTimeout(timer);
   }, [
@@ -206,6 +216,7 @@ const SyncStatusNoticeComponent = () => {
     // between them. Resolving on the first dip would end the message mid-sync,
     // then start a second one for the download half. Wait out the gap and treat
     // the whole thing as one run.
+    const onlineHold = Math.max(0, holdOnlineUntil.current - Date.now());
     const timer = setTimeout(() => {
       if (status === 'error') {
         if (errorNoticeShown.current) {
@@ -252,7 +263,7 @@ const SyncStatusNoticeComponent = () => {
         meaningful.current = false;
         setPhase('hidden');
       }
-    }, SETTLE_MS);
+    }, Math.max(SETTLE_MS, onlineHold));
     return () => clearTimeout(timer);
   }, [accountMatches, busy, confirmNextSync, dispatch, pendingCount, phase, status]);
 
@@ -287,6 +298,32 @@ const SyncStatusNoticeComponent = () => {
     const timer = setTimeout(() => setOfflineDismissed(true), OFFLINE_DISMISS_MS);
     return () => clearTimeout(timer);
   }, [isOffline]);
+
+  // NetInfo is the source of truth for reconnecting. A short acknowledgement
+  // makes the transition clear, then a queued reading update can say exactly
+  // what happens next: “Syncing your progress…”.
+  useEffect(() => {
+    if (isOffline) {
+      wasOffline.current = true;
+      return;
+    }
+    if (wasOffline.current) {
+      wasOffline.current = false;
+      holdOnlineUntil.current = Date.now() + ONLINE_VISIBLE_MS;
+      setPhase('online');
+    }
+  }, [isOffline]);
+
+  useEffect(() => {
+    if (phase !== 'online' || busy || confirmNextSync) {
+      return undefined;
+    }
+    const timer = setTimeout(
+      () => setPhase('hidden'),
+      Math.max(0, holdOnlineUntil.current - Date.now())
+    );
+    return () => clearTimeout(timer);
+  }, [busy, confirmNextSync, phase]);
 
   // Offline takes priority over a stale sync/done phase, but only briefly.
   // Reading stays fully usable without a connection, so an always-visible
@@ -335,6 +372,7 @@ const SyncStatusNoticeComponent = () => {
   const messages: Record<string, string> = {
     syncing: syncingMessage,
     done: isSettings ? 'Settings saved' : 'Synced',
+    online: 'Back online',
     offline: 'No internet connection',
   };
   const message = messages[renderedPhase] ?? errorMessage;
@@ -373,7 +411,7 @@ const SyncStatusNoticeComponent = () => {
       ) : (
         <View style={styles.row}>
           {renderedPhase === 'syncing' ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
-          {renderedPhase === 'done' ? <SyncedCheckIcon /> : null}
+          {renderedPhase === 'done' || renderedPhase === 'online' ? <SyncedCheckIcon /> : null}
           <Text style={styles.text}>{message}</Text>
         </View>
       )}

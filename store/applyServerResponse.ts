@@ -144,6 +144,7 @@ const allocateFromServer = (store: AppStore, sp: SehajPath): void => {
       meta: {
         serverPathId: sp.pathId,
         startDate: sp.startDate,
+        serverCreatedAt: sp.createdAt,
         localUpdatedAt: sp.updatedAt,
         serverUpdatedAt: sp.updatedAt,
         onServer: true,
@@ -171,6 +172,17 @@ export const applyServerPath = (store: AppStore, sp: SehajPath, sent?: SentOp): 
   }
 
   const knownServerClock = store.getState().sync.meta[pathId]?.serverUpdatedAt ?? 0;
+  // Creation time never changes. Keep it even if the body is intentionally
+  // skipped because a newer local edit is pending; Home uses it for display
+  // order only and it has no effect on conflict handling or API requests.
+  if (store.getState().sync.meta[pathId]?.serverCreatedAt !== sp.createdAt) {
+    store.dispatch(
+      upsertMeta({
+        pathId,
+        meta: { serverPathId: sp.pathId, startDate: sp.startDate, serverCreatedAt: sp.createdAt },
+      })
+    );
+  }
   const sentStillCurrent = sent
     ? store.getState().sync.meta[pathId]?.localUpdatedAt === sent.sentLocalUpdatedAt
     : false;
@@ -216,6 +228,7 @@ export const applyServerPath = (store: AppStore, sp: SehajPath, sent?: SentOp): 
         meta: {
           serverPathId: sp.pathId,
           startDate: sp.startDate,
+          serverCreatedAt: sp.createdAt,
           localUpdatedAt: Math.max(
             store.getState().sync.meta[pathId]?.localUpdatedAt ?? 0,
             sp.updatedAt

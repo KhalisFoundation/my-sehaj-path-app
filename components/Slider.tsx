@@ -11,6 +11,17 @@ interface Props {
   dotStyle?: StyleProp<ViewStyle>;
 }
 
+export const getActiveSliderPage = (
+  offsetX: number,
+  pageWidth: number,
+  totalPages: number
+): number => {
+  if (totalPages <= 1 || pageWidth <= 0) {
+    return 0;
+  }
+  return Math.min(totalPages - 1, Math.ceil(offsetX / pageWidth));
+};
+
 export const Slider = ({
   arrayOfCards,
   widthOfCard,
@@ -23,9 +34,9 @@ export const Slider = ({
   const { width } = useWindowDimensions();
   const scrollX = useRef(new Animated.Value(0)).current;
   const cardwidthOfCard = widthOfCard;
-  const gap = 10;
+  const gap = 16;
   const scrollInterval = cardwidthOfCard + gap;
-  const viewPortCards = Math.floor(width / scrollInterval);
+  const viewPortCards = Math.max(1, Math.floor(width / scrollInterval));
   const totalPages = Math.ceil(arrayOfCards.length / viewPortCards);
 
   const handleScroll = Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
@@ -33,7 +44,7 @@ export const Slider = ({
     listener: (event: { nativeEvent: { contentOffset: { x: number } } }) => {
       const offsetX = event.nativeEvent.contentOffset.x;
       const pageWidth = viewPortCards * scrollInterval;
-      const index = Math.ceil(offsetX / pageWidth);
+      const index = getActiveSliderPage(offsetX, pageWidth, totalPages);
       setActiveIndex(index);
     },
   });
