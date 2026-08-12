@@ -86,7 +86,11 @@ export const syncStampMiddleware: Middleware<object, RootState> =
         ensureMeta(api, pathId, now);
         api.dispatch(markPathEdited({ pathId, at: now }));
         const op = api.getState().sync.pathOps[pathId];
-        if (updatePath.match(action) && action.payload.silentSync === true && op) {
+        if (
+          (updatePath.match(action) || renamePath.match(action)) &&
+          action.payload.silentSync === true &&
+          op
+        ) {
           markSilentPathOp(pathId, op.localUpdatedAt);
         } else {
           // An explicit save supersedes any earlier auto-scroll checkpoint.

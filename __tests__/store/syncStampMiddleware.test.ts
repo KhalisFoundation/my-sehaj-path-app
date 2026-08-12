@@ -122,6 +122,18 @@ describe('syncStampMiddleware', () => {
     expect(isSilentPathOp(1, op.localUpdatedAt)).toBe(true);
   });
 
+  it('marks a rename requested by the command as notification-silent', () => {
+    const store = makeStore();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const created = store.getState().sync.pathOps[1].localUpdatedAt;
+    store.dispatch(ackServerPath({ pathId: 1, sentLocalUpdatedAt: created, serverUpdatedAt: 100 }));
+
+    store.dispatch(renamePath({ pathId: 1, name: 'Quiet rename', silentSync: true }));
+
+    const op = store.getState().sync.pathOps[1];
+    expect(isSilentPathOp(1, op.localUpdatedAt)).toBe(true);
+  });
+
   it('a settings setter marks settings dirty without creating a path op', () => {
     const store = makeStore();
     store.dispatch(setLarivaar(true));

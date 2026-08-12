@@ -105,7 +105,10 @@ export const pathsSlice = createSlice({
       }
     },
 
-    renamePath: (state, action: PayloadAction<{ pathId: number; name: string }>) => {
+    renamePath: (
+      state,
+      action: PayloadAction<{ pathId: number; name: string; silentSync?: boolean }>
+    ) => {
       // Update the exact match in place. The old implementation used a
       // filter/push pattern that reordered records (and matched with `!==`).
       const path = state.paths.find((candidate) => candidate.pathId === action.payload.pathId);

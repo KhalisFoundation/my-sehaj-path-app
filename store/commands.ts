@@ -244,7 +244,9 @@ export const savePathScrollPosition = (pathId: number, scrollPosition: number): 
   });
 
 export const renamePathCommand = async (pathId: number, name: string): Promise<boolean> => {
-  const saved = await runPathMutation(pathId, () => renamePath({ pathId, name }));
+  // A rename still uses the ordinary outbox/API flow, but it is housekeeping,
+  // not reading progress, so it should not show a sync notice.
+  const saved = await runPathMutation(pathId, () => renamePath({ pathId, name, silentSync: true }));
   if (!saved) {
     showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
   }
