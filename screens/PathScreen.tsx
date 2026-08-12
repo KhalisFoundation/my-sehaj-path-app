@@ -12,7 +12,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { showErrorAlert, showLeaveAnywayAlert, convertNumberToFormat, recordError } from '@utils';
+import { showErrorAlert, convertNumberToFormat, recordError } from '@utils';
 import { getAngContent } from '../db';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
@@ -404,7 +404,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     onScreenBlur();
   }, [persistCurrentScrollPosition]);
 
-  const { handleGoBack } = usePathNavigation({
+  const { handleGoBack, confirmBeforeLeaving } = usePathNavigation({
     isAngNavigation,
     pathAng,
     pathId: route.params.pathId,
@@ -415,18 +415,19 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   });
 
   const handlePathDrawerNavigate = useCallback(
-    async (targetRoute: string, targetPathId?: number) => {
-      const saved = await persistCurrentScrollPosition();
-      if (!saved) {
-        // Never trap the user: offer retry (stay) or leave anyway.
-        showLeaveAnywayAlert({
-          onLeaveAnyway: () => handleDrawerNavigate(targetRoute, targetPathId),
-        });
-        return;
-      }
-      handleDrawerNavigate(targetRoute, targetPathId);
+    (targetRoute: string, targetPathId?: number) => {
+      const destinationLabels: Record<string, string> = {
+        Home: 'Home',
+        Setting: 'Settings',
+        Progress: 'Progress',
+        Streaks: 'Streaks',
+      };
+      return confirmBeforeLeaving(
+        () => handleDrawerNavigate(targetRoute, targetPathId),
+        destinationLabels[targetRoute] ?? 'that screen'
+      );
     },
-    [persistCurrentScrollPosition, handleDrawerNavigate]
+    [confirmBeforeLeaving, handleDrawerNavigate]
   );
 
   const handleOpenSettings = useCallback(() => {

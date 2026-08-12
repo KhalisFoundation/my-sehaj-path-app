@@ -26,50 +26,54 @@ export const usePathNavigation = ({
   navigation,
   persistCurrentScroll,
 }: UsePathNavigationProps) => {
-  const persistAndGoHome = useCallback(async () => {
-    const saved = await persistCurrentScroll();
-    if (!saved) {
-      // Never trap the user: let them retry (stay) or leave anyway. Leaving is
-      // their explicit choice, so we don't force them to stay on a broken disk.
-      showLeaveAnywayAlert({ onLeaveAnyway: () => navigation.push('Home') });
-      return;
-    }
-    navigation.push('Home');
-  }, [persistCurrentScroll, navigation]);
-
-  const handleGoBack = useCallback(async () => {
-    if (isAngNavigation) {
-      const currentMatchedPath = store
-        .getState()
-        .paths.paths.find((path) => path.pathId === pathId);
-      const lastSavedAngNumber = currentMatchedPath?.saveData.angNumber || 0;
-
-      if (pathAng !== lastSavedAngNumber) {
-        showSaveProgressAlert({
-          onSaveAndGoBack: async () => {
-            setIsAngNavigation(false);
-            await persistAndGoHome();
-          },
-          onGoBackWithoutSaving: () => {
-            updatePathAng(lastSavedAngNumber);
-            navigation.push('Home');
-          },
-        });
-      } else {
-        await persistAndGoHome();
+  const persistAndNavigate = useCallback(
+    async (navigate: () => void) => {
+      const saved = await persistCurrentScroll();
+      if (!saved) {
+        // Never trap the user: let them retry (stay) or leave anyway. Leaving is
+        // their explicit choice, so we don't force them to stay on a broken disk.
+        showLeaveAnywayAlert({ onLeaveAnyway: navigate });
+        return;
       }
-    } else {
-      await persistAndGoHome();
-    }
-  }, [
-    isAngNavigation,
-    pathAng,
-    pathId,
-    persistAndGoHome,
-    setIsAngNavigation,
-    navigation,
-    updatePathAng,
-  ]);
+      navigate();
+    },
+    [persistCurrentScroll]
+  );
 
-  return { handleGoBack };
+  const confirmBeforeLeaving = useCallback(
+    async (navigate: () => void, destinationLabel = 'Home') => {
+      if (isAngNavigation) {
+        const currentMatchedPath = store
+          .getState()
+          .paths.paths.find((path) => path.pathId === pathId);
+        const lastSavedAngNumber = currentMatchedPath?.saveData.angNumber || 0;
+
+        if (pathAng !== lastSavedAngNumber) {
+          showSaveProgressAlert({
+            onSaveAndGoBack: async () => {
+              setIsAngNavigation(false);
+              await persistAndNavigate(navigate);
+            },
+            onGoBackWithoutSaving: () => {
+              updatePathAng(lastSavedAngNumber);
+              navigate();
+            },
+            destinationLabel,
+          });
+        } else {
+          await persistAndNavigate(navigate);
+        }
+      } else {
+        await persistAndNavigate(navigate);
+      }
+    },
+    [isAngNavigation, pathAng, pathId, persistAndNavigate, setIsAngNavigation, updatePathAng]
+  );
+
+  const handleGoBack = useCallback(
+    () => confirmBeforeLeaving(() => navigation.push('Home'), 'Home'),
+    [confirmBeforeLeaving, navigation]
+  );
+
+  return { handleGoBack, confirmBeforeLeaving };
 };
