@@ -14,6 +14,15 @@ type ParagraphVerseLayout = {
   measuredFromTextLayout?: boolean;
 };
 
+/**
+ * Movement below this is not worth a scroll command.
+ *
+ * Paragraph layout resolves verse by verse, so the resume recentre is asked for
+ * repeatedly with near-identical targets. Re-issuing `scrollTo` each time cuts
+ * short the movement already in flight, which reads as stutter.
+ */
+const RECENTER_EPSILON_PX = 8;
+
 type UsePathReaderCenteringArgs = {
   scrollRef: RefObject<ScrollView | null>;
   scrollOffset: RefObject<number>;
@@ -34,7 +43,7 @@ export const usePathReaderCentering = ({
   const hasScrolledToVerse = useRef<boolean>(false);
 
   const recenterVerse = useCallback(
-    (verseId: number) => {
+    (verseId: number, options?: { animated?: boolean }) => {
       const position = versePositions.current.get(verseId);
       if (!position || !scrollRef.current || viewportHeight.current <= 0) {
         return;
@@ -44,9 +53,19 @@ export const usePathReaderCentering = ({
       const screenCenterY = viewportHeight.current / 2;
       const targetScroll = Math.max(0, verseCenterY - screenCenterY);
 
+      // Already effectively there: issuing another scroll would only cut short
+      // whatever movement is in flight. Paragraph layout resolves verse by
+      // verse, so this fires repeatedly with near-identical targets.
+      if (Math.abs(scrollOffset.current - targetScroll) < RECENTER_EPSILON_PX) {
+        scrollOffset.current = targetScroll;
+        setCenterVerseId?.(verseId);
+        hasScrolledToVerse.current = true;
+        return;
+      }
+
       scrollRef.current.scrollTo({
         y: targetScroll,
-        animated: false,
+        animated: options?.animated ?? false,
       });
       scrollOffset.current = targetScroll;
       setCenterVerseId?.(verseId);
@@ -97,8 +116,11 @@ export const usePathReaderCentering = ({
       const resolvedY = shabadOffset + localLayout.localY;
       versePositions.current.set(verseId, { y: resolvedY, height: localLayout.height });
 
+      // This is the RESUME move: animate it. It used to be an instant jump that
+      // cut off the smooth scroll `useScrollToSavedPath` had already started,
+      // which is what made resuming a path in paragraph mode look janky.
       if (scrollToVerseId === verseId && !hasScrolledToVerse.current) {
-        recenterVerse(verseId);
+        recenterVerse(verseId, { animated: true });
       }
     },
     [recenterVerse, scrollToVerseId]
@@ -109,8 +131,11 @@ export const usePathReaderCentering = ({
       const { y, height } = event.nativeEvent.layout;
       versePositions.current.set(verseId, { y, height });
 
+      // This is the RESUME move: animate it. It used to be an instant jump that
+      // cut off the smooth scroll `useScrollToSavedPath` had already started,
+      // which is what made resuming a path in paragraph mode look janky.
       if (scrollToVerseId === verseId && !hasScrolledToVerse.current) {
-        recenterVerse(verseId);
+        recenterVerse(verseId, { animated: true });
       }
     },
     [recenterVerse, scrollToVerseId]
@@ -158,16 +183,32 @@ export const usePathReaderCentering = ({
         };
       });
 
+      // Both verses and lines advance monotonically through the same character
+      // stream, so walk them together instead of re-scanning every line for each
+      // verse. That rescan was O(verses x lines) and ran on every paragraph
+      // layout — including at resume, while the scroll animation is playing.
       let verseStart = 0;
+      let lineCursor = 0;
       verses.forEach(({ verseId, text }) => {
         const verseEnd = verseStart + text.length;
-        const matchingLines = lineRanges.filter(
-          (line) => line.end > verseStart && line.start < verseEnd
-        );
 
-        if (matchingLines.length > 0) {
-          const firstLine = matchingLines[0];
-          const lastLine = matchingLines[matchingLines.length - 1];
+        // Skip lines that ended before this verse begins; they cannot overlap
+        // this verse or any later one.
+        while (lineCursor < lineRanges.length && lineRanges[lineCursor].end <= verseStart) {
+          lineCursor += 1;
+        }
+
+        let lastOverlapping = lineCursor;
+        while (
+          lastOverlapping + 1 < lineRanges.length &&
+          lineRanges[lastOverlapping + 1].start < verseEnd
+        ) {
+          lastOverlapping += 1;
+        }
+
+        if (lineCursor < lineRanges.length && lineRanges[lineCursor].start < verseEnd) {
+          const firstLine = lineRanges[lineCursor];
+          const lastLine = lineRanges[lastOverlapping];
 
           paragraphVerseLayouts.current.set(verseId, {
             shabadIndex,

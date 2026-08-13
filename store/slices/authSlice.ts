@@ -14,6 +14,18 @@ export interface AuthState {
   /** `unknown` until boot hydration finishes reading secure storage. */
   status: 'unknown' | 'signedOut' | 'signedIn';
   /**
+   * True from the moment a login callback is accepted until the session
+   * resolves.
+   *
+   * Resolving a login means an SSO `/user` request, which routinely takes a
+   * second or two. Nothing else in state changes while it runs, so without this
+   * the app looks frozen right after signing in: `status` is still `unknown`,
+   * there is no account yet, and therefore no sync to report either. Kept as its
+   * own flag rather than a new `status` value so existing
+   * `signedIn`/`signedOut` checks are unaffected.
+   */
+  signingIn: boolean;
+  /**
    * The SSO JWT, held in memory for API calls to attach as a Bearer token.
    * The durable copy lives in encrypted storage (auth/tokenUtils); this slice
    * is NOT persisted by the legacy write coordinator, so the token never
@@ -27,6 +39,7 @@ export interface AuthState {
 
 const initialState: AuthState = {
   status: 'unknown',
+  signingIn: false,
   token: null,
   email: null,
   firstname: null,
@@ -48,8 +61,13 @@ export const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    /** A login callback was accepted; the session is being resolved. */
+    setSigningIn: (state, action: PayloadAction<boolean>) => {
+      state.signingIn = action.payload;
+    },
     setSignedIn: (state, action: PayloadAction<AuthUser>) => {
       state.status = 'signedIn';
+      state.signingIn = false;
       state.token = action.payload.token;
       state.email = normalizeAccountEmail(action.payload.email);
       state.firstname = action.payload.firstname;
@@ -57,6 +75,7 @@ export const authSlice = createSlice({
     },
     setSignedOut: (state) => {
       state.status = 'signedOut';
+      state.signingIn = false;
       state.token = null;
       state.email = null;
       state.firstname = null;
@@ -65,4 +84,4 @@ export const authSlice = createSlice({
   },
 });
 
-export const { setSignedIn, setSignedOut } = authSlice.actions;
+export const { setSigningIn, setSignedIn, setSignedOut } = authSlice.actions;

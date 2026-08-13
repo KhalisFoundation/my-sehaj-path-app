@@ -107,6 +107,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // Baseline scroll Y captured when completion guard starts; used to measure
   // upward movement and undo completion only after user scrolls up > 200px.
   const completionUndoStartScrollYRef = useRef<number | null>(null);
+  /** Guards the leave checkpoint so `blur` + `beforeRemove` run it only once. */
+  const leaveCheckpointDone = useRef<boolean>(false);
 
   const resetTransientUiState = useCallback(() => {
     setIsSaving(false);
@@ -332,6 +334,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     scrollOffset,
     setFound,
     fontSize,
+    isParagraphMode,
   });
 
   const updatePathAng = useCallback(
@@ -662,8 +665,25 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // nothing to queue and the reader's final position was not sent until some
   // later trigger. Cancelling the debounce and persisting first makes closing
   // the path sync exactly where the user stopped, immediately.
+  // Checkpoint only when the reader is REALLY being left.
+  //
+  // `beforeRemove` — not `blur` — is the right event for two reasons:
+  //  1. Going Home uses `navigation.popTo(Home)`, which REMOVES this screen.
+  //     React unmounts it and the cleanup below tears the listener down, so a
+  //     `blur` handler never runs at all — the checkpoint (and its "Synced"
+  //     confirmation) was silently skipped on every exit.
+  //  2. `blur` ALSO fires for a push that keeps this screen mounted — opening
+  //     Settings. That is a round trip: the user comes straight back here, so
+  //     uploading then is a pointless API call. `beforeRemove` never fires for
+  //     it, so Settings no longer triggers a sync.
+  //
+  // App backgrounding is covered separately by the AppState listener below.
   useEffect(() => {
-    const unsubscribe = navigation.addListener('blur', () => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      if (leaveCheckpointDone.current) {
+        return;
+      }
+      leaveCheckpointDone.current = true;
       checkpointScrollBeforeBackground().catch((error) =>
         recordError(error, 'PathScreen: leaving the reader failed to checkpoint')
       );
@@ -679,6 +699,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     useCallback(() => {
       const { pathId } = route.params;
       setActiveReaderPath(pathId);
+      // Re-arm the leave checkpoint: returning to the reader (e.g. back from
+      // Settings) must be able to checkpoint again when the user leaves next.
+      leaveCheckpointDone.current = false;
       const subscription = AppState.addEventListener('change', (state) => {
         if (state === 'inactive' || state === 'background') {
           checkpointScrollBeforeBackground();

@@ -15,6 +15,7 @@ import {
   hasWorkBlockingPull,
   isPathOpBlocked,
   isSilentPathOp,
+  markSilentPathOp,
 } from './syncWork';
 
 /**
@@ -62,6 +63,13 @@ const promoteDirtyScroll = (): boolean => {
     const op = state.sync.pathOps[pathId];
     if (!op || isPathOpBlocked(store, pathId, op.localUpdatedAt)) {
       store.dispatch(markPathEdited({ pathId, at: Date.now() }));
+      // This op exists only to carry the latest scroll position at a lifecycle
+      // checkpoint. It is not an explicit panktee/progress save and must not
+      // make SyncStatusNotice announce a timing-dependent "Synced" message.
+      const promotedOp = store.getState().sync.pathOps[pathId];
+      if (promotedOp) {
+        markSilentPathOp(pathId, promotedOp.localUpdatedAt);
+      }
       promoted = true;
     }
   });
@@ -175,13 +183,27 @@ export const onScreenBlur = async (): Promise<void> => {
       ([pathId, op]) => !isSilentPathOp(Number(pathId), op.localUpdatedAt)
     );
 
-  // Leaving the reader is an explicit checkpoint from the user's perspective.
-  // A changed scroll position is real reading progress, so promote it and let
-  // the status notice confirm that it is being synced after they return Home.
-  // Merely opening and closing a path still has nothing to announce.
-  const promotedDirtyScroll = promoteDirtyScroll();
+  /**
+   * The user moved their reading position without saving a line.
+   *
+   * This must be read BEFORE promotion, and it is what makes the confirmation
+   * deterministic. Leaving the reader used to announce only when the explicit
+   * leave-save happened to create an op — and it only does that when the
+   * debounced scroll checkpoint had NOT already written the same position
+   * (`unchangedSinceOpen` in PathScreen returns early otherwise). So pausing
+   * before pressing Home silently swallowed the message while tapping straight
+   * away showed it: the same action reported differently depending on timing,
+   * and paragraph mode (where pauses are more likely) almost never announced.
+   *
+   * A dirty scroll is real reading progress that this checkpoint uploads, so it
+   * deserves the same confirmation as an explicit save.
+   */
+  const movedReadingPosition =
+    canSyncNow() && Object.keys(store.getState().sync.scrollDirty).length > 0;
 
-  if (hadRealEdit || promotedDirtyScroll) {
+  promoteDirtyScroll();
+
+  if (hadRealEdit || movedReadingPosition) {
     store.dispatch(requestSyncConfirmation());
   }
   await onCheckpoint();

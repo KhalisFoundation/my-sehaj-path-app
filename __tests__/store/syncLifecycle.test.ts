@@ -34,7 +34,7 @@ import {
   requestSyncConfirmation,
   setCatchUpSyncRunning,
 } from '../../store/slices/syncSlice';
-import { blockPathOp, clearBlockedWork } from '../../store/syncWork';
+import { blockPathOp, clearBlockedWork, isSilentPathOp } from '../../store/syncWork';
 import {
   onCheckpoint,
   onForeground,
@@ -76,8 +76,8 @@ beforeEach(() => {
   // queued, so reflect the reducer's effect here.
   mockDispatch.mockImplementation((action) => {
     if (action?.type === markPathEdited.type) {
-      const { pathId } = action.payload;
-      mockState.sync.pathOps[pathId] = { kind: 'update', localUpdatedAt: Date.now() };
+      const { pathId, at } = action.payload;
+      mockState.sync.pathOps[pathId] = { kind: 'update', localUpdatedAt: at };
     }
   });
   mockState = syncable();
@@ -315,7 +315,7 @@ describe('onScreenBlur (reader scroll checkpoint)', () => {
     expect(mockFlushNow).toHaveBeenCalledTimes(1); // still a checkpoint flush
   });
 
-  it('confirms on a scroll-only leave so Home shows the reading-position sync', async () => {
+  it('requests a notification for a scroll-only Home leave', async () => {
     mockState.sync.meta = { 1: { onServer: true } };
     mockState.sync.scrollDirty = { 1: 123 }; // only scrolled — no real edit
 
@@ -324,7 +324,35 @@ describe('onScreenBlur (reader scroll checkpoint)', () => {
     expect(mockDispatch).toHaveBeenCalledWith(
       expect.objectContaining({ type: requestSyncConfirmation.type })
     );
+    const promoted = mockState.sync.pathOps[1] as { localUpdatedAt: number };
+    expect(isSilentPathOp(1, promoted.localUpdatedAt)).toBe(true);
     expect(mockFlushNow).toHaveBeenCalled(); // but the scroll IS still flushed
+  });
+
+  it('announces a scroll-only leave the SAME way whether or not the debounce landed', async () => {
+    // Device report: scroll, press Home, and the notice appeared only sometimes
+    // — and almost never in paragraph mode. The two states below are the same
+    // user action, differing only in whether the debounced scroll checkpoint had
+    // already written the position before Home was pressed:
+    //   A) it HAD  -> the position is durable, so the leave-save no-ops
+    //                 (`unchangedSinceOpen`) and leaves a dirty scroll instead;
+    //   B) it had NOT -> the leave-save writes it and creates a real op.
+    // Both must report identically.
+    const confirmed = async (state: Partial<(typeof mockState)['sync']>) => {
+      mockDispatch.mockClear();
+      mockState = syncable();
+      mockState.sync.meta = { 1: { onServer: true } };
+      Object.assign(mockState.sync, state);
+      await onScreenBlur();
+      return mockDispatch.mock.calls.some(
+        ([action]) => action?.type === requestSyncConfirmation.type
+      );
+    };
+
+    // A) debounce landed: only a dirty scroll remains.
+    expect(await confirmed({ scrollDirty: { 1: 123 } })).toBe(true);
+    // B) debounce did not land: the leave-save created a real op.
+    expect(await confirmed({ pathOps: { 1: { kind: 'update', localUpdatedAt: 5 } } })).toBe(true);
   });
 
   it('confirms when leaving after a real edit (a pending path op)', async () => {

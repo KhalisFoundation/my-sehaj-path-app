@@ -16,6 +16,11 @@ interface UseScrollToSavedPathProps {
   setFound: (value: boolean) => void;
   /** Current font size from the store — no longer fetched from disk here. */
   fontSize: number;
+  /**
+   * Paragraph mode measures verse positions from the rendered paragraph flow,
+   * so the fixed-height estimate below does not apply there.
+   */
+  isParagraphMode: boolean;
 }
 
 export const useScrollToSavedPath = ({
@@ -28,6 +33,7 @@ export const useScrollToSavedPath = ({
   scrollOffset,
   setFound,
   fontSize,
+  isParagraphMode,
 }: UseScrollToSavedPathProps) => {
   const scrollToSavedPathData = useCallback(async () => {
     if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
@@ -69,9 +75,20 @@ export const useScrollToSavedPath = ({
           scrollOffset.current = scrollIndex * scrollHeight;
           if (scrollRef.current) {
             isRestoringScroll.current = true;
+            // `scrollIndex * scrollHeight` assumes every verse is one
+            // fixed-height line. That holds in line mode, so animate straight to
+            // it. In PARAGRAPH mode verses are merged into wrapped paragraphs, so
+            // this is only a rough starting point: place it instantly (it is the
+            // reader's initial position, not a visible move) and let the measured
+            // recentre animate to the true position. Animating to the estimate
+            // first is what produced the janky resume.
+            //
+            // This estimate deliberately still runs in paragraph mode: it is the
+            // fallback if measurement never resolves (e.g. no `onTextLayout`
+            // lines), which would otherwise leave the reader not scrolled at all.
             scrollRef.current.scrollTo({
               y: scrollOffset.current,
-              animated: true,
+              animated: !isParagraphMode,
             });
           }
           scrolledToSavedPath.current = true;
@@ -91,6 +108,7 @@ export const useScrollToSavedPath = ({
     scrollOffset,
     setFound,
     fontSize,
+    isParagraphMode,
   ]);
 
   return { scrollToSavedPathData };

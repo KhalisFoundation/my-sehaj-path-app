@@ -12,4 +12,4 @@ export {
 } from './downloadDatabase';
 export { getBani, resetBani } from './connection';
 export { getAngContent, type AngContentResult } from './getAngContent';
-export { provisionDatabase } from './provisionDatabase';
+export { provisionDatabase, runDatabaseUpdate } from './provisionDatabase';

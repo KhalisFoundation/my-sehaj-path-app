@@ -6,7 +6,7 @@ import { NavContent } from '@components';
 import { LeftArrowIcon } from '@icons';
 import { EDGES_ALL_SIDES, DatabaseUpdateText } from '@constants';
 import { DatabaseUpdateScreenStyles as styles, SafeAreaStyle } from '@styles';
-import { checkForDatabaseUpdate, performDatabaseUpdate } from '../db';
+import { checkForDatabaseUpdate, runDatabaseUpdate } from '../db';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { useAppSelector } from '../store/hooks';
@@ -85,6 +85,8 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
   const databaseStatus = useAppSelector((store) => store.db.status);
   const databaseProgress = useAppSelector((store) => store.db.progress);
   const wasDownloadingRef = useRef(false);
+  /** True while THIS screen is driving an update it started. */
+  const selfUpdating = useRef(false);
 
   // Check only — never downloads. If an update exists we ask the user first.
   const runCheck = useCallback(async () => {
@@ -104,9 +106,12 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
 
   // Runs only when the user confirms via the "Update now" button.
   const startUpdate = useCallback(async () => {
+    // While this screen owns the update, its own result must not be replaced by
+    // the mount check reacting to the same status changes.
+    selfUpdating.current = true;
     setState('updating');
     setProgress(0);
-    const result = await performDatabaseUpdate(({ percent }) => setProgress(percent));
+    const result = await runDatabaseUpdate(({ percent }) => setProgress(percent));
     if (result.status === 'updated') {
       setState('updated');
     } else if (result.status === 'not-configured') {
@@ -114,9 +119,16 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
     } else {
       setState('failed');
     }
+    selfUpdating.current = false;
   }, []);
 
   useEffect(() => {
+    if (selfUpdating.current) {
+      return; // this screen started the update and is already reporting it
+    }
+    // A download started elsewhere (boot provisioning, or an update begun before
+    // the user navigated away and came back) is still running. Show THAT instead
+    // of checking again and offering an update that is already downloading.
     if (databaseStatus === 'downloading') {
       wasDownloadingRef.current = true;
       setProgress(databaseProgress);

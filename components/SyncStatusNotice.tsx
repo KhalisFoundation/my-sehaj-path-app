@@ -67,6 +67,8 @@ const SyncStatusNoticeComponent = () => {
   );
   const pulling = useAppSelector((state) => state.sync.pulling);
   const catchUpSyncRunning = useAppSelector((state) => state.sync.catchUpSyncRunning);
+  /** Resolving an accepted login (SSO `/user`) — before any sync can start. */
+  const signingIn = useAppSelector((state) => state.auth.signingIn);
   const confirmNextSync = useAppSelector((state) => state.sync.confirmNextSync);
   const lastError = useAppSelector((state) => state.sync.lastError);
   /**
@@ -101,7 +103,9 @@ const SyncStatusNoticeComponent = () => {
   );
 
   // Uploading, downloading, or working through the session catch-up.
-  const busy = status === 'flushing' || pulling || catchUpSyncRunning;
+  // Signing in counts as busy: it is the 1-2s the user waits right after login,
+  // before an account exists and therefore before any sync can begin.
+  const busy = status === 'flushing' || pulling || catchUpSyncRunning || signingIn;
   const [phase, setPhase] = useState<Phase>('hidden');
   // Show an offline notice once when connectivity drops. It must not become
   // permanent furniture while somebody deliberately reads offline.
@@ -131,7 +135,7 @@ const SyncStatusNoticeComponent = () => {
    * up front. A settings change announcing "Syncing your progress…" makes the
    * user look for a reading position that never moved.
    */
-  const kind = useRef<'progress' | 'settings'>('progress');
+  const kind = useRef<'progress' | 'settings' | 'signIn'>('progress');
   const wasBusy = useRef(false);
   /** When the current resolved message appeared, so it can be protected. */
   const resolvedAt = useRef(0);
@@ -175,21 +179,37 @@ const SyncStatusNoticeComponent = () => {
       // nothing. `syncLifecycle` already decides whether a catch-up is worth
       // reporting and says so via `confirmNextSync`; trust that instead of
       // re-deriving it here from the fact that work is merely happening.
-      meaningful.current = hasNoticeWorthyPendingWork || confirmNextSync || showedError.current;
+      meaningful.current =
+        hasNoticeWorthyPendingWork || confirmNextSync || showedError.current || signingIn;
       // Only a settings-ONLY run is described as settings. Anything touching
       // paths is "progress", since that is the bigger of the two.
-      kind.current = settingsOnly ? 'settings' : 'progress';
+      kind.current = signingIn ? 'signIn' : settingsOnly ? 'settings' : 'progress';
+    }
+    // A confirmation can be requested AFTER this run already started.
+    //
+    // Leaving the reader dispatches it from `onScreenBlur`, but Home's focus
+    // sync (`onForeground`) often reaches `flushNow()` first — React Navigation
+    // does not guarantee blur runs before the next screen's focus. The rising
+    // edge above then latched `meaningful = false` (a promoted scroll op is
+    // deliberately silent) and nothing re-evaluated it, so the upload happened
+    // with no notice at all. Upgrading the run here makes the message
+    // independent of which side of that race wins.
+    if (confirmNextSync) {
+      meaningful.current = true;
     }
     if (!meaningful.current) {
       return undefined; // a read-only refresh stays silent however long it takes
     }
     const heldFor = Date.now() - resolvedAt.current;
     const onlineHold = Math.max(0, holdOnlineUntil.current - Date.now());
-    const wait = Math.max(
+    // Signing in shows instantly: the wait is exactly what the user is confused
+    // by, so an anti-flash delay would defeat the point.
+    const normalWait = Math.max(
       confirmNextSync ? 0 : SHOW_AFTER_MS,
       resolvedAt.current ? MIN_VISIBLE_MS - heldFor : 0,
       onlineHold
     );
+    const wait = signingIn ? 0 : normalWait;
     const timer = setTimeout(() => setPhase('syncing'), wait);
     return () => clearTimeout(timer);
   }, [
@@ -197,6 +217,7 @@ const SyncStatusNoticeComponent = () => {
     catchUpSyncRunning,
     confirmNextSync,
     settingsOnly,
+    signingIn,
     hasNoticeWorthyPendingWork,
     pendingCount,
   ]);
@@ -365,8 +386,13 @@ const SyncStatusNoticeComponent = () => {
       ? 'Unable to sync. Your progress is safe on this device.'
       : 'Unable to sync some progress. Your local progress is safe.';
   const isSettings = kind.current === 'settings';
+  const isSignIn = kind.current === 'signIn';
   let syncingMessage = isSettings ? 'Saving your settings…' : 'Syncing your progress…';
-  if (retrying.current) {
+  if (isSignIn) {
+    // Before an account exists there is no sync yet — say what is really
+    // happening rather than claiming to sync progress.
+    syncingMessage = 'Signing you in…';
+  } else if (retrying.current) {
     syncingMessage = isSettings ? 'Retrying your settings…' : 'Retrying sync…';
   }
   const messages: Record<string, string> = {

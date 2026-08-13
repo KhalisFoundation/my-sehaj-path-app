@@ -7,7 +7,13 @@ import {
   dbReady,
 } from '../store/slices/dbSlice';
 import { resetBani } from './connection';
-import { downloadDatabase, isDatabaseInstalled } from './downloadDatabase';
+import {
+  downloadDatabase,
+  isDatabaseInstalled,
+  performDatabaseUpdate,
+  type DatabaseUpdateResult,
+  type DownloadProgress,
+} from './downloadDatabase';
 
 /**
  * Boot-time provisioning of the offline DB. Called in the background AFTER
@@ -48,5 +54,47 @@ export const provisionDatabase = async (): Promise<void> => {
     }
   } catch {
     store.dispatch(dbFailed());
+  }
+};
+
+/**
+ * A user-initiated update, reported through the SAME `db` slice as boot
+ * provisioning.
+ *
+ * The download itself is store-free and survives navigation, but its progress
+ * used to live only in the Database screen's local state — so leaving and coming
+ * back lost it, the screen re-ran its check, and it offered "Update now" again
+ * while the download was still running underneath. Publishing the progress here
+ * makes the in-progress state visible to any mount (and to the app-wide notice).
+ */
+export const runDatabaseUpdate = async (
+  onProgress?: (progress: DownloadProgress) => void
+): Promise<DatabaseUpdateResult> => {
+  store.dispatch(dbDownloadStarted());
+  try {
+    const result = await performDatabaseUpdate((progress) => {
+      store.dispatch(dbDownloadProgress(progress.percent));
+      onProgress?.(progress);
+    });
+
+    if (result.status === 'updated') {
+      resetBani();
+      store.dispatch(dbReady());
+    } else if (result.status === 'not-configured') {
+      store.dispatch(dbNotConfigured());
+    } else if (await isDatabaseInstalled()) {
+      // The update failed, but the swap only happens after a verified download,
+      // so the previous database is untouched and still usable.
+      store.dispatch(dbReady());
+    } else {
+      store.dispatch(dbFailed());
+    }
+    return result;
+  } catch (error) {
+    store.dispatch((await isDatabaseInstalled()) ? dbReady() : dbFailed());
+    return {
+      status: 'failed',
+      reason: error instanceof Error ? error.message : 'unknown error',
+    };
   }
 };

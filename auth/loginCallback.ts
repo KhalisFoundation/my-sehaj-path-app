@@ -1,3 +1,5 @@
+import { store } from '../store';
+import { setSigningIn } from '../store/slices/authSlice';
 import { REDIRECT_SCHEME } from './constants';
 import { clearLoginPending, isLoginPending } from './loginPending';
 import { establishSession } from './session';
@@ -55,6 +57,11 @@ export async function consumeLoginUrl(url: string): Promise<boolean> {
     if (!(await isLoginPending())) {
       return false;
     }
+    // Report "signing in" NOW. Everything below — secure-storage writes plus the
+    // SSO `/user` request inside `establishSession` — takes a second or two, and
+    // until it finishes no other state changes, so the app would otherwise sit
+    // silent right after the user signed in.
+    store.dispatch(setSigningIn(true));
     // Consume first so the callback is single-use even if token storage or the
     // profile request fails. The user can explicitly start login again.
     await clearLoginPending();
@@ -65,5 +72,8 @@ export async function consumeLoginUrl(url: string): Promise<boolean> {
     return false;
   } finally {
     callbackInProgress = false;
+    // `setSignedIn`/`setSignedOut` normally clear this; make sure a throw on the
+    // way there can never strand the app showing a permanent "signing in".
+    store.dispatch(setSigningIn(false));
   }
 }

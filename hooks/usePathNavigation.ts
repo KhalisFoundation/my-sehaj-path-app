@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { showLeaveAnywayAlert, showSaveProgressAlert } from '@utils/alerts';
+import { Routes } from '@constants';
 import { store } from '../store';
 import { RootStackParamList } from '../App';
 
@@ -71,7 +72,10 @@ export const usePathNavigation = ({
   );
 
   const handleGoBack = useCallback(
-    () => confirmBeforeLeaving(() => navigation.push('Home'), 'Home'),
+    // Home already exists below Continue/Path. Pushing another Home retains the
+    // whole paragraph reader in the stack; repeated reading sessions then pile
+    // up native Text trees and progressively degrade scrolling/transitions.
+    () => confirmBeforeLeaving(() => navigation.popTo(Routes.Home), 'Home'),
     [confirmBeforeLeaving, navigation]
   );
 

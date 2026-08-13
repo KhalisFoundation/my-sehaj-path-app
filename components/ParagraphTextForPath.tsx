@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import { Platform, Text } from 'react-native';
-import { SaveIcon } from '@icons';
 import { UIConstants } from '@constants';
+import { SaveIcon } from '@icons';
 import {
   PathTextProps,
   useIsSelected,
@@ -29,8 +29,7 @@ const ParagraphTextForPathComponent = ({
   onLayout,
   onTextLayout,
 }: ParagraphTextForPathProps) => {
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressLock = useRef(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
 
   // Selection state from context; display settings from the store.
@@ -60,21 +59,31 @@ const ParagraphTextForPathComponent = ({
     onSelection
   );
 
-  const handleLongPress = () => {
-    // Block duplicate triggers
-    if (longPressLock.current) {
-      return;
-    }
-
-    longPressLock.current = true;
+  const triggerLongPress = () => {
     didLongPress.current = true;
-
     baseLongPressHandler();
+  };
 
-    // Unlock after delay
-    timeoutRef.current = setTimeout(() => {
-      longPressLock.current = false;
-    }, 600);
+  const clearLongPressTimer = () => {
+    if (longPressTimer.current !== null) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handlePressIn = () => {
+    clearLongPressTimer();
+    // Text does not expose delayLongPress. Its native default is 500 ms; use a
+    // controlled shorter delay and cancel on movement so paragraph selection is
+    // as responsive as line mode without firing while the reader scrolls.
+    longPressTimer.current = setTimeout(() => {
+      longPressTimer.current = null;
+      triggerLongPress();
+    }, 180);
+  };
+
+  const handlePressOut = () => {
+    clearLongPressTimer();
   };
 
   const handlePress = () => {
@@ -90,9 +99,9 @@ const ParagraphTextForPathComponent = ({
 
   useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
+      if (longPressTimer.current !== null) {
+        clearTimeout(longPressTimer.current);
+        longPressTimer.current = null;
       }
     };
   }, []);
@@ -103,7 +112,8 @@ const ParagraphTextForPathComponent = ({
         onPress={handlePress}
         accessibilityLabel={accessibilityLabel}
         accessibilityRole="button"
-        onLongPress={handleLongPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
         accessibilityHint="Tap to select, long press to save this line"
         disabled={selection.isSaved || selection.found}
         suppressHighlighting={true}
@@ -123,15 +133,16 @@ const ParagraphTextForPathComponent = ({
             gurbaniLine
           )}{' '}
         </Text>
+
+        {isSelected && (
+          <SaveIcon
+            color={UIConstants.SAVE_ICON_COLOR}
+            width={fontSize * 1.2}
+            height={fontSize * 1.2}
+            style={{ transform: [{ translateY: Platform.OS === 'ios' ? '-25%' : '25%' }] }}
+          />
+        )}
       </Text>
-      {isSelected && (
-        <SaveIcon
-          color={UIConstants.SAVE_ICON_COLOR}
-          width={fontSize * 1.2}
-          height={fontSize * 1.2}
-          style={{ transform: [{ translateY: Platform.OS === 'ios' ? '-25%' : '25%' }] }}
-        />
-      )}
     </>
   );
 };
