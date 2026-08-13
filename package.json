@@ -11,7 +11,7 @@
     "test": "jest",
     "test:release": "REQUIRE_LEGACY_FIXTURES=1 jest",
     "gen:api": "openapi-ts",
-    "gen:api:pull": "curl -s ${SEHAJ_API_URL:-http://localhost:3500}/openapi.json -o api-spec/openapi.json && yarn gen:api",
+    "gen:api:pull": "if [ -z \"${SEHAJ_API_URL:-}\" ] && [ -f .env ]; then set -a; . ./.env; set +a; fi; : \"${SEHAJ_API_URL:?SEHAJ_API_URL must be set in .env or environment}\"; curl -fsS \"$SEHAJ_API_URL/openapi.json\" -o api-spec/openapi.json && yarn gen:api",
     "postinstall": "openapi-ts"
   },
   "dependencies": {

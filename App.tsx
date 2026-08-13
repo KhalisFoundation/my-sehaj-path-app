@@ -9,10 +9,10 @@ import { SafeAreaStyle } from '@styles';
 import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
 import { BootSplash, HydrationRetry, SyncPopup, SyncStatusNotice } from '@components';
 import { ErrorConstants, Routes } from '@constants';
-import { allowTracking, allowCrashReporting, showErrorAlert } from '@utils';
 import { initAuth, retrySessionProfile, useSSOLogin } from '@auth';
 import { readSyncPrefs } from './store/syncPrefs';
 import { hydrateSignInPopup } from './store/slices/syncSlice';
+import { allowTracking, allowCrashReporting, recordError, showErrorAlert } from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
 import { useAppSelector } from './store/hooks';
@@ -89,7 +89,7 @@ const App = () => {
 
     // Resolve auth: consume a cold-start login callback, else hydrate the
     // stored token (serialized so they can't race).
-    initAuth();
+    initAuth().catch((error) => recordError(error, 'auth: initAuth failed'));
 
     // One NetInfo subscription for the whole app. On a false→true transition,
     // flush anything queued while offline (Step 10 reconnect trigger).
