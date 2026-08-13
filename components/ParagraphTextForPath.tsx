@@ -76,10 +76,13 @@ const ParagraphTextForPathComponent = ({
     // Text does not expose delayLongPress. Its native default is 500 ms; use a
     // controlled shorter delay and cancel on movement so paragraph selection is
     // as responsive as line mode without firing while the reader scrolls.
-    longPressTimer.current = setTimeout(() => {
-      longPressTimer.current = null;
-      triggerLongPress();
-    }, 180);
+    longPressTimer.current = setTimeout(
+      () => {
+        longPressTimer.current = null;
+        triggerLongPress();
+      },
+      Platform.OS === 'ios' ? 350 : 500
+    );
   };
 
   const handlePressOut = () => {
@@ -106,44 +109,59 @@ const ParagraphTextForPathComponent = ({
     };
   }, []);
 
-  return (
+  // The trailing space is load-bearing: it separates verses in the paragraph
+  // flow AND the layout matcher measures each verse as `${renderedText} `.
+  const verseContent = (
     <>
-      <Text
-        onPress={handlePress}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityRole="button"
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        accessibilityHint="Tap to select, long press to save this line"
-        disabled={selection.isSaved || selection.found}
-        suppressHighlighting={true}
-        style={textStyle}
-        onLayout={onLayout}
-        onTextLayout={onTextLayout}
-      >
-        <Text style={selectedTextStyle}>
-          {isVishraam ? (
-            <VishraamsText
-              gurbaniLine={gurbaniLine}
-              renderWordSegments={renderWordSegments}
-              vishraams={vishraams}
-              vishraamsSource={vishraamsSource}
-            />
-          ) : (
-            gurbaniLine
-          )}{' '}
-        </Text>
+      {isVishraam ? (
+        <VishraamsText
+          gurbaniLine={gurbaniLine}
+          renderWordSegments={renderWordSegments}
+          vishraams={vishraams}
+          vishraamsSource={vishraamsSource}
+        />
+      ) : (
+        gurbaniLine
+      )}{' '}
+    </>
+  );
 
-        {isSelected && (
+  return (
+    <Text
+      onPress={handlePress}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      accessibilityHint="Tap to select, long press to save this line"
+      disabled={selection.isSaved || selection.found}
+      suppressHighlighting={true}
+      style={textStyle}
+      onLayout={onLayout}
+      onTextLayout={onTextLayout}
+    >
+      {/*
+        Only wrap when there is actually a highlight to apply. `selectedTextStyle`
+        is undefined unless this verse is selected, so the wrapper used to add a
+        node AND a nesting level to every verse for no visual effect. In
+        paragraph mode a whole shabad is one text tree, so that doubled the nodes
+        Android had to lay out.
+      */}
+      {isSelected ? <Text style={selectedTextStyle}>{verseContent}</Text> : verseContent}
+
+      {isSelected && (
+        <Text>
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
-            style={{ transform: [{ translateY: Platform.OS === 'ios' ? '-25%' : '25%' }] }}
+            style={{
+              transform: [{ translateY: Platform.OS === 'ios' ? -fontSize * 0.3 : fontSize * 0.3 }],
+            }}
           />
-        )}
-      </Text>
-    </>
+        </Text>
+      )}
+    </Text>
   );
 };
 

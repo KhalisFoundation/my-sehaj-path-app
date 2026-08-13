@@ -108,19 +108,66 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
 };
 
 /**
- * Builds the action INSIDE the exclusive section and commits it. Building inside
- * the lock is what makes id allocation (createPath) and any other read of store
- * state race-free: no two commands can read the same baseline concurrently.
+ * A settings change, applied to the UI immediately and persisted behind the lock.
+ *
+ * Setting controls are fully controlled by the store, so dispatching INSIDE the
+ * command lock (as path mutations do) meant a tap could not move the switch
+ * until the previous tap's disk write had finished — measured at ~435ms behind
+ * the finger on a slow write. Tapping quickly, the control then appeared to
+ * change on its own after the user had stopped: "I turn it on and it goes off".
+ *
+ * So the dispatch happens up front, and only the flush + rollback are
+ * serialized. Durability is unchanged: the coordinator already queues the write
+ * from the dispatch itself, and `flush()` still reports whether it landed.
  */
-const commitOrRollback = (build: () => UnknownAction): Promise<boolean> =>
-  runExclusive(() => dispatchDurable(build()));
+export const commitSettingChange = (action: UnknownAction): Promise<boolean> => {
+  const previousSettings: SettingsState = store.getState().settings;
+  store.dispatch(action);
+  // Identity of the settings slice right after OUR change. Immer gives a new
+  // object per change, so this doubles as "has anything replaced us since?".
+  const appliedSettings = store.getState().settings;
 
-/** Serialized, rolled-back setting change. Used by useSetting. */
-export const commitSettingChange = (action: UnknownAction): Promise<boolean> =>
-  commitOrRollback(() => action);
+  return runExclusive(async () => {
+    const saved = await persistence.flush();
+    if (saved) {
+      return true;
+    }
+
+    // Roll back only while OUR value is still the one on screen. A newer toggle
+    // is what the user last asked for and owns the outcome — restoring our
+    // snapshot over it would undo a change they made after this one.
+    if (store.getState().settings !== appliedSettings) {
+      return false;
+    }
+
+    const current = store.getState();
+    store.dispatch(
+      restoreDurableState({
+        paths: current.paths,
+        settings: previousSettings,
+        sync: current.sync,
+      })
+    );
+
+    persistence
+      .flush()
+      .then((restored) => {
+        if (!restored) {
+          recordError(
+            new Error('rollback flush failed; on-disk journal may be stale'),
+            'commands: settings rollback not durable'
+          );
+        }
+      })
+      .catch(() => {
+        // flush never rejects, but keep the floating promise safe.
+      });
+    return false;
+  });
+};
 
 /**
- * Like `commitOrRollback`, but for a mutation that targets an existing path.
+ * A serialized, rolled-back mutation that targets an existing path.
  *
  * The reducers no-op when the pathId is not found. Without this guard that
  * no-op leaves the store unchanged, so the coordinator sees nothing to write

@@ -117,6 +117,12 @@ const SyncStatusNoticeComponent = () => {
   // Without this separate render state, setting `phase` to hidden removes the
   // view immediately and there is nothing left for React Native to fade out.
   const [renderedPhase, setRenderedPhase] = useState<RenderedPhase>('hidden');
+  /**
+   * Bumped every time a run resolves. `setPhase('done')` while the phase is
+   * ALREADY 'done' is a no-op to React, so without this a second fast sync could
+   * not refresh the message or restart its dismiss timer.
+   */
+  const [resolvedNonce, setResolvedNonce] = useState(0);
   const noticeAnimation = useRef(new Animated.Value(0)).current;
   /**
    * Whether THIS run is worth talking about, captured when it starts.
@@ -149,6 +155,18 @@ const SyncStatusNoticeComponent = () => {
    * currently believe.
    */
   const showedError = useRef(false);
+  /**
+   * A run worth announcing started and has not been reported yet.
+   *
+   * Settings syncs are fast. Starting one within `DONE_DISMISS_MS` of the last
+   * message meant it waited out `MIN_VISIBLE_MS` before "Syncing…" could show,
+   * finished first, and had its show-timer cancelled — while the resolve effect
+   * skipped it because the phase was still 'done' from the PREVIOUS run. The
+   * change synced, but silently: change-and-sync repeatedly and the notice
+   * stopped appearing entirely. This flag keeps such a run claimable so it is
+   * still reported instead of being dropped.
+   */
+  const unannouncedRun = useRef(false);
   /** The next busy run is retrying a sync the user was already told failed. */
   const retrying = useRef(false);
   /** Prevent one unchanged `status: error` from re-showing after its timeout. */
@@ -200,6 +218,7 @@ const SyncStatusNoticeComponent = () => {
     if (!meaningful.current) {
       return undefined; // a read-only refresh stays silent however long it takes
     }
+    unannouncedRun.current = true;
     const heldFor = Date.now() - resolvedAt.current;
     const onlineHold = Math.max(0, holdOnlineUntil.current - Date.now());
     // Signing in shows instantly: the wait is exactly what the user is confused
@@ -229,7 +248,7 @@ const SyncStatusNoticeComponent = () => {
     // Already resolved: this run is over and the message is being read. Without
     // this the effect re-fires on its own `phase` change and hides the result
     // almost immediately, long before its dismiss timer.
-    if (phase === 'done' || phase === 'error') {
+    if ((phase === 'done' || phase === 'error') && !unannouncedRun.current) {
       return undefined;
     }
 
@@ -245,8 +264,10 @@ const SyncStatusNoticeComponent = () => {
         }
         errorNoticeShown.current = true;
         meaningful.current = false;
+        unannouncedRun.current = false;
         showedError.current = true;
         setPhase('error');
+        setResolvedNonce((nonce) => nonce + 1);
         dispatch(clearSyncConfirmation());
         return;
       }
@@ -258,14 +279,22 @@ const SyncStatusNoticeComponent = () => {
       // Do not leave the existing banner waiting on that internal marker: an
       // empty queue plus an idle pull means the complete sync really finished.
       if (
-        (phase === 'syncing' || meaningful.current || confirmNextSync || showedError.current) &&
+        (phase === 'syncing' ||
+          meaningful.current ||
+          unannouncedRun.current ||
+          confirmNextSync ||
+          showedError.current) &&
         pendingCount === 0 &&
         accountMatches
       ) {
         meaningful.current = false;
+        unannouncedRun.current = false;
         showedError.current = false; // the record is corrected
         retrying.current = false;
         setPhase('done');
+        // Re-resolving to a phase that is already 'done' is invisible to React,
+        // so bump the nonce to refresh the message and restart its dismiss timer.
+        setResolvedNonce((nonce) => nonce + 1);
         dispatch(clearSyncConfirmation());
         return;
       }
@@ -292,6 +321,7 @@ const SyncStatusNoticeComponent = () => {
     if (phase === 'syncing') {
       // Safety net only: a sync that never resolves must not leave a spinner
       // pinned to the screen for the rest of the session.
+      unannouncedRun.current = false; // it is on screen now
       resolvedAt.current = 0;
       const timer = setTimeout(() => {
         meaningful.current = false;
@@ -309,7 +339,7 @@ const SyncStatusNoticeComponent = () => {
       phase === 'done' ? DONE_DISMISS_MS : ERROR_DISMISS_MS
     );
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [phase, resolvedNonce]);
 
   useEffect(() => {
     if (!isOffline) {

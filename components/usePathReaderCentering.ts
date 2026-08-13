@@ -23,6 +23,30 @@ type ParagraphVerseLayout = {
  */
 const RECENTER_EPSILON_PX = 8;
 
+/**
+ * Length of a string counting only non-whitespace characters.
+ *
+ * Paragraph verse positions are derived by lining up character offsets against
+ * the rendered lines from `onTextLayout`. Android drops the trailing whitespace
+ * at each wrap point, so its concatenated line text is SHORTER than the source
+ * — the running offset drifts a little further with every wrapped line, and
+ * verses end up mapped to the wrong lines (iOS keeps the spaces, which is why
+ * this only ever misbehaved on Android). Whitespace carries no positional
+ * information here, so ignoring it on both sides makes the two counts agree on
+ * either platform.
+ */
+const visibleLength = (text: string): number => {
+  let count = 0;
+  for (let index = 0; index < text.length; index += 1) {
+    const code = text.charCodeAt(index);
+    // space, tab, LF, CR
+    if (code !== 32 && code !== 9 && code !== 10 && code !== 13) {
+      count += 1;
+    }
+  }
+  return count;
+};
+
 type UsePathReaderCenteringArgs = {
   scrollRef: RefObject<ScrollView | null>;
   scrollOffset: RefObject<number>;
@@ -126,23 +150,52 @@ export const usePathReaderCentering = ({
     [recenterVerse, scrollToVerseId]
   );
 
-  const createLayoutHandler = useCallback(
-    (verseId: number) => (event: LayoutChangeEvent) => {
+  /**
+   * Always-current `syncParagraphVersePosition`, so the layout handlers below can
+   * keep a STABLE identity while still calling the latest logic. Their identity
+   * matters: the verse components are `React.memo`'d and their comparator
+   * includes `onLayout`, so handing them a fresh closure each render defeated
+   * memoisation entirely — every verse re-rendered on every reader render,
+   * including while the resume scroll was animating.
+   */
+  const syncRef = useRef(syncParagraphVersePosition);
+  syncRef.current = syncParagraphVersePosition;
+  const recenterRef = useRef(recenterVerse);
+  recenterRef.current = recenterVerse;
+  const scrollToVerseIdRef = useRef(scrollToVerseId);
+  scrollToVerseIdRef.current = scrollToVerseId;
+
+  /** Cached per verse (and per shabad) so the identity survives re-renders. */
+  const layoutHandlers = useRef<Map<string, (event: LayoutChangeEvent) => void>>(new Map());
+
+  const createLayoutHandler = useCallback((verseId: number) => {
+    const key = `line:${verseId}`;
+    const cached = layoutHandlers.current.get(key);
+    if (cached) {
+      return cached;
+    }
+    const handler = (event: LayoutChangeEvent) => {
       const { y, height } = event.nativeEvent.layout;
       versePositions.current.set(verseId, { y, height });
 
       // This is the RESUME move: animate it. It used to be an instant jump that
       // cut off the smooth scroll `useScrollToSavedPath` had already started,
       // which is what made resuming a path in paragraph mode look janky.
-      if (scrollToVerseId === verseId && !hasScrolledToVerse.current) {
-        recenterVerse(verseId, { animated: true });
+      if (scrollToVerseIdRef.current === verseId && !hasScrolledToVerse.current) {
+        recenterRef.current(verseId, { animated: true });
       }
-    },
-    [recenterVerse, scrollToVerseId]
-  );
+    };
+    layoutHandlers.current.set(key, handler);
+    return handler;
+  }, []);
 
-  const createParagraphVerseLayoutHandler = useCallback(
-    (verseId: number, shabadIndex: number) => (event: LayoutChangeEvent) => {
+  const createParagraphVerseLayoutHandler = useCallback((verseId: number, shabadIndex: number) => {
+    const key = `para:${verseId}:${shabadIndex}`;
+    const cached = layoutHandlers.current.get(key);
+    if (cached) {
+      return cached;
+    }
+    const handler = (event: LayoutChangeEvent) => {
       const { y, height } = event.nativeEvent.layout;
       const existingLayout = paragraphVerseLayouts.current.get(verseId);
 
@@ -157,10 +210,11 @@ export const usePathReaderCentering = ({
         measuredFromTextLayout: false,
       });
 
-      syncParagraphVersePosition(verseId);
-    },
-    [syncParagraphVersePosition]
-  );
+      syncRef.current(verseId);
+    };
+    layoutHandlers.current.set(key, handler);
+    return handler;
+  }, []);
 
   const createParagraphVerseTextLayoutHandler = useCallback(
     (shabadIndex: number, verses: { verseId: number; text: string }[]) => (event: any) => {
@@ -173,7 +227,7 @@ export const usePathReaderCentering = ({
       const lineRanges = lines.map((line: any) => {
         const text = typeof line?.text === 'string' ? line.text : '';
         const start = cumulativeLineLength;
-        cumulativeLineLength += text.length;
+        cumulativeLineLength += visibleLength(text);
 
         return {
           start,
@@ -190,7 +244,7 @@ export const usePathReaderCentering = ({
       let verseStart = 0;
       let lineCursor = 0;
       verses.forEach(({ verseId, text }) => {
-        const verseEnd = verseStart + text.length;
+        const verseEnd = verseStart + visibleLength(text);
 
         // Skip lines that ended before this verse begins; they cannot overlap
         // this verse or any later one.
@@ -226,25 +280,32 @@ export const usePathReaderCentering = ({
     [syncParagraphVersePosition]
   );
 
-  const createShabadLayoutHandler = useCallback(
-    (shabadIndex: number) => (event: LayoutChangeEvent) => {
+  const createShabadLayoutHandler = useCallback((shabadIndex: number) => {
+    const key = `shabad:${shabadIndex}`;
+    const cached = layoutHandlers.current.get(key);
+    if (cached) {
+      return cached;
+    }
+    const handler = (event: LayoutChangeEvent) => {
       const { y } = event.nativeEvent.layout;
       paragraphOffsets.current.set(shabadIndex, y);
 
       paragraphVerseLayouts.current.forEach((layout, verseId) => {
         if (layout.shabadIndex === shabadIndex) {
-          syncParagraphVersePosition(verseId);
+          syncRef.current(verseId);
         }
       });
-    },
-    [syncParagraphVersePosition]
-  );
+    };
+    layoutHandlers.current.set(key, handler);
+    return handler;
+  }, []);
 
   const clearMeasuredVerses = useCallback(
     (resetCenterVerse = false) => {
       versePositions.current.clear();
       paragraphOffsets.current.clear();
       paragraphVerseLayouts.current.clear();
+      layoutHandlers.current.clear();
       hasScrolledToVerse.current = false;
 
       if (resetCenterVerse) {

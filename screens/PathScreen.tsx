@@ -99,8 +99,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
   const [readerContentHeight, setReaderContentHeight] = useState<number>(0);
-  const previousFontSize = useRef<number>(18);
-  const previousParagraphMode = useRef<boolean>(false);
+  // Seed these with the CURRENT settings, not hardcoded defaults.
+  //
+  // The "keep the same verse centred when the layout changes" effect compares
+  // against these. Starting them at 18/false meant the first render of a reader
+  // whose settings differ from those defaults looked like a settings change:
+  // with paragraph mode ON, `false -> true` fired a recentre request on mount
+  // that nobody asked for, and it fought the restore of the saved scroll
+  // position. That is why the janky resume showed up in paragraph mode only,
+  // and why it surfaced in release builds — faster JS lands the spurious
+  // recentre mid-animation instead of harmlessly after it.
+  const previousFontSize = useRef<number>(fontSize);
+  const previousParagraphMode = useRef<boolean>(isParagraphMode);
   const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
   const [scrollToVerseRequestKey, setScrollToVerseRequestKey] = useState<number>(0);
   const completionUndoPendingRef = useRef<boolean>(false);

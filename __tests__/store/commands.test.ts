@@ -222,6 +222,56 @@ describe('atomic rollback', () => {
   });
 });
 
+describe('rapid setting toggles', () => {
+  it('applies a tap to the UI immediately, even while a slow write is in flight', async () => {
+    // Device report: toggling quickly, the switch lagged the finger by hundreds
+    // of milliseconds and then appeared to move on its own. Setting controls are
+    // driven by the store, so the dispatch must not queue behind disk I/O.
+    const realMultiSet = (AsyncStorage.multiSet as jest.Mock).getMockImplementation()!;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(async (entries: unknown) => {
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      return realMultiSet(entries);
+    });
+
+    expect(store.getState().settings.larivaar).toBe(false); // baseline
+
+    // The tap must be on screen straight away — NOT after the write resolves.
+    const first = commitSettingChange(setLarivaar(true));
+    expect(store.getState().settings.larivaar).toBe(true);
+
+    // ...and so must a second tap made while the first write is still running.
+    const second = commitSettingChange(setLarivaar(false));
+    expect(store.getState().settings.larivaar).toBe(false);
+
+    expect(await Promise.all([first, second])).toEqual([true, true]);
+    expect(store.getState().settings.larivaar).toBe(false);
+    expect(await AsyncStorage.getItem('larivaar')).toBe('false');
+  });
+
+  it('ends on the LAST requested value, on screen and on disk', async () => {
+    // Device report: toggling a setting quickly leaves it in the wrong state —
+    // "I turn it on and it goes off".
+    const results = await Promise.all([
+      commitSettingChange(setLarivaar(true)),
+      commitSettingChange(setLarivaar(false)),
+      commitSettingChange(setLarivaar(true)),
+    ]);
+
+    expect(results.every(Boolean)).toBe(true); // none may report a false failure
+    expect(store.getState().settings.larivaar).toBe(true);
+    expect(await AsyncStorage.getItem('larivaar')).toBe('true');
+  });
+
+  it('a burst of toggles settles consistently between store and disk', async () => {
+    const sequence = [true, false, true, false, true, false];
+    await Promise.all(sequence.map((value) => commitSettingChange(setLarivaar(value))));
+
+    const last = sequence[sequence.length - 1];
+    expect(store.getState().settings.larivaar).toBe(last);
+    expect(await AsyncStorage.getItem('larivaar')).toBe(String(last));
+  });
+});
+
 describe('savePathProgress', () => {
   it('does not create a second local update for an unchanged checkpoint', async () => {
     const id = await createPath();
