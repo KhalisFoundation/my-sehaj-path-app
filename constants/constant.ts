@@ -102,6 +102,9 @@ export const Constants: Constant = {
   LOGIN_SYNC_TITLE: 'Save your progress',
   LOGIN_SYNC_PROMPT:
     'Log in to sync your paths and settings across your devices, so you never lose your progress.',
+  SESSION_EXPIRED_TITLE: 'Session expired',
+  SESSION_EXPIRED_MESSAGE:
+    'Your session has expired. Your progress is still saved on this device. Log in again to sync your progress across devices.',
   CLOSE_MENU: 'Close menu',
   ALL_PATHS: 'All Paths',
   PROGRESS: 'Progress',

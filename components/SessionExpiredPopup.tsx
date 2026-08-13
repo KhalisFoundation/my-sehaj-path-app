@@ -3,39 +3,30 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Constants } from '@constants';
 import { startLogin } from '@auth';
 import { DialogStyles as styles } from '@styles';
-import { writeSyncPrefs } from '../store/syncPrefs';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { dismissSignInPopup } from '../store/slices/syncSlice';
+import { dismissSessionExpired, dismissSignInPopup } from '../store/slices/syncSlice';
+import { writeSyncPrefs } from '../store/syncPrefs';
 import { Dialog } from './Dialog';
 
-/**
- * Signed-out "log in to save your progress" popup. Shown once after a fresh
- * install and again after each logout (re-armed on logout). Both choices mark it
- * dismissed so it won't nag until the next logout.
- */
-const SignInPopupComponent = () => {
+const SessionExpiredPopupComponent = () => {
   const dispatch = useAppDispatch();
-  const status = useAppSelector((state) => state.auth.status);
-  const checked = useAppSelector((state) => state.sync.signInPopupChecked);
-  const dismissed = useAppSelector((state) => state.sync.signInPopupDismissed);
-  const sessionExpired = useAppSelector((state) => state.sync.sessionExpired);
-
-  const isVisible = status === 'signedOut' && checked && !dismissed && !sessionExpired;
+  const visible = useAppSelector((state) => state.sync.sessionExpired);
 
   const dismiss = useCallback(() => {
+    dispatch(dismissSessionExpired());
     dispatch(dismissSignInPopup());
     writeSyncPrefs({ signInPopupDismissed: true });
   }, [dispatch]);
 
-  const onLogin = useCallback(() => {
+  const login = useCallback(() => {
     dismiss();
     startLogin();
   }, [dismiss]);
 
   return (
-    <Dialog visible={isVisible} onRequestClose={dismiss}>
-      <Text style={styles.title}>{Constants.LOGIN_SYNC_TITLE}</Text>
-      <Text style={styles.message}>{Constants.LOGIN_SYNC_PROMPT}</Text>
+    <Dialog visible={visible} onRequestClose={dismiss}>
+      <Text style={styles.title}>{Constants.SESSION_EXPIRED_TITLE}</Text>
+      <Text style={styles.message}>{Constants.SESSION_EXPIRED_MESSAGE}</Text>
       <View style={styles.actions}>
         <TouchableOpacity
           style={styles.secondaryButton}
@@ -47,7 +38,7 @@ const SignInPopupComponent = () => {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.primaryButton}
-          onPress={onLogin}
+          onPress={login}
           accessibilityRole="button"
           accessibilityLabel={Constants.LOGIN}
         >
@@ -58,4 +49,4 @@ const SignInPopupComponent = () => {
   );
 };
 
-export const SignInPopup = React.memo(SignInPopupComponent);
+export const SessionExpiredPopup = React.memo(SessionExpiredPopupComponent);

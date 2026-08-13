@@ -21,6 +21,7 @@ import {
   SyncPopup,
   SyncStatusNotice,
   OfflineDbNotice,
+  SessionExpiredPopup,
 } from '@components';
 import { ErrorConstants, Routes } from '@constants';
 import { allowTracking, allowCrashReporting, showErrorAlert } from '@utils';
@@ -174,6 +175,7 @@ const App = () => {
           <AnalyticsConsent />
           <SyncStatusNotice />
           <OfflineDbNotice />
+          <SessionExpiredPopup />
           {/* A known-account switch is a data boundary, not only a Home-screen
               prompt. Keep it app-wide so B can never continue editing A's
               active paths from the reader while the switch is unresolved. */}

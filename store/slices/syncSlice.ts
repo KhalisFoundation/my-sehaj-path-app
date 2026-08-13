@@ -54,6 +54,8 @@ export interface SyncState {
    */
   signInPopupChecked: boolean;
   signInPopupDismissed: boolean;
+  /** Runtime-only notice for an unexpected server-rejected session. */
+  sessionExpired: boolean;
   /**
    * True when the NEXT successful drain should confirm itself to the user.
    *
@@ -114,6 +116,7 @@ export const initialSyncState: SyncState = {
   syncApprovedForEmail: null,
   signInPopupChecked: false,
   signInPopupDismissed: false,
+  sessionExpired: false,
 };
 
 /** Strictly monotonic: two changes in the same ms still advance. */
@@ -369,6 +372,12 @@ export const syncSlice = createSlice({
       state.signInPopupDismissed = false;
       state.signInPopupChecked = true;
     },
+    showSessionExpired: (state) => {
+      state.sessionExpired = true;
+    },
+    dismissSessionExpired: (state) => {
+      state.sessionExpired = false;
+    },
   },
 });
 
@@ -402,4 +411,6 @@ export const {
   hydrateSignInPopup,
   dismissSignInPopup,
   showSignInPopupAgain,
+  showSessionExpired,
+  dismissSessionExpired,
 } = syncSlice.actions;

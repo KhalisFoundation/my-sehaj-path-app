@@ -1,5 +1,6 @@
 import { store } from '../store';
 import { setSignedIn, setSignedOut } from '../store/slices/authSlice';
+import { showSessionExpired } from '../store/slices/syncSlice';
 import {
   clearCurrentToken,
   getCurrentToken,
@@ -44,6 +45,7 @@ export async function establishSession(token: string): Promise<void> {
         return;
       }
       await clearCurrentToken(token);
+      store.dispatch(showSessionExpired());
       store.dispatch(setSignedOut());
     } else {
       if (!(await isCurrentAttempt())) {

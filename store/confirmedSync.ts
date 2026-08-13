@@ -17,6 +17,7 @@ import { clearBlockedWork } from './syncWork';
 import { SETTINGS_DEFAULTS } from './slices/settingsSlice';
 import { setAccount, upsertMeta } from './slices/syncSlice';
 import { setSignedOut } from './slices/authSlice';
+import { showSessionExpired } from './slices/syncSlice';
 import { emptyPersistedSync } from './syncFormat';
 import { legacyToMs } from './syncDateUtils';
 import { buildSyncRequest, checkSyncRequestSize } from './syncRequest';
@@ -362,6 +363,7 @@ export const discardLocalDataAndSync = async (store: AppStore, email: string): P
   }
   if (result.error || !result.data) {
     if (result.error && result.response?.status === 401) {
+      store.dispatch(showSessionExpired());
       store.dispatch(setSignedOut());
       if (!(await clearCurrentToken(session.token))) {
         recordError(

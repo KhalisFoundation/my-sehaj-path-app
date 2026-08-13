@@ -30,5 +30,6 @@ export { SyncStatusNotice } from './SyncStatusNotice';
 export { OfflineDbNotice } from './OfflineDbNotice';
 export { SignInPopup } from './SignInPopup';
 export { SyncUnavailablePopup } from './SyncUnavailablePopup';
+export { SessionExpiredPopup } from './SessionExpiredPopup';
 export { PathSelectionProvider, usePathSelection } from './PathSelectionContext';
 export type { PathSelection } from './PathSelectionContext';

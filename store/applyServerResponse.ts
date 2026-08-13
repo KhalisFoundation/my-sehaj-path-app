@@ -26,6 +26,7 @@ import {
   setSyncError,
   setPulling,
   setSyncStatus,
+  showSessionExpired,
   upsertMeta,
   type SyncMeta,
 } from './slices/syncSlice';
@@ -61,6 +62,7 @@ const signOutAfterUnauthorized = async (
   token: string,
   context: string
 ): Promise<void> => {
+  store.dispatch(showSessionExpired());
   store.dispatch(setSignedOut());
   // The next login may be a different account reusing the same local path ids.
   clearBlockedWork(store);

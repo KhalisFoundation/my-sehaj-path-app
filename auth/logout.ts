@@ -1,7 +1,11 @@
 import { recordError } from '@utils';
 import { store } from '../store';
 import { setSignedOut } from '../store/slices/authSlice';
-import { showSignInPopupAgain, resetSyncPopup } from '../store/slices/syncSlice';
+import {
+  showSignInPopupAgain,
+  resetSyncPopup,
+  dismissSessionExpired,
+} from '../store/slices/syncSlice';
 import { writeSyncPrefs } from '../store/syncPrefs';
 import { clearBlockedWork } from '../store/syncWork';
 import { openAuthSession } from './browser';
@@ -35,6 +39,7 @@ export async function logout(): Promise<void> {
   }
   await clearLoginPending();
   store.dispatch(setSignedOut());
+  store.dispatch(dismissSessionExpired());
   // Runtime "the server rejected this" markers must not outlive the session.
   // The next login may be a different account reusing the same local path ids,
   // and even for the same account the work deserves a fresh attempt rather than

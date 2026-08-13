@@ -20,6 +20,7 @@ import {
   dropMeta,
   setSyncError,
   setSyncStatus,
+  showSessionExpired,
   type PendingPathOp,
 } from './slices/syncSlice';
 import { toCreateBody, toPatchBody, type LocalPath } from './syncAdapters';
@@ -554,6 +555,7 @@ export const createOutboxCoordinator = (
       // A 401 means the token is rejected. Sign out locally — clear the auth
       // slice and the persisted token — so `canDrain()` becomes false and we
       // stop retrying with a bad token. (Local only; no SSO browser redirect.)
+      store.dispatch(showSessionExpired());
       store.dispatch(setSignedOut());
       // The next login may be a different account reusing the same local path ids.
       clearBlockedWork(store);
