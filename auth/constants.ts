@@ -6,8 +6,13 @@ export const SP_API = SSO_SERVICE_URL ?? 'https://serviceprovider.khalis.net';
 
 // Deep-link return targets. Must be query-string-free — the SP appends
 // `?token=…` to the login redirect. Both hosts are registered natively.
+//
+// `REDIRECT_URL` plays two roles: it is sent to the SP as `redirect_url`, and it
+// is the prefix an INCOMING deep link must match to count as our login callback.
+// It must stay the FULL url (not just the scheme) — `isLoginCallback` checks the
+// character right after it, which is what rejects lookalikes such as
+// `khalissehajpath://login-evil?token=…`.
 export const REDIRECT_URL = 'khalissehajpath://login';
-export const REDIRECT_SCHEME = 'khalissehajpath://login';
 export const LOGOUT_REDIRECT_URL = 'khalissehajpath://logout';
 
 export function getSSOLoginUrl(): string {

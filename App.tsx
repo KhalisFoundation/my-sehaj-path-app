@@ -9,7 +9,7 @@ import { SafeAreaStyle } from '@styles';
 import { SplashScreen, HomeScreen, Continue, PathScreen, Settings, Error } from '@screens';
 import { BootSplash, HydrationRetry } from '@components';
 import { ErrorConstants, Routes } from '@constants';
-import { allowTracking, allowCrashReporting, showErrorAlert } from '@utils';
+import { allowTracking, allowCrashReporting, recordError, showErrorAlert } from '@utils';
 import { initAuth, useSSOLogin } from '@auth';
 import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
@@ -76,7 +76,7 @@ const App = () => {
 
     // Resolve auth: consume a cold-start login callback, else hydrate the
     // stored token (serialized so they can't race).
-    initAuth();
+    initAuth().catch((error) => recordError(error, 'auth: initAuth failed'));
 
     // One NetInfo subscription for the whole app.
     const unsubscribeNetInfo = NetInfo.addEventListener((state) =>
