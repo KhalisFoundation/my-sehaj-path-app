@@ -1,6 +1,6 @@
 import { store } from '../store';
 import { setSigningIn } from '../store/slices/authSlice';
-import { REDIRECT_SCHEME } from './constants';
+import { REDIRECT_URL } from './constants';
 import { clearLoginPending, isLoginPending } from './loginPending';
 import { establishSession } from './session';
 import { saveCurrentToken } from './tokenUtils';
@@ -28,10 +28,10 @@ function extractToken(url: string): string | null {
  * like `khalissehajpath://login-evil?token=…` are rejected.
  */
 export function isLoginCallback(url: string): boolean {
-  if (!url.startsWith(REDIRECT_SCHEME)) {
+  if (!url.startsWith(REDIRECT_URL)) {
     return false;
   }
-  const boundary = url.charAt(REDIRECT_SCHEME.length);
+  const boundary = url.charAt(REDIRECT_URL.length);
   if (boundary !== '' && boundary !== '?' && boundary !== '/') {
     return false;
   }
