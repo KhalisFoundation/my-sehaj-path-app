@@ -16,7 +16,7 @@ jest.mock('../../utils/analytics', () => ({
   allowTracking: jest.fn(),
 }));
 
-import { store, makeStore } from '../../store';
+import { rollbackDurableMutation, store, makeStore } from '../../store';
 import { hydrateStore } from '../../store/persistence';
 import { persistence } from '../../store/instance';
 import {
@@ -27,7 +27,7 @@ import {
   savePathProgress,
   undoPathCompletion,
 } from '../../store/commands';
-import { setAll } from '../../store/slices/pathsSlice';
+import { addServerPath, renamePath, setAll } from '../../store/slices/pathsSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
 import type { DateData, PathData } from '../../types';
 
@@ -191,6 +191,40 @@ describe('createPath', () => {
 });
 
 describe('atomic rollback', () => {
+  it('preserves an unrelated server update that arrives before a failed command rolls back', () => {
+    const isolated = makeStore();
+    const firstPath = {
+      pathId: 1,
+      pathName: 'Local path',
+      saveData: { angNumber: 1, verseId: 0 },
+      progress: 0,
+      startDate: '1-January-2026',
+      completionDate: '',
+    };
+    isolated.dispatch(
+      setAll({ paths: [firstPath], dates: [{ pathid: 1, dates: [], scrollPosition: 0 }] })
+    );
+    const before = isolated.getState();
+    const failedAction = renamePath({ pathId: 1, name: 'Failed local rename' });
+    isolated.dispatch(failedAction);
+
+    // Mirrors a server response landing while persistence.flush() is waiting.
+    isolated.dispatch(
+      addServerPath({
+        path: { ...firstPath, pathId: 2, pathName: 'Server path' },
+        date: { pathid: 2, dates: [], scrollPosition: 10 },
+      })
+    );
+    isolated.dispatch(rollbackDurableMutation({ action: failedAction, previous: before }));
+
+    expect(isolated.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
+      'Local path'
+    );
+    expect(isolated.getState().paths.paths.find((path) => path.pathId === 2)?.pathName).toBe(
+      'Server path'
+    );
+  });
+
   it('never starts a successful rollback write with the failed setting value', async () => {
     const realMultiSet = ORIGINAL_IMPLS.get('multiSet') as (
       entries: Array<[string, string]>

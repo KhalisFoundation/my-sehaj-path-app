@@ -11,6 +11,7 @@ import {
   reconcileDeletions,
   refreshPathsFromServer,
 } from '../../store/applyServerResponse';
+import { setActiveReaderPath } from '../../store/syncLifecycle';
 import { addPath, renamePath, setScrollPosition } from '../../store/slices/pathsSlice';
 import { setSignedIn } from '../../store/slices/authSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
@@ -189,6 +190,7 @@ describe('applyServerPath (single response)', () => {
 });
 
 describe('applySyncResult', () => {
+  afterEach(() => setActiveReaderPath(null));
   const result = (over: Partial<SehajPathSyncResult>): SehajPathSyncResult => ({
     paths: [],
     deletedPathIds: [],
@@ -274,6 +276,21 @@ describe('applySyncResult', () => {
     applySyncResult(store, result({ paths: [serverPath(uuid)] }), snapshot);
 
     expect(store.getState().sync.scrollDirty[1]).toBeUndefined();
+  });
+
+  it('leaves the active reader untouched during a bulk conflict reconciliation', () => {
+    const { store, uuid } = syncedStore();
+    const snapshot = captureSyncSnapshot(store.getState());
+    setActiveReaderPath(1);
+
+    applySyncResult(
+      store,
+      result({ paths: [serverPath(uuid, { name: 'Changed elsewhere', scrollPosition: 999 })] }),
+      snapshot
+    );
+
+    expect(store.getState().paths.paths[0].pathName).not.toBe('Changed elsewhere');
+    expect(store.getState().paths.dates[0].scrollPosition).not.toBe(999);
   });
 
   it('applies settings only when no local settings edit is pending', () => {

@@ -17,6 +17,9 @@ import {
   isSilentPathOp,
   markSilentPathOp,
 } from './syncWork';
+import { getActiveReaderPath } from './activeReaderPath';
+
+export { getActiveReaderPath, setActiveReaderPath } from './activeReaderPath';
 
 /**
  * Sync lifecycle triggers (Step 10). App.tsx / screens call these at the right
@@ -77,17 +80,11 @@ const promoteDirtyScroll = (): boolean => {
 };
 
 /**
- * The path currently open in the reader, if any. `PathScreen` registers it while
- * focused so a foreground `GET /paths` refresh never overwrites or removes the
- * path being read (the caller may still pass an explicit id to override).
+ * App came to the foreground (or a known account just resumed). With pending
+ * local work, push it and wait. Only after the queue is empty pull other
+ * devices' changes via `GET /paths`; this prevents an old server response from
+ * replacing offline progress. `activePathId` protects the open reader.
  */
-let activeReaderPathId: number | null = null;
-export const setActiveReaderPath = (pathId: number | null): void => {
-  activeReaderPathId = pathId;
-};
-
-export const getActiveReaderPath = (): number | null => activeReaderPathId;
-
 // `undefined` means an app foreground event, so protect whichever reader is
 // currently open. `null` is Home's explicit signal that the reader was left and
 // its path is now safe to apply even if React Navigation has not yet run the
@@ -113,10 +110,8 @@ export const onForeground = async (activePathId?: number | null): Promise<void> 
     if (hasPendingWork()) {
       return;
     }
-    // Default to the open reader path so it isn't reconciled mid-read. Home
-    // passes `null` to deliberately override that default during navigation.
     const pathToProtect =
-      activePathId === undefined ? activeReaderPathId ?? undefined : activePathId ?? undefined;
+      activePathId === undefined ? getActiveReaderPath() ?? undefined : activePathId ?? undefined;
     await refreshPathsFromServer(store, pathToProtect);
   } catch (error) {
     recordError(error, 'syncLifecycle: foreground sync failed');
@@ -169,7 +164,7 @@ export const onReconnect = async (): Promise<void> => {
     if (hasPendingWork()) {
       return;
     }
-    await refreshPathsFromServer(store, activeReaderPathId ?? undefined);
+    await refreshPathsFromServer(store, getActiveReaderPath() ?? undefined);
   } catch (error) {
     recordError(error, 'syncLifecycle: reconnect sync failed');
   }

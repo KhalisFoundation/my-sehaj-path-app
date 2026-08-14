@@ -34,6 +34,7 @@ import { fromServerPath } from './syncAdapters';
 import { clearBlockedWork, hasWorkBlockingPull, setConfirmedSettings } from './syncWork';
 import { settingsFingerprint } from './syncRequest';
 import { captureSyncSession, isCurrentSyncSession, syncSessionHeaders } from './syncSession';
+import { getActiveReaderPath } from './activeReaderPath';
 
 /** Identifies which local response applies — the operation the client sent. */
 export interface SentOp {
@@ -336,8 +337,17 @@ export const applySyncResult = (
   snapshot: SyncSnapshot,
   options: ApplySyncOptions = {}
 ): void => {
+  const activePathId = getActiveReaderPath();
   result.paths.forEach((sp) => {
     const pathId = findLocalIdByServerPathId(store.getState(), sp.pathId);
+    // A bulk conflict response contains the account's entire list, including
+    // clean paths unrelated to the conflicting edit. Never replace data under
+    // the open reader: applying its ang/verse/scroll makes the screen jump.
+    // Leave its clock and dirty markers intact too, so its next safe sync takes
+    // the normal merge path instead of treating unseen server data as a base.
+    if (pathId != null && pathId === activePathId) {
+      return;
+    }
     const sentLocalUpdatedAt = pathId == null ? undefined : snapshot.ops.get(pathId);
     if (pathId != null && sentLocalUpdatedAt != null) {
       // We sent an op for this path: apply the merged truth, guarded so a newer
@@ -351,6 +361,9 @@ export const applySyncResult = (
   result.deletedPathIds.forEach((serverId) => {
     const pathId = findLocalIdByServerPathId(store.getState(), serverId);
     if (pathId == null) {
+      return;
+    }
+    if (pathId === activePathId) {
       return;
     }
     const { pathOps, scrollDirty } = store.getState().sync;
@@ -370,6 +383,9 @@ export const applySyncResult = (
   });
 
   snapshot.scroll.forEach((ts, pathId) => {
+    if (pathId === activePathId) {
+      return;
+    }
     store.dispatch(clearScrollIfUnchanged({ pathId, sentLocalUpdatedAt: ts }));
   });
 

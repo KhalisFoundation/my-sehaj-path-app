@@ -333,13 +333,18 @@ const SyncStatusNoticeComponent = () => {
       resolvedAt.current = 0;
       return undefined;
     }
+    // Offline status is an overlay, not resolution of a sync failure. Preserve
+    // the underlying error until the connection returns so it can be read.
+    if (phase === 'error' && isOffline) {
+      return undefined;
+    }
     resolvedAt.current = Date.now();
     const timer = setTimeout(
       () => setPhase('hidden'),
       phase === 'done' ? DONE_DISMISS_MS : ERROR_DISMISS_MS
     );
     return () => clearTimeout(timer);
-  }, [phase, resolvedNonce]);
+  }, [isOffline, phase, resolvedNonce]);
 
   useEffect(() => {
     if (!isOffline) {

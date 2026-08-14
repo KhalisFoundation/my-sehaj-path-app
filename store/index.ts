@@ -20,6 +20,26 @@ const combinedReducer = combineReducers({
   sync: syncSlice.reducer,
   db: dbSlice.reducer,
 });
+type CombinedState = ReturnType<typeof combinedReducer>;
+
+const getActionPathId = (action: UnknownAction): number | null => {
+  if (typeof action.payload !== 'object' || action.payload === null) {
+    return null;
+  }
+  if ('pathId' in action.payload && typeof action.payload.pathId === 'number') {
+    return action.payload.pathId;
+  }
+  if (
+    'path' in action.payload &&
+    typeof action.payload.path === 'object' &&
+    action.payload.path !== null &&
+    'pathId' in action.payload.path &&
+    typeof action.payload.path.pathId === 'number'
+  ) {
+    return action.payload.path.pathId;
+  }
+  return null;
+};
 
 /**
  * Restores every durable slice in one Redux notification after a failed write.
@@ -35,6 +55,16 @@ export const restoreDurableState = createAction<{
 }>('app/restoreDurableState');
 
 /**
+ * Reverts only the record touched by a failed local command. Server responses
+ * are not serialized with command persistence, so restoring whole slices here
+ * could otherwise erase an unrelated cloud update that arrived mid-write.
+ */
+export const rollbackDurableMutation = createAction<{
+  action: UnknownAction;
+  previous: CombinedState;
+}>('app/rollbackDurableMutation');
+
+/**
  * Replaces the active account's durable data in one Redux notification.
  *
  * This is used only for a clean account switch: the old account has no queued
@@ -43,10 +73,7 @@ export const restoreDurableState = createAction<{
  */
 export const clearActiveAccountData = createAction('app/clearActiveAccountData');
 
-const rootReducer = (
-  state: ReturnType<typeof combinedReducer> | undefined,
-  action: UnknownAction
-) => {
+const rootReducer = (state: CombinedState | undefined, action: UnknownAction): CombinedState => {
   if (state && restoreDurableState.match(action)) {
     return {
       ...state,
@@ -54,6 +81,71 @@ const rootReducer = (
       paths: action.payload.paths,
       sync: action.payload.sync,
     };
+  }
+  if (state && rollbackDurableMutation.match(action)) {
+    const { action: failedAction, previous } = action.payload;
+    const pathId = getActionPathId(failedAction);
+    if (pathId != null) {
+      const previousPath = previous.paths.paths.find((path) => path.pathId === pathId);
+      const previousDate = previous.paths.dates.find((date) => date.pathid === pathId);
+      const replace = <T extends { pathId?: number; pathid?: number }>(
+        entries: T[],
+        item: T | undefined,
+        idKey: 'pathId' | 'pathid'
+      ): T[] => {
+        const currentIndex = entries.findIndex((entry) => entry[idKey] === pathId);
+        if (!item) {
+          return entries.filter((entry) => entry[idKey] !== pathId);
+        }
+        if (currentIndex < 0) {
+          return [...entries, item];
+        }
+        return entries.map((entry, index) => (index === currentIndex ? item : entry));
+      };
+      const nextSync = {
+        ...state.sync,
+        meta: { ...state.sync.meta },
+        pathOps: { ...state.sync.pathOps },
+        scrollDirty: { ...state.sync.scrollDirty },
+      };
+      const restoreSyncEntry = <T>(target: Record<number, T>, source: Record<number, T>) => {
+        if (source[pathId] === undefined) {
+          delete target[pathId];
+        } else {
+          target[pathId] = source[pathId];
+        }
+      };
+      restoreSyncEntry(nextSync.meta, previous.sync.meta);
+      restoreSyncEntry(nextSync.pathOps, previous.sync.pathOps);
+      restoreSyncEntry(nextSync.scrollDirty, previous.sync.scrollDirty);
+      return {
+        ...state,
+        paths: {
+          ...state.paths,
+          paths: replace(state.paths.paths, previousPath, 'pathId'),
+          dates: replace(state.paths.dates, previousDate, 'pathid'),
+        },
+        sync: nextSync,
+      };
+    }
+    const settingKey = failedAction.type.replace(`${settingsSlice.name}/set`, '');
+    const normalizedKey = settingKey.charAt(0).toLowerCase() + settingKey.slice(1);
+    if (
+      failedAction.type.startsWith(`${settingsSlice.name}/set`) &&
+      normalizedKey in previous.settings
+    ) {
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          [normalizedKey]: previous.settings[normalizedKey as keyof SettingsState],
+        },
+        sync: {
+          ...state.sync,
+          pendingSettingsUpdatedAt: previous.sync.pendingSettingsUpdatedAt,
+        },
+      };
+    }
   }
   if (state && clearActiveAccountData.match(action)) {
     const paths: PathsState = { ...state.paths, paths: [], dates: [] };
@@ -97,5 +189,5 @@ export const makeStore = () =>
 export const store = makeStore();
 
 export type AppStore = ReturnType<typeof makeStore>;
-export type RootState = ReturnType<typeof rootReducer>;
+export type RootState = CombinedState;
 export type AppDispatch = AppStore['dispatch'];

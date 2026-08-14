@@ -4,7 +4,7 @@ import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
 import type { DateData, PathData } from '../types';
-import { restoreDurableState, store } from './index';
+import { restoreDurableState, rollbackDurableMutation, store } from './index';
 import { persistence } from './instance';
 import { getQuarantinedPathIds } from './persistence';
 import {
@@ -62,16 +62,14 @@ const runExclusive = <T>(task: () => Promise<T>): Promise<T> => {
 };
 
 /**
- * Dispatches, flushes, and restores the previous state (both slices) if the
- * write failed, so the store never keeps a mutation that is not on disk.
+ * Dispatches, flushes, and restores only the changed record if the write
+ * failed, so a concurrent server response for another record survives.
  *
  * MUST be called from inside `runExclusive`, so the captured `previous` is the
  * real durable baseline and cannot be corrupted by an overlapping command.
  */
 const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
-  const previousPaths = store.getState().paths;
-  const previousSettings: SettingsState = store.getState().settings;
-  const previousSync = store.getState().sync;
+  const previous = store.getState();
 
   store.dispatch(action);
   const saved = await persistence.flush();
@@ -82,13 +80,7 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
     // dispatches invalidate the baseline, so the coordinator rewrites it and
     // clears the stale journal on its own). We do NOT await it — awaiting a
     // second full retry cycle here is what made failures take several seconds.
-    store.dispatch(
-      restoreDurableState({
-        paths: previousPaths,
-        settings: previousSettings,
-        sync: previousSync,
-      })
-    );
+    store.dispatch(rollbackDurableMutation({ action, previous }));
 
     persistence
       .flush()
