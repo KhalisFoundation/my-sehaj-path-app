@@ -46,6 +46,65 @@ export const Constants: Constant = {
   DEFAULT_VISHRAAM_SOURCE: 'sttm',
   KHALIS_SEHAJ_PATH: 'Khalis Sehaj Path',
   DONATE: 'Donate',
+  LOGIN: 'Login',
+  LOGOUT: 'Logout',
+  LOGGING_OUT: 'Signing out…',
+  WELCOME: 'Welcome',
+  SYNC_PROGRESS_PROMPT: 'Do you want to sync your progress now?',
+  OK: 'OK',
+  SYNC_UNAVAILABLE_TITLE: 'Sync is unavailable',
+  SYNC_UNAVAILABLE_MESSAGE:
+    "We can't reach the sync server right now, so your progress can't be backed up to your account. Everything you read is still saved safely on this device.",
+  SYNC_NOW: 'Sync now',
+  SYNCING: 'Syncing…',
+  NOT_NOW: 'Not now',
+  DATABASE: 'Database',
+
+  // --- login/sync decision flow -------------------------------------------
+  // Every dialog below has at most two main buttons; anything destructive is a
+  // text link behind its own confirmation.
+
+  /** Case 3 — unowned progress on the device and an account just signed in. */
+  SYNC_LOCAL_TITLE: 'Save this progress?',
+  SYNC_LOCAL_ACTION: 'Sync to my account',
+  DISCARD_LOCAL_LINK: 'Discard this device’s progress',
+
+  /** Case 3 → Discard confirmation. */
+  DISCARD_CONFIRM_TITLE: 'Discard this device’s progress?',
+  DISCARD_CONFIRM_MESSAGE:
+    'This permanently removes the progress saved only on this device and loads your account’s progress instead. If your account has no saved progress, this device will start empty. This cannot be undone.',
+  DISCARD_CONFIRM_ACTION: 'Discard',
+  DISCARDING: 'Discarding…',
+  CANCEL: 'Cancel',
+
+  /**
+   * Case 5 — the previous account has work that never reached its cloud.
+   * Only this one may mention unsynced progress; the others describe a switch
+   * that is fine, so reusing this title would alarm the user for no reason.
+   */
+  ACCOUNT_SWITCH_TITLE: 'Unsaved progress',
+  /** Case 4 — a backed-up account is being replaced, nothing is at risk. */
+  SWITCHING_ACCOUNT_TITLE: 'Switching account',
+  /** Shown after a silent switch, so the user learns where A's reading went. */
+  SWITCHED_ACCOUNT_TITLE: 'Switched account',
+  LOADING_PROGRESS: 'Loading your progress…',
+  /** The switch could not complete; the previous account is still safe. */
+  ACCOUNT_SWITCH_FAILED_TITLE: 'Could not switch',
+  /** Recovery blocks the switch until the previous account signs in. */
+  ACCOUNT_SWITCH_BLOCKED_TITLE: 'Sign in to continue',
+  KEEP_FOR_PREVIOUS: 'Keep it safe',
+  ADD_COPY_TO_ACCOUNT: 'Add a copy',
+
+  /** Case 4 — a fully backed-up account was replaced silently. */
+  SWITCHED_ACCOUNT_NOTICE: 'progress is saved on this device and returns when you sign in again.',
+  SIGNED_IN_AS: 'Signed in as',
+  SYNC_ACCOUNT_PROMPT: 'Sync this device with this account?',
+  LOGIN_SYNC_TITLE: 'Save your progress',
+  LOGIN_SYNC_PROMPT:
+    'Log in to sync your paths and settings across your devices, so you never lose your progress.',
+  SESSION_EXPIRED_TITLE: 'Session expired',
+  SESSION_EXPIRED_MESSAGE:
+    'Your session has expired. Your progress is still saved on this device. Log in again to sync your progress across devices.',
   CLOSE_MENU: 'Close menu',
   ALL_PATHS: 'All Paths',
   PROGRESS: 'Progress',

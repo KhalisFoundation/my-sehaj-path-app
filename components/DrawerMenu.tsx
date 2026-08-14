@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -8,20 +8,29 @@ import {
   Pressable,
   Linking,
   StyleSheet,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { BlurView } from '@react-native-community/blur';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   Constants,
   EDGES_DRAWER_MENU,
+  ErrorConstants,
   KHALIS_FOUNDATION_DONATE_URL,
   UIConstants,
 } from '@constants';
 import { DrawerMenuStyles } from '@styles';
-import { KhalisIcon } from '@icons';
-import { trackEvent } from '@utils';
+import { KhalisIcon, LoginIcon, SaveIcon } from '@icons';
+import { showErrorAlert, showLogoutConfirmAlert, trackEvent } from '@utils';
 import { DonationIcon } from '@icons/Donation.icon';
+import { startLogin, logout } from '@auth';
 import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
+import { useAppSelector } from '../store/hooks';
+import { store } from '../store';
+import { restoreCloudDataAfterSyncRecovery } from '../store/confirmedSync';
+import { runManualSync } from '../store/manualSync';
+import { setRecoveryRestoreStatus } from '../store/slices/syncSlice';
 
 interface DrawerMenuProps {
   isVisible: boolean;
@@ -34,6 +43,24 @@ interface DrawerMenuProps {
   onSavePress?: () => void;
 }
 
+const logoutOverlayStyles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(13, 35, 70, 0.72)',
+  },
+  text: {
+    marginTop: 14,
+    color: '#FFFFFF',
+    fontSize: 16,
+  },
+});
+
 const DrawerMenuComponent = ({
   isVisible,
   onClose,
@@ -45,6 +72,124 @@ const DrawerMenuComponent = ({
   onSavePress,
 }: DrawerMenuProps) => {
   const slideAnim = useRef(new Animated.Value(-300)).current;
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const manualSyncInFlight = useRef(false);
+  const authStatus = useAppSelector((state) => state.auth.status);
+  const userEmail = useAppSelector((state) => state.auth.email);
+  const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
+  const isSignedIn = authStatus === 'signedIn';
+
+  const handleLoginPress = () => {
+    trackEvent('AuthButton', 'click', 'Sign in pressed');
+    startLogin();
+    onClose();
+  };
+
+  const handleLogoutPress = () => {
+    trackEvent('AuthButton', 'click', 'Log out pressed');
+    // Confirm first, then show a loading overlay while local logout settles.
+    // The best-effort SSO browser logout opens afterwards without holding UI.
+    showLogoutConfirmAlert({
+      onConfirm: async () => {
+        setIsLoggingOut(true);
+        try {
+          await logout();
+        } finally {
+          setIsLoggingOut(false);
+          onClose();
+        }
+      },
+    });
+  };
+
+  const performSync = async () => {
+    if (!userEmail || manualSyncInFlight.current) {
+      return;
+    }
+    manualSyncInFlight.current = true;
+    setIsManualSyncing(true);
+    try {
+      trackEvent('ManualSync', 'click', 'Sync now');
+      // A normal sync reports itself through the status notice — success and
+      // failure both. Adding a blocking alert on top would mean two messages for
+      // one tap.
+      await runManualSync(store, userEmail);
+    } finally {
+      manualSyncInFlight.current = false;
+      setIsManualSyncing(false);
+    }
+  };
+
+  const restoreFromCloud = async () => {
+    if (!userEmail || manualSyncInFlight.current) {
+      return;
+    }
+    manualSyncInFlight.current = true;
+    setIsManualSyncing(true);
+    try {
+      trackEvent('ManualSync', 'click', 'Restore cloud backup');
+      store.dispatch(setRecoveryRestoreStatus('restoring'));
+      if (await restoreCloudDataAfterSyncRecovery(store, userEmail)) {
+        store.dispatch(setRecoveryRestoreStatus('restored'));
+      } else {
+        store.dispatch(setRecoveryRestoreStatus('idle'));
+        showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+      }
+    } finally {
+      manualSyncInFlight.current = false;
+      setIsManualSyncing(false);
+    }
+  };
+
+  const handleSyncPress = () => {
+    if (!recoveryNeeded) {
+      // Close first. This drawer is a Modal, which renders in its own window
+      // above the app, so the status notice — an ordinary positioned View —
+      // cannot draw over it no matter its zIndex. Leaving the menu open would
+      // hide the very feedback this tap exists to produce.
+      onClose();
+      performSync();
+      return;
+    }
+    Alert.alert(
+      'Sync information damaged',
+      'Your paths are safe on this device, but we cannot safely match them to your cloud paths. Sync is paused to prevent duplicates.',
+      [
+        {
+          text: 'Keep local data',
+          style: 'cancel',
+          onPress: () => {
+            onClose();
+            store.dispatch(setRecoveryRestoreStatus('paused'));
+          },
+        },
+        {
+          text: 'Restore from cloud',
+          onPress: () => {
+            Alert.alert(
+              'Replace local paths?',
+              `This will replace the paths on this device with the cloud backup for ${
+                userEmail ?? 'the signed-in account'
+              }. This cannot be undone.`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Restore from cloud',
+                  style: 'destructive',
+                  onPress: () => {
+                    onClose();
+                    restoreFromCloud();
+                  },
+                },
+              ]
+            );
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     if (isVisible) {
@@ -114,7 +259,6 @@ const DrawerMenuComponent = ({
                   </View>
                   <View style={DrawerMenuStyles.menuItems}>
                     {menuItems.map((item) => {
-                      const RowIcon = item.Icon;
                       return (
                         <TouchableOpacity
                           key={item.id}
@@ -124,7 +268,7 @@ const DrawerMenuComponent = ({
                           accessibilityRole="button"
                         >
                           <View style={DrawerMenuStyles.menuItemIcon}>
-                            <RowIcon />
+                            <item.Icon width={20} height={20} />
                           </View>
                           <Text
                             style={[
@@ -137,8 +281,6 @@ const DrawerMenuComponent = ({
                         </TouchableOpacity>
                       );
                     })}
-                  </View>
-                  <View style={DrawerMenuStyles.footer}>
                     <TouchableOpacity
                       style={DrawerMenuStyles.donateButton}
                       onPress={() => {
@@ -148,10 +290,53 @@ const DrawerMenuComponent = ({
                       accessibilityLabel={Constants.DONATE}
                       accessibilityRole="button"
                     >
-                      <DonationIcon />
+                      <DonationIcon width={20} height={20} />
                       <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
                     </TouchableOpacity>
+                    {!isSignedIn ? (
+                      <TouchableOpacity
+                        style={DrawerMenuStyles.menuItem}
+                        onPress={handleLoginPress}
+                        accessibilityLabel={Constants.LOGIN}
+                        accessibilityRole="button"
+                      >
+                        <View style={DrawerMenuStyles.menuItemIcon}>
+                          <LoginIcon width={20} height={20} />
+                        </View>
+                        <Text style={DrawerMenuStyles.menuItemText}>{Constants.LOGIN}</Text>
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
+                  {isSignedIn ? (
+                    <View style={DrawerMenuStyles.footer}>
+                      <TouchableOpacity
+                        style={DrawerMenuStyles.logoutButton}
+                        onPress={handleSyncPress}
+                        disabled={isManualSyncing}
+                        accessibilityLabel={Constants.SYNC_NOW}
+                        accessibilityRole="button"
+                      >
+                        <SaveIcon width={20} height={20} color="#11336A" />
+                        <Text style={DrawerMenuStyles.logoutText}>{Constants.SYNC_NOW}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={DrawerMenuStyles.logoutButton}
+                        onPress={handleLogoutPress}
+                        accessibilityLabel={Constants.LOGOUT}
+                        accessibilityRole="button"
+                      >
+                        <LoginIcon width={20} height={20} color="#11336A" />
+                        <Text style={DrawerMenuStyles.logoutText}>{Constants.LOGOUT}</Text>
+                      </TouchableOpacity>
+                      {userEmail ? (
+                        <View style={DrawerMenuStyles.emailRow}>
+                          <Text style={DrawerMenuStyles.userEmail} numberOfLines={1}>
+                            {userEmail}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  ) : null}
                 </SafeAreaView>
               </Animated.View>
             </View>
@@ -162,6 +347,12 @@ const DrawerMenuComponent = ({
               accessibilityRole="button"
             />
           </View>
+          {isLoggingOut ? (
+            <View style={logoutOverlayStyles.overlay}>
+              <ActivityIndicator size="large" color="#FFFFFF" />
+              <Text style={logoutOverlayStyles.text}>{Constants.LOGGING_OUT}</Text>
+            </View>
+          ) : null}
         </View>
       </SafeAreaProvider>
     </Modal>

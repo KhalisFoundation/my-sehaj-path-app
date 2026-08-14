@@ -1,16 +1,19 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { View, ScrollView, ActivityIndicator, Animated, BackHandler } from 'react-native';
+import {
+  View,
+  ScrollView,
+  ActivityIndicator,
+  Animated,
+  AppState,
+  BackHandler,
+  Alert,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  BaniDB,
-  showErrorAlert,
-  showLeaveAnywayAlert,
-  convertNumberToFormat,
-  recordError,
-} from '@utils';
+import { showErrorAlert, convertNumberToFormat, recordError } from '@utils';
+import { getAngContent } from '../db';
 import { PathScreenStyles, SafeAreaStyle } from '@styles';
 import {
   DateData,
@@ -23,7 +26,8 @@ import {
 } from '@hooks';
 import { store } from '../store';
 import { useAppSelector } from '../store/hooks';
-import { savePathProgress, undoPathCompletion } from '../store/commands';
+import { savePathProgress, savePathScrollPosition, undoPathCompletion } from '../store/commands';
+import { onScreenBlur, setActiveReaderPath } from '../store/syncLifecycle';
 import {
   AngsNavigation,
   Loading,
@@ -88,20 +92,33 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     lastFailedAng: null,
   });
   const scrolledToSavedPath = useRef<boolean>(false);
+  const isRestoringScroll = useRef<boolean>(false);
   const scrollOffset = useRef<number>(0);
   const scrollRef = useRef<ScrollView | null>(null);
   const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
   const [readerContentHeight, setReaderContentHeight] = useState<number>(0);
-  const previousFontSize = useRef<number>(18);
-  const previousParagraphMode = useRef<boolean>(false);
+  // Seed these with the CURRENT settings, not hardcoded defaults.
+  //
+  // The "keep the same verse centred when the layout changes" effect compares
+  // against these. Starting them at 18/false meant the first render of a reader
+  // whose settings differ from those defaults looked like a settings change:
+  // with paragraph mode ON, `false -> true` fired a recentre request on mount
+  // that nobody asked for, and it fought the restore of the saved scroll
+  // position. That is why the janky resume showed up in paragraph mode only,
+  // and why it surfaced in release builds — faster JS lands the spurious
+  // recentre mid-animation instead of harmlessly after it.
+  const previousFontSize = useRef<number>(fontSize);
+  const previousParagraphMode = useRef<boolean>(isParagraphMode);
   const [scrollToVerseId, setScrollToVerseId] = useState<number>(0);
   const [scrollToVerseRequestKey, setScrollToVerseRequestKey] = useState<number>(0);
   const completionUndoPendingRef = useRef<boolean>(false);
   // Baseline scroll Y captured when completion guard starts; used to measure
   // upward movement and undo completion only after user scrolls up > 200px.
   const completionUndoStartScrollYRef = useRef<number | null>(null);
+  /** Guards the leave checkpoint so `blur` + `beforeRemove` run it only once. */
+  const leaveCheckpointDone = useRef<boolean>(false);
 
   const resetTransientUiState = useCallback(() => {
     setIsSaving(false);
@@ -130,33 +147,38 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     async (angNumber: number) => {
       alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
       setReaderContentHeight(0);
-      const pathFromBaniDB = await BaniDB(angNumber);
+      const pathFromBaniDB = await getAngContent(angNumber);
       alertIndicator.current = undefined;
-      setPathContent(pathFromBaniDB.data);
-      setRetryState({ needsRetry: false, lastFailedAng: null });
-      resetTransientUiState();
       if (pathFromBaniDB.success === false) {
+        // Local DB was missing or unreadable, and the API fallback failed.
+        // Only this fallback path needs a connectivity check.
         const isConnected = await checkNetwork();
         if (!isConnected) {
           setRetryState({ needsRetry: true, lastFailedAng: angNumber });
-          showErrorAlert(
-            ErrorConstants.NO_INTERNET_TITLE + '\n' + ErrorConstants.NO_INTERNET_MESSAGE
+          Alert.alert(
+            'Error',
+            `${ErrorConstants.NO_INTERNET_TITLE}\n${ErrorConstants.NO_INTERNET_MESSAGE}\n\n`,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.replace(Routes.Home),
+              },
+            ]
           );
         } else {
           navigation.replace(Routes.Error);
-          return;
         }
+        return false;
       }
+      setPathContent(pathFromBaniDB.data);
+      setRetryState({ needsRetry: false, lastFailedAng: null });
+      resetTransientUiState();
       const currentDebounceTimer = debounceTimer.current;
       if (currentDebounceTimer !== null) {
         clearTimeout(currentDebounceTimer);
         debounceTimer.current = null;
       }
-      scrollOffset.current = 0;
-      scrollRef.current?.scrollTo({
-        y: 0,
-        animated: false,
-      });
+      return true;
     },
     [checkNetwork, navigation, resetTransientUiState]
   );
@@ -168,7 +190,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     scrollOffset,
     scrollRef,
     setPathAng,
-    checkNetwork,
     fetchFromBaniDB,
   });
 
@@ -262,34 +283,24 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
     debounceTimer.current = setTimeout(async () => {
       debounceTimer.current = null;
+      // A saved checkpoint can emit `onScroll` while the reader restores it.
+      // Do not turn that already-synced movement into another local update.
+      if (isRestoringScroll.current) {
+        return;
+      }
       try {
-        const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
-        const wasUndoPending = completionUndoPendingRef.current;
-
-        // Background auto-save: silent so a transient failure while scrolling
-        // does not spam alerts. Explicit saves (long-press / save icon) alert.
-        const saved = await savePathProgress(
-          route.params.pathId,
-          pathAng,
-          verseIdToKeep,
-          scrollOffset.current,
-          { silent: true }
-        );
+        // Store reading position locally, but do not create an API operation
+        // while the user is still reading. Leaving/backgrounding/manual Sync
+        // promotes this latest checkpoint and uploads it once.
+        const saved = await savePathScrollPosition(route.params.pathId, scrollOffset.current);
         if (!saved) {
           return;
         }
-
-        if (wasUndoPending) {
-          setIsSaved(true);
-          return;
-        }
-        setIsSaved(false);
-        commitSavedPathState(pathAng, verseIdToKeep, scrollOffset.current);
       } catch {
         // Background auto-save remains silent; the command records the failure.
       }
     }, 200);
-  }, [route.params.pathId, pathAng, savedPathVerseId, commitSavedPathState]);
+  }, [route.params.pathId]);
 
   const handleScrollEnd = useCallback(
     async (scrollY: number) => {
@@ -323,13 +334,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     pathContent,
     savedPathVerseId,
     scrolledToSavedPath,
+    isRestoringScroll,
     scrollRef,
     scrollOffset,
-    fadeAnim: fadeAnim.current,
     setFound,
-    setIsSaving,
-    setIsSaved,
     fontSize,
+    isParagraphMode,
   });
 
   const updatePathAng = useCallback(
@@ -353,7 +363,25 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
 
     try {
-      const verseIdToKeep = matchedPath.current?.saveData.verseId || savedPathVerseId;
+      const current = store.getState().paths;
+      const durablePath = current.paths.find((path) => path.pathId === route.params.pathId);
+      const durableDate = current.dates.find((date) => date.pathid === route.params.pathId);
+      if (!durablePath) {
+        return false;
+      }
+      // Same rule as the auto-save: a verse from another ang must not be paired
+      // with the ang being displayed now.
+      const verseIdToKeep = getDurableSavedVerseId(durablePath.saveData, pathAng);
+      // Opening a path restores its saved ang/scroll position. Leaving straight
+      // away must not turn that restore into a new "read today" update: it can
+      // block newer progress fetched from another device despite A doing nothing.
+      const unchangedSinceOpen =
+        durablePath.saveData.angNumber === pathAng &&
+        durablePath.saveData.verseId === verseIdToKeep &&
+        (durableDate?.scrollPosition ?? 0) === scrollOffset.current;
+      if (unchangedSinceOpen) {
+        return true;
+      }
       // Silent: the navigation handler shows the richer "leave anyway?" choice,
       // so the command must not also pop a plain error alert.
       const saved = await savePathProgress(
@@ -373,7 +401,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
   }, [route.params.pathId, pathAng, savedPathVerseId, scrollOffset, commitSavedPathState]);
 
-  const { handleGoBack } = usePathNavigation({
+  const checkpointScrollBeforeBackground = useCallback(async () => {
+    // Do not let the 200ms debounce race the app suspension. Persist the newest
+    // in-memory offset now, then let the normal lifecycle code queue/flush it.
+    if (debounceTimer.current !== null) {
+      clearTimeout(debounceTimer.current);
+      debounceTimer.current = null;
+    }
+    await persistCurrentScrollPosition();
+    onScreenBlur();
+  }, [persistCurrentScrollPosition]);
+
+  const { handleGoBack, confirmBeforeLeaving } = usePathNavigation({
     isAngNavigation,
     pathAng,
     pathId: route.params.pathId,
@@ -384,23 +423,37 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   });
 
   const handlePathDrawerNavigate = useCallback(
-    async (targetRoute: string, targetPathId?: number) => {
-      const saved = await persistCurrentScrollPosition();
-      if (!saved) {
-        // Never trap the user: offer retry (stay) or leave anyway.
-        showLeaveAnywayAlert({
-          onLeaveAnyway: () => handleDrawerNavigate(targetRoute, targetPathId),
-        });
-        return;
-      }
-      handleDrawerNavigate(targetRoute, targetPathId);
+    (targetRoute: string, targetPathId?: number) => {
+      const destinationLabels: Record<string, string> = {
+        Home: 'Home',
+        Setting: 'Settings',
+        Progress: 'Progress',
+        Streaks: 'Streaks',
+      };
+      return confirmBeforeLeaving(
+        () => handleDrawerNavigate(targetRoute, targetPathId),
+        destinationLabels[targetRoute] ?? 'that screen'
+      );
     },
-    [persistCurrentScrollPosition, handleDrawerNavigate]
+    [confirmBeforeLeaving, handleDrawerNavigate]
   );
 
   const handleOpenSettings = useCallback(() => {
     navigation.push(Routes.Setting);
   }, [navigation]);
+
+  const handleCloseDrawer = useCallback(() => {
+    setIsDrawerVisible(false);
+  }, []);
+
+  const handleGoToAngPress = useCallback(() => {
+    setIsAngsNavigationVisible(true);
+  }, []);
+
+  const handleSavePress = useCallback(() => {
+    setIsSaving(true);
+    fadeAnim.current.setValue(1);
+  }, []);
 
   const handleAngsRightArrow = useCallback(() => {
     handleRightArrow(pathAng);
@@ -421,6 +474,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
 
   useEffect(() => {
     scrolledToSavedPath.current = false;
+    isRestoringScroll.current = false;
     const fetchPath = async () => {
       try {
         // Settings already live in the store and are applied before this screen
@@ -444,6 +498,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           matchedPathDate.current = matchedPathDateData
             ? { ...matchedPathDateData, dates: [...matchedPathDateData.dates] }
             : undefined;
+          // Seed this synchronously. The visual scroll restore waits for reader
+          // content/layout, but a background or navigation checkpoint can happen
+          // before that effect runs and must preserve the already-saved offset.
+          scrollOffset.current = matchedPathDateData?.scrollPosition ?? 0;
           completionUndoPendingRef.current = false;
           completionUndoStartScrollYRef.current = null;
           const pathAngData =
@@ -549,20 +607,16 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     }
 
     let firstFrame: number | null = null;
-    let secondFrame: number | null = null;
-
+    // Content size has already reached the saved position. One frame lets the
+    // native ScrollView commit that layout; a second frame only delayed the
+    // resume animation and made the reader appear to hesitate on Android.
     firstFrame = requestAnimationFrame(() => {
-      secondFrame = requestAnimationFrame(() => {
-        scrollToSavedPathData();
-      });
+      scrollToSavedPathData();
     });
 
     return () => {
       if (firstFrame !== null) {
         cancelAnimationFrame(firstFrame);
-      }
-      if (secondFrame !== null) {
-        cancelAnimationFrame(secondFrame);
       }
     };
   }, [pathAng, pathContent, readerContentHeight, scrollToSavedPathData]);
@@ -611,6 +665,63 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       fadeAnim.current.stopAnimation();
     };
   }, []);
+
+  // Leaving the reader — back press, the drawer, or the home icon all land here.
+  //
+  // Runs the SAME checkpoint the app-background path uses, rather than calling
+  // `onScreenBlur` alone: the scroll save is debounced by 200 ms, so closing
+  // mid-debounce left the newest offset only in memory. Promotion then found
+  // nothing to queue and the reader's final position was not sent until some
+  // later trigger. Cancelling the debounce and persisting first makes closing
+  // the path sync exactly where the user stopped, immediately.
+  // Checkpoint only when the reader is REALLY being left.
+  //
+  // `beforeRemove` — not `blur` — is the right event for two reasons:
+  //  1. Going Home uses `navigation.popTo(Home)`, which REMOVES this screen.
+  //     React unmounts it and the cleanup below tears the listener down, so a
+  //     `blur` handler never runs at all — the checkpoint (and its "Synced"
+  //     confirmation) was silently skipped on every exit.
+  //  2. `blur` ALSO fires for a push that keeps this screen mounted — opening
+  //     Settings. That is a round trip: the user comes straight back here, so
+  //     uploading then is a pointless API call. `beforeRemove` never fires for
+  //     it, so Settings no longer triggers a sync.
+  //
+  // App backgrounding is covered separately by the AppState listener below.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', () => {
+      if (leaveCheckpointDone.current) {
+        return;
+      }
+      leaveCheckpointDone.current = true;
+      checkpointScrollBeforeBackground().catch((error) =>
+        recordError(error, 'PathScreen: leaving the reader failed to checkpoint')
+      );
+    });
+    return unsubscribe;
+  }, [navigation, checkpointScrollBeforeBackground]);
+
+  // While the reader is focused: register it as the active path (so a foreground
+  // GET /paths refresh never overwrites/removes the path being read), and run the
+  // scroll checkpoint on background — the 'blur' event above doesn't fire when the
+  // app is backgrounded with the reader still focused.
+  useFocusEffect(
+    useCallback(() => {
+      const { pathId } = route.params;
+      setActiveReaderPath(pathId);
+      // Re-arm the leave checkpoint: returning to the reader (e.g. back from
+      // Settings) must be able to checkpoint again when the user leaves next.
+      leaveCheckpointDone.current = false;
+      const subscription = AppState.addEventListener('change', (state) => {
+        if (state === 'inactive' || state === 'background') {
+          checkpointScrollBeforeBackground();
+        }
+      });
+      return () => {
+        setActiveReaderPath(null);
+        subscription.remove();
+      };
+    }, [route.params.pathId, checkpointScrollBeforeBackground])
+  );
 
   useEffect(() => {
     if (isOnline && retryState.needsRetry && retryState.lastFailedAng !== null) {
@@ -666,6 +777,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             scrollToVerseId={scrollToVerseId}
             scrollToVerseRequestKey={scrollToVerseRequestKey}
             scrolledToSavedPath={scrolledToSavedPath}
+            isRestoringScroll={isRestoringScroll}
             onScrollEndDrag={handleScrollEnd}
             onContentSizeChange={handleReaderContentSizeChange}
           />
@@ -705,15 +817,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         )}
         <DrawerMenu
           isVisible={isDrawerVisible}
-          onClose={() => setIsDrawerVisible(false)}
+          onClose={handleCloseDrawer}
           onNavigate={handlePathDrawerNavigate}
           currentRoute={Routes.Path}
           pathId={route.params.pathId}
-          onGoToAngPress={() => setIsAngsNavigationVisible(true)}
-          onSavePress={() => {
-            setIsSaving(true);
-            fadeAnim.current.setValue(1);
-          }}
+          onGoToAngPress={handleGoToAngPress}
+          onSavePress={handleSavePress}
         />
       </View>
     </SafeAreaView>

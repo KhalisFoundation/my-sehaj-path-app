@@ -29,6 +29,8 @@ export interface UpdatePathPayload {
   /** Caller supplies today's date string in the legacy 'D-Month-YYYY' format. */
   todayDate: string;
   scrollPosition?: number;
+  /** Auto-scroll checkpoints sync silently; an explicit save remains visible. */
+  silentSync?: boolean;
 }
 
 /**
@@ -46,6 +48,22 @@ export const getNextPathId = (paths: PathData[], reservedIds: Iterable<number> =
     }
   }
   return Math.floor(max) + 1;
+};
+
+/**
+ * The default label is user-facing, unlike `pathId`, which is a device-local
+ * key. A path received from another device can legitimately consume local id
+ * 11 while still be named "Path #10". Derive a new label from labels already
+ * shown to the user so the next created path is "Path #11", not "Path #12".
+ * Renamed paths intentionally do not affect this sequence.
+ */
+export const getNextDefaultPathNumber = (paths: PathData[]): number => {
+  const highest = paths.reduce((current, path) => {
+    const match = /^Path #(\d+)$/.exec(path.pathName.trim());
+    const number = match ? Number(match[1]) : 0;
+    return Number.isSafeInteger(number) ? Math.max(current, number) : current;
+  }, 0);
+  return highest + 1;
 };
 
 /**
@@ -103,7 +121,10 @@ export const pathsSlice = createSlice({
       }
     },
 
-    renamePath: (state, action: PayloadAction<{ pathId: number; name: string }>) => {
+    renamePath: (
+      state,
+      action: PayloadAction<{ pathId: number; name: string; silentSync?: boolean }>
+    ) => {
       // Update the exact match in place. The old implementation used a
       // filter/push pattern that reordered records (and matched with `!==`).
       const path = state.paths.find((candidate) => candidate.pathId === action.payload.pathId);
@@ -144,8 +165,65 @@ export const pathsSlice = createSlice({
       }
       ensureDateRecord(state, action.payload.pathId).scrollPosition = action.payload.scrollPosition;
     },
+    /**
+     * Physically removes a path row and its date record. Used only once a delete
+     * is durable — a never-synced hard delete, or after the server acks a
+     * tombstone (the outbox coordinator). The sync slice's `dropMeta` clears the
+     * matching metadata separately.
+     */
+    removePathLocal: (state, action: PayloadAction<number>) => {
+      const pathId = action.payload;
+      state.paths = state.paths.filter((path) => path.pathId !== pathId);
+      state.dates = state.dates.filter((date) => date.pathid !== pathId);
+    },
+    /**
+     * Folds a server response into an existing row (Step 8). Deliberately NOT
+     * observed by the stamping middleware, so applying server truth never creates
+     * a sync op. Never touches `scrollPosition` — that stays device-local.
+     */
+    applyServerPathData: (
+      state,
+      action: PayloadAction<{
+        pathId: number;
+        pathPatch: Partial<PathData>;
+        datePatch: Partial<DateData>;
+      }>
+    ) => {
+      const { pathId, pathPatch, datePatch } = action.payload;
+      const path = state.paths.find((entry) => entry.pathId === pathId);
+      if (path) {
+        Object.assign(path, pathPatch);
+      }
+      if (datePatch.dates) {
+        const date = state.dates.find((entry) => entry.pathid === pathId);
+        if (date) {
+          date.dates = datePatch.dates;
+        }
+      }
+      if (datePatch.scrollPosition !== undefined) {
+        ensureDateRecord(state, pathId).scrollPosition = datePatch.scrollPosition;
+      }
+    },
+    /**
+     * Adds a row for a path created on another device (Step 8 allocation). Same
+     * body as `addPath`, but a distinct action so the stamping middleware does
+     * NOT mint a UUID / create op — this path is already on the server.
+     */
+    addServerPath: (state, action: PayloadAction<{ path: PathData; date: DateData }>) => {
+      state.paths.push(action.payload.path);
+      state.dates.push(action.payload.date);
+    },
   },
 });
 
-export const { setAll, addPath, updatePath, renamePath, clearPathCompletion, setScrollPosition } =
-  pathsSlice.actions;
+export const {
+  setAll,
+  addPath,
+  updatePath,
+  renamePath,
+  clearPathCompletion,
+  setScrollPosition,
+  removePathLocal,
+  applyServerPathData,
+  addServerPath,
+} = pathsSlice.actions;

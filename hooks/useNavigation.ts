@@ -10,8 +10,7 @@ export interface UseNavigationParams {
   scrollOffset: React.MutableRefObject<number>;
   scrollRef: React.MutableRefObject<ScrollView | null>;
   setPathAng: (value: number) => void;
-  checkNetwork: () => Promise<boolean>;
-  fetchFromBaniDB: (angNumber: number) => Promise<void>;
+  fetchFromBaniDB: (angNumber: number) => Promise<boolean>;
 }
 
 export const useNavigation = ({
@@ -21,7 +20,6 @@ export const useNavigation = ({
   scrollOffset,
   scrollRef,
   setPathAng,
-  checkNetwork,
   fetchFromBaniDB,
 }: UseNavigationParams) => {
   const handleRightArrow = useCallback(
@@ -41,33 +39,18 @@ export const useNavigation = ({
       });
 
       try {
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
+        if (await fetchFromBaniDB(pageNo + 1)) {
+          setPathAng(pageNo + 1);
         }
-        await fetchFromBaniDB(pageNo + 1);
-        setPathAng(pageNo + 1);
       } catch (error) {
         recordError(error, `useNavigation: failed to load next ang from ${pageNo}`);
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
-        } else {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
-        }
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
       } finally {
         setIsNavigating(false);
       }
     },
     [
       isNavigating,
-      checkNetwork,
       setIsNavigating,
       setIsSaving,
       scrollOffset,
@@ -95,25 +78,12 @@ export const useNavigation = ({
       });
 
       try {
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
+        if (await fetchFromBaniDB(pageNo - 1)) {
+          setPathAng(pageNo - 1);
         }
-        await fetchFromBaniDB(pageNo - 1);
-        setPathAng(pageNo - 1);
       } catch (error) {
         recordError(error, `useNavigation: failed to load previous ang from ${pageNo}`);
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-        } else {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
-        }
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
       } finally {
         setIsNavigating(false);
       }
@@ -125,7 +95,6 @@ export const useNavigation = ({
       scrollOffset,
       scrollRef,
       setPathAng,
-      checkNetwork,
       fetchFromBaniDB,
     ]
   );

@@ -1,4 +1,5 @@
 import {
+  getNextDefaultPathNumber,
   getNextPathId,
   pathsSlice,
   addPath,
@@ -87,6 +88,28 @@ describe('getNextPathId', () => {
 
   it('also reserves ids that are not represented by valid path records', () => {
     expect(getNextPathId([makePath({ pathId: 2 })], [5, 7])).toBe(8);
+  });
+});
+
+describe('getNextDefaultPathNumber', () => {
+  it('uses displayed default names rather than device-local ids', () => {
+    const paths = [
+      makePath({ pathId: 10, pathName: 'Path #10' }),
+      makePath({ pathId: 11, pathName: 'Path #10' }),
+    ];
+    expect(getNextDefaultPathNumber(paths)).toBe(11);
+  });
+
+  it('ignores paths the user renamed', () => {
+    const paths = [
+      makePath({ pathId: 10, pathName: 'Morning reading' }),
+      makePath({ pathId: 11, pathName: 'Path #10' }),
+    ];
+    expect(getNextDefaultPathNumber(paths)).toBe(11);
+  });
+
+  it('starts at 1 when every existing path was renamed', () => {
+    expect(getNextDefaultPathNumber([makePath({ pathName: 'Morning reading' })])).toBe(1);
   });
 });
 

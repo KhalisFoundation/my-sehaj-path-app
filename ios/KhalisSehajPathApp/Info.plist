@@ -80,5 +80,16 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>net.khalis.sehajpath</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>khalissehajpath</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

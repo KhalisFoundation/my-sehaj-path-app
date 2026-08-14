@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { UIConstants } from '@constants/UIConstants';
+import font from '@utils/font';
 
 export const DrawerMenuStyles = StyleSheet.create({
   modalRoot: {
@@ -51,14 +52,14 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontFamily: font.Baloo_Paaji_2_Medium,
     color: '#FFFFFF',
   },
   menuItems: {
     paddingTop: UIConstants.RHYTHM,
   },
   menuItemsHighlight: {
-    fontWeight: '600',
+    fontFamily: font.Baloo_Paaji_2_Medium,
   },
   menuItem: {
     flexDirection: 'row',
@@ -76,18 +77,33 @@ export const DrawerMenuStyles = StyleSheet.create({
   menuItemText: {
     fontSize: 15,
     color: '#2C3E50',
-    fontWeight: '400',
+    fontFamily: font.Baloo_Paaji_2_Regular,
   },
   footer: {
     flexDirection: 'column',
+    marginTop: 'auto',
+    paddingTop: 0,
+    paddingBottom: UIConstants.RHYTHM * 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#B8C5D6',
+    gap: 0,
+  },
+  emailRow: {
+    marginTop: UIConstants.RHYTHM * 0.5,
     paddingHorizontal: UIConstants.RHYTHM * 3,
-    paddingVertical: UIConstants.RHYTHM * 2,
+  },
+  userEmail: {
+    fontSize: 13,
+    color: '#7F8C8D',
+    fontFamily: font.Baloo_Paaji_2_Regular,
+    marginTop: UIConstants.RHYTHM * 0.5,
   },
   donateButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: UIConstants.RHYTHM * 1.5,
-    paddingVertical: UIConstants.RHYTHM * 1.5,
+    marginHorizontal: UIConstants.RHYTHM * 3,
+    paddingVertical: UIConstants.RHYTHM,
   },
   donateIcon: {
     fontSize: 20,
@@ -96,6 +112,18 @@ export const DrawerMenuStyles = StyleSheet.create({
   donateText: {
     fontSize: 15,
     color: '#F39C12',
-    fontWeight: '500',
+    fontFamily: font.Baloo_Paaji_2_Medium,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: UIConstants.RHYTHM * 0.5,
+    marginHorizontal: UIConstants.RHYTHM * 3,
+    paddingVertical: UIConstants.RHYTHM,
+  },
+  logoutText: {
+    fontSize: 15,
+    color: '#11336A',
+    fontFamily: font.Baloo_Paaji_2_Medium,
   },
 });

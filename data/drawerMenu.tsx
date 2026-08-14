@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react';
+import type { SvgProps } from 'react-native-svg';
 import { Constants } from '@constants';
 import { ProgressIcon, StreakIcon, GoToAngIcon, AllPathLogoIcon } from '@icons';
 import { SaveIconMenu } from '@icons/SaveIconMenu.icon';
@@ -9,7 +10,7 @@ export interface DrawerMenuRow {
   label: string;
   route: string;
   showOnHome?: boolean;
-  Icon: ComponentType;
+  Icon: ComponentType<SvgProps>;
 }
 
 export const DRAWER_MENU_ITEMS: DrawerMenuRow[] = [

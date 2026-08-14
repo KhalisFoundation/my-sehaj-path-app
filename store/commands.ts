@@ -4,14 +4,16 @@ import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
 import type { DateData, PathData } from '../types';
-import { restoreDurableState, store } from './index';
+import { restoreDurableState, rollbackDurableMutation, store } from './index';
 import { persistence } from './instance';
 import { getQuarantinedPathIds } from './persistence';
 import {
   addPath,
   clearPathCompletion,
+  getNextDefaultPathNumber,
   getNextPathId,
   renamePath,
+  setScrollPosition,
   updatePath,
 } from './slices/pathsSlice';
 import type { SettingsState } from './slices/settingsSlice';
@@ -60,15 +62,14 @@ const runExclusive = <T>(task: () => Promise<T>): Promise<T> => {
 };
 
 /**
- * Dispatches, flushes, and restores the previous state (both slices) if the
- * write failed, so the store never keeps a mutation that is not on disk.
+ * Dispatches, flushes, and restores only the changed record if the write
+ * failed, so a concurrent server response for another record survives.
  *
  * MUST be called from inside `runExclusive`, so the captured `previous` is the
  * real durable baseline and cannot be corrupted by an overlapping command.
  */
 const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
-  const previousPaths = store.getState().paths;
-  const previousSettings: SettingsState = store.getState().settings;
+  const previous = store.getState();
 
   store.dispatch(action);
   const saved = await persistence.flush();
@@ -79,12 +80,7 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
     // dispatches invalidate the baseline, so the coordinator rewrites it and
     // clears the stale journal on its own). We do NOT await it — awaiting a
     // second full retry cycle here is what made failures take several seconds.
-    store.dispatch(
-      restoreDurableState({
-        paths: previousPaths,
-        settings: previousSettings,
-      })
-    );
+    store.dispatch(rollbackDurableMutation({ action, previous }));
 
     persistence
       .flush()
@@ -104,19 +100,66 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
 };
 
 /**
- * Builds the action INSIDE the exclusive section and commits it. Building inside
- * the lock is what makes id allocation (createPath) and any other read of store
- * state race-free: no two commands can read the same baseline concurrently.
+ * A settings change, applied to the UI immediately and persisted behind the lock.
+ *
+ * Setting controls are fully controlled by the store, so dispatching INSIDE the
+ * command lock (as path mutations do) meant a tap could not move the switch
+ * until the previous tap's disk write had finished — measured at ~435ms behind
+ * the finger on a slow write. Tapping quickly, the control then appeared to
+ * change on its own after the user had stopped: "I turn it on and it goes off".
+ *
+ * So the dispatch happens up front, and only the flush + rollback are
+ * serialized. Durability is unchanged: the coordinator already queues the write
+ * from the dispatch itself, and `flush()` still reports whether it landed.
  */
-const commitOrRollback = (build: () => UnknownAction): Promise<boolean> =>
-  runExclusive(() => dispatchDurable(build()));
+export const commitSettingChange = (action: UnknownAction): Promise<boolean> => {
+  const previousSettings: SettingsState = store.getState().settings;
+  store.dispatch(action);
+  // Identity of the settings slice right after OUR change. Immer gives a new
+  // object per change, so this doubles as "has anything replaced us since?".
+  const appliedSettings = store.getState().settings;
 
-/** Serialized, rolled-back setting change. Used by useSetting. */
-export const commitSettingChange = (action: UnknownAction): Promise<boolean> =>
-  commitOrRollback(() => action);
+  return runExclusive(async () => {
+    const saved = await persistence.flush();
+    if (saved) {
+      return true;
+    }
+
+    // Roll back only while OUR value is still the one on screen. A newer toggle
+    // is what the user last asked for and owns the outcome — restoring our
+    // snapshot over it would undo a change they made after this one.
+    if (store.getState().settings !== appliedSettings) {
+      return false;
+    }
+
+    const current = store.getState();
+    store.dispatch(
+      restoreDurableState({
+        paths: current.paths,
+        settings: previousSettings,
+        sync: current.sync,
+      })
+    );
+
+    persistence
+      .flush()
+      .then((restored) => {
+        if (!restored) {
+          recordError(
+            new Error('rollback flush failed; on-disk journal may be stale'),
+            'commands: settings rollback not durable'
+          );
+        }
+      })
+      .catch(() => {
+        // flush never rejects, but keep the floating promise safe.
+      });
+    return false;
+  });
+};
 
 /**
- * Like `commitOrRollback`, but for a mutation that targets an existing path.
+ * A serialized, rolled-back mutation that targets an existing path.
  *
  * The reducers no-op when the pathId is not found. Without this guard that
  * no-op leaves the store unchanged, so the coordinator sees nothing to write
@@ -145,6 +188,7 @@ export const createPath = (): Promise<number | null> =>
     const { paths, dates } = store.getState().paths;
     const reservedIds = [...dates.map((date) => date.pathid), ...getQuarantinedPathIds(store)];
     const pathId = getNextPathId(paths, reservedIds);
+    const defaultPathNumber = getNextDefaultPathNumber(paths);
 
     const path: PathData = {
       pathId,
@@ -152,7 +196,7 @@ export const createPath = (): Promise<number | null> =>
       saveData: { angNumber: 0, verseId: 0 },
       startDate: todayString(),
       completionDate: '',
-      pathName: `Path #${pathId}`,
+      pathName: `Path #${defaultPathNumber}`,
     };
     const date: DateData = { pathid: pathId, dates: [], scrollPosition: 0 };
 
@@ -175,18 +219,45 @@ export const savePathProgress = async (
   options: { silent?: boolean } = {}
 ): Promise<boolean> => {
   const completed = isPathCompleted(angNumber, verseId);
+  const todayDate = todayString();
+  const completionDate = completed ? todayDate : '';
 
-  const saved = await runPathMutation(pathId, () =>
-    updatePath({
-      pathId,
-      angNumber,
-      verseId,
-      progress: progressFor(angNumber),
-      completionDate: completed ? todayString() : '',
-      todayDate: todayString(),
-      scrollPosition,
-    })
-  );
+  const saved = await runExclusive(async () => {
+    const state = store.getState();
+    const path = state.paths.paths.find((candidate) => candidate.pathId === pathId);
+    if (!path) {
+      return false;
+    }
+    const date = state.paths.dates.find((candidate) => candidate.pathid === pathId);
+    const unchanged =
+      path.saveData.angNumber === angNumber &&
+      path.saveData.verseId === verseId &&
+      path.progress === progressFor(angNumber) &&
+      path.completionDate === completionDate &&
+      (date?.scrollPosition ?? 0) === scrollPosition &&
+      !!date?.dates.some((entry) => entry.date === todayDate);
+
+    // Back/navigation checkpoints often save the exact point that was already
+    // saved and uploaded from the reader. Treat that as a successful no-op:
+    // stamping it again would create a needless PATCH and a second sync notice
+    // when Home performs its normal background comparison.
+    if (unchanged) {
+      return true;
+    }
+
+    return dispatchDurable(
+      updatePath({
+        pathId,
+        angNumber,
+        verseId,
+        progress: progressFor(angNumber),
+        completionDate,
+        todayDate,
+        scrollPosition,
+        silentSync: options.silent === true,
+      })
+    );
+  });
 
   // Same message the old code used. Suppressed for the background scroll
   // auto-save, which fires too often to alert on each transient failure.
@@ -200,8 +271,23 @@ export const savePathProgress = async (
   return saved;
 };
 
+export const savePathScrollPosition = (pathId: number, scrollPosition: number): Promise<boolean> =>
+  runExclusive(async () => {
+    const current = store.getState().paths.dates.find((date) => date.pathid === pathId);
+    if ((current?.scrollPosition ?? 0) === scrollPosition) {
+      return store.getState().paths.paths.some((path) => path.pathId === pathId);
+    }
+    const exists = store.getState().paths.paths.some((path) => path.pathId === pathId);
+    if (!exists) {
+      return false;
+    }
+    return dispatchDurable(setScrollPosition({ pathId, scrollPosition }));
+  });
+
 export const renamePathCommand = async (pathId: number, name: string): Promise<boolean> => {
-  const saved = await runPathMutation(pathId, () => renamePath({ pathId, name }));
+  // A rename still uses the ordinary outbox/API flow, but it is housekeeping,
+  // not reading progress, so it should not show a sync notice.
+  const saved = await runPathMutation(pathId, () => renamePath({ pathId, name, silentSync: true }));
   if (!saved) {
     showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
   }

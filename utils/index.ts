@@ -1,9 +1,10 @@
 export { BaniDB } from './BaniDB';
 export { showErrorAlert } from './Error';
-export { showSaveProgressAlert, showLeaveAnywayAlert } from './alerts';
+export { showSaveProgressAlert, showLeaveAnywayAlert, showLogoutConfirmAlert } from './alerts';
 export { convertToPunjabiNumber, convertNumberToFormat, type NumberFormat } from './numberUtils';
 export { allowTracking, trackEvent, trackScreenView } from './analytics';
 export { allowCrashReporting, recordError, testCrash } from './crashlytics';
+export { getOrCreatePathUuid } from './pathIdUtils';
 export {
   useIsSelected,
   useAccessibilityLabel,

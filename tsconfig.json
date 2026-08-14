@@ -5,6 +5,26 @@
   "compilerOptions": {
     "baseUrl": ".",
     "types": ["jest"],
+    // Base RN libs + DOM. The generated API client (api/generated) references
+    // web/fetch globals (BodyInit, btoa, TextDecoderStream, RequestInit) that
+    // React Native provides at runtime; DOM adds only their type declarations.
+    "lib": [
+      "es2019",
+      "es2020.bigint",
+      "es2020.date",
+      "es2020.number",
+      "es2020.promise",
+      "es2020.string",
+      "es2020.symbol.wellknown",
+      "es2021.promise",
+      "es2021.string",
+      "es2021.weakref",
+      "es2022.array",
+      "es2022.object",
+      "es2022.string",
+      "dom",
+      "dom.iterable"
+    ],
     "paths": {
       "@assets/*": ["./assets/*"],
       "@components/*": ["./components/*"],
@@ -14,6 +34,8 @@
       "@styles/*": ["./styles/*"],
       "@icons/*": ["./icons/*"],
       "@hooks/*": ["./hooks/*"],
+      "@api/*": ["./api/*"],
+      "@auth/*": ["./auth/*"],
       "@assets": ["./assets"],
       "@components": ["./components"],
       "@constants": ["./constants"],
@@ -21,7 +43,9 @@
       "@utils": ["./utils"],
       "@styles": ["./styles"],
       "@icons": ["./icons"],
-      "@hooks": ["./hooks"]
+      "@hooks": ["./hooks"],
+      "@api": ["./api"],
+      "@auth": ["./auth"]
     }
   }
 }

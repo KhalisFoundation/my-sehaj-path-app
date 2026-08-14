@@ -3,22 +3,24 @@ import { Alert } from 'react-native';
 interface SaveProgressAlertProps {
   onSaveAndGoBack: () => void;
   onGoBackWithoutSaving: () => void;
+  destinationLabel?: string;
 }
 
 export const showSaveProgressAlert = ({
   onSaveAndGoBack,
   onGoBackWithoutSaving,
+  destinationLabel = 'Home',
 }: SaveProgressAlertProps) => {
   Alert.alert(
     'Save Progress?',
-    'You have navigated to a different ang. Do you want to save your current progress or go back without saving?',
+    `You have navigated to a different ang. Do you want to save your current progress before opening ${destinationLabel}?`,
     [
       {
-        text: 'Save & Go Back',
+        text: `Save & Open ${destinationLabel}`,
         onPress: onSaveAndGoBack,
       },
       {
-        text: 'Go Back Without Saving',
+        text: `Open ${destinationLabel} Without Saving`,
         onPress: onGoBackWithoutSaving,
         style: 'destructive',
       },
@@ -28,6 +30,24 @@ export const showSaveProgressAlert = ({
       },
     ]
   );
+};
+
+/**
+ * Confirms an explicit sign-out before it runs. Logout ends the IdP session and
+ * clears the local account, so it should not fire on a single accidental tap.
+ */
+export const showLogoutConfirmAlert = ({ onConfirm }: { onConfirm: () => void }) => {
+  Alert.alert('Log out?', 'You will be signed out on this device.', [
+    {
+      text: 'Cancel',
+      style: 'cancel',
+    },
+    {
+      text: 'Log Out',
+      onPress: onConfirm,
+      style: 'destructive',
+    },
+  ]);
 };
 
 /**

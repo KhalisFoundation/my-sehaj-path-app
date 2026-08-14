@@ -11,6 +11,9 @@ import {
   SecondaryCard,
   Label,
   DrawerMenu,
+  SyncPopup,
+  SignInPopup,
+  SyncUnavailablePopup,
 } from '@components';
 import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
 import { recordError, showErrorAlert, trackEvent } from '@utils';
@@ -20,22 +23,26 @@ import { RootStackParamList } from '../App';
 import { MenuIcon } from '@icons';
 import { useAppSelector } from '../store/hooks';
 import { createPath } from '../store/commands';
+import { onForeground } from '../store/syncLifecycle';
+import { sortPathsForHome } from '../store/pathOrdering';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const paths = useAppSelector((state) => state.paths.paths);
+  const syncMeta = useAppSelector((state) => state.sync.meta);
   const { handleDrawerNavigate } = useDrawerNavigation();
   const isCreatingRef = useRef(false);
   useScreenAnalytics('HomeScreen', 'HomeScreen');
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
+    const orderedPaths = sortPathsForHome(paths, syncMeta);
     // Keep "completed" strict: both completionDate and final checkpoint must match.
-    const completed = paths.filter((path: PathData) => path.completionDate !== '');
-    const inProgress = paths.filter((path: PathData) => path.completionDate === '');
+    const completed = orderedPaths.filter((path: PathData) => path.completionDate !== '');
+    const inProgress = orderedPaths.filter((path: PathData) => path.completionDate === '');
     return { pathInProgress: inProgress, pathCompleted: completed };
-  }, [paths]);
+  }, [paths, syncMeta]);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,6 +61,19 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
         }
         backHandler.remove();
       };
+    }, [])
+  );
+
+  // Home is the safe place to pull another device's progress. The lifecycle
+  // helper first uploads any local work; it never applies a stale GET response
+  // over offline edits.
+  useFocusEffect(
+    useCallback(() => {
+      // Home is reached only after leaving the reader. Explicitly request an
+      // unguarded pull so a response cannot be fetched then skipped because
+      // React Navigation has not yet run PathScreen's focus cleanup.
+      onForeground(null);
+      return undefined;
     }, [])
   );
 
@@ -80,6 +100,10 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
       isCreatingRef.current = false;
     }
   }, [navigation]);
+
+  const handleCloseDrawer = useCallback(() => {
+    setIsDrawerVisible(false);
+  }, []);
 
   const pathInProgressCards = useMemo(
     () =>
@@ -111,6 +135,9 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
+      <SyncPopup mode="unowned" />
+      <SignInPopup />
+      <SyncUnavailablePopup />
       <ImageBackground
         source={require('../assets/Images/HomeScreenBg.png')}
         resizeMode="cover"
@@ -121,6 +148,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
           onPress={() => setIsDrawerVisible(true)}
           accessibilityLabel="Menu"
           accessibilityRole="button"
+          hitSlop={12}
         >
           <MenuIcon color="#0D2346" />
         </TouchableOpacity>
@@ -145,7 +173,7 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
         </ScrollView>
         <DrawerMenu
           isVisible={isDrawerVisible}
-          onClose={() => setIsDrawerVisible(false)}
+          onClose={handleCloseDrawer}
           onNavigate={handleDrawerNavigate}
           currentRoute={Routes.Home}
           showOnlyHomeItems={true}

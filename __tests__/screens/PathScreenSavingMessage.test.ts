@@ -24,3 +24,32 @@ describe('PathScreen durable save highlight', () => {
     expect(getDurableSavedVerseId({ angNumber: 42, verseId: 1234 }, 43)).toBe(0);
   });
 });
+
+/**
+ * The auto-save and leave-screen save both derive the verse through this helper,
+ * so an ang/verse pair can never describe two different pages (P0 #3). These
+ * cover the exact navigation directions called out in the fix plan.
+ */
+describe('PathScreen ang/verse pairing after navigation', () => {
+  const saved = { angNumber: 42, verseId: 1234 };
+
+  it('keeps the verse when the user stays on the saved Ang', () => {
+    expect(getDurableSavedVerseId(saved, 42)).toBe(1234);
+  });
+
+  it('drops the verse when moving forward (Ang + 1)', () => {
+    expect(getDurableSavedVerseId(saved, 43)).toBe(0);
+  });
+
+  it('drops the verse when moving backward (Ang - 1)', () => {
+    expect(getDurableSavedVerseId(saved, 41)).toBe(0);
+  });
+
+  it('drops the verse when there is no durable save yet', () => {
+    expect(getDurableSavedVerseId(undefined, 42)).toBe(0);
+  });
+
+  it('uses the newly saved verse once the user saves on the new Ang', () => {
+    expect(getDurableSavedVerseId({ angNumber: 43, verseId: 99 }, 43)).toBe(99);
+  });
+});

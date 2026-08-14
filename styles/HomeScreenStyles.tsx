@@ -10,13 +10,13 @@ export const HomeScreenStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: UIConstants.PADDING,
-    height: '100%',
+    flex: 1,
     borderWidth: 4,
     borderRightWidth: 5,
     borderColor: 'rgba(253, 198, 6, 0.3)',
   },
   scrollContainer: {
-    minHeight: '100%',
+    flexGrow: 1,
   },
   pathInProgressContianer: {
     marginTop: UIConstants.RHYTHM * 2,

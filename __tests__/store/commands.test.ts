@@ -16,18 +16,31 @@ jest.mock('../../utils/analytics', () => ({
   allowTracking: jest.fn(),
 }));
 
-import { store, makeStore } from '../../store';
+import { rollbackDurableMutation, store, makeStore } from '../../store';
 import { hydrateStore } from '../../store/persistence';
 import { persistence } from '../../store/instance';
 import {
   commitSettingChange,
   createPath,
   renamePathCommand,
+  savePathScrollPosition,
   savePathProgress,
   undoPathCompletion,
 } from '../../store/commands';
-import { setAll } from '../../store/slices/pathsSlice';
+import { addServerPath, renamePath, setAll } from '../../store/slices/pathsSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
+import type { DateData, PathData } from '../../types';
+
+const pathWithId = (pathId: number): PathData => ({
+  pathId,
+  pathName: `Path #${pathId}`,
+  progress: 1,
+  saveData: { angNumber: 0, verseId: 0 },
+  startDate: '1-January-2026',
+  completionDate: '',
+});
+
+const dateWithId = (pathid: number): DateData => ({ pathid, dates: [], scrollPosition: 0 });
 
 const MOCKED_METHODS = [
   'getItem',
@@ -75,6 +88,25 @@ describe('createPath', () => {
 
     const onDisk = JSON.parse((await AsyncStorage.getItem('pathDetails'))!);
     expect(onDisk).toHaveLength(1);
+  });
+
+  it('uses the next visible default name even when local ids have a gap from another device', async () => {
+    store.dispatch(
+      setAll({
+        paths: [
+          { ...pathWithId(10), pathName: 'Path #10' },
+          { ...pathWithId(11), pathName: 'Path #10' },
+        ],
+        dates: [dateWithId(10), dateWithId(11)],
+      })
+    );
+
+    const id = await createPath();
+
+    expect(id).toBe(12);
+    expect(store.getState().paths.paths.find((path) => path.pathId === id)?.pathName).toBe(
+      'Path #11'
+    );
   });
 
   it('rolls the phantom path out of the store when the write fails', async () => {
@@ -159,6 +191,40 @@ describe('createPath', () => {
 });
 
 describe('atomic rollback', () => {
+  it('preserves an unrelated server update that arrives before a failed command rolls back', () => {
+    const isolated = makeStore();
+    const firstPath = {
+      pathId: 1,
+      pathName: 'Local path',
+      saveData: { angNumber: 1, verseId: 0 },
+      progress: 0,
+      startDate: '1-January-2026',
+      completionDate: '',
+    };
+    isolated.dispatch(
+      setAll({ paths: [firstPath], dates: [{ pathid: 1, dates: [], scrollPosition: 0 }] })
+    );
+    const before = isolated.getState();
+    const failedAction = renamePath({ pathId: 1, name: 'Failed local rename' });
+    isolated.dispatch(failedAction);
+
+    // Mirrors a server response landing while persistence.flush() is waiting.
+    isolated.dispatch(
+      addServerPath({
+        path: { ...firstPath, pathId: 2, pathName: 'Server path' },
+        date: { pathid: 2, dates: [], scrollPosition: 10 },
+      })
+    );
+    isolated.dispatch(rollbackDurableMutation({ action: failedAction, previous: before }));
+
+    expect(isolated.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
+      'Local path'
+    );
+    expect(isolated.getState().paths.paths.find((path) => path.pathId === 2)?.pathName).toBe(
+      'Server path'
+    );
+  });
+
   it('never starts a successful rollback write with the failed setting value', async () => {
     const realMultiSet = ORIGINAL_IMPLS.get('multiSet') as (
       entries: Array<[string, string]>
@@ -190,7 +256,71 @@ describe('atomic rollback', () => {
   });
 });
 
+describe('rapid setting toggles', () => {
+  it('applies a tap to the UI immediately, even while a slow write is in flight', async () => {
+    // Device report: toggling quickly, the switch lagged the finger by hundreds
+    // of milliseconds and then appeared to move on its own. Setting controls are
+    // driven by the store, so the dispatch must not queue behind disk I/O.
+    const realMultiSet = (AsyncStorage.multiSet as jest.Mock).getMockImplementation()!;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(async (entries: unknown) => {
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      return realMultiSet(entries);
+    });
+
+    expect(store.getState().settings.larivaar).toBe(false); // baseline
+
+    // The tap must be on screen straight away — NOT after the write resolves.
+    const first = commitSettingChange(setLarivaar(true));
+    expect(store.getState().settings.larivaar).toBe(true);
+
+    // ...and so must a second tap made while the first write is still running.
+    const second = commitSettingChange(setLarivaar(false));
+    expect(store.getState().settings.larivaar).toBe(false);
+
+    expect(await Promise.all([first, second])).toEqual([true, true]);
+    expect(store.getState().settings.larivaar).toBe(false);
+    expect(await AsyncStorage.getItem('larivaar')).toBe('false');
+  });
+
+  it('ends on the LAST requested value, on screen and on disk', async () => {
+    // Device report: toggling a setting quickly leaves it in the wrong state —
+    // "I turn it on and it goes off".
+    const results = await Promise.all([
+      commitSettingChange(setLarivaar(true)),
+      commitSettingChange(setLarivaar(false)),
+      commitSettingChange(setLarivaar(true)),
+    ]);
+
+    expect(results.every(Boolean)).toBe(true); // none may report a false failure
+    expect(store.getState().settings.larivaar).toBe(true);
+    expect(await AsyncStorage.getItem('larivaar')).toBe('true');
+  });
+
+  it('a burst of toggles settles consistently between store and disk', async () => {
+    const sequence = [true, false, true, false, true, false];
+    await Promise.all(sequence.map((value) => commitSettingChange(setLarivaar(value))));
+
+    const last = sequence[sequence.length - 1];
+    expect(store.getState().settings.larivaar).toBe(last);
+    expect(await AsyncStorage.getItem('larivaar')).toBe(String(last));
+  });
+});
+
 describe('savePathProgress', () => {
+  it('does not create a second local update for an unchanged checkpoint', async () => {
+    const id = await createPath();
+    expect(id).not.toBeNull();
+
+    await savePathProgress(id!, 42, 100, 240);
+    const firstOperation = store.getState().sync.pathOps[id!];
+
+    await savePathProgress(id!, 42, 100, 240);
+
+    // Going Home after a reader save is a successful no-op, not a newer sync
+    // operation. This prevents a duplicate upload/notice for the same point.
+    expect(store.getState().sync.pathOps[id!]).toEqual(firstOperation);
+  });
+
   it('rolls back progress when the write fails', async () => {
     const id = await createPath();
     expect(id).not.toBeNull();
@@ -203,6 +333,20 @@ describe('savePathProgress', () => {
     // store restored to the last durable value, not the failed 42.
     expect(store.getState().paths.paths[0].saveData.angNumber).toBe(before);
     restoreStorageImpls();
+  });
+});
+
+describe('savePathScrollPosition', () => {
+  it('persists a scroll checkpoint without creating a new path operation', async () => {
+    const id = await createPath();
+    expect(id).not.toBeNull();
+    const existingOp = store.getState().sync.pathOps[id!];
+
+    expect(await savePathScrollPosition(id!, 480)).toBe(true);
+
+    expect(store.getState().paths.dates[0].scrollPosition).toBe(480);
+    expect(store.getState().sync.pathOps[id!]).toEqual(existingOp);
+    expect(store.getState().sync.scrollDirty[id!]).toBeDefined();
   });
 });
 

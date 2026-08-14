@@ -2,19 +2,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { recordError } from '../utils/crashlytics';
 import type { AppStore, RootState } from './index';
 import {
+  DURABLE_KEYS,
   JOURNAL_KEY,
   LEGACY_KEYS,
   changedKeys,
   parseLegacy,
   serializeKey,
+  type DurableKey,
   type LegacyKey,
   type LegacySettingKey,
   type QuarantinedLegacyRecords,
   type RawLegacy,
   type Snapshot,
 } from './legacyFormat';
+import { SYNC_META_KEY, parseSyncMeta, toPersisted, type SyncParseResult } from './syncFormat';
 import { setAll } from './slices/pathsSlice';
 import { hydrateSettings } from './slices/settingsSlice';
+import { hydrateEmptySync, hydrateSync, hydrateSyncRecovery } from './slices/syncSlice';
 
 const READ_ATTEMPTS = 3;
 const COMMIT_ATTEMPTS = 2;
@@ -26,6 +30,19 @@ const RETRY_BASE_MS = 20;
  * persistence coordinator carry them through every later path write.
  */
 const quarantinedRecordsByStore = new WeakMap<AppStore, QuarantinedLegacyRecords>();
+
+/**
+ * True when this device is holding damaged path/date records.
+ *
+ * These are real user data that `legacyFormat` could not parse, kept so one bad
+ * record cannot lock the reader out. They are deliberately NOT in Redux (they must
+ * never render), so a plain selector cannot see them — which is why "does this
+ * device have local data?" has to be asked through the store, not the state.
+ */
+export const hasQuarantinedRecords = (store: AppStore): boolean => {
+  const records = quarantinedRecordsByStore.get(store);
+  return (records?.paths.length ?? 0) > 0 || (records?.dates.length ?? 0) > 0;
+};
 
 /**
  * Returns identifiable path IDs held outside Redux so createPath cannot reuse
@@ -63,24 +80,38 @@ export const getQuarantinedPathIds = (store: AppStore): number[] => {
  * would clobber it — so recovery preserves the disk instead.
  */
 interface Journal {
-  before: Partial<Record<LegacyKey, string | null>>;
-  after: Partial<Record<LegacyKey, string>>;
+  before: Partial<Record<DurableKey, string | null>>;
+  after: Partial<Record<DurableKey, string>>;
 }
 
-const snapshotOf = (store: AppStore): Snapshot => {
+export const captureDurableSnapshot = (store: AppStore): Snapshot => {
   const state: RootState = store.getState();
   return {
     settings: state.settings,
     paths: state.paths.paths,
     dates: state.paths.dates,
+    sync: toPersisted(state.sync),
     quarantinedRecords: quarantinedRecordsByStore.get(store),
   };
 };
 
+/** Restores quarantined rows alongside an account snapshot without exposing them to screens. */
+export const setQuarantinedRecords = (
+  store: AppStore,
+  records: QuarantinedLegacyRecords | undefined
+): void => {
+  quarantinedRecordsByStore.set(store, records ?? { paths: [], dates: [] });
+};
+
+const snapshotOf = captureDurableSnapshot;
+
+/** Both durable slices must be hydrated before any write may touch the disk. */
+const isHydrated = (state: RootState): boolean => state.paths.hydrated && state.sync.hydrated;
+
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(() => resolve(), ms));
 
 /** Confirms every written value is actually readable back at its key. */
-const verifyWritten = async (entries: Array<[LegacyKey, string]>): Promise<boolean> => {
+const verifyWritten = async (entries: Array<[DurableKey, string]>): Promise<boolean> => {
   const found = await AsyncStorage.multiGet(entries.map(([key]) => key));
   const byKey = new Map(found.map(([key, value]) => [key, value]));
   return entries.every(([key, value]) => byKey.get(key) === value);
@@ -90,8 +121,8 @@ const verifyWritten = async (entries: Array<[LegacyKey, string]>): Promise<boole
 // journal recovery
 // ---------------------------------------------------------------------------
 
-const isLegacyKey = (value: string): value is LegacyKey =>
-  (LEGACY_KEYS as readonly string[]).includes(value);
+const isDurableKey = (value: string): value is DurableKey =>
+  (DURABLE_KEYS as readonly string[]).includes(value);
 
 const isKeyMap = (value: unknown, allowNull: boolean): boolean => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
@@ -99,7 +130,7 @@ const isKeyMap = (value: unknown, allowNull: boolean): boolean => {
   }
   return Object.entries(value).every(
     ([key, entry]) =>
-      isLegacyKey(key) && (typeof entry === 'string' || (allowNull && entry === null))
+      isDurableKey(key) && (typeof entry === 'string' || (allowNull && entry === null))
   );
 };
 
@@ -181,7 +212,7 @@ export const recoverPendingJournal = async (): Promise<boolean> => {
     return false;
   }
 
-  const keys = (Object.keys(parsed.after) as LegacyKey[]).filter(isLegacyKey);
+  const keys = (Object.keys(parsed.after) as DurableKey[]).filter(isDurableKey);
   if (keys.length === 0) {
     await AsyncStorage.removeItem(JOURNAL_KEY);
     return true;
@@ -191,7 +222,7 @@ export const recoverPendingJournal = async (): Promise<boolean> => {
     const found = await AsyncStorage.multiGet(keys);
     const disk = new Map(found.map(([key, value]) => [key, value ?? null]));
 
-    const toComplete: Array<[LegacyKey, string]> = [];
+    const toComplete: Array<[DurableKey, string]> = [];
     let foreignCount = 0;
     for (const key of keys) {
       const current = disk.get(key) ?? null;
@@ -277,6 +308,20 @@ const readAllLegacy = async (): Promise<RawLegacy> => {
 };
 
 /**
+ * Reads and validates `sehajSyncMeta_v1`. A malformed value or a read failure
+ * fails SOFT to recovery (keep local data, disable cloud sync until an explicit
+ * repair) rather than blocking the whole boot — path data has already been read.
+ */
+const readSyncMeta = async (): Promise<SyncParseResult> => {
+  try {
+    return parseSyncMeta(await AsyncStorage.getItem(SYNC_META_KEY));
+  } catch (error) {
+    recordError(error, 'persistence: failed to read sync metadata');
+    return { status: 'recovery' };
+  }
+};
+
+/**
  * Repairs only settings that were malformed, plus the historically eager
  * consent default. This intentionally cannot accept either path key.
  *
@@ -343,9 +388,31 @@ export const hydrateStore = async (
       );
     }
 
+    // Sync metadata is validated independently: a malformed sync key must not
+    // block legacy path hydration, and vice versa.
+    const syncResult = await readSyncMeta();
+
     quarantinedRecordsByStore.set(store, parsed.quarantinedRecords);
     store.dispatch(hydrateSettings(parsed.value.settings));
     store.dispatch(setAll({ paths: parsed.value.paths, dates: parsed.value.dates }));
+    switch (syncResult.status) {
+      case 'valid':
+        store.dispatch(hydrateSync(syncResult.value));
+        break;
+      case 'recovery':
+        // Preserve the raw value untouched (we never write it here) and disable
+        // cloud sync until the user repairs it from Sync now.
+        recordError(
+          new Error('sync metadata malformed; cloud sync disabled until repair'),
+          'persistence: sync metadata recovery'
+        );
+        store.dispatch(hydrateSyncRecovery());
+        break;
+      default:
+        // Absent key: a first install or pre-sync upgrade.
+        store.dispatch(hydrateEmptySync());
+        break;
+    }
     await repairLegacySettings(store, parsed.settingsToRepair);
 
     // A missing consent key is normal on first install and is eagerly
@@ -459,13 +526,13 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInter
     return seq;
   };
 
-  const commitBatch = async (snapshot: Snapshot, keys: LegacyKey[]): Promise<boolean> => {
-    const entries: Array<[LegacyKey, string]> = keys.map((key) => [
+  const commitBatch = async (snapshot: Snapshot, keys: DurableKey[]): Promise<boolean> => {
+    const entries: Array<[DurableKey, string]> = keys.map((key) => [
       key,
       serializeKey(key, snapshot),
     ]);
 
-    const after: Partial<Record<LegacyKey, string>> = {};
+    const after: Partial<Record<DurableKey, string>> = {};
     for (const [key, value] of entries) {
       after[key] = value;
     }
@@ -478,9 +545,9 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInter
     // byte-for-byte from the untouched legacy bytes; using it would make the
     // first post-upgrade interrupted write look like a conflict.
     const found = await AsyncStorage.multiGet(keys);
-    const before: Partial<Record<LegacyKey, string | null>> = {};
+    const before: Partial<Record<DurableKey, string | null>> = {};
     for (const [key, value] of found) {
-      before[key as LegacyKey] = value ?? null;
+      before[key as DurableKey] = value ?? null;
     }
 
     const journal: Journal = { before, after };
@@ -515,7 +582,14 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInter
         const target = pending;
         pending = null;
 
-        const keys = changedKeys(baseline, target.snapshot);
+        // In recovery mode the on-disk sehajSyncMeta_v1 is malformed and MUST be
+        // preserved untouched until the user explicitly repairs it. Path/settings
+        // still persist, but the sync key is never written — otherwise the triple
+        // rule would clobber the raw corrupt value with a clean empty one.
+        const recovering = store.getState().sync.recoveryNeeded;
+        const keys = changedKeys(baseline, target.snapshot).filter(
+          (key) => !recovering || key !== SYNC_META_KEY
+        );
         if (keys.length === 0) {
           baseline = target.snapshot;
           settleUpTo(target.seq);
@@ -569,7 +643,7 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInter
       return;
     }
     const state = store.getState();
-    if (!state.paths.hydrated) {
+    if (!isHydrated(state)) {
       return; // landmine #2: never write from a blank/partial store
     }
     const next = snapshotOf(store);
@@ -593,7 +667,7 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInter
       stopped = false; // re-activate after a previous stop() (e.g. root remount)
       const state = store.getState();
       // Baseline starts at the hydrated state so boot does not rewrite all keys.
-      baseline = state.paths.hydrated ? snapshotOf(store) : null;
+      baseline = isHydrated(state) ? snapshotOf(store) : null;
       unsubscribe = store.subscribe(onStateChange);
     },
 
@@ -618,7 +692,7 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInter
         return false;
       }
       const state = store.getState();
-      if (!state.paths.hydrated) {
+      if (!isHydrated(state)) {
         return false;
       }
       const target = snapshotOf(store);

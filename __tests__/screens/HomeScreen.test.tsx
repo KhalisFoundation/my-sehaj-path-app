@@ -41,6 +41,9 @@ jest.mock('../../components', () => {
     PrimaryCard: Empty,
     SecondaryCard: Empty,
     Slider: Empty,
+    SyncPopup: Empty,
+    SignInPopup: Empty,
+    SyncUnavailablePopup: Empty,
     PrimaryButton: (props: { buttonTitle: string; onPress: () => void }) =>
       ReactForMock.createElement('PrimaryButton', props),
   };
