@@ -38,6 +38,8 @@ export interface SyncState {
   status: 'idle' | 'flushing' | 'error';
   lastError: string | null;
   recoveryNeeded: boolean;
+  /** Runtime-only recovery choice notice shown by SyncStatusNotice. */
+  recoveryRestoreStatus?: 'idle' | 'restoring' | 'restored' | 'paused';
   /**
    * Per-login sync permission (the Step-9 hook). `syncPopupAnswered` gates the
    * welcome/"Sync now?" prompt so it shows once per signed-in session;
@@ -108,6 +110,7 @@ export const initialSyncState: SyncState = {
   status: 'idle',
   lastError: null,
   recoveryNeeded: false,
+  recoveryRestoreStatus: 'idle',
   syncPopupAnswered: false,
   confirmNextSync: false,
   catchUpSyncDone: false,
@@ -126,6 +129,7 @@ const resetRuntime = (state: SyncState) => {
   state.status = 'idle';
   state.lastError = null;
   state.recoveryNeeded = false;
+  state.recoveryRestoreStatus = 'idle';
   state.syncPopupAnswered = false;
   state.syncApprovedForEmail = null;
   state.catchUpSyncDone = false;
@@ -341,6 +345,12 @@ export const syncSlice = createSlice({
       state.lastError = action.payload;
       state.status = action.payload ? 'error' : state.status;
     },
+    setRecoveryRestoreStatus: (
+      state,
+      action: PayloadAction<'idle' | 'restoring' | 'restored' | 'paused'>
+    ) => {
+      state.recoveryRestoreStatus = action.payload;
+    },
 
     // ---- per-login sync permission (Step-9 hook; runtime-only) -----------
     resetSyncPopup: (state) => {
@@ -400,6 +410,7 @@ export const {
   clearSettingsIfUnchanged,
   setSyncStatus,
   setSyncError,
+  setRecoveryRestoreStatus,
   requestSyncConfirmation,
   clearSyncConfirmation,
   setCatchUpSyncRunning,

@@ -5,11 +5,12 @@ import { SyncStatusNoticeStyles as styles } from '@styles';
 import { OfflineCloudIcon, SyncedCheckIcon } from '../icons';
 import { isApiConfigured } from '@api/config';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { clearSyncConfirmation } from '../store/slices/syncSlice';
+import { clearSyncConfirmation, setRecoveryRestoreStatus } from '../store/slices/syncSlice';
 import { isSilentPathOp } from '../store/syncWork';
 
 type Phase = 'hidden' | 'online' | 'syncing' | 'done' | 'error';
-type RenderedPhase = Phase | 'offline';
+type RecoveryNotice = 'idle' | 'restoring' | 'restored' | 'paused';
+type RenderedPhase = Phase | 'offline' | Exclude<RecoveryNotice, 'idle'>;
 
 /** Long enough that a fast sync stays silent instead of flashing. */
 const SHOW_AFTER_MS = 400;
@@ -36,7 +37,7 @@ const DONE_DISMISS_MS = 2000;
 const ERROR_DISMISS_MS = 4000;
 const OFFLINE_DISMISS_MS = 3000;
 /** Let the reconnect acknowledgement be read before beginning its sync status. */
-const ONLINE_VISIBLE_MS = 1000;
+const ONLINE_VISIBLE_MS = 500;
 const ENTER_DURATION_MS = 220;
 const EXIT_DURATION_MS = 180;
 
@@ -62,6 +63,7 @@ const SyncStatusNoticeComponent = () => {
   const dispatch = useAppDispatch();
 
   const status = useAppSelector((state) => state.sync.status);
+  const authStatus = useAppSelector((state) => state.auth.status);
   const isOffline = useAppSelector(
     (state) => state.auth.status === 'signedIn' && !state.network.isOnline && isApiConfigured()
   );
@@ -71,6 +73,9 @@ const SyncStatusNoticeComponent = () => {
   const signingIn = useAppSelector((state) => state.auth.signingIn);
   const confirmNextSync = useAppSelector((state) => state.sync.confirmNextSync);
   const lastError = useAppSelector((state) => state.sync.lastError);
+  const recoveryNotice = useAppSelector(
+    (state) => (state.sync.recoveryRestoreStatus ?? 'idle') as RecoveryNotice
+  );
   /**
    * Work this sync cycle is responsible for.
    *
@@ -245,6 +250,12 @@ const SyncStatusNoticeComponent = () => {
     if (busy) {
       return undefined;
     }
+    if (kind.current === 'signIn' && authStatus === 'signedOut') {
+      meaningful.current = false;
+      unannouncedRun.current = false;
+      setPhase('hidden');
+      return undefined;
+    }
     // Already resolved: this run is over and the message is being read. Without
     // this the effect re-fires on its own `phase` change and hides the result
     // almost immediately, long before its dismiss timer.
@@ -315,7 +326,7 @@ const SyncStatusNoticeComponent = () => {
       }
     }, Math.max(SETTLE_MS, onlineHold));
     return () => clearTimeout(timer);
-  }, [accountMatches, busy, confirmNextSync, dispatch, pendingCount, phase, status]);
+  }, [accountMatches, authStatus, busy, confirmNextSync, dispatch, pendingCount, phase, status]);
 
   useEffect(() => {
     if (phase === 'syncing') {
@@ -365,10 +376,17 @@ const SyncStatusNoticeComponent = () => {
     }
     if (wasOffline.current) {
       wasOffline.current = false;
+      // Offline is an overlay, not a resolution. A reconnect acknowledgement
+      // must never replace the real sync failure it briefly covered.
+      if (status === 'error' || lastError !== null) {
+        setPhase('error');
+        setResolvedNonce((nonce) => nonce + 1);
+        return;
+      }
       holdOnlineUntil.current = Date.now() + ONLINE_VISIBLE_MS;
       setPhase('online');
     }
-  }, [isOffline]);
+  }, [isOffline, lastError, status]);
 
   useEffect(() => {
     if (phase !== 'online' || busy || confirmNextSync) {
@@ -381,10 +399,28 @@ const SyncStatusNoticeComponent = () => {
     return () => clearTimeout(timer);
   }, [busy, confirmNextSync, phase]);
 
+  useEffect(() => {
+    if (recoveryNotice !== 'restored' && recoveryNotice !== 'paused') {
+      return undefined;
+    }
+    const timer = setTimeout(() => dispatch(setRecoveryRestoreStatus('idle')), DONE_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [dispatch, recoveryNotice]);
+
   // Offline takes priority over a stale sync/done phase, but only briefly.
   // Reading stays fully usable without a connection, so an always-visible
   // warning would distract from the content.
-  const displayPhase: RenderedPhase = isOffline ? (offlineDismissed ? 'hidden' : 'offline') : phase;
+  let displayPhase: RenderedPhase = phase;
+  if (recoveryNotice !== 'idle') {
+    displayPhase = recoveryNotice;
+  } else if (confirmNextSync && phase === 'online') {
+    // A reconnect upload was explicitly requested (including a scroll saved
+    // while offline). Do not let the brief acknowledgement conceal its only
+    // visible progress/result when the request finishes very quickly.
+    displayPhase = 'syncing';
+  } else if (isOffline) {
+    displayPhase = offlineDismissed ? 'hidden' : 'offline';
+  }
 
   useEffect(() => {
     noticeAnimation.stopAnimation();
@@ -433,10 +469,15 @@ const SyncStatusNoticeComponent = () => {
   const messages: Record<string, string> = {
     syncing: syncingMessage,
     done: isSettings ? 'Settings saved' : 'Synced',
+    restoring: 'Restoring from cloud…',
+    restored: 'Restored from cloud',
+    paused: 'Sync paused. Your local paths are safe.',
     online: 'Back online',
     offline: 'No internet connection',
   };
   const message = messages[renderedPhase] ?? errorMessage;
+  const showCheck =
+    renderedPhase === 'done' || renderedPhase === 'online' || renderedPhase === 'restored';
 
   return (
     <Animated.View
@@ -458,7 +499,8 @@ const SyncStatusNoticeComponent = () => {
         // Syncing and Synced share the primary blue: same conversation, two
         // moments of it. Only a failure changes colour, because that is the one
         // message the user has to actually notice.
-        (renderedPhase === 'error' || renderedPhase === 'offline') && styles.errorNotice,
+        (renderedPhase === 'error' || renderedPhase === 'offline' || renderedPhase === 'paused') &&
+          styles.errorNotice,
       ]}
     >
       {renderedPhase === 'offline' ? (
@@ -471,8 +513,10 @@ const SyncStatusNoticeComponent = () => {
         </View>
       ) : (
         <View style={styles.row}>
-          {renderedPhase === 'syncing' ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
-          {renderedPhase === 'done' || renderedPhase === 'online' ? <SyncedCheckIcon /> : null}
+          {renderedPhase === 'syncing' || renderedPhase === 'restoring' ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : null}
+          {showCheck ? <SyncedCheckIcon /> : null}
           <Text style={styles.text}>{message}</Text>
         </View>
       )}

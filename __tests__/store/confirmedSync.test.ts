@@ -6,6 +6,7 @@ import { makeStore } from '../../store';
 import { MAX_SYNC_PATHS } from '../../store/syncRequest';
 import {
   discardLocalDataAndSync,
+  restoreCloudDataAfterSyncRecovery,
   runConfirmedAccountSync,
   switchAccountData,
 } from '../../store/confirmedSync';
@@ -331,6 +332,34 @@ describe('runConfirmedAccountSync', () => {
     expect(await discardLocalDataAndSync(store, 'u@e.com')).toBe(true);
     expect(store.getState().paths.paths.map((path) => path.pathName)).toEqual(['From account']);
     expect(store.getState().sync.account).toBe('u@e.com');
+  });
+
+  it('restores cloud data during recovery without uploading or duplicating local paths', async () => {
+    const store = setup([makePath(1, 'Local only')]);
+    store.dispatch(hydrateSyncRecovery());
+    mockSync.mockImplementationOnce(async ({ body }) => {
+      expect(body.paths).toEqual([]);
+      return syncOk([serverSehaj({ pathId: OTHER_UUID, name: 'From cloud' })]);
+    });
+
+    expect(await restoreCloudDataAfterSyncRecovery(store, 'u@e.com')).toBe(true);
+    expect(store.getState().paths.paths.map((path) => path.pathName)).toEqual(['From cloud']);
+    expect(store.getState().sync.account).toBe('u@e.com');
+    expect(store.getState().sync.recoveryNeeded).toBe(false);
+  });
+
+  it('keeps recovery data untouched if the cloud restore cannot be fetched', async () => {
+    const store = setup([makePath(1, 'Local only')]);
+    store.dispatch(hydrateSyncRecovery());
+    mockSync.mockResolvedValueOnce({
+      data: undefined,
+      error: { message: 'offline' },
+      response: { status: 500 },
+    });
+
+    expect(await restoreCloudDataAfterSyncRecovery(store, 'u@e.com')).toBe(false);
+    expect(store.getState().paths.paths.map((path) => path.pathName)).toEqual(['Local only']);
+    expect(store.getState().sync.recoveryNeeded).toBe(true);
   });
 
   it('does not remove anything until the replacement has arrived', async () => {

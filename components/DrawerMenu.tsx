@@ -28,7 +28,9 @@ import { startLogin, logout } from '@auth';
 import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
 import { useAppSelector } from '../store/hooks';
 import { store } from '../store';
-import { resetSyncMetadataAndSync, runManualSync } from '../store/manualSync';
+import { restoreCloudDataAfterSyncRecovery } from '../store/confirmedSync';
+import { runManualSync } from '../store/manualSync';
+import { setRecoveryRestoreStatus } from '../store/slices/syncSlice';
 
 interface DrawerMenuProps {
   isVisible: boolean;
@@ -101,22 +103,37 @@ const DrawerMenuComponent = ({
     });
   };
 
-  const performSync = async (repair = false) => {
+  const performSync = async () => {
     if (!userEmail || manualSyncInFlight.current) {
       return;
     }
     manualSyncInFlight.current = true;
     setIsManualSyncing(true);
     try {
-      trackEvent('ManualSync', 'click', repair ? 'Reset sync metadata' : 'Sync now');
-      const ok = repair
-        ? await resetSyncMetadataAndSync(store, userEmail)
-        : await runManualSync(store, userEmail);
+      trackEvent('ManualSync', 'click', 'Sync now');
       // A normal sync reports itself through the status notice — success and
       // failure both. Adding a blocking alert on top would mean two messages for
-      // one tap. The repair path keeps the alert: it is a rare, explicit action
-      // whose failure the user must not miss.
-      if (!ok && repair) {
+      // one tap.
+      await runManualSync(store, userEmail);
+    } finally {
+      manualSyncInFlight.current = false;
+      setIsManualSyncing(false);
+    }
+  };
+
+  const restoreFromCloud = async () => {
+    if (!userEmail || manualSyncInFlight.current) {
+      return;
+    }
+    manualSyncInFlight.current = true;
+    setIsManualSyncing(true);
+    try {
+      trackEvent('ManualSync', 'click', 'Restore cloud backup');
+      store.dispatch(setRecoveryRestoreStatus('restoring'));
+      if (await restoreCloudDataAfterSyncRecovery(store, userEmail)) {
+        store.dispatch(setRecoveryRestoreStatus('restored'));
+      } else {
+        store.dispatch(setRecoveryRestoreStatus('idle'));
         showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
       }
     } finally {
@@ -136,17 +153,37 @@ const DrawerMenuComponent = ({
       return;
     }
     Alert.alert(
-      'Reset sync?',
-      `Your saved paths will stay on this device. Resetting damaged sync information may add duplicate server paths when you sync again to ${
-        userEmail ?? 'the signed-in account'
-      }.`,
+      'Sync information damaged',
+      'Your paths are safe on this device, but we cannot safely match them to your cloud paths. Sync is paused to prevent duplicates.',
       [
-        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset and sync',
+          text: 'Keep local data',
+          style: 'cancel',
           onPress: () => {
             onClose();
-            performSync(true);
+            store.dispatch(setRecoveryRestoreStatus('paused'));
+          },
+        },
+        {
+          text: 'Restore from cloud',
+          onPress: () => {
+            Alert.alert(
+              'Replace local paths?',
+              `This will replace the paths on this device with the cloud backup for ${
+                userEmail ?? 'the signed-in account'
+              }. This cannot be undone.`,
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Restore from cloud',
+                  style: 'destructive',
+                  onPress: () => {
+                    onClose();
+                    restoreFromCloud();
+                  },
+                },
+              ]
+            );
           },
           style: 'destructive',
         },

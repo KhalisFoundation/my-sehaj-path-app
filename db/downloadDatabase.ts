@@ -1,4 +1,12 @@
-import { downloadFile, exists, hash, moveFile, read, unlink } from '@dr.pogodin/react-native-fs';
+import {
+  downloadFile,
+  exists,
+  hash,
+  moveFile,
+  read,
+  stopDownload,
+  unlink,
+} from '@dr.pogodin/react-native-fs';
 import { SEHAJ_DB_MD5_URL, SEHAJ_DB_REMOTE_URL } from '@constants';
 import { recordError } from '@utils';
 import { getBani, resetBani } from './connection';
@@ -15,6 +23,8 @@ import { LOCAL_DB_PATH, TEMP_DB_PATH } from './paths';
 
 // Every valid SQLite file begins with these 16 bytes: "SQLite format 3\0".
 const SQLITE_MAGIC = 'SQLite format 3';
+/** A foreground native transfer must eventually release the shared temp-file lock. */
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 
 export interface DownloadProgress {
   bytesWritten: number;
@@ -81,6 +91,19 @@ let activeDownload: Promise<DownloadResult> | null = null;
 /** True while any first-install or manual update download owns the temp file. */
 export const isDatabaseDownloadInProgress = (): boolean => activeDownload !== null;
 
+const awaitDownloadWithTimeout = <T>(promise: Promise<T>, jobId: number): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      try {
+        stopDownload(jobId);
+      } catch {
+        // The native job may already have ended; the timeout still releases JS.
+      }
+      reject(new Error('database download timed out'));
+    }, DOWNLOAD_TIMEOUT_MS);
+    promise.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
+
 const downloadDatabaseInternal = async (
   onProgress?: (progress: DownloadProgress) => void,
   force = false
@@ -100,7 +123,7 @@ const downloadDatabaseInternal = async (
   let lastLoggedDecile = 0;
 
   try {
-    const { promise } = downloadFile({
+    const { jobId, promise } = downloadFile({
       fromUrl: SEHAJ_DB_REMOTE_URL,
       toFile: TEMP_DB_PATH,
       background: false, // foreground-only; avoids iOS background-session native setup
@@ -125,7 +148,7 @@ const downloadDatabaseInternal = async (
       },
     });
 
-    const result = await promise;
+    const result = await awaitDownloadWithTimeout(promise, jobId);
     if (result.statusCode !== 200) {
       await safeUnlink(TEMP_DB_PATH);
       return { status: 'failed', reason: `HTTP ${result.statusCode}` };

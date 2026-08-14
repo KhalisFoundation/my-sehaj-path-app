@@ -261,6 +261,17 @@ describe('onCheckpoint / onReconnect', () => {
     expect(mockRefresh).toHaveBeenCalledTimes(1);
   });
 
+  it('confirms a scroll-only checkpoint uploaded on reconnect', async () => {
+    mockState.sync.meta = { 1: { onServer: true } };
+    mockState.sync.scrollDirty = { 1: 123 };
+
+    await onReconnect();
+
+    expect(mockDispatch).toHaveBeenCalledWith(
+      expect.objectContaining({ type: requestSyncConfirmation.type })
+    );
+  });
+
   it('pulls on reconnect even with nothing to upload', async () => {
     // An account that never downloaded — a switch that raced a dropping
     // connection — would otherwise stay empty until a foreground or manual sync.

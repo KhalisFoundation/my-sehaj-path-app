@@ -160,6 +160,13 @@ const rootReducer = (state: CombinedState | undefined, action: UnknownAction): C
       pendingSettingsUpdatedAt: null,
       status: 'idle',
       lastError: null,
+      recoveryNeeded: false,
+      recoveryRestoreStatus: 'idle',
+      syncPopupAnswered: false,
+      syncApprovedForEmail: null,
+      catchUpSyncDone: false,
+      catchUpSyncRunning: false,
+      pulling: false,
     };
     return {
       ...state,

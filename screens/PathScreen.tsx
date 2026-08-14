@@ -178,11 +178,6 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         clearTimeout(currentDebounceTimer);
         debounceTimer.current = null;
       }
-      scrollOffset.current = 0;
-      scrollRef.current?.scrollTo({
-        y: 0,
-        animated: false,
-      });
       return true;
     },
     [checkNetwork, navigation, resetTransientUiState]
@@ -503,6 +498,10 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           matchedPathDate.current = matchedPathDateData
             ? { ...matchedPathDateData, dates: [...matchedPathDateData.dates] }
             : undefined;
+          // Seed this synchronously. The visual scroll restore waits for reader
+          // content/layout, but a background or navigation checkpoint can happen
+          // before that effect runs and must preserve the already-saved offset.
+          scrollOffset.current = matchedPathDateData?.scrollPosition ?? 0;
           completionUndoPendingRef.current = false;
           completionUndoStartScrollYRef.current = null;
           const pathAngData =

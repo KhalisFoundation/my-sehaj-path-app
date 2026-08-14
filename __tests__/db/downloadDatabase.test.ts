@@ -148,4 +148,20 @@ describe('downloadDatabase', () => {
     await expect(second).resolves.toEqual({ status: 'downloaded' });
     expect(downloadFile).toHaveBeenCalledTimes(1);
   });
+
+  it('times out a stalled native download, cancels its job, and releases the lock for retry', async () => {
+    jest.useFakeTimers();
+    downloadFile.mockReturnValue({ jobId: 42, promise: new Promise(() => undefined) });
+
+    const stalled = downloadDatabase();
+    await jest.advanceTimersByTimeAsync(10 * 60 * 1000);
+
+    await expect(stalled).resolves.toEqual({
+      status: 'failed',
+      reason: 'database download timed out',
+    });
+    downloadFile.mockReturnValue({ jobId: 43, promise: Promise.resolve({ statusCode: 200 }) });
+    await expect(downloadDatabase()).resolves.toEqual({ status: 'downloaded' });
+    jest.useRealTimers();
+  });
 });

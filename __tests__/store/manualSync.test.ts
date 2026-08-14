@@ -176,6 +176,8 @@ describe('runManualSync', () => {
     // Unknown server state → idempotent create, which answers 200 if it exists.
     expect(store.getState().sync.meta[1].onServer).toBe(false);
     expect(store.getState().sync.recoveryNeeded).toBe(false);
+    expect(store.getState().sync.syncPopupAnswered).toBe(true);
+    expect(store.getState().sync.syncApprovedForEmail).toBe('u@e.com');
     expect(mockConfirmed).toHaveBeenCalledWith(store, 'u@e.com');
     expect(store.getState().paths.paths[0]?.pathName).toBe('Keep me');
   });
@@ -231,13 +233,15 @@ describe('runManualSync', () => {
     expect(mockConfirmed).not.toHaveBeenCalled();
   });
 
-  it('repairs with fresh ids when nothing is salvageable, leaving paths untouched', async () => {
+  it('rejects repair when a local path has no recoverable UUID, preventing duplicate cloud paths', async () => {
     const store = recoveringStore();
     mockGetItem.mockResolvedValue('{not json at all');
 
-    expect(await resetSyncMetadataAndSync(store, 'u@e.com')).toBe(true);
-    // No mapping recovered → the confirmed sync mints one via backfill.
+    expect(await resetSyncMetadataAndSync(store, 'u@e.com')).toBe(false);
+    expect(store.getState().sync.recoveryNeeded).toBe(true);
+    // No mapping recovered → never let a later sync mint a new cloud UUID.
     expect(store.getState().sync.meta[1]).toBeUndefined();
     expect(store.getState().paths.paths[0]?.pathName).toBe('Keep me');
+    expect(mockConfirmed).not.toHaveBeenCalled();
   });
 });

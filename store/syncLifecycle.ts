@@ -54,7 +54,7 @@ const pathSignature = (): string => {
     .join('|');
 };
 
-const promoteDirtyScroll = (): boolean => {
+const promoteDirtyScroll = (announce = false): boolean => {
   const state = store.getState();
   let promoted = false;
   Object.keys(state.sync.scrollDirty).forEach((key) => {
@@ -67,10 +67,10 @@ const promoteDirtyScroll = (): boolean => {
     if (!op || isPathOpBlocked(store, pathId, op.localUpdatedAt)) {
       store.dispatch(markPathEdited({ pathId, at: Date.now() }));
       // This op exists only to carry the latest scroll position at a lifecycle
-      // checkpoint. It is not an explicit panktee/progress save and must not
-      // make SyncStatusNotice announce a timing-dependent "Synced" message.
+      // checkpoint. It normally stays silent, but reconnecting is an explicit
+      // recovery moment: acknowledge that offline reading reached the cloud.
       const promotedOp = store.getState().sync.pathOps[pathId];
-      if (promotedOp) {
+      if (promotedOp && !announce) {
         markSilentPathOp(pathId, promotedOp.localUpdatedAt);
       }
       promoted = true;
@@ -157,7 +157,9 @@ export const onReconnect = async (): Promise<void> => {
     return;
   }
   try {
-    promoteDirtyScroll();
+    if (promoteDirtyScroll(true)) {
+      store.dispatch(requestSyncConfirmation());
+    }
     if (hasPendingWork()) {
       await outbox.flushNow();
     }

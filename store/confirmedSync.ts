@@ -313,7 +313,11 @@ const clearActiveAccountDataDurably = async (store: AppStore): Promise<boolean> 
  * durable, then download the account. If download fails, restore the local
  * snapshot so a temporary network problem never turns the choice into data loss.
  */
-export const discardLocalDataAndSync = async (store: AppStore, email: string): Promise<boolean> => {
+const replaceLocalDataWithCloud = async (
+  store: AppStore,
+  email: string,
+  allowRecovery: boolean
+): Promise<boolean> => {
   const before = store.getState();
   const beforeQuarantined = captureDurableSnapshot(store).quarantinedRecords;
   if (
@@ -321,7 +325,7 @@ export const discardLocalDataAndSync = async (store: AppStore, email: string): P
     !before.auth.token ||
     before.auth.email !== email ||
     !before.network.isOnline ||
-    before.sync.recoveryNeeded
+    before.sync.recoveryNeeded !== allowRecovery
   ) {
     return false;
   }
@@ -357,7 +361,7 @@ export const discardLocalDataAndSync = async (store: AppStore, email: string): P
   if (
     !isCurrentSyncSession(afterRequest, session) ||
     afterRequest.sync.account !== null ||
-    afterRequest.sync.recoveryNeeded
+    afterRequest.sync.recoveryNeeded !== allowRecovery
   ) {
     return false; // the session or ownership changed mid-request — touch nothing
   }
@@ -409,6 +413,20 @@ export const discardLocalDataAndSync = async (store: AppStore, email: string): P
   }
   return false;
 };
+
+/** Replaces unrelated local data only after the user explicitly chooses cloud data. */
+export const discardLocalDataAndSync = (store: AppStore, email: string): Promise<boolean> =>
+  replaceLocalDataWithCloud(store, email, false);
+
+/**
+ * Recovery mode has no trustworthy local-to-cloud UUID mapping. Downloading the
+ * account before replacing anything is the only repair that cannot create
+ * duplicate cloud paths. The caller must obtain an explicit destructive choice.
+ */
+export const restoreCloudDataAfterSyncRecovery = (
+  store: AppStore,
+  email: string
+): Promise<boolean> => replaceLocalDataWithCloud(store, email, true);
 
 /** Gives every local path that predates sync a UUID + metadata (case A claim). */
 const backfillMissingMeta = (store: AppStore): void => {

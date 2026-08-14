@@ -5,6 +5,7 @@ import { runConfirmedAccountSync } from './confirmedSync';
 import type { AppStore } from './index';
 import { outbox, persistence } from './instance';
 import {
+  approveSync,
   markPathEdited,
   hydrateEmptySync,
   hydrateSyncRecovery,
@@ -89,9 +90,9 @@ export const runManualSync = async (store: AppStore, email: string): Promise<boo
  * User-confirmed repair for corrupt sync bookkeeping. Path data is untouched.
  *
  * The corrupt value is backed up (and the copy verified) before anything is
- * replaced, then every still-readable UUID mapping is salvaged from it. Reusing
- * those ids is what keeps the repair attached to the account's existing cloud
- * paths — minting fresh ids would duplicate every path in the cloud.
+ * replaced, then every still-readable UUID mapping is salvaged from it. This
+ * repair is permitted only when every local path has a readable UUID; minting a
+ * fresh id would duplicate that path in the cloud.
  *
  * Salvaged entries are marked `onServer: false` on purpose: the create is
  * idempotent by UUID, so a path the server already has answers 200 and is
@@ -124,6 +125,15 @@ export const resetSyncMetadataAndSync = async (
       return false;
     }
 
+    const salvaged = salvageUuidMappings(raw);
+    if (initial.paths.paths.some((path) => !salvaged[path.pathId])) {
+      recordError(
+        new Error('sync metadata has paths without recoverable UUID mappings'),
+        'manualSync: unsafe recovery repair rejected'
+      );
+      return false;
+    }
+
     // Never destroy the only record of this account's UUIDs. If the backup can't
     // be written and read back, stop and stay in recovery mode.
     if (raw !== null) {
@@ -137,14 +147,18 @@ export const resetSyncMetadataAndSync = async (
       }
     }
 
-    const salvaged = salvageUuidMappings(raw);
     store.dispatch(hydrateEmptySync());
+    // The user has already explicitly chosen “Reset and sync”. `hydrateEmptySync`
+    // clears this runtime flag, which otherwise lets Home briefly show its
+    // unowned-account “Discard / Keep safe” choice while the confirmed sync is
+    // already associating the same local data.
+    store.dispatch(approveSync(normalizedEmail));
 
     const now = Date.now();
     store.getState().paths.paths.forEach((path, index) => {
       const serverPathId = salvaged[path.pathId];
       if (!serverPathId) {
-        return; // no readable id — the confirmed sync mints a fresh one
+        return; // checked above; keeps this loop defensive
       }
       store.dispatch(
         upsertMeta({

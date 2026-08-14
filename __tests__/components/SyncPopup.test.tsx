@@ -386,9 +386,8 @@ describe('SyncPopup — account switch guard', () => {
   it('switches automatically when A is already fully backed up', async () => {
     mockState.auth.email = 'b@e.com';
     mockState.sync.account = 'a@e.com';
-    // A legacy account may have no incremental-pull cursor yet. Its paths are
-    // still safely backed up when each one was acknowledged by the server.
-    mockState.sync.lastSyncedAt = 0;
+    // The cursor proves this account has completed at least one server sync.
+    mockState.sync.lastSyncedAt = 10;
     // "Fully backed up" means every path is provably on the server, not just
     // that a sync happened once.
     mockState.sync.meta = { 1: { onServer: true, deletedAt: null } };
@@ -399,6 +398,29 @@ describe('SyncPopup — account switch guard', () => {
 
     expect(mockSwitchAccount).toHaveBeenCalledWith(expect.anything(), 'b@e.com', false);
     expect(mockDispatch).toHaveBeenCalledWith(approveSync('b@e.com'));
+  });
+
+  it('asks before switching when only orphaned local history remains and A never synced', async () => {
+    // `paths.every(...)` is vacuously true for an empty list, but this orphaned
+    // date record is still real device data and must never be overwritten by B.
+    mockState.auth.email = 'b@e.com';
+    mockState.sync.account = 'a@e.com';
+    mockState.sync.lastSyncedAt = 0;
+    mockState.paths.paths = [];
+    mockState.paths.dates = [{ pathid: 999 }];
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(<SyncPopup mode="accountSwitch" />);
+    });
+
+    expect(
+      renderer.root.findAll((node) => node.props.accessibilityLabel === 'Keep it safe for a@e.com')
+    ).not.toHaveLength(0);
+    expect(
+      renderer.root.findAll((node) => node.props.accessibilityLabel === 'Add a copy to b@e.com')
+    ).not.toHaveLength(0);
+    expect(mockSwitchAccount).not.toHaveBeenCalled();
   });
 
   it('does not claim unsynced progress when there is none', async () => {
