@@ -71,6 +71,8 @@ const DrawerMenuComponent = ({
 }: DrawerMenuProps) => {
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const manualSyncInFlight = useRef(false);
   const authStatus = useAppSelector((state) => state.auth.status);
   const userEmail = useAppSelector((state) => state.auth.email);
   const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
@@ -100,19 +102,26 @@ const DrawerMenuComponent = ({
   };
 
   const performSync = async (repair = false) => {
-    if (!userEmail) {
+    if (!userEmail || manualSyncInFlight.current) {
       return;
     }
-    trackEvent('ManualSync', 'click', repair ? 'Reset sync metadata' : 'Sync now');
-    const ok = repair
-      ? await resetSyncMetadataAndSync(store, userEmail)
-      : await runManualSync(store, userEmail);
-    // A normal sync reports itself through the status notice — success and
-    // failure both. Adding a blocking alert on top would mean two messages for
-    // one tap. The repair path keeps the alert: it is a rare, explicit action
-    // whose failure the user must not miss.
-    if (!ok && repair) {
-      showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+    manualSyncInFlight.current = true;
+    setIsManualSyncing(true);
+    try {
+      trackEvent('ManualSync', 'click', repair ? 'Reset sync metadata' : 'Sync now');
+      const ok = repair
+        ? await resetSyncMetadataAndSync(store, userEmail)
+        : await runManualSync(store, userEmail);
+      // A normal sync reports itself through the status notice — success and
+      // failure both. Adding a blocking alert on top would mean two messages for
+      // one tap. The repair path keeps the alert: it is a rare, explicit action
+      // whose failure the user must not miss.
+      if (!ok && repair) {
+        showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+      }
+    } finally {
+      manualSyncInFlight.current = false;
+      setIsManualSyncing(false);
     }
   };
 
@@ -266,6 +275,7 @@ const DrawerMenuComponent = ({
                       <TouchableOpacity
                         style={DrawerMenuStyles.logoutButton}
                         onPress={handleSyncPress}
+                        disabled={isManualSyncing}
                         accessibilityLabel={Constants.SYNC_NOW}
                         accessibilityRole="button"
                       >

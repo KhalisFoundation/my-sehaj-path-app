@@ -246,13 +246,18 @@ const SyncStatusNoticeComponent = () => {
       resolvedAt.current = 0;
       return undefined;
     }
+    // Offline status is an overlay, not resolution of a sync failure. Preserve
+    // the underlying error until the connection returns so it can be read.
+    if (phase === 'error' && isOffline) {
+      return undefined;
+    }
     resolvedAt.current = Date.now();
     const timer = setTimeout(
       () => setPhase('hidden'),
       phase === 'done' ? DONE_DISMISS_MS : ERROR_DISMISS_MS
     );
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [isOffline, phase]);
 
   // Offline is a current connection state, rather than the outcome of one
   // particular request. It takes priority over a stale sync/done phase and

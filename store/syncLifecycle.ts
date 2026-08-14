@@ -10,6 +10,9 @@ import {
   setCatchUpSyncRunning,
 } from './slices/syncSlice';
 import { hasLocalData, hasWorkBlockingPull, isPathOpBlocked } from './syncWork';
+import { getActiveReaderPath } from './activeReaderPath';
+
+export { getActiveReaderPath, setActiveReaderPath } from './activeReaderPath';
 
 /**
  * Sync lifecycle triggers (Step 10). App.tsx / screens call these at the right
@@ -76,19 +79,6 @@ const promoteDirtyScroll = (): boolean => {
 };
 
 /**
- * The path currently open in the reader, if any. `PathScreen` registers it while
- * focused so a foreground `GET /paths` refresh never overwrites or removes the
- * path being read (the caller may still pass an explicit id to override).
- */
-let activeReaderPathId: number | null = null;
-export const setActiveReaderPath = (pathId: number | null): void => {
-  activeReaderPathId = pathId;
-};
-
-/** Used by the drawer's explicit Sync now so its pull also protects the reader. */
-export const getActiveReaderPath = (): number | null => activeReaderPathId;
-
-/**
  * App came to the foreground (or a known account just resumed). With pending
  * local work, push it and wait. Only after the queue is empty pull other
  * devices' changes via `GET /paths`; this prevents an old server response from
@@ -123,7 +113,7 @@ export const onForeground = async (activePathId?: number): Promise<void> => {
       return; // offline/error/permanent rejection: never pull stale server data over it
     }
     // Default to the open reader path so it isn't reconciled mid-read.
-    await refreshPathsFromServer(store, activePathId ?? activeReaderPathId ?? undefined);
+    await refreshPathsFromServer(store, activePathId ?? getActiveReaderPath() ?? undefined);
   } catch (error) {
     recordError(error, 'syncLifecycle: foreground sync failed');
   } finally {
@@ -196,7 +186,7 @@ export const onReconnect = async (): Promise<void> => {
     if (hasPendingWork()) {
       return;
     }
-    await refreshPathsFromServer(store, activeReaderPathId ?? undefined);
+    await refreshPathsFromServer(store, getActiveReaderPath() ?? undefined);
   } catch (error) {
     recordError(error, 'syncLifecycle: reconnect sync failed');
   }
