@@ -3,6 +3,7 @@ import { Text, TouchableOpacity, View } from 'react-native';
 import { Constants } from '@constants';
 import { startLogin } from '@auth';
 import { DialogStyles as styles } from '@styles';
+import { trackEvent } from '@utils';
 import { writeSyncPrefs } from '../store/syncPrefs';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { dismissSignInPopup } from '../store/slices/syncSlice';
@@ -28,6 +29,10 @@ const SignInPopupComponent = () => {
   }, [dispatch]);
 
   const onLogin = useCallback(() => {
+    // The popup calls `startLogin` directly rather than going through the
+    // drawer's button, so without this a login started here was invisible in
+    // analytics — indistinguishable from the popup never converting.
+    trackEvent('SignInPopup', 'click', 'login from popup');
     dismiss();
     startLogin();
   }, [dismiss]);

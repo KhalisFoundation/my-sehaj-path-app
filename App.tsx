@@ -35,8 +35,7 @@ import { outbox, persistence } from './store/instance';
 import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syncLifecycle';
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
-import { provisionDatabase } from './db';
-
+import { noteAppState, provisionDatabase } from './db';
 export type RootStackParamList = {
   Splash: undefined;
   Home: undefined;
@@ -123,6 +122,9 @@ const App = () => {
       }
       if (online && !wasOnline) {
         onReconnect();
+        // Same reasoning as the foreground retry: a download aborted by a
+        // dropped connection should resume being attempted once there is one.
+        provisionDatabase();
       }
       wasOnline = online;
     });
@@ -131,9 +133,20 @@ const App = () => {
     // the foreground → best-effort durability flush plus a checkpoint push. The
     // on-disk journal covers a batch that had already started before suspension.
     const appStateSub = AppState.addEventListener('change', (state) => {
+      // Test instrumentation: lets a failed DB download report whether the app
+      // was backgrounded mid-transfer. `db/` cannot subscribe to AppState itself
+      // — those modules initialise before react-native's lazy exports exist.
+      noteAppState(state);
       if (state === 'active') {
         retrySessionProfile();
         onForeground();
+        // Returning to the app is the moment to pick the offline DB back up.
+        // A download does not survive the app losing focus — the SSO browser
+        // alone is enough to kill it — and provisioning otherwise ran only once
+        // at boot, so a single interruption left the app on the API until it was
+        // fully relaunched. This no-ops when the DB is present or a download is
+        // already running.
+        provisionDatabase();
       } else if (state === 'inactive' || state === 'background') {
         persistence.flush();
         onCheckpoint();

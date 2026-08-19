@@ -53,7 +53,10 @@ jest.mock('../../store/syncLifecycle', () => ({ onForeground: jest.fn() }));
 jest.mock('../../store', () => ({ store: {} }));
 jest.mock('../../store/persistence', () => ({ hasQuarantinedRecords: () => false }));
 jest.mock('@auth', () => ({ logout: jest.fn() }));
-jest.mock('@utils', () => ({ showErrorAlert: (...args: unknown[]) => mockShowError(...args) }));
+jest.mock('@utils', () => ({
+  showErrorAlert: (...args: unknown[]) => mockShowError(...args),
+  trackEvent: jest.fn(),
+}));
 jest.mock('../../components/Dialog', () => {
   const ReactForMock = jest.requireActual<typeof React>('react');
   return {

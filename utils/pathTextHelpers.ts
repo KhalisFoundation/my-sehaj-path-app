@@ -3,6 +3,7 @@ import { unstable_batchedUpdates } from 'react-native';
 import { SimpleTextForPathStyles } from '@styles';
 import type { PathSelection } from '@components/PathSelectionContext';
 import type { Visraams } from '../types';
+import { trackEvent } from './analytics';
 
 /**
  * Common props interface for path text components
@@ -119,6 +120,10 @@ export const createLongPressHandler = (
   onSelection: () => void
 ) => {
   return () => {
+    // The app's core action, and shared by both the line and paragraph readers,
+    // so tracking it here covers both without duplicating the event.
+    trackEvent('PathProgress', 'long press', 'save panktee');
+
     if (selection.found) {
       selection.setFound(false);
     }

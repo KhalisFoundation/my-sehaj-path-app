@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Constants, ErrorConstants } from '@constants';
 import { logout } from '@auth';
-import { showErrorAlert } from '@utils';
+import { showErrorAlert, trackEvent } from '@utils';
 import { DialogStyles as styles } from '@styles';
 import { store } from '../store';
 import {
@@ -156,6 +156,15 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     // Captured before anything changes: `switchAccountData` moves the account to
     // B, so by the time the closing notice renders this value is already gone.
     const previousAccount = account;
+    // Only a real choice is worth recording: the automatic path (a provably
+    // backed-up account) is resolved without ever showing the user anything.
+    if (!automatic) {
+      trackEvent(
+        'AccountSwitch',
+        'click',
+        addPreviousProgress ? 'copy previous progress' : 'discard previous progress'
+      );
+    }
     setBusy(addPreviousProgress ? 'addCopy' : 'keepForPrevious');
     let switched = false;
     try {
@@ -190,6 +199,11 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     async (silent: boolean) => {
       if (!email) {
         return;
+      }
+      // `silent` is the automatic association of an empty device — the user was
+      // never shown a prompt, so there is no click to record.
+      if (!silent) {
+        trackEvent('SyncAssociate', 'click', 'link device data to account');
       }
       setBusy('sync');
       const ok = await runConfirmedAccountSync(store, email);

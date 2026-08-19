@@ -32,13 +32,31 @@ for `shape-9key` (Android 1.0.5 or iOS 1.0.6).
    // ...inside a component:
    useEffect(() => {
      (async () => {
-       const KEYS = ['pathDetails','pathDateDetails','fontSize','larivaar',
-         'paragraphMode','vishraam','vishraamsSource','angsFormat','consent'];
+       const KEYS = [
+         'pathDetails',
+         'pathDateDetails',
+         'fontSize',
+         'larivaar',
+         'paragraphMode',
+         'vishraam',
+         'vishraamsSource',
+         'angsFormat',
+         'consent',
+       ];
        const pairs = await Promise.all(KEYS.map(async (k) => [k, await AsyncStorage.getItem(k)]));
        const source = Object.fromEntries(pairs.filter(([, v]) => v !== null));
-       console.log(JSON.stringify({ shapeId: '<shape-6key|shape-9key>',
-         provenance: 'device-captured', platforms: [{ platform: '<android|ios>',
-         appVersion: '<x.y.z>', build: 0 }], source }, null, 2));
+       console.log(
+         JSON.stringify(
+           {
+             shapeId: '<shape-6key|shape-9key>',
+             provenance: 'device-captured',
+             platforms: [{ platform: '<android|ios>', appVersion: '<x.y.z>', build: 0 }],
+             source,
+           },
+           null,
+           2
+         )
+       );
      })();
    }, []);
    ```

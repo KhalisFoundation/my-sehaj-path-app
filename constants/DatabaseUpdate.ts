@@ -17,6 +17,10 @@ export const DatabaseUpdateText = {
   DOWNLOAD_IN_PROGRESS_TITLE: 'Database download in progress',
   DOWNLOAD_IN_PROGRESS_MESSAGE:
     'A database download is already in progress. Please keep the app open.',
+  FINALIZING_MESSAGE: 'Download complete. Finalizing the offline database…',
+  OFFLINE_TITLE: 'You are offline',
+  OFFLINE_MESSAGE:
+    'The database download will resume automatically when your internet connection returns.',
 
   /** Shared progress line for the checking/downloading states. */
   PROGRESS_MESSAGE: (percent: number): string => `${percent}% complete. Please keep the app open.`,
@@ -24,6 +28,11 @@ export const DatabaseUpdateText = {
   UP_TO_DATE_MESSAGE: 'You already have the latest reading database.',
   UPDATED_TITLE: 'Database updated',
   UPDATED_MESSAGE: 'The latest reading database is ready to use.',
+  INSUFFICIENT_STORAGE_TITLE: 'Not enough storage',
+  INSUFFICIENT_STORAGE_MESSAGE:
+    'Free some storage on your device, then tap Try again to download the database.',
+  TRY_AGAIN: 'Try again',
+  TRY_AGAIN_STORAGE_A11Y: 'Retry database download after freeing storage',
   UNAVAILABLE_TITLE: 'Update unavailable',
   UNAVAILABLE_MESSAGE: 'Database updates are not configured in this app.',
   CHECK_FAILED_TITLE: 'Unable to check for updates',

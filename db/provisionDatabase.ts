@@ -1,3 +1,4 @@
+import { recordError, trackEvent } from '@utils';
 import { store } from '../store';
 import {
   dbDownloadProgress,
@@ -9,6 +10,8 @@ import {
 import { resetBani } from './connection';
 import {
   downloadDatabase,
+  isDatabaseDownloadBlockedByStorage,
+  isDatabaseDownloadInProgress,
   isDatabaseInstalled,
   performDatabaseUpdate,
   type DatabaseUpdateResult,
@@ -30,6 +33,26 @@ export const provisionDatabase = async (): Promise<void> => {
       store.dispatch(dbReady());
       return;
     }
+    // A reconnect can arrive just before the old, offline native request
+    // finishes failing. Join that request without resetting its UI progress;
+    // if it then fails while we are online, immediately start a new attempt
+    // from its saved partial. Otherwise the one false→true NetInfo edge would
+    // be consumed while the active-download lock was still held.
+    if (isDatabaseDownloadInProgress()) {
+      const activeResult = await downloadDatabase();
+      if (
+        activeResult.status !== 'insufficient-storage' &&
+        store.getState().network.isOnline &&
+        !(await isDatabaseInstalled())
+      ) {
+        await provisionDatabase();
+      }
+      return;
+    }
+    if (await isDatabaseDownloadBlockedByStorage()) {
+      store.dispatch(dbFailed());
+      return;
+    }
 
     store.dispatch(dbDownloadStarted());
     const result = await downloadDatabase((progress) => {
@@ -38,6 +61,9 @@ export const provisionDatabase = async (): Promise<void> => {
 
     switch (result.status) {
       case 'downloaded':
+        // Crashlytics records the failures; this records the successes, so the
+        // two together still give a rate rather than a bare failure count.
+        trackEvent('DatabaseDownload', 'success', 'offline database installed');
         // A new file was swapped in — drop any open handle so the next read
         // opens the fresh DB.
         resetBani();
@@ -49,10 +75,22 @@ export const provisionDatabase = async (): Promise<void> => {
       case 'not-configured':
         store.dispatch(dbNotConfigured());
         break;
+      case 'insufficient-storage':
+        store.dispatch(dbFailed());
+        break;
       default:
+        // Failures are Crashlytics' job — `downloadDatabase` already reports the
+        // exact error and its diagnostics there. The console line here only
+        // marks where the provisioning run gave up.
+        // Every other status is handled above, so this is the `failed` member.
         store.dispatch(dbFailed());
     }
-  } catch {
+  } catch (error) {
+    // Nothing downstream can report this. `provisionDatabase` is called
+    // fire-and-forget from three places in App.tsx, so a throw here — a failed
+    // `exists` check, a bad `resetBani`, a store dispatch — left no trace at all
+    // and simply showed up as the app quietly staying on the API forever.
+    recordError(error, 'db: provisioning the offline database failed');
     store.dispatch(dbFailed());
   }
 };
@@ -78,10 +116,16 @@ export const runDatabaseUpdate = async (
     });
 
     if (result.status === 'updated') {
+      // Boot provisioning records its own success; without this one a manual
+      // update had no success signal at all, leaving its Crashlytics failures
+      // without a denominator to measure them against.
+      trackEvent('DatabaseUpdate', 'success', 'offline database updated');
       resetBani();
       store.dispatch(dbReady());
     } else if (result.status === 'not-configured') {
       store.dispatch(dbNotConfigured());
+    } else if (result.status === 'insufficient-storage') {
+      store.dispatch((await isDatabaseInstalled()) ? dbReady() : dbFailed());
     } else if (await isDatabaseInstalled()) {
       // The update failed, but the swap only happens after a verified download,
       // so the previous database is untouched and still usable.
@@ -91,6 +135,9 @@ export const runDatabaseUpdate = async (
     }
     return result;
   } catch (error) {
+    // The screen turns the returned reason back into a message-only Error, which
+    // loses the stack. Record the real one here, where it is still intact.
+    recordError(error, 'db: the update run threw');
     store.dispatch((await isDatabaseInstalled()) ? dbReady() : dbFailed());
     return {
       status: 'failed',
