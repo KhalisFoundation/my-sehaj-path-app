@@ -27,24 +27,15 @@ const SQLITE_MAGIC = 'SQLite format 3';
 const CONNECTION_TIMEOUT_MS = 15_000;
 const READ_TIMEOUT_MS = 60_000;
 /**
- * How long the transfer may make NO progress before it is abandoned.
+ * Total budget for one download.
  *
- * Deliberately an IDLE timeout, not a total one: a total budget punishes a slow
- * connection, killing a download that was working perfectly well just slowly.
- * Progress fires every 250ms while any bytes are arriving, so total silence for
- * this long means the transfer is genuinely dead, however slow the link is.
- *
- * This is also the app's PRIMARY offline detector on iOS, which is why it is
- * seconds rather than minutes. NetInfo cannot be relied on for speed: its
- * `isInternetReachable` probe re-runs only every 60s while it believes it is
- * online (`reachabilityLongTimeout`) and the probe itself may hang for 15s more,
- * and on the simulator `isConnected` stays true when the host Wi-Fi drops. RNFS
- * on iOS makes it worse by calling NEITHER of its completion callbacks when the
- * OS produced resume data, so the native promise simply never settles. Without
- * a short watchdog here, pulling the network left the download pending — and
- * `activeDownload` set — long enough that reconnecting appeared to do nothing.
+ * An idle timeout would be the better shape, but idleness can only be measured
+ * from progress events and those are deliberately no longer requested. So this
+ * is a whole-transfer budget, generous enough never to punish a slow link: its
+ * only job is to release the temp-file lock when the native job neither
+ * finishes nor errors, which iOS does whenever it hands the OS resume data.
  */
-const DOWNLOAD_IDLE_TIMEOUT_MS = 30 * 1000;
+const DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000;
 /**
  * Give the native task a moment to observe the cancellation.
  *
@@ -205,18 +196,14 @@ export const isDatabaseDownloadBlockedByStorage = async (): Promise<boolean> => 
  * An IDLE timeout, not a total one: a slow connection must never be killed for
  * being slow, only for being silent.
  */
-function awaitDownload<T>(
-  promise: Promise<T>,
-  jobId: number,
-  registerTouch: (touch: () => void) => void
-): Promise<T> {
+function awaitDownload<T>(promise: Promise<T>, jobId: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelTimer: ReturnType<typeof setTimeout> | null = null;
     let settled = false;
     /** Set once we have given up; the native job's own outcome is then ignored. */
     let abandonedWith: Error | null = null;
-    const failure = new Error('database download stalled');
+    const failure = new Error('database download timed out');
 
     const finish = (settle: () => void) => {
       if (settled) {
@@ -251,18 +238,7 @@ function awaitDownload<T>(
       cancelTimer = setTimeout(() => finish(() => reject(error)), DOWNLOAD_CANCEL_GRACE_MS);
     };
 
-    const touch = () => {
-      if (settled || abandonedWith) {
-        return;
-      }
-      if (idleTimer) {
-        clearTimeout(idleTimer);
-      }
-      idleTimer = setTimeout(() => giveUp(failure), DOWNLOAD_IDLE_TIMEOUT_MS);
-    };
-
-    registerTouch(touch);
-    touch();
+    idleTimer = setTimeout(() => giveUp(failure), DOWNLOAD_TIMEOUT_MS);
     promise.then(
       // A cancelled job can still report success for a PARTIAL file, and a
       // truncated file keeps a valid SQLite header — so the integrity check
@@ -329,7 +305,6 @@ const downloadDatabaseInternal = async (
   }
 
   try {
-    let touchIdleTimer: (() => void) | null = null;
     const { jobId, promise } = downloadFile({
       fromUrl: SEHAJ_DB_REMOTE_URL,
       toFile: TEMP_DB_PATH,
@@ -338,28 +313,22 @@ const downloadDatabaseInternal = async (
       cacheable: false,
       connectionTimeout: CONNECTION_TIMEOUT_MS,
       readTimeout: READ_TIMEOUT_MS,
-      progressInterval: 250,
-      progress: ({ bytesWritten, contentLength }) => {
-        touchIdleTimer?.();
-        const totalBytes = contentLength > 0 ? contentLength : 0;
-        // A native 100% progress event means all response bytes have arrived,
-        // but validation and the atomic install may still be running. The UI
-        // uses 100 specifically for its "Finalizing" state; a real 99% remains
-        // a normal in-progress percentage.
-        const percent =
-          totalBytes > 0 ? Math.min(100, Math.floor((bytesWritten / totalBytes) * 100)) : 0;
-
-        onProgress?.({ bytesWritten, totalBytes, percent });
-      },
+      // Deliberately NO `progress` callback.
+      //
+      // Supplying one makes RNFS subscribe to its native download events, and
+      // those are emitted from the NSURLSession delegate thread straight into
+      // React Native's shared event-emitter map. That map is not thread-safe:
+      // `operator[]` inserts and rehashes it off the JS thread, which corrupted
+      // it and killed the app (EXC_BAD_ACCESS, and an uncaught overflow_error
+      // out of __next_prime once the bucket count was garbage). Omitting the
+      // callback sets `hasProgressCallback: false`, so the native side never
+      // emits and the crash cannot happen.
+      //
+      // The only thing lost is the percentage. The Database screen already
+      // shows a plain "downloading" message whenever progress is 0.
     });
 
-    const result = await awaitDownload(promise, jobId, (touch) => {
-      touchIdleTimer = touch;
-    }).finally(() => {
-      // Progress events queued by native after completion must not re-arm the
-      // watchdog on a job that has already released its lock.
-      touchIdleTimer = null;
-    });
+    const result = await awaitDownload(promise, jobId);
     if (result.statusCode !== 200) {
       await safeUnlink(TEMP_DB_PATH);
       // The transfer completed without throwing, so nothing else reports this.

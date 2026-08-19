@@ -86,29 +86,6 @@ describe('downloadDatabase', () => {
     expect(moveFile).toHaveBeenCalledTimes(1); // the temp -> live swap
   });
 
-  it('reports progress percentages during the transfer', async () => {
-    stat.mockResolvedValue({ size: 200 });
-    downloadFile.mockImplementation(
-      (opts: {
-        begin: (value: {
-          statusCode: number;
-          contentLength: number;
-          headers: Record<string, string>;
-        }) => void;
-        progress: (p: unknown) => void;
-      }) => {
-        opts.begin?.({ statusCode: 200, contentLength: 200, headers: { ETag: 'version-1' } });
-        opts.progress({ bytesWritten: 50, contentLength: 200 });
-        opts.progress({ bytesWritten: 200, contentLength: 200 });
-        return { jobId: 1, promise: Promise.resolve({ statusCode: 200 }) };
-      }
-    );
-    const seen: number[] = [];
-    await downloadDatabase((p) => seen.push(p.percent));
-    expect(seen).toContain(25);
-    expect(seen).toContain(100);
-  });
-
   it('fails on a non-200 response, does NOT swap, and reports it', async () => {
     downloadFile.mockReturnValue({ jobId: 1, promise: Promise.resolve({ statusCode: 500 }) });
     const result = await downloadDatabase();
@@ -271,11 +248,12 @@ describe('downloadDatabase', () => {
     const interrupted = downloadDatabase();
     // The transfer goes silent; the idle watchdog plus its cancel grace is what
     // ends it, since iOS reports the dropped connection to nobody.
-    await jest.advanceTimersByTimeAsync(30_000 + 5_000);
+    await jest.runOnlyPendingTimersAsync();
+    await jest.runOnlyPendingTimersAsync();
 
     await expect(interrupted).resolves.toEqual({
       status: 'failed',
-      reason: 'database download stalled',
+      reason: 'database download timed out',
     });
     // The lock must be released, or the reconnect below is ignored.
     expect(isDatabaseDownloadInProgress()).toBe(false);
@@ -346,33 +324,23 @@ describe('downloadDatabase', () => {
 
   it('joins an in-progress download instead of writing the temp file twice', async () => {
     let finishDownload: ((result: { statusCode: number }) => void) | undefined;
-    let emitProgress!: (value: { bytesWritten: number; contentLength: number }) => void;
-    downloadFile.mockImplementation(
-      (opts: {
-        begin: (value: unknown) => void;
-        progress: (value: { bytesWritten: number; contentLength: number }) => void;
-      }) => {
-        opts.begin?.({ statusCode: 200, contentLength: 100, headers: { ETag: 'version-1' } });
-        emitProgress = opts.progress;
-        return {
-          jobId: 1,
-          promise: new Promise((resolve) => {
-            finishDownload = resolve;
-          }),
-        };
-      }
-    );
+    downloadFile.mockImplementation((opts: { begin: (value: unknown) => void }) => {
+      opts.begin?.({ statusCode: 200, contentLength: 100, headers: { ETag: 'version-1' } });
+      return {
+        jobId: 1,
+        promise: new Promise((resolve) => {
+          finishDownload = resolve;
+        }),
+      };
+    });
 
-    const joinedProgress = jest.fn();
     const first = downloadDatabase();
-    const second = downloadDatabase(joinedProgress);
+    const second = downloadDatabase();
     await drainMicrotasks();
-    emitProgress({ bytesWritten: 50, contentLength: 100 });
     finishDownload?.({ statusCode: 200 });
 
     await expect(first).resolves.toEqual({ status: 'downloaded' });
     await expect(second).resolves.toEqual({ status: 'downloaded' });
-    expect(joinedProgress).toHaveBeenCalledWith({ bytesWritten: 50, totalBytes: 100, percent: 50 });
     expect(downloadFile).toHaveBeenCalledTimes(1);
   });
 
@@ -404,7 +372,7 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(30_000);
+    await jest.runOnlyPendingTimersAsync();
 
     expect(RNFS.stopDownload).toHaveBeenCalledWith(42);
     // Cancellation was requested, but the first job still owns the shared temp
@@ -416,7 +384,7 @@ describe('downloadDatabase', () => {
 
     await expect(stalled).resolves.toEqual({
       status: 'failed',
-      reason: 'database download stalled',
+      reason: 'database download timed out',
     });
     downloadFile.mockImplementation((opts: { begin: (value: unknown) => void }) => {
       opts.begin?.({ statusCode: 200, contentLength: 100, headers: { ETag: 'version-1' } });
@@ -432,11 +400,12 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(30_000 + 5_000);
+    await jest.runOnlyPendingTimersAsync();
+    await jest.runOnlyPendingTimersAsync();
 
     await expect(stalled).resolves.toEqual({
       status: 'failed',
-      reason: 'database download stalled',
+      reason: 'database download timed out',
     });
     expect(RNFS.stopDownload).toHaveBeenCalledWith(42);
     jest.useRealTimers();
@@ -459,14 +428,14 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(30_000);
+    await jest.runOnlyPendingTimersAsync();
     expect(RNFS.stopDownload).toHaveBeenCalledWith(99);
 
     finishNative?.({ statusCode: 200 }); // native says "done" anyway
 
     await expect(stalled).resolves.toEqual({
       status: 'failed',
-      reason: 'database download stalled',
+      reason: 'database download timed out',
     });
     expect(moveFile).not.toHaveBeenCalled();
     jest.useRealTimers();
@@ -481,53 +450,37 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(30_000 + 5_000);
+    await jest.runOnlyPendingTimersAsync();
+    await jest.runOnlyPendingTimersAsync();
 
     await expect(stalled).resolves.toEqual({
       status: 'failed',
-      reason: 'database download stalled',
+      reason: 'database download timed out',
     });
     (RNFS.stopDownload as jest.Mock).mockReset();
     jest.useRealTimers();
   });
 
-  it('never abandons a download that is still making progress, however slow', async () => {
-    // A total time budget killed slow-but-working transfers and restarted them
-    // from zero. Only silence should end a download.
+  it('does not abandon a slow download inside the total budget', async () => {
+    // The watchdog is a whole-transfer budget now: with no progress events there
+    // is nothing to measure idleness from, so a slow-but-working download must
+    // simply be allowed to finish.
     jest.useFakeTimers();
-    let emitProgress: ((p: { bytesWritten: number; contentLength: number }) => void) | undefined;
     let finish: ((result: { statusCode: number }) => void) | undefined;
-    downloadFile.mockImplementation(
-      (opts: {
-        begin: (value: unknown) => void;
-        progress: (p: { bytesWritten: number; contentLength: number }) => void;
-      }) => {
-        opts.begin?.({
-          statusCode: 200,
-          contentLength: 190_000_000,
-          headers: { ETag: 'version-1' },
-        });
-        emitProgress = opts.progress;
-        return { jobId: 7, promise: new Promise((resolve) => (finish = resolve)) };
-      }
-    );
-    stat.mockResolvedValue({ size: 190_000_000 });
+    downloadFile.mockImplementation(() => ({
+      jobId: 7,
+      promise: new Promise((resolve) => {
+        finish = resolve;
+      }),
+    }));
 
     const slow = downloadDatabase();
-    await drainMicrotasks();
-    // Trickle for well past any old total budget, staying under the idle limit.
-    for (let minute = 0; minute < 30; minute += 1) {
-      await jest.advanceTimersByTimeAsync(20_000);
-      emitProgress?.({ bytesWritten: minute * 1_000_000, contentLength: 190_000_000 });
-    }
+    // Well inside the budget: nothing should be cancelled.
+    await jest.advanceTimersByTimeAsync(60_000);
+    expect(RNFS.stopDownload).not.toHaveBeenCalled();
     finish?.({ statusCode: 200 });
 
     await expect(slow).resolves.toEqual({ status: 'downloaded' });
-    // A progress event that was queued before native completion must not arm a
-    // fresh timer after the job has released its lock.
-    emitProgress?.({ bytesWritten: 190_000_000, contentLength: 190_000_000 });
-    await jest.advanceTimersByTimeAsync(30_000);
-    expect(RNFS.stopDownload).not.toHaveBeenCalled();
     jest.useRealTimers();
   });
 });
