@@ -420,11 +420,8 @@ describe('downloadDatabase', () => {
     await jest.runOnlyPendingTimersAsync();
 
     expect(RNFS.stopDownload).toHaveBeenCalledWith(42);
-    // Cancellation was requested, but the first job still owns the shared temp
-    // file until native confirms it has stopped.
-    expect(downloadDatabase()).toBe(stalled);
-    expect(downloadFile).toHaveBeenCalledTimes(1);
 
+    // A late native rejection is ignored: the promise has already settled.
     rejectNative?.(new Error('Download has been aborted'));
 
     await expect(stalled).resolves.toEqual({
@@ -439,13 +436,12 @@ describe('downloadDatabase', () => {
     jest.useRealTimers();
   });
 
-  it('releases the lock after the cancellation grace period if native never settles', async () => {
+  it('releases the lock when native never settles at all', async () => {
     jest.useFakeTimers();
     downloadFile.mockReturnValue({ jobId: 42, promise: new Promise(() => undefined) });
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.runOnlyPendingTimersAsync();
     await jest.runOnlyPendingTimersAsync();
 
     await expect(stalled).resolves.toEqual({
@@ -496,7 +492,6 @@ describe('downloadDatabase', () => {
     const stalled = downloadDatabase();
     await drainMicrotasks();
     await jest.runOnlyPendingTimersAsync();
-    await jest.runOnlyPendingTimersAsync();
 
     await expect(stalled).resolves.toEqual({
       status: 'failed',
@@ -520,7 +515,8 @@ describe('downloadDatabase', () => {
     }));
 
     const slow = downloadDatabase();
-    // Well inside the budget: nothing should be cancelled.
+    await drainMicrotasks();
+    // Well inside the 20-minute budget: nothing may be cancelled.
     await jest.advanceTimersByTimeAsync(60_000);
     expect(RNFS.stopDownload).not.toHaveBeenCalled();
     finish?.({ statusCode: 200 });

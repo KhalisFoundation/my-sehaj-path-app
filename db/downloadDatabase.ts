@@ -27,23 +27,28 @@ const SQLITE_MAGIC = 'SQLite format 3';
 const CONNECTION_TIMEOUT_MS = 15_000;
 const READ_TIMEOUT_MS = 60_000;
 /**
- * Total budget for one download.
+ * Total budget for one download. A backstop, NOT a speed limit.
+ *
+ * Removing it entirely is not an option, however tempting. RNFS on iOS calls
+ * its `resumable` callback instead of its error callback whenever the OS hands
+ * back resume data — and we deliberately pass no `resumable` callback, because
+ * answering it is what made RNFS emit from the NSURLSession delegate thread and
+ * crash the app. So on a dropped connection iOS calls NEITHER callback and the
+ * native promise never settles. This timer is then the only thing that releases
+ * `activeDownload`; without it the lock is held for the life of the process,
+ * every foreground and reconnect joins a dead promise, and the ~181 MB temp file
+ * is never reclaimed.
+ *
+ * An hour rather than minutes so it can only ever act as that backstop: 181 MB
+ * in an hour is ~0.05 MB/s, slower than any connection a reader could actually
+ * use, so a slow-but-working download is never cancelled for being slow. It also
+ * lines up with RNFS's own iOS `backgroundTimeout` default (one hour, mapped to
+ * `timeoutIntervalForResource`) rather than fighting it.
  *
  * An idle timeout would be the better shape, but idleness can only be measured
- * from progress events and those are deliberately no longer requested. So this
- * is a whole-transfer budget, generous enough never to punish a slow link: its
- * only job is to release the temp-file lock when the native job neither
- * finishes nor errors, which iOS does whenever it hands the OS resume data.
+ * from progress events, and those are exactly what we cannot ask for.
  */
-const DOWNLOAD_TIMEOUT_MS = 20 * 60 * 1000;
-/**
- * Give the native task a moment to observe the cancellation.
- *
- * Android checks `stopDownload` between socket reads, so a little slack avoids
- * a second attempt racing the first for the temp file — but it must not delay
- * the retry, so it is a few seconds, not a full read timeout.
- */
-const DOWNLOAD_CANCEL_GRACE_MS = 5_000;
+const DOWNLOAD_TIMEOUT_MS = 60 * 60 * 1000;
 const DB_DOWNLOAD_STORAGE_BLOCK_KEY = '@sehaj-path/db-download-blocked-by-storage';
 
 /** Kinds `classifyDownloadFailure` can derive from a thrown error. */
@@ -189,65 +194,40 @@ export const isDatabaseDownloadBlockedByStorage = async (): Promise<boolean> => 
 };
 
 /**
- * Resolves the native download, abandoning it if it outlives its budget.
+ * Resolves the native download, giving up if it outlives its budget.
  *
- * This is a WHOLE-TRANSFER budget, not an idle timeout. An idle timeout is the
- * better shape, but idleness can only be measured from progress events and the
- * `downloadFile` call below deliberately requests none — asking for them is what
- * made RNFS emit from the NSURLSession delegate thread and crash the app. The
- * consequence to be aware of: a genuinely slow connection that needs longer than
- * `DOWNLOAD_TIMEOUT_MS` for the whole file is cancelled, even though it is
- * working.
+ * A WHOLE-TRANSFER budget, not an idle timeout. Idleness can only be measured
+ * from progress events, and the `downloadFile` call below deliberately requests
+ * none — asking for them is what made RNFS emit from the NSURLSession delegate
+ * thread and crash the app. So a genuinely slow connection needing longer than
+ * `DOWNLOAD_TIMEOUT_MS` for the whole file is cancelled even though it works.
+ *
+ * Rejecting the moment the budget expires is what keeps this small: the promise
+ * is settled, so a late native result — including a SUCCESS reporting a partial
+ * file — is ignored by the promise itself. That matters, because a truncated
+ * file still carries a valid SQLite header and would otherwise pass the
+ * integrity check.
  */
 function awaitDownload<T>(promise: Promise<T>, jobId: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    let budgetTimer: ReturnType<typeof setTimeout> | null = null;
-    let cancelTimer: ReturnType<typeof setTimeout> | null = null;
-    let settled = false;
-    /** Set once we have given up; the native job's own outcome is then ignored. */
-    let abandonedWith: Error | null = null;
-    const failure = new Error('database download timed out');
-
-    const finish = (settle: () => void) => {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      if (budgetTimer) {
-        clearTimeout(budgetTimer);
-      }
-      if (cancelTimer) {
-        clearTimeout(cancelTimer);
-      }
-      settle();
-    };
-
-    const giveUp = (error: Error) => {
-      if (settled || abandonedWith) {
-        return;
-      }
-      abandonedWith = error;
-      if (budgetTimer) {
-        clearTimeout(budgetTimer);
-        budgetTimer = null;
-      }
+    const timer = setTimeout(() => {
       try {
         stopDownload(jobId);
       } catch {
         // The native job may already have ended.
       }
-      // Native needs a moment to observe the cancellation, but must not hold the
-      // temp file forever if it never does.
-      cancelTimer = setTimeout(() => finish(() => reject(error)), DOWNLOAD_CANCEL_GRACE_MS);
-    };
+      reject(new Error('database download timed out'));
+    }, DOWNLOAD_TIMEOUT_MS);
 
-    budgetTimer = setTimeout(() => giveUp(failure), DOWNLOAD_TIMEOUT_MS);
     promise.then(
-      // A cancelled job can still report success for a PARTIAL file, and a
-      // truncated file keeps a valid SQLite header — so the integrity check
-      // cannot catch it. Once abandoned, the native outcome is never accepted.
-      (value) => finish(() => (abandonedWith ? reject(abandonedWith) : resolve(value))),
-      (error) => finish(() => reject(abandonedWith ?? error))
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
     );
   });
 }
