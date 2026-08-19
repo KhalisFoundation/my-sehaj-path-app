@@ -49,11 +49,6 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-export const isNetInfoOnline = (state: {
-  isConnected: boolean | null;
-  isInternetReachable: boolean | null;
-}): boolean => state.isConnected !== false && state.isInternetReachable !== false;
-
 /**
  * Enables analytics/crashlytics collection when the user has consented.
  *
@@ -122,10 +117,7 @@ const App = () => {
     let wasOnline = store.getState().network.isOnline;
 
     const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
-      // `isInternetReachable` is null while NetInfo is still probing. Treat
-      // unknown as online unless NetInfo has positively reported a disconnect;
-      // otherwise an online device is temporarily locked out of DB checks.
-      const online = isNetInfoOnline(state);
+      const online = Boolean(state.isConnected && state.isInternetReachable);
       store.dispatch(setOnline(online));
       if (online) {
         retrySessionProfile();

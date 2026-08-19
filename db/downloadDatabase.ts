@@ -121,13 +121,6 @@ const classifyDownloadFailure = (error: unknown): DownloadFailureKind => {
   return 'other';
 };
 
-export interface DownloadProgress {
-  bytesWritten: number;
-  totalBytes: number;
-  /** 0–100; 0 when the server did not send a Content-Length. */
-  percent: number;
-}
-
 export type DownloadResult =
   | { status: 'already-present' }
   | { status: 'downloaded' }
@@ -268,13 +261,10 @@ const isValidSqliteFile = async (path: string): Promise<boolean> => {
  * - `failed`           → left the old state untouched; caller keeps the API and
  *                        can retry on a later launch.
  *
- * `onProgress` fires during the transfer so the UI can show a percentage.
  */
 type ActiveDownload = {
   promise: Promise<DownloadResult>;
   force: boolean;
-  progressListeners: Set<(progress: DownloadProgress) => void>;
-  latestProgress: DownloadProgress | null;
 };
 
 let activeDownload: ActiveDownload | null = null;
@@ -282,10 +272,7 @@ let activeDownload: ActiveDownload | null = null;
 /** True while any first-install or manual update download owns the temp file. */
 export const isDatabaseDownloadInProgress = (): boolean => activeDownload !== null;
 
-const downloadDatabaseInternal = async (
-  onProgress?: (progress: DownloadProgress) => void,
-  force = false
-): Promise<DownloadResult> => {
+const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> => {
   if (!force && (await isDatabaseInstalled())) {
     return { status: 'already-present' };
   }
@@ -391,18 +378,8 @@ const downloadDatabaseInternal = async (
  * while boot provisioning is downloading joins that same work instead of
  * starting a second write to `TEMP_DB_PATH`.
  */
-export const downloadDatabase = (
-  onProgress?: (progress: DownloadProgress) => void,
-  force = false
-): Promise<DownloadResult> => {
+export const downloadDatabase = (force = false): Promise<DownloadResult> => {
   if (activeDownload) {
-    if (onProgress) {
-      activeDownload.progressListeners.add(onProgress);
-      if (activeDownload.latestProgress) {
-        onProgress(activeDownload.latestProgress);
-      }
-    }
-
     if (force && !activeDownload.force) {
       const joined = activeDownload;
       return joined.promise.then((result) => {
@@ -410,7 +387,7 @@ export const downloadDatabase = (
         // the explicit request. Every other non-forced result must be followed
         // by the attempt the user actually requested (notably a storage-block
         // result or the installed-file fast path).
-        return result.status === 'downloaded' ? result : downloadDatabase(onProgress, true);
+        return result.status === 'downloaded' ? result : downloadDatabase(true);
       });
     }
     return activeDownload.promise;
@@ -419,13 +396,8 @@ export const downloadDatabase = (
   const current: ActiveDownload = {
     promise: Promise.resolve({ status: 'failed', reason: 'download not started' }),
     force,
-    progressListeners: new Set(onProgress ? [onProgress] : []),
-    latestProgress: null,
   };
-  const download = downloadDatabaseInternal((progress) => {
-    current.latestProgress = progress;
-    current.progressListeners.forEach((listener) => listener(progress));
-  }, force);
+  const download = downloadDatabaseInternal(force);
   current.promise = download;
   activeDownload = current;
   download
@@ -476,10 +448,8 @@ export const checkForDatabaseUpdate = async (): Promise<DatabaseCheckResult> => 
   }
 };
 
-export const performDatabaseUpdate = async (
-  onProgress?: (progress: DownloadProgress) => void
-): Promise<DatabaseUpdateResult> => {
-  const downloaded = await downloadDatabase(onProgress, true);
+export const performDatabaseUpdate = async (): Promise<DatabaseUpdateResult> => {
+  const downloaded = await downloadDatabase(true);
   if (downloaded.status === 'downloaded') {
     return { status: 'updated' };
   }

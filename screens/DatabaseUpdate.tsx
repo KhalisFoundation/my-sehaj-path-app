@@ -145,7 +145,7 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
     trackEvent('DatabaseUpdate', 'click', 'update now');
     setState('updating');
     setProgress(0);
-    const result = await runDatabaseUpdate(({ percent }) => setProgress(percent));
+    const result = await runDatabaseUpdate();
     if (result.status === 'updated') {
       setState('updated');
     } else if (result.status === 'not-configured') {

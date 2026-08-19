@@ -351,7 +351,7 @@ describe('downloadDatabase', () => {
     );
 
     const automatic = downloadDatabase();
-    const explicit = downloadDatabase(undefined, true);
+    const explicit = downloadDatabase(true);
     await drainMicrotasks();
     finishInstalledCheck(true);
 

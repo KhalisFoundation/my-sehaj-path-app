@@ -1,12 +1,6 @@
 import { recordError, trackEvent } from '@utils';
 import { store } from '../store';
-import {
-  dbDownloadProgress,
-  dbDownloadStarted,
-  dbFailed,
-  dbNotConfigured,
-  dbReady,
-} from '../store/slices/dbSlice';
+import { dbDownloadStarted, dbFailed, dbNotConfigured, dbReady } from '../store/slices/dbSlice';
 import { resetBani } from './connection';
 import {
   downloadDatabase,
@@ -15,7 +9,6 @@ import {
   isDatabaseInstalled,
   performDatabaseUpdate,
   type DatabaseUpdateResult,
-  type DownloadProgress,
 } from './downloadDatabase';
 
 /**
@@ -61,9 +54,7 @@ export const provisionDatabase = async (): Promise<void> => {
     }
 
     store.dispatch(dbDownloadStarted());
-    const result = await downloadDatabase((progress) => {
-      store.dispatch(dbDownloadProgress(progress.percent));
-    });
+    const result = await downloadDatabase();
 
     switch (result.status) {
       case 'downloaded':
@@ -111,15 +102,10 @@ export const provisionDatabase = async (): Promise<void> => {
  * while the download was still running underneath. Publishing the progress here
  * makes the in-progress state visible to any mount (and to the app-wide notice).
  */
-export const runDatabaseUpdate = async (
-  onProgress?: (progress: DownloadProgress) => void
-): Promise<DatabaseUpdateResult> => {
+export const runDatabaseUpdate = async (): Promise<DatabaseUpdateResult> => {
   store.dispatch(dbDownloadStarted());
   try {
-    const result = await performDatabaseUpdate((progress) => {
-      store.dispatch(dbDownloadProgress(progress.percent));
-      onProgress?.(progress);
-    });
+    const result = await performDatabaseUpdate();
 
     if (result.status === 'updated') {
       // Boot provisioning records its own success; without this one a manual

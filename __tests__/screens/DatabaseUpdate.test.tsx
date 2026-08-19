@@ -109,45 +109,4 @@ describe('DatabaseUpdate storage handling', () => {
         )
     ).toBe(false);
   });
-
-  it('shows 99% as downloading and reserves finalizing for 100%', async () => {
-    let reportProgress!: (progress: { percent: number }) => void;
-    let finishUpdate!: (result: { status: 'updated' }) => void;
-    mockRunDatabaseUpdate.mockImplementation(
-      (onProgress: (progress: { percent: number }) => void) => {
-        reportProgress = onProgress;
-        return new Promise((resolve) => {
-          finishUpdate = resolve;
-        });
-      }
-    );
-
-    let renderer!: ReactTestRenderer.ReactTestRenderer;
-    await act(async () => {
-      renderer = ReactTestRenderer.create(
-        <DatabaseUpdate
-          navigation={{ goBack: jest.fn() } as never}
-          route={{ key: 'DatabaseUpdate-test', name: 'DatabaseUpdate' } as never}
-        />
-      );
-    });
-    const updateButton = renderer.root
-      .findAllByType(TouchableOpacity)
-      .find((node) => node.props.accessibilityLabel === DatabaseUpdateText.UPDATE_NOW);
-
-    let updatePromise!: Promise<void>;
-    await act(async () => {
-      updatePromise = updateButton?.props.onPress();
-      await Promise.resolve();
-    });
-    act(() => reportProgress({ percent: 99 }));
-    expect(textContent(renderer)).toContain(DatabaseUpdateText.PROGRESS_MESSAGE(99));
-    expect(textContent(renderer)).not.toContain(DatabaseUpdateText.FINALIZING_MESSAGE);
-
-    act(() => reportProgress({ percent: 100 }));
-    expect(textContent(renderer)).toContain(DatabaseUpdateText.FINALIZING_MESSAGE);
-
-    finishUpdate({ status: 'updated' });
-    await act(async () => updatePromise);
-  });
 });

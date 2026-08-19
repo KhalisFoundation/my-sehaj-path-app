@@ -6,7 +6,6 @@ export {
   performDatabaseUpdate,
   isDatabaseInstalled,
   isDatabaseDownloadBlockedByStorage,
-  type DownloadProgress,
   type DownloadResult,
   type InsufficientStorageResult,
   type DatabaseCheckResult,
