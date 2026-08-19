@@ -287,7 +287,17 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   // `Dialog` is memoised, so an inline arrow here would be a fresh prop on every
   // render and defeat the memo. Setter identity is stable, so these are too.
   const dismissSwitchedNotice = useCallback(() => setSwitchedFrom(null), []);
-  const cancelDiscardConfirm = useCallback(() => setConfirmingDiscard(false), []);
+  // Guarded like the Cancel button beside it. The button is `disabled={syncing}`,
+  // but the Android back gesture reaches this directly — without the guard it
+  // closed the dialog while `discardLocalDataAndSync` was still deleting, so the
+  // user was returned to the previous screen mid-wipe with no way to see how it
+  // ended.
+  const cancelDiscardConfirm = useCallback(() => {
+    if (syncing) {
+      return;
+    }
+    setConfirmingDiscard(false);
+  }, [syncing]);
 
   const onDiscardConfirmed = async () => {
     if (!email || syncing) {

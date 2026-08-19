@@ -282,6 +282,51 @@ describe('SyncPopup — unowned progress', () => {
     expect(mockDiscard).toHaveBeenCalledWith(expect.anything(), 'u@e.com');
   });
 
+  it('locks Cancel and the back gesture while the discard is running', async () => {
+    // Deleting this device's progress is irreversible, so nothing may leave the
+    // dialog mid-wipe — not the button, and not the Android back gesture, which
+    // reaches `onRequestClose` directly rather than through the button.
+    let finishDiscard!: (ok: boolean) => void;
+    mockDiscard.mockReturnValue(
+      new Promise<boolean>((resolve) => {
+        finishDiscard = resolve;
+      })
+    );
+
+    const renderer = await renderUnowned();
+    await act(async () => {
+      await renderer.root
+        .find((node) => node.props.accessibilityLabel === Constants.DISCARD_LOCAL_LINK)
+        .props.onPress();
+    });
+
+    const dialog = renderer.root.find((node) => typeof node.props.onRequestClose === 'function');
+    await act(async () => {
+      renderer.root
+        .find((node) => node.props.accessibilityLabel === Constants.DISCARD_CONFIRM_ACTION)
+        .props.onPress();
+    });
+
+    expect(
+      renderer.root.find((node) => node.props.accessibilityLabel === Constants.CANCEL).props
+        .disabled
+    ).toBe(true);
+
+    // The back gesture must not dismiss it either.
+    await act(async () => {
+      dialog.props.onRequestClose();
+    });
+    expect(
+      renderer.root.find(
+        (node) => node.props.accessibilityLabel === Constants.DISCARD_CONFIRM_ACTION
+      )
+    ).toBeTruthy();
+
+    await act(async () => {
+      finishDiscard(true);
+    });
+  });
+
   it('cancelling the discard confirmation changes nothing', async () => {
     const renderer = await renderUnowned();
     await act(async () => {

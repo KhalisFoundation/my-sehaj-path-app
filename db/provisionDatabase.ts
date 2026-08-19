@@ -1,6 +1,12 @@
 import { recordError, trackEvent } from '@utils';
 import { store } from '../store';
-import { dbDownloadStarted, dbFailed, dbNotConfigured, dbReady } from '../store/slices/dbSlice';
+import {
+  dbDownloadStarted,
+  dbFailed,
+  dbInstalled,
+  dbNotConfigured,
+  dbReady,
+} from '../store/slices/dbSlice';
 import { resetBani } from './connection';
 import {
   downloadDatabase,
@@ -64,7 +70,7 @@ export const provisionDatabase = async (): Promise<void> => {
         // A new file was swapped in — drop any open handle so the next read
         // opens the fresh DB.
         resetBani();
-        store.dispatch(dbReady());
+        store.dispatch(dbInstalled('installed'));
         break;
       case 'already-present':
         store.dispatch(dbReady());
@@ -113,7 +119,7 @@ export const runDatabaseUpdate = async (): Promise<DatabaseUpdateResult> => {
       // without a denominator to measure them against.
       trackEvent('DatabaseUpdate', 'success', 'offline database updated');
       resetBani();
-      store.dispatch(dbReady());
+      store.dispatch(dbInstalled('updated'));
     } else if (result.status === 'not-configured') {
       store.dispatch(dbNotConfigured());
     } else if (result.status === 'insufficient-storage') {
