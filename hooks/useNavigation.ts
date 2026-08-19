@@ -10,7 +10,7 @@ export interface UseNavigationParams {
   scrollOffset: React.MutableRefObject<number>;
   scrollRef: React.MutableRefObject<ScrollView | null>;
   setPathAng: (value: number) => void;
-  fetchFromBaniDB: (angNumber: number) => Promise<boolean>;
+  fetchFromBaniDB: (angNumber: number, options?: { isInitialLoad?: boolean }) => Promise<boolean>;
 }
 
 export const useNavigation = ({

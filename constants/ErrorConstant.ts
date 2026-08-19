@@ -16,7 +16,7 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_RENAME_PATH: 'Failed to rename the path. Please try again.',
   FAILED_TO_SYNC: "Couldn't sync your progress. Check your connection and try again.",
   NO_INTERNET_TITLE: 'Please connect to the internet.',
-  NO_INTERNET_MESSAGE: 'Offline mode will be soon available.',
+  NO_INTERNET_MESSAGE: 'To read without internet, download the database from Settings → Database.',
   NETWORK_ERROR_TITLE: 'Network Error',
   NETWORK_ERROR_MESSAGE: 'Unable to check network connection.',
   FAILED_TO_LOAD_PATH_DATA: 'Failed to load your path data. Please try again.',
