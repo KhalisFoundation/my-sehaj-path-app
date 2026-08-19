@@ -60,7 +60,12 @@ type DownloadFailureKind =
  * them — but they still need a kind, or those reports would be the only DB
  * download failures with no way to filter them.
  */
-type ReportedFailureKind = DownloadFailureKind | 'rejected-by-host' | 'invalid-file';
+type ReportedFailureKind =
+  | DownloadFailureKind
+  | 'rejected-by-host'
+  | 'invalid-file'
+  | 'checksum-mismatch'
+  | 'checksum-unavailable';
 
 const failureAttributes = (kind: ReportedFailureKind): Record<string, string> => ({
   db_failure_kind: kind,
@@ -252,6 +257,75 @@ const isValidSqliteFile = async (path: string): Promise<boolean> => {
   }
 };
 
+/** The published digest for the remote database, or null if it cannot be read. */
+const fetchExpectedChecksum = async (): Promise<string | null> => {
+  try {
+    const response = await fetch(SEHAJ_DB_MD5_URL);
+    if (!response.ok) {
+      return null;
+    }
+    // The file is the bare hex digest with a trailing newline.
+    const value = (await response.text()).trim().toLowerCase();
+    return /^[0-9a-f]{32}$/.test(value) ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+type VerifyResult = { ok: true } | { ok: false; kind: ReportedFailureKind; reason: string };
+
+/**
+ * Confirms the downloaded file really is the published database.
+ *
+ * The SQLite header alone cannot do this: a file truncated at 40MB of 181MB
+ * still begins with "SQLite format 3", so it passes the magic check, gets
+ * installed, and then fails somewhere in the middle of the Guru Granth Sahib
+ * instead of at open time. Comparing the whole digest catches truncation and
+ * corruption alike.
+ *
+ * Nothing is installed unless a digest was fetched AND matched. An unreachable
+ * checksum is deliberately treated as a failure rather than waved through — it
+ * costs a retry, but it is the only way "installed" can mean "verified".
+ */
+const verifyDownloadedDatabase = async (path: string): Promise<VerifyResult> => {
+  if (!(await isValidSqliteFile(path))) {
+    return {
+      ok: false,
+      kind: 'invalid-file',
+      reason: 'downloaded file is not a valid SQLite database',
+    };
+  }
+
+  const expected = await fetchExpectedChecksum();
+  if (!expected) {
+    return {
+      ok: false,
+      kind: 'checksum-unavailable',
+      reason: 'could not fetch the expected database checksum',
+    };
+  }
+
+  let actual: string;
+  try {
+    actual = (await hash(path, 'md5')).toLowerCase();
+  } catch {
+    return {
+      ok: false,
+      kind: 'checksum-unavailable',
+      reason: 'could not compute the downloaded database checksum',
+    };
+  }
+
+  if (actual !== expected) {
+    return {
+      ok: false,
+      kind: 'checksum-mismatch',
+      reason: 'downloaded database is incomplete or corrupted',
+    };
+  }
+  return { ok: true };
+};
+
 /**
  * Downloads the DB if it isn't already present.
  *
@@ -290,6 +364,14 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
     // native write returns an actual out-of-space error.
     await setDatabaseDownloadStorageBlocked(false);
   }
+
+  // Never write into whatever a previous attempt left behind. Both platforms
+  // happen to truncate rather than append today (Android opens a plain
+  // FileOutputStream, iOS replaces the destination from its own temp file), but
+  // that is their behaviour, not a guarantee this code should rely on — and a
+  // stale partial otherwise strands up to ~181 MB, which matters because the
+  // out-of-space path below is triggered by exactly that kind of leftover.
+  await safeUnlink(TEMP_DB_PATH);
 
   try {
     const { jobId, promise } = downloadFile({
@@ -331,18 +413,17 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
       return { status: 'failed', reason };
     }
 
-    if (!(await isValidSqliteFile(TEMP_DB_PATH))) {
+    const verified = await verifyDownloadedDatabase(TEMP_DB_PATH);
+    if (!verified.ok) {
+      // Nothing is installed unless the digest matched, so the existing
+      // database — if any — is left exactly as it was and the user can retry.
       await safeUnlink(TEMP_DB_PATH);
-      // A 200 that is not a database: an HTML interstitial or a truncated file.
-      // The integrity check catches it, but silently — worth reporting, since it
-      // means the URL is serving something other than the database.
-      const reason = 'downloaded file is not a valid SQLite database';
       recordError(
-        new Error(reason),
-        'db: downloaded file failed the integrity check',
-        failureAttributes('invalid-file')
+        new Error(verified.reason),
+        `db: downloaded database failed verification - ${verified.kind}`,
+        failureAttributes(verified.kind)
       );
-      return { status: 'failed', reason };
+      return { status: 'failed', reason: verified.reason };
     }
 
     resetBani();

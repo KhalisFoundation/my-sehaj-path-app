@@ -21,6 +21,15 @@ import {
 import { getBani } from '../../db/connection';
 import { recordError } from '../../utils/crashlytics';
 
+/** Stubs the published `.md5` endpoint the download verification fetches. */
+const mockFetchChecksum = (digest: string | null) => {
+  globalThis.fetch = jest.fn(() =>
+    digest === null
+      ? Promise.reject(new Error('offline'))
+      : Promise.resolve({ ok: true, text: () => Promise.resolve(`${digest}\n`) })
+  ) as unknown as typeof fetch;
+};
+
 const exists = RNFS.exists as jest.Mock;
 const read = RNFS.read as jest.Mock;
 const moveFile = RNFS.moveFile as jest.Mock;
@@ -47,6 +56,9 @@ beforeEach(async () => {
   (RNFS.unlink as jest.Mock).mockResolvedValue(undefined);
   moveFile.mockResolvedValue(undefined);
   hash.mockResolvedValue('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  // The install is gated on the downloaded file's digest matching the published
+  // one, so the happy path needs both to agree.
+  mockFetchChecksum('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
   downloadFile.mockImplementation(
     (opts: {
       begin: (value: {
@@ -106,7 +118,7 @@ describe('downloadDatabase', () => {
     expect(moveFile).not.toHaveBeenCalled();
     expect(recordError).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'downloaded file is not a valid SQLite database' }),
-      'db: downloaded file failed the integrity check',
+      'db: downloaded database failed verification - invalid-file',
       { db_failure_kind: 'invalid-file' }
     );
   });
@@ -265,6 +277,39 @@ describe('downloadDatabase', () => {
     expect(downloadFile).toHaveBeenCalledTimes(2);
     expect(moveFile).toHaveBeenCalledTimes(1);
     jest.useRealTimers();
+  });
+
+  it('refuses to install a truncated download whose digest does not match', async () => {
+    // A file truncated at 40MB of 181MB still starts with "SQLite format 3", so
+    // the header check passes it. Only the digest catches this.
+    hash.mockResolvedValue('bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb');
+
+    await expect(downloadDatabase()).resolves.toEqual({
+      status: 'failed',
+      reason: 'downloaded database is incomplete or corrupted',
+    });
+    expect(moveFile).not.toHaveBeenCalled();
+    expect(recordError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'downloaded database is incomplete or corrupted' }),
+      'db: downloaded database failed verification - checksum-mismatch',
+      { db_failure_kind: 'checksum-mismatch' }
+    );
+  });
+
+  it('refuses to install when the expected digest cannot be fetched', async () => {
+    // Unverifiable is treated as failed, not waved through: it costs a retry,
+    // but it is the only way "installed" can mean "verified".
+    mockFetchChecksum(null);
+
+    const result = await downloadDatabase();
+
+    expect(result.status).toBe('failed');
+    expect(moveFile).not.toHaveBeenCalled();
+    expect(recordError).toHaveBeenCalledWith(
+      expect.anything(),
+      'db: downloaded database failed verification - checksum-unavailable',
+      { db_failure_kind: 'checksum-unavailable' }
+    );
   });
 
   it('checkForDatabaseUpdate reports up-to-date when local and server MD5 match', async () => {
