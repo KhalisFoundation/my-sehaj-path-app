@@ -145,14 +145,15 @@ describe('SyncPopup — unowned progress', () => {
     ),
   ];
 
-  it('offers exactly three actions and no logout', async () => {
+  it('offers exactly two actions and no logout', async () => {
     const renderer = await renderUnowned();
 
-    expect(labels(renderer)).toEqual([
-      Constants.NOT_NOW,
-      Constants.SYNC_LOCAL_ACTION,
-      Constants.DISCARD_LOCAL_LINK,
-    ]);
+    // The progress either joins the account or it does not; there is no third
+    // answer. "Not now" used to sit here but only declined the prompt — it
+    // associated nothing and pulled nothing, so the user stayed signed in with
+    // the account's own progress invisible, and was never asked again.
+    expect(labels(renderer)).toEqual([Constants.SYNC_LOCAL_ACTION, Constants.DISCARD_LOCAL_LINK]);
+    expect(labels(renderer)).not.toContain(Constants.NOT_NOW);
     // Signing out resolves nothing for progress that belongs to nobody yet.
     expect(labels(renderer)).not.toContain(Constants.LOGOUT);
   });

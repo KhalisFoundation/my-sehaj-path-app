@@ -11,10 +11,13 @@ import {
   switchAccountData,
 } from '../store/confirmedSync';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { approveSync, declineSync } from '../store/slices/syncSlice';
+import { approveSync } from '../store/slices/syncSlice';
 import { onForeground } from '../store/syncLifecycle';
 import { hasLocalData } from '../store/syncWork';
 import { Dialog } from './Dialog';
+
+/** The account-switch dialogs are answer-only; the OS back gesture must not decide for the user. */
+const noop = (): void => undefined;
 
 /**
  * The login/sync decision, reduced to a small tree.
@@ -280,10 +283,6 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       associate(true);
     }
   }, [canAssociateSilently, attemptKey, syncing, associate]);
-
-  const onNotNow = useCallback(() => {
-    dispatch(declineSync());
-  }, [dispatch]);
 
   // `Dialog` is memoised, so an inline arrow here would be a fresh prop on every
   // render and defeat the memo. Setter identity is stable, so these are too.
@@ -553,24 +552,24 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
 
   // --- Case 3: unowned progress exists and an account just signed in --------
   return (
-    <Dialog visible={isVisible} onRequestClose={onNotNow}>
+    /*
+      Deliberately not dismissible. This is a fork in the data, not a prompt:
+      the progress on this device either joins the account or it does not, and
+      both answers are below. The "Not now" button that used to sit here only
+      called `declineSync`, which associated nothing and pulled nothing — so the
+      user ended up signed in while the account's own progress stayed invisible,
+      and `syncPopupAnswered` meant they were never asked again. "Later" was
+      really "never", with the account's history hidden behind it.
+    */
+    <Dialog visible={isVisible} onRequestClose={noop}>
       <Text style={styles.title}>
         {Constants.WELCOME}
         {name ? `, ${name}` : ''}!
       </Text>
       <Text style={styles.message}>
-        {`This device has reading progress that isn’t saved to any account. Add it to ${email}, or continue without syncing?`}
+        {`This device has reading progress that isn’t saved to any account. Add it to ${email}?`}
       </Text>
       <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={onNotNow}
-          disabled={syncing}
-          accessibilityRole="button"
-          accessibilityLabel={Constants.NOT_NOW}
-        >
-          <Text style={styles.secondaryText}>{Constants.NOT_NOW}</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={styles.primaryButton}
           onPress={() => associate(false)}
