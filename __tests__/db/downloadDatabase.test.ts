@@ -13,9 +13,9 @@ jest.mock('../../db/connection', () => ({
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  abortDatabaseDownload,
   downloadDatabase,
   checkForDatabaseUpdate,
+  isDatabaseDownloadInProgress,
   performDatabaseUpdate,
 } from '../../db/downloadDatabase';
 import { getBani } from '../../db/connection';
@@ -253,7 +253,7 @@ describe('downloadDatabase', () => {
     expect(recordError).toHaveBeenCalledWith(error, context, { db_failure_kind: kind });
   });
 
-  it('going offline ends the download, and coming back online downloads it in full again', async () => {
+  it('a dead transfer releases the lock, and the next attempt downloads it in full again', async () => {
     // The whole point of dropping resume: an interrupted download is discarded
     // and the next attempt fetches the file from scratch.
     let call = 0;
@@ -267,13 +267,15 @@ describe('downloadDatabase', () => {
       return { jobId: 78, promise: Promise.resolve({ statusCode: 200 }) };
     });
 
+    jest.useFakeTimers();
     const interrupted = downloadDatabase();
-    await Promise.resolve();
-    abortDatabaseDownload();
+    // The transfer goes silent; the idle watchdog plus its cancel grace is what
+    // ends it, since iOS reports the dropped connection to nobody.
+    await jest.advanceTimersByTimeAsync(30_000 + 5_000);
 
     await expect(interrupted).resolves.toEqual({
       status: 'failed',
-      reason: 'database download stopped, the internet connection appears to be offline',
+      reason: 'database download stalled',
     });
     // The lock must be released, or the reconnect below is ignored.
     expect(isDatabaseDownloadInProgress()).toBe(false);
@@ -284,6 +286,7 @@ describe('downloadDatabase', () => {
     await expect(downloadDatabase()).resolves.toEqual({ status: 'downloaded' });
     expect(downloadFile).toHaveBeenCalledTimes(2);
     expect(moveFile).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
   });
 
   it('checkForDatabaseUpdate reports up-to-date when local and server MD5 match', async () => {
@@ -401,7 +404,7 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
+    await jest.advanceTimersByTimeAsync(30_000);
 
     expect(RNFS.stopDownload).toHaveBeenCalledWith(42);
     // Cancellation was requested, but the first job still owns the shared temp
@@ -429,7 +432,7 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(3 * 60 * 1000 + 60_000 + 5_000);
+    await jest.advanceTimersByTimeAsync(30_000 + 5_000);
 
     await expect(stalled).resolves.toEqual({
       status: 'failed',
@@ -456,7 +459,7 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
+    await jest.advanceTimersByTimeAsync(30_000);
     expect(RNFS.stopDownload).toHaveBeenCalledWith(99);
 
     finishNative?.({ statusCode: 200 }); // native says "done" anyway
@@ -478,7 +481,7 @@ describe('downloadDatabase', () => {
 
     const stalled = downloadDatabase();
     await drainMicrotasks();
-    await jest.advanceTimersByTimeAsync(3 * 60 * 1000 + 60_000 + 5_000);
+    await jest.advanceTimersByTimeAsync(30_000 + 5_000);
 
     await expect(stalled).resolves.toEqual({
       status: 'failed',
@@ -514,7 +517,7 @@ describe('downloadDatabase', () => {
     await drainMicrotasks();
     // Trickle for well past any old total budget, staying under the idle limit.
     for (let minute = 0; minute < 30; minute += 1) {
-      await jest.advanceTimersByTimeAsync(2 * 60 * 1000);
+      await jest.advanceTimersByTimeAsync(20_000);
       emitProgress?.({ bytesWritten: minute * 1_000_000, contentLength: 190_000_000 });
     }
     finish?.({ statusCode: 200 });
@@ -523,7 +526,7 @@ describe('downloadDatabase', () => {
     // A progress event that was queued before native completion must not arm a
     // fresh timer after the job has released its lock.
     emitProgress?.({ bytesWritten: 190_000_000, contentLength: 190_000_000 });
-    await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
+    await jest.advanceTimersByTimeAsync(30_000);
     expect(RNFS.stopDownload).not.toHaveBeenCalled();
     jest.useRealTimers();
   });

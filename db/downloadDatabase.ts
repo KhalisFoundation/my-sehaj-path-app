@@ -29,17 +29,30 @@ const READ_TIMEOUT_MS = 60_000;
 /**
  * How long the transfer may make NO progress before it is abandoned.
  *
- * Deliberately an IDLE timeout, not a total one. A total budget punishes a slow
- * connection: 190MB in 10 minutes demands a sustained ~2.5 Mbps, so a download
- * that was working perfectly well just slowly got killed and restarted from
- * zero. `readTimeout` already fails a truly dead socket within a minute, so the
- * only job left here is to release the shared temp-file lock when the native
- * job neither finishes nor errors. A download that is still moving is never
- * interrupted, however long it takes.
+ * Deliberately an IDLE timeout, not a total one: a total budget punishes a slow
+ * connection, killing a download that was working perfectly well just slowly.
+ * Progress fires every 250ms while any bytes are arriving, so total silence for
+ * this long means the transfer is genuinely dead, however slow the link is.
+ *
+ * This is also the app's PRIMARY offline detector on iOS, which is why it is
+ * seconds rather than minutes. NetInfo cannot be relied on for speed: its
+ * `isInternetReachable` probe re-runs only every 60s while it believes it is
+ * online (`reachabilityLongTimeout`) and the probe itself may hang for 15s more,
+ * and on the simulator `isConnected` stays true when the host Wi-Fi drops. RNFS
+ * on iOS makes it worse by calling NEITHER of its completion callbacks when the
+ * OS produced resume data, so the native promise simply never settles. Without
+ * a short watchdog here, pulling the network left the download pending — and
+ * `activeDownload` set — long enough that reconnecting appeared to do nothing.
  */
-const DOWNLOAD_IDLE_TIMEOUT_MS = 3 * 60 * 1000;
-/** Give the native task time to observe cancellation before a retry may reuse its part file. */
-const DOWNLOAD_CANCEL_GRACE_MS = READ_TIMEOUT_MS + 5_000;
+const DOWNLOAD_IDLE_TIMEOUT_MS = 30 * 1000;
+/**
+ * Give the native task a moment to observe the cancellation.
+ *
+ * Android checks `stopDownload` between socket reads, so a little slack avoids
+ * a second attempt racing the first for the temp file — but it must not delay
+ * the retry, so it is a few seconds, not a full read timeout.
+ */
+const DOWNLOAD_CANCEL_GRACE_MS = 5_000;
 const DB_DOWNLOAD_STORAGE_BLOCK_KEY = '@sehaj-path/db-download-blocked-by-storage';
 
 /** Kinds `classifyDownloadFailure` can derive from a thrown error. */
@@ -186,23 +199,6 @@ export const isDatabaseDownloadBlockedByStorage = async (): Promise<boolean> => 
   }
 };
 
-/** Ends the transfer in flight, if any, because the device went offline. */
-let abortCurrentDownload: (() => void) | null = null;
-
-/**
- * Called by the app when connectivity is lost.
- *
- * iOS does not report a dropped connection to JS at all — RNFS calls its error
- * callback only when the OS produced no resume data — so without this the
- * download sits pending until the idle watchdog fires minutes later. While it
- * sits there `activeDownload` stays set, and the reconnect that should restart
- * the download is swallowed by the "already in progress" guard. This is what
- * makes going offline and back online actually work.
- */
-export const abortDatabaseDownload = (): void => {
-  abortCurrentDownload?.();
-};
-
 /**
  * Resolves the native download, abandoning it if it goes quiet.
  *
@@ -233,7 +229,6 @@ function awaitDownload<T>(
       if (cancelTimer) {
         clearTimeout(cancelTimer);
       }
-      abortCurrentDownload = null;
       settle();
     };
 
@@ -265,15 +260,6 @@ function awaitDownload<T>(
       }
       idleTimer = setTimeout(() => giveUp(failure), DOWNLOAD_IDLE_TIMEOUT_MS);
     };
-
-    // Going offline ends the attempt immediately rather than waiting out the
-    // idle timer. Worded so it classifies as `network-unavailable`.
-    abortCurrentDownload = () =>
-      finish(() =>
-        reject(
-          new Error('database download stopped, the internet connection appears to be offline')
-        )
-      );
 
     registerTouch(touch);
     touch();

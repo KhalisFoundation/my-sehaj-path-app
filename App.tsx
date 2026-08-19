@@ -35,7 +35,7 @@ import { outbox, persistence } from './store/instance';
 import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syncLifecycle';
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
-import { abortDatabaseDownload, provisionDatabase } from './db';
+import { provisionDatabase } from './db';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -120,6 +120,7 @@ const App = () => {
     // One NetInfo subscription for the whole app. On a false→true transition,
     // flush anything queued while offline (Step 10 reconnect trigger).
     let wasOnline = store.getState().network.isOnline;
+
     const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
       // `isInternetReachable` is null while NetInfo is still probing. Treat
       // unknown as online unless NetInfo has positively reported a disconnect;
@@ -128,12 +129,6 @@ const App = () => {
       store.dispatch(setOnline(online));
       if (online) {
         retrySessionProfile();
-      }
-      if (!online && wasOnline) {
-        // End an in-flight download now. iOS never reports the dropped
-        // connection, so otherwise it sits pending and the reconnect below is
-        // swallowed by the "already in progress" guard.
-        abortDatabaseDownload();
       }
       if (online && !wasOnline) {
         onReconnect();
