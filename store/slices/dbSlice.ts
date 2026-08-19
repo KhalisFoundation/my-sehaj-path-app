@@ -5,7 +5,7 @@ import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
  * on every launch from whether the DB file is on disk and the download outcome.
  *
  * - `unknown`        — before boot provisioning has run.
- * - `downloading`    — the DB is being fetched (see `progress`).
+ * - `downloading`    — the DB is being fetched.
  * - `ready`          — the DB is installed and the reader can use it offline.
  * - `notConfigured`  — no download URL set yet; the app keeps using the API.
  * - `failed`         — download failed; the app keeps using the API and may retry.
@@ -24,15 +24,12 @@ export type DbCompletion = 'installed' | 'updated';
 
 export interface DbState {
   status: DbStatus;
-  /** Download progress 0–100 (only meaningful while `downloading`). */
-  progress: number;
   /** Set only by a genuine success; cleared once the notice has been shown. */
   completed: DbCompletion | null;
 }
 
 const initialState: DbState = {
   status: 'unknown',
-  progress: 0,
   completed: null,
 };
 
@@ -42,20 +39,14 @@ export const dbSlice = createSlice({
   reducers: {
     dbDownloadStarted: (state) => {
       state.status = 'downloading';
-      state.progress = 0;
-    },
-    dbDownloadProgress: (state, action: PayloadAction<number>) => {
-      state.progress = action.payload;
     },
     /** Ready, with nothing to announce — boot, or recovery after a failure. */
     dbReady: (state) => {
       state.status = 'ready';
-      state.progress = 100;
     },
     /** Ready BECAUSE a download just succeeded. Only this shows the notice. */
     dbInstalled: (state, action: PayloadAction<DbCompletion>) => {
       state.status = 'ready';
-      state.progress = 100;
       state.completed = action.payload;
     },
     dbNoticeShown: (state) => {
@@ -70,12 +61,5 @@ export const dbSlice = createSlice({
   },
 });
 
-export const {
-  dbDownloadStarted,
-  dbDownloadProgress,
-  dbReady,
-  dbInstalled,
-  dbNoticeShown,
-  dbNotConfigured,
-  dbFailed,
-} = dbSlice.actions;
+export const { dbDownloadStarted, dbReady, dbInstalled, dbNoticeShown, dbNotConfigured, dbFailed } =
+  dbSlice.actions;

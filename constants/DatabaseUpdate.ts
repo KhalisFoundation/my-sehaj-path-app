@@ -4,6 +4,7 @@ export const DatabaseUpdateText = {
   NAV_TITLE: 'Database',
   BACK: 'Back',
   SUBTITLE: 'Database helps you to read path even without internet',
+  CHECK_UPDATES: 'Check for updates',
   CHECK_AGAIN: 'Check again',
   CHECK_UPDATE_A11Y: 'Check for database update',
   UPDATE_NOW: 'Update now',
@@ -11,19 +12,24 @@ export const DatabaseUpdateText = {
   UPDATE_AVAILABLE_MESSAGE: 'A newer reading database is available. Update now to get the latest.',
   UPDATING_TITLE: 'Updating database',
   UPDATING_START_MESSAGE: 'Starting the update…',
+  IDLE_TITLE: 'Read without internet',
+  IDLE_MESSAGE:
+    'You already have the offline database. Tap below to check for a new database version.',
+  IDLE_MISSING_TITLE: 'Read without internet',
+  IDLE_MISSING_MESSAGE:
+    'Download the offline database to read your path without an internet connection.',
+  DOWNLOAD_NOW: 'Download now',
   CHECKING_TITLE: 'Checking database',
   CHECKING_MESSAGE: 'Looking for the latest reading database.',
   DOWNLOADING_TITLE: 'Downloading database',
   DOWNLOAD_IN_PROGRESS_TITLE: 'Database download in progress',
   DOWNLOAD_IN_PROGRESS_MESSAGE:
     'A database download is already in progress. Please keep the app open.',
-  FINALIZING_MESSAGE: 'Download complete. Finalizing the offline database…',
   OFFLINE_TITLE: 'You are offline',
   OFFLINE_MESSAGE:
     'The database download will resume automatically when your internet connection returns.',
 
   /** Shared progress line for the checking/downloading states. */
-  PROGRESS_MESSAGE: (percent: number): string => `${percent}% complete. Please keep the app open.`,
   UP_TO_DATE_TITLE: 'Database is up to date',
   UP_TO_DATE_MESSAGE: 'You already have the latest reading database.',
   UPDATED_TITLE: 'Database updated',

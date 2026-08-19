@@ -6,7 +6,11 @@ import { NavContent } from '@components';
 import { LeftArrowIcon } from '@icons';
 import { EDGES_ALL_SIDES, DatabaseUpdateText } from '@constants';
 import { DatabaseUpdateScreenStyles as styles, SafeAreaStyle } from '@styles';
-import { checkForDatabaseUpdate, runDatabaseUpdate } from '../db';
+import {
+  checkForDatabaseUpdate,
+  isDatabaseDownloadBlockedByStorage,
+  runDatabaseUpdate,
+} from '../db';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { trackEvent } from '@utils';
@@ -14,6 +18,7 @@ import { useAppSelector } from '../store/hooks';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DatabaseUpdate'>;
 type UpdateState =
+  | 'idle'
   | 'checking'
   | 'downloadInProgress'
   | 'updateAvailable'
@@ -26,14 +31,16 @@ type UpdateState =
   | 'checkFailed'
   | 'failed';
 
-const progressMessage = (progress: number, startingMessage: string): string => {
-  if (progress >= 100) {
-    return DatabaseUpdateText.FINALIZING_MESSAGE;
+const copyFor = (state: UpdateState, hasDatabase: boolean): { title: string; message: string } => {
+  if (state === 'idle' && hasDatabase) {
+    return { title: DatabaseUpdateText.IDLE_TITLE, message: DatabaseUpdateText.IDLE_MESSAGE };
   }
-  return progress > 0 ? DatabaseUpdateText.PROGRESS_MESSAGE(progress) : startingMessage;
-};
-
-const copyFor = (state: UpdateState, progress: number): { title: string; message: string } => {
+  if (state === 'idle') {
+    return {
+      title: DatabaseUpdateText.IDLE_MISSING_TITLE,
+      message: DatabaseUpdateText.IDLE_MISSING_MESSAGE,
+    };
+  }
   if (state === 'checking') {
     return {
       title: DatabaseUpdateText.CHECKING_TITLE,
@@ -43,7 +50,7 @@ const copyFor = (state: UpdateState, progress: number): { title: string; message
   if (state === 'downloadInProgress') {
     return {
       title: DatabaseUpdateText.DOWNLOAD_IN_PROGRESS_TITLE,
-      message: progressMessage(progress, DatabaseUpdateText.DOWNLOAD_IN_PROGRESS_MESSAGE),
+      message: DatabaseUpdateText.DOWNLOAD_IN_PROGRESS_MESSAGE,
     };
   }
   if (state === 'updateAvailable') {
@@ -55,7 +62,7 @@ const copyFor = (state: UpdateState, progress: number): { title: string; message
   if (state === 'updating') {
     return {
       title: DatabaseUpdateText.UPDATING_TITLE,
-      message: progressMessage(progress, DatabaseUpdateText.UPDATING_START_MESSAGE),
+      message: DatabaseUpdateText.UPDATING_START_MESSAGE,
     };
   }
   if (state === 'upToDate') {
@@ -96,10 +103,8 @@ const copyFor = (state: UpdateState, progress: number): { title: string; message
 
 export const DatabaseUpdate = ({ navigation }: Props) => {
   useScreenAnalytics('DatabaseUpdate', 'DatabaseUpdate');
-  const [state, setState] = useState<UpdateState>('checking');
-  const [progress, setProgress] = useState(0);
+  const [state, setState] = useState<UpdateState>('idle');
   const databaseStatus = useAppSelector((store) => store.db.status);
-  const databaseProgress = useAppSelector((store) => store.db.progress);
   const isOnline = useAppSelector((store) => store.network.isOnline);
   const wasDownloadingRef = useRef(false);
   /** True while THIS screen is driving an update it started. */
@@ -108,7 +113,6 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
   // Check only — never downloads. If an update exists we ask the user first.
   const runCheck = useCallback(async () => {
     setState('checking');
-    setProgress(0);
     const result = await checkForDatabaseUpdate();
     if (result.status === 'up-to-date') {
       setState('upToDate');
@@ -144,7 +148,6 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
     selfUpdating.current = true;
     trackEvent('DatabaseUpdate', 'click', 'update now');
     setState('updating');
-    setProgress(0);
     const result = await runDatabaseUpdate();
     if (result.status === 'updated') {
       setState('updated');
@@ -166,6 +169,26 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
     // by this same attempt cannot immediately replace the card with `runCheck`.
   }, [isOnline]);
 
+  // A previous attempt ran out of space. That is the one thing worth saying
+  // BEFORE the user acts: otherwise they tap Download, wait out a 181 MB
+  // transfer, and only then learn there was never room for it. Reading the
+  // persisted flag is a local lookup, not a network call, so it does not
+  // reintroduce the automatic check this screen deliberately dropped.
+  useEffect(() => {
+    let cancelled = false;
+    const showStorageBlockIfSet = async () => {
+      if (await isDatabaseDownloadBlockedByStorage()) {
+        if (!cancelled) {
+          setState((current) => (current === 'idle' ? 'insufficientStorage' : current));
+        }
+      }
+    };
+    showStorageBlockIfSet();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   useEffect(() => {
     // The rendered offline state has no actions. Wait for the NetInfo reconnect
     // edge before checking the MD5 or reacting to the download lifecycle.
@@ -180,18 +203,33 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
     // of checking again and offering an update that is already downloading.
     if (databaseStatus === 'downloading') {
       wasDownloadingRef.current = true;
-      setProgress(databaseProgress);
       setState('downloadInProgress');
       return;
     }
     if (wasDownloadingRef.current) {
+      // A download this screen was watching has finished; show its outcome
+      // rather than sitting on the idle card.
       wasDownloadingRef.current = false;
+      runCheck();
     }
-    runCheck();
-  }, [runCheck, databaseProgress, databaseStatus, isOnline]);
+    // Otherwise do NOTHING. Opening this screen used to fire an MD5 request on
+    // every visit, which costs a network round trip for a question the user did
+    // not ask. They tap "Check for updates" when they want to know.
+  }, [runCheck, databaseStatus, isOnline]);
 
   const displayState: UpdateState = isOnline ? state : 'offline';
-  const copy = copyFor(displayState, progress);
+  const hasDatabase = databaseStatus === 'ready';
+  // "Check again" only makes sense once something has been checked; on a device
+  // with no database the action is a download, not a check.
+  let checkLabel: string = DatabaseUpdateText.CHECK_AGAIN;
+  if (!hasDatabase) {
+    // Nothing has been downloaded yet, so the action is a download, not a check.
+    checkLabel = DatabaseUpdateText.DOWNLOAD_NOW;
+  } else if (displayState === 'idle') {
+    // "Check again" reads oddly before anything has been checked.
+    checkLabel = DatabaseUpdateText.CHECK_UPDATES;
+  }
+  const copy = copyFor(displayState, hasDatabase);
   const isBusy =
     displayState === 'checking' ||
     displayState === 'downloadInProgress' ||
@@ -251,7 +289,7 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
                 accessibilityRole="button"
                 accessibilityLabel={DatabaseUpdateText.CHECK_UPDATE_A11Y}
               >
-                <Text style={styles.buttonText}>{DatabaseUpdateText.CHECK_AGAIN}</Text>
+                <Text style={styles.buttonText}>{checkLabel}</Text>
               </TouchableOpacity>
             )}
           </View>

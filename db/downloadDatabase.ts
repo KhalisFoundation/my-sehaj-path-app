@@ -189,14 +189,19 @@ export const isDatabaseDownloadBlockedByStorage = async (): Promise<boolean> => 
 };
 
 /**
- * Resolves the native download, abandoning it if it goes quiet.
+ * Resolves the native download, abandoning it if it outlives its budget.
  *
- * An IDLE timeout, not a total one: a slow connection must never be killed for
- * being slow, only for being silent.
+ * This is a WHOLE-TRANSFER budget, not an idle timeout. An idle timeout is the
+ * better shape, but idleness can only be measured from progress events and the
+ * `downloadFile` call below deliberately requests none — asking for them is what
+ * made RNFS emit from the NSURLSession delegate thread and crash the app. The
+ * consequence to be aware of: a genuinely slow connection that needs longer than
+ * `DOWNLOAD_TIMEOUT_MS` for the whole file is cancelled, even though it is
+ * working.
  */
 function awaitDownload<T>(promise: Promise<T>, jobId: number): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let budgetTimer: ReturnType<typeof setTimeout> | null = null;
     let cancelTimer: ReturnType<typeof setTimeout> | null = null;
     let settled = false;
     /** Set once we have given up; the native job's own outcome is then ignored. */
@@ -208,8 +213,8 @@ function awaitDownload<T>(promise: Promise<T>, jobId: number): Promise<T> {
         return;
       }
       settled = true;
-      if (idleTimer) {
-        clearTimeout(idleTimer);
+      if (budgetTimer) {
+        clearTimeout(budgetTimer);
       }
       if (cancelTimer) {
         clearTimeout(cancelTimer);
@@ -222,9 +227,9 @@ function awaitDownload<T>(promise: Promise<T>, jobId: number): Promise<T> {
         return;
       }
       abandonedWith = error;
-      if (idleTimer) {
-        clearTimeout(idleTimer);
-        idleTimer = null;
+      if (budgetTimer) {
+        clearTimeout(budgetTimer);
+        budgetTimer = null;
       }
       try {
         stopDownload(jobId);
@@ -236,7 +241,7 @@ function awaitDownload<T>(promise: Promise<T>, jobId: number): Promise<T> {
       cancelTimer = setTimeout(() => finish(() => reject(error)), DOWNLOAD_CANCEL_GRACE_MS);
     };
 
-    idleTimer = setTimeout(() => giveUp(failure), DOWNLOAD_TIMEOUT_MS);
+    budgetTimer = setTimeout(() => giveUp(failure), DOWNLOAD_TIMEOUT_MS);
     promise.then(
       // A cancelled job can still report success for a PARTIAL file, and a
       // truncated file keeps a valid SQLite header — so the integrity check
@@ -257,10 +262,25 @@ const isValidSqliteFile = async (path: string): Promise<boolean> => {
   }
 };
 
-/** The published digest for the remote database, or null if it cannot be read. */
+/**
+ * The published digest for the remote database, or null if it cannot be read.
+ *
+ * Bounded deliberately. This runs AFTER the transfer watchdog has been cleared
+ * but while `activeDownload` is still held, so an unbounded request here wedges
+ * the whole feature: `isDatabaseDownloadInProgress()` would stay true forever,
+ * every later foreground and reconnect would join the hung promise and return,
+ * the screen would sit on "download in progress" until the app is relaunched,
+ * and the ~181 MB temp file would never be reclaimed. Losing the connection the
+ * moment a long download completes is exactly the case this feature exists for,
+ * so it cannot be left unguarded.
+ */
+const CHECKSUM_FETCH_TIMEOUT_MS = 15_000;
+
 const fetchExpectedChecksum = async (): Promise<string | null> => {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), CHECKSUM_FETCH_TIMEOUT_MS);
   try {
-    const response = await fetch(SEHAJ_DB_MD5_URL);
+    const response = await fetch(SEHAJ_DB_MD5_URL, { signal: controller.signal });
     if (!response.ok) {
       return null;
     }
@@ -268,7 +288,10 @@ const fetchExpectedChecksum = async (): Promise<string | null> => {
     const value = (await response.text()).trim().toLowerCase();
     return /^[0-9a-f]{32}$/.test(value) ? value : null;
   } catch {
+    // Includes the abort above; the caller reports it as `checksum-unavailable`.
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 };
 

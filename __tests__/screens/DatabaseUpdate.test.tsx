@@ -6,6 +6,7 @@ import { DatabaseUpdate } from '../../screens/DatabaseUpdate';
 
 const mockCheckForDatabaseUpdate = jest.fn();
 const mockRunDatabaseUpdate = jest.fn();
+const mockIsBlockedByStorage = jest.fn(() => Promise.resolve(false));
 let mockStoreState = {
   db: { status: 'failed', progress: 0 },
   network: { isOnline: true },
@@ -14,6 +15,10 @@ let mockStoreState = {
 jest.mock('../../db', () => ({
   checkForDatabaseUpdate: (...args: unknown[]) => mockCheckForDatabaseUpdate(...args),
   runDatabaseUpdate: (...args: unknown[]) => mockRunDatabaseUpdate(...args),
+  // Read on mount so a previous out-of-space attempt is visible before the user
+  // starts another 181 MB download. Local lookup, not a network call.
+  isDatabaseDownloadBlockedByStorage: (...args: unknown[]) =>
+    mockIsBlockedByStorage(...(args as [])),
 }));
 
 jest.mock('../../store/hooks', () => ({
@@ -52,6 +57,16 @@ describe('DatabaseUpdate storage handling', () => {
           route={{ key: 'DatabaseUpdate-test', name: 'DatabaseUpdate' } as never}
         />
       );
+    });
+
+    // The screen now opens idle — it must not spend a network round trip on a
+    // question the user did not ask. The check is an explicit action.
+    const checkButton = renderer.root
+      .findAllByType(TouchableOpacity)
+      .find((node) => node.props.accessibilityLabel === DatabaseUpdateText.CHECK_UPDATE_A11Y);
+    expect(checkButton).toBeDefined();
+    await act(async () => {
+      await checkButton?.props.onPress();
     });
 
     const updateButton = renderer.root

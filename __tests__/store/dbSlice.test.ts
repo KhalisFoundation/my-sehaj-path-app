@@ -1,7 +1,6 @@
 import {
   dbSlice,
   dbDownloadStarted,
-  dbDownloadProgress,
   dbReady,
   dbInstalled,
   dbNoticeShown,
@@ -12,16 +11,13 @@ import {
 const { reducer } = dbSlice;
 
 describe('dbSlice', () => {
-  it('download lifecycle: started -> progress -> ready', () => {
+  it('download lifecycle: started -> ready', () => {
     let state = reducer(undefined, dbDownloadStarted());
-    expect(state).toEqual({ status: 'downloading', progress: 0, completed: null });
-
-    state = reducer(state, dbDownloadProgress(42));
-    expect(state).toEqual({ status: 'downloading', progress: 42, completed: null });
+    expect(state).toEqual({ status: 'downloading', completed: null });
 
     // `dbReady` is the quiet path: ready, with nothing to announce.
     state = reducer(state, dbReady());
-    expect(state).toEqual({ status: 'ready', progress: 100, completed: null });
+    expect(state).toEqual({ status: 'ready', completed: null });
   });
 
   it('only a genuine success announces itself, and only once', () => {
@@ -32,7 +28,6 @@ describe('dbSlice', () => {
     expect(reducer(undefined, dbInstalled('installed')).completed).toBe('installed');
     expect(reducer(undefined, dbInstalled('updated'))).toEqual({
       status: 'ready',
-      progress: 100,
       completed: 'updated',
     });
 
