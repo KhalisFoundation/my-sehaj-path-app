@@ -1,10 +1,17 @@
-import { exists, hash, moveFile, read, unlink } from '@dr.pogodin/react-native-fs';
+import {
+  downloadFile,
+  exists,
+  hash,
+  moveFile,
+  read,
+  stopDownload,
+  unlink,
+} from '@dr.pogodin/react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SEHAJ_DB_MD5_URL, SEHAJ_DB_REMOTE_URL } from '@constants';
 import { recordError } from '@utils';
 import { getBani, resetBani } from './connection';
 import { LOCAL_DB_PATH, TEMP_DB_PATH } from './paths';
-import { clearResumableDownloadState, downloadFileWithResumeAndRetry } from './resumableDownload';
 
 /**
  * Downloads the offline reading database and saves it for the reader to open.
@@ -179,6 +186,107 @@ export const isDatabaseDownloadBlockedByStorage = async (): Promise<boolean> => 
   }
 };
 
+/** Ends the transfer in flight, if any, because the device went offline. */
+let abortCurrentDownload: (() => void) | null = null;
+
+/**
+ * Called by the app when connectivity is lost.
+ *
+ * iOS does not report a dropped connection to JS at all — RNFS calls its error
+ * callback only when the OS produced no resume data — so without this the
+ * download sits pending until the idle watchdog fires minutes later. While it
+ * sits there `activeDownload` stays set, and the reconnect that should restart
+ * the download is swallowed by the "already in progress" guard. This is what
+ * makes going offline and back online actually work.
+ */
+export const abortDatabaseDownload = (): void => {
+  abortCurrentDownload?.();
+};
+
+/**
+ * Resolves the native download, abandoning it if it goes quiet.
+ *
+ * An IDLE timeout, not a total one: a slow connection must never be killed for
+ * being slow, only for being silent.
+ */
+function awaitDownload<T>(
+  promise: Promise<T>,
+  jobId: number,
+  registerTouch: (touch: () => void) => void
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    let cancelTimer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
+    /** Set once we have given up; the native job's own outcome is then ignored. */
+    let abandonedWith: Error | null = null;
+    const failure = new Error('database download stalled');
+
+    const finish = (settle: () => void) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+      }
+      if (cancelTimer) {
+        clearTimeout(cancelTimer);
+      }
+      abortCurrentDownload = null;
+      settle();
+    };
+
+    const giveUp = (error: Error) => {
+      if (settled || abandonedWith) {
+        return;
+      }
+      abandonedWith = error;
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
+      }
+      try {
+        stopDownload(jobId);
+      } catch {
+        // The native job may already have ended.
+      }
+      // Native needs a moment to observe the cancellation, but must not hold the
+      // temp file forever if it never does.
+      cancelTimer = setTimeout(() => finish(() => reject(error)), DOWNLOAD_CANCEL_GRACE_MS);
+    };
+
+    const touch = () => {
+      if (settled || abandonedWith) {
+        return;
+      }
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+      }
+      idleTimer = setTimeout(() => giveUp(failure), DOWNLOAD_IDLE_TIMEOUT_MS);
+    };
+
+    // Going offline ends the attempt immediately rather than waiting out the
+    // idle timer. Worded so it classifies as `network-unavailable`.
+    abortCurrentDownload = () =>
+      finish(() =>
+        reject(
+          new Error('database download stopped, the internet connection appears to be offline')
+        )
+      );
+
+    registerTouch(touch);
+    touch();
+    promise.then(
+      // A cancelled job can still report success for a PARTIAL file, and a
+      // truncated file keeps a valid SQLite header — so the integrity check
+      // cannot catch it. Once abandoned, the native outcome is never accepted.
+      (value) => finish(() => (abandonedWith ? reject(abandonedWith) : resolve(value))),
+      (error) => finish(() => reject(abandonedWith ?? error))
+    );
+  });
+}
+
 /** Confirms `path` is really a SQLite database (not a partial file / error page). */
 const isValidSqliteFile = async (path: string): Promise<boolean> => {
   try {
@@ -200,7 +308,14 @@ const isValidSqliteFile = async (path: string): Promise<boolean> => {
  *
  * `onProgress` fires during the transfer so the UI can show a percentage.
  */
-let activeDownload: Promise<DownloadResult> | null = null;
+type ActiveDownload = {
+  promise: Promise<DownloadResult>;
+  force: boolean;
+  progressListeners: Set<(progress: DownloadProgress) => void>;
+  latestProgress: DownloadProgress | null;
+};
+
+let activeDownload: ActiveDownload | null = null;
 
 /** True while any first-install or manual update download owns the temp file. */
 export const isDatabaseDownloadInProgress = (): boolean => activeDownload !== null;
@@ -228,27 +343,39 @@ const downloadDatabaseInternal = async (
   }
 
   try {
-    const result = await downloadFileWithResumeAndRetry({
+    let touchIdleTimer: (() => void) | null = null;
+    const { jobId, promise } = downloadFile({
       fromUrl: SEHAJ_DB_REMOTE_URL,
       toFile: TEMP_DB_PATH,
+      background: false,
+      discretionary: false,
+      cacheable: false,
       connectionTimeout: CONNECTION_TIMEOUT_MS,
       readTimeout: READ_TIMEOUT_MS,
-      idleTimeout: DOWNLOAD_IDLE_TIMEOUT_MS,
-      cancelGrace: DOWNLOAD_CANCEL_GRACE_MS,
-      onProgress: (bytesWritten, totalBytes) => {
-        // A native 100% progress event only means that all response bytes have
-        // arrived. RNFS may still be closing the file, and a resumed download
-        // still has to append, validate, and atomically install it. Keep the
-        // public progress at 99% until `dbReady` marks the completed install as
-        // 100%, so the UI never claims completion several seconds too early.
+      progressInterval: 250,
+      progress: ({ bytesWritten, contentLength }) => {
+        touchIdleTimer?.();
+        const totalBytes = contentLength > 0 ? contentLength : 0;
+        // A native 100% progress event means all response bytes have arrived,
+        // but validation and the atomic install may still be running. The UI
+        // uses 100 specifically for its "Finalizing" state; a real 99% remains
+        // a normal in-progress percentage.
         const percent =
-          totalBytes > 0 ? Math.min(99, Math.floor((bytesWritten / totalBytes) * 100)) : 0;
+          totalBytes > 0 ? Math.min(100, Math.floor((bytesWritten / totalBytes) * 100)) : 0;
 
         onProgress?.({ bytesWritten, totalBytes, percent });
       },
     });
+
+    const result = await awaitDownload(promise, jobId, (touch) => {
+      touchIdleTimer = touch;
+    }).finally(() => {
+      // Progress events queued by native after completion must not re-arm the
+      // watchdog on a job that has already released its lock.
+      touchIdleTimer = null;
+    });
     if (result.statusCode !== 200) {
-      await clearResumableDownloadState(TEMP_DB_PATH);
+      await safeUnlink(TEMP_DB_PATH);
       // The transfer completed without throwing, so nothing else reports this.
       // It is the shape a throttling host takes (Drive answers 403 once a large
       // file has been fetched too often), which is exactly what needs to be
@@ -263,7 +390,7 @@ const downloadDatabaseInternal = async (
     }
 
     if (!(await isValidSqliteFile(TEMP_DB_PATH))) {
-      await clearResumableDownloadState(TEMP_DB_PATH);
+      await safeUnlink(TEMP_DB_PATH);
       // A 200 that is not a database: an HTML interstitial or a truncated file.
       // The integrity check catches it, but silently — worth reporting, since it
       // means the URL is serving something other than the database.
@@ -279,20 +406,18 @@ const downloadDatabaseInternal = async (
     resetBani();
     await safeUnlink(LOCAL_DB_PATH);
     await moveFile(TEMP_DB_PATH, LOCAL_DB_PATH);
-    await clearResumableDownloadState(TEMP_DB_PATH);
+    await safeUnlink(TEMP_DB_PATH);
     await setDatabaseDownloadStorageBlocked(false);
     return { status: 'downloaded' };
   } catch (error) {
     const failureKind = classifyDownloadFailure(error);
+    // There is no resume: the next attempt re-downloads the whole file, so a
+    // partial is never read again and would otherwise strand ~181 MB. Freeing it
+    // also matters most in the out-of-disk case, where those very bytes are what
+    // filled the disk.
+    await safeUnlink(TEMP_DB_PATH);
     if (failureKind === 'insufficient-storage') {
-      // Free the failed partial before persisting the block; otherwise the very
-      // bytes that filled the disk would remain stranded.
-      await clearResumableDownloadState(TEMP_DB_PATH);
       await setDatabaseDownloadStorageBlocked(true);
-    } else if (failureKind === 'other') {
-      // Unknown/native logic failures are not safe resume points. Network
-      // interruptions deliberately keep the partial and its ETag manifest.
-      await clearResumableDownloadState(TEMP_DB_PATH);
     }
     // The context string is only a breadcrumb — Crashlytics groups issues by
     // stack trace, so every kind raised from this same catch would otherwise
@@ -316,14 +441,41 @@ export const downloadDatabase = (
   force = false
 ): Promise<DownloadResult> => {
   if (activeDownload) {
-    return activeDownload;
+    if (onProgress) {
+      activeDownload.progressListeners.add(onProgress);
+      if (activeDownload.latestProgress) {
+        onProgress(activeDownload.latestProgress);
+      }
+    }
+
+    if (force && !activeDownload.force) {
+      const joined = activeDownload;
+      return joined.promise.then((result) => {
+        // A completed first-install fetched the same entity, so it satisfies
+        // the explicit request. Every other non-forced result must be followed
+        // by the attempt the user actually requested (notably a storage-block
+        // result or the installed-file fast path).
+        return result.status === 'downloaded' ? result : downloadDatabase(onProgress, true);
+      });
+    }
+    return activeDownload.promise;
   }
 
-  const download = downloadDatabaseInternal(onProgress, force);
-  activeDownload = download;
+  const current: ActiveDownload = {
+    promise: Promise.resolve({ status: 'failed', reason: 'download not started' }),
+    force,
+    progressListeners: new Set(onProgress ? [onProgress] : []),
+    latestProgress: null,
+  };
+  const download = downloadDatabaseInternal((progress) => {
+    current.latestProgress = progress;
+    current.progressListeners.forEach((listener) => listener(progress));
+  }, force);
+  current.promise = download;
+  activeDownload = current;
   download
     .finally(() => {
-      if (activeDownload === download) {
+      if (activeDownload === current) {
         activeDownload = null;
       }
     })

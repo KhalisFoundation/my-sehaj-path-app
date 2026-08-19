@@ -27,7 +27,7 @@ type UpdateState =
   | 'failed';
 
 const progressMessage = (progress: number, startingMessage: string): string => {
-  if (progress >= 99) {
+  if (progress >= 100) {
     return DatabaseUpdateText.FINALIZING_MESSAGE;
   }
   return progress > 0 ? DatabaseUpdateText.PROGRESS_MESSAGE(progress) : startingMessage;

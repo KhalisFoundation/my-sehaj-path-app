@@ -13,6 +13,7 @@ jest.mock('../../db/connection', () => ({
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
+  abortDatabaseDownload,
   downloadDatabase,
   checkForDatabaseUpdate,
   performDatabaseUpdate,
@@ -25,18 +26,42 @@ const read = RNFS.read as jest.Mock;
 const moveFile = RNFS.moveFile as jest.Mock;
 const downloadFile = RNFS.downloadFile as jest.Mock;
 const hash = RNFS.hash as jest.Mock;
+const stat = RNFS.stat as jest.Mock;
 const mockedGetBani = getBani as jest.Mock;
 const mockedCheckForUpdate = jest.fn();
+
+const drainMicrotasks = async () => {
+  for (let i = 0; i < 20; i += 1) {
+    await Promise.resolve();
+  }
+};
 
 beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
-  exists.mockResolvedValue(false);
+  exists.mockImplementation(
+    async (path: string) => path === '/mock/Documents/banidb-sehajpath.db.download'
+  );
+  stat.mockResolvedValue({ size: 100 });
   read.mockResolvedValue('SQLite format 3'); // valid SQLite magic header
   (RNFS.unlink as jest.Mock).mockResolvedValue(undefined);
   moveFile.mockResolvedValue(undefined);
   hash.mockResolvedValue('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-  downloadFile.mockReturnValue({ jobId: 1, promise: Promise.resolve({ statusCode: 200 }) });
+  downloadFile.mockImplementation(
+    (opts: {
+      begin: (value: {
+        statusCode: number;
+        contentLength: number;
+        headers: Record<string, string>;
+      }) => void;
+    }) => {
+      opts.begin?.({ statusCode: 200, contentLength: 100, headers: { ETag: 'version-1' } });
+      return {
+        jobId: 1,
+        promise: Promise.resolve({ statusCode: 200, bytesWritten: 100 }),
+      };
+    }
+  );
   mockedGetBani.mockResolvedValue({ checkForUpdate: mockedCheckForUpdate });
   mockedCheckForUpdate.mockResolvedValue(false);
 });
@@ -62,16 +87,26 @@ describe('downloadDatabase', () => {
   });
 
   it('reports progress percentages during the transfer', async () => {
-    downloadFile.mockImplementation((opts: { progress: (p: unknown) => void }) => {
-      opts.progress({ bytesWritten: 50, contentLength: 200 });
-      opts.progress({ bytesWritten: 200, contentLength: 200 });
-      return { jobId: 1, promise: Promise.resolve({ statusCode: 200 }) };
-    });
+    stat.mockResolvedValue({ size: 200 });
+    downloadFile.mockImplementation(
+      (opts: {
+        begin: (value: {
+          statusCode: number;
+          contentLength: number;
+          headers: Record<string, string>;
+        }) => void;
+        progress: (p: unknown) => void;
+      }) => {
+        opts.begin?.({ statusCode: 200, contentLength: 200, headers: { ETag: 'version-1' } });
+        opts.progress({ bytesWritten: 50, contentLength: 200 });
+        opts.progress({ bytesWritten: 200, contentLength: 200 });
+        return { jobId: 1, promise: Promise.resolve({ statusCode: 200 }) };
+      }
+    );
     const seen: number[] = [];
     await downloadDatabase((p) => seen.push(p.percent));
     expect(seen).toContain(25);
-    expect(seen).toContain(99);
-    expect(seen).not.toContain(100);
+    expect(seen).toContain(100);
   });
 
   it('fails on a non-200 response, does NOT swap, and reports it', async () => {
@@ -177,7 +212,10 @@ describe('downloadDatabase', () => {
     });
     await downloadDatabase();
 
-    downloadFile.mockReturnValue({ jobId: 2, promise: Promise.resolve({ statusCode: 200 }) });
+    downloadFile.mockImplementation((opts: { begin: (value: unknown) => void }) => {
+      opts.begin?.({ statusCode: 200, contentLength: 100, headers: { ETag: 'version-1' } });
+      return { jobId: 2, promise: Promise.resolve({ statusCode: 200, bytesWritten: 100 }) };
+    });
     await expect(performDatabaseUpdate()).resolves.toEqual({ status: 'updated' });
     expect(downloadFile).toHaveBeenCalledTimes(2);
 
@@ -213,6 +251,39 @@ describe('downloadDatabase', () => {
     // The context is only a breadcrumb; the custom key is what actually splits
     // these apart when filtering in Crashlytics.
     expect(recordError).toHaveBeenCalledWith(error, context, { db_failure_kind: kind });
+  });
+
+  it('going offline ends the download, and coming back online downloads it in full again', async () => {
+    // The whole point of dropping resume: an interrupted download is discarded
+    // and the next attempt fetches the file from scratch.
+    let call = 0;
+    downloadFile.mockImplementation((opts: { begin?: (v: unknown) => void }) => {
+      call += 1;
+      opts.begin?.({ statusCode: 200, contentLength: 100, headers: {} });
+      if (call === 1) {
+        // Native never settles — exactly how iOS behaves on a dropped connection.
+        return { jobId: 77, promise: new Promise(() => undefined) };
+      }
+      return { jobId: 78, promise: Promise.resolve({ statusCode: 200 }) };
+    });
+
+    const interrupted = downloadDatabase();
+    await Promise.resolve();
+    abortDatabaseDownload();
+
+    await expect(interrupted).resolves.toEqual({
+      status: 'failed',
+      reason: 'database download stopped, the internet connection appears to be offline',
+    });
+    // The lock must be released, or the reconnect below is ignored.
+    expect(isDatabaseDownloadInProgress()).toBe(false);
+    // The partial is discarded: there is nothing to resume from.
+    expect(RNFS.unlink).toHaveBeenCalledWith('/mock/Documents/banidb-sehajpath.db.download');
+
+    // Back online: a complete, fresh download.
+    await expect(downloadDatabase()).resolves.toEqual({ status: 'downloaded' });
+    expect(downloadFile).toHaveBeenCalledTimes(2);
+    expect(moveFile).toHaveBeenCalledTimes(1);
   });
 
   it('checkForDatabaseUpdate reports up-to-date when local and server MD5 match', async () => {
@@ -272,19 +343,49 @@ describe('downloadDatabase', () => {
 
   it('joins an in-progress download instead of writing the temp file twice', async () => {
     let finishDownload: ((result: { statusCode: number }) => void) | undefined;
-    downloadFile.mockReturnValue({
-      jobId: 1,
-      promise: new Promise((resolve) => {
-        finishDownload = resolve;
-      }),
-    });
+    let emitProgress!: (value: { bytesWritten: number; contentLength: number }) => void;
+    downloadFile.mockImplementation(
+      (opts: {
+        begin: (value: unknown) => void;
+        progress: (value: { bytesWritten: number; contentLength: number }) => void;
+      }) => {
+        opts.begin?.({ statusCode: 200, contentLength: 100, headers: { ETag: 'version-1' } });
+        emitProgress = opts.progress;
+        return {
+          jobId: 1,
+          promise: new Promise((resolve) => {
+            finishDownload = resolve;
+          }),
+        };
+      }
+    );
 
+    const joinedProgress = jest.fn();
     const first = downloadDatabase();
-    const second = downloadDatabase();
+    const second = downloadDatabase(joinedProgress);
+    await drainMicrotasks();
+    emitProgress({ bytesWritten: 50, contentLength: 100 });
     finishDownload?.({ statusCode: 200 });
 
     await expect(first).resolves.toEqual({ status: 'downloaded' });
     await expect(second).resolves.toEqual({ status: 'downloaded' });
+    expect(joinedProgress).toHaveBeenCalledWith({ bytesWritten: 50, totalBytes: 100, percent: 50 });
+    expect(downloadFile).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves force when an explicit update joins a non-forced fast path', async () => {
+    let finishInstalledCheck!: (installed: boolean) => void;
+    exists.mockImplementationOnce(
+      () => new Promise<boolean>((resolve) => (finishInstalledCheck = resolve))
+    );
+
+    const automatic = downloadDatabase();
+    const explicit = downloadDatabase(undefined, true);
+    await drainMicrotasks();
+    finishInstalledCheck(true);
+
+    await expect(automatic).resolves.toEqual({ status: 'already-present' });
+    await expect(explicit).resolves.toEqual({ status: 'downloaded' });
     expect(downloadFile).toHaveBeenCalledTimes(1);
   });
 
@@ -299,6 +400,7 @@ describe('downloadDatabase', () => {
     });
 
     const stalled = downloadDatabase();
+    await drainMicrotasks();
     await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
 
     expect(RNFS.stopDownload).toHaveBeenCalledWith(42);
@@ -313,7 +415,10 @@ describe('downloadDatabase', () => {
       status: 'failed',
       reason: 'database download stalled',
     });
-    downloadFile.mockReturnValue({ jobId: 43, promise: Promise.resolve({ statusCode: 200 }) });
+    downloadFile.mockImplementation((opts: { begin: (value: unknown) => void }) => {
+      opts.begin?.({ statusCode: 200, contentLength: 100, headers: { ETag: 'version-1' } });
+      return { jobId: 43, promise: Promise.resolve({ statusCode: 200, bytesWritten: 100 }) };
+    });
     await expect(downloadDatabase()).resolves.toEqual({ status: 'downloaded' });
     jest.useRealTimers();
   });
@@ -323,6 +428,7 @@ describe('downloadDatabase', () => {
     downloadFile.mockReturnValue({ jobId: 42, promise: new Promise(() => undefined) });
 
     const stalled = downloadDatabase();
+    await drainMicrotasks();
     await jest.advanceTimersByTimeAsync(3 * 60 * 1000 + 60_000 + 5_000);
 
     await expect(stalled).resolves.toEqual({
@@ -349,6 +455,7 @@ describe('downloadDatabase', () => {
     });
 
     const stalled = downloadDatabase();
+    await drainMicrotasks();
     await jest.advanceTimersByTimeAsync(3 * 60 * 1000);
     expect(RNFS.stopDownload).toHaveBeenCalledWith(99);
 
@@ -370,6 +477,7 @@ describe('downloadDatabase', () => {
     downloadFile.mockReturnValue({ jobId: 13, promise: new Promise(() => undefined) });
 
     const stalled = downloadDatabase();
+    await drainMicrotasks();
     await jest.advanceTimersByTimeAsync(3 * 60 * 1000 + 60_000 + 5_000);
 
     await expect(stalled).resolves.toEqual({
@@ -387,13 +495,23 @@ describe('downloadDatabase', () => {
     let emitProgress: ((p: { bytesWritten: number; contentLength: number }) => void) | undefined;
     let finish: ((result: { statusCode: number }) => void) | undefined;
     downloadFile.mockImplementation(
-      (opts: { progress: (p: { bytesWritten: number; contentLength: number }) => void }) => {
+      (opts: {
+        begin: (value: unknown) => void;
+        progress: (p: { bytesWritten: number; contentLength: number }) => void;
+      }) => {
+        opts.begin?.({
+          statusCode: 200,
+          contentLength: 190_000_000,
+          headers: { ETag: 'version-1' },
+        });
         emitProgress = opts.progress;
         return { jobId: 7, promise: new Promise((resolve) => (finish = resolve)) };
       }
     );
+    stat.mockResolvedValue({ size: 190_000_000 });
 
     const slow = downloadDatabase();
+    await drainMicrotasks();
     // Trickle for well past any old total budget, staying under the idle limit.
     for (let minute = 0; minute < 30; minute += 1) {
       await jest.advanceTimersByTimeAsync(2 * 60 * 1000);

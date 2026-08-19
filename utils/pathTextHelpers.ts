@@ -122,7 +122,7 @@ export const createLongPressHandler = (
   return () => {
     // The app's core action, and shared by both the line and paragraph readers,
     // so tracking it here covers both without duplicating the event.
-    trackEvent('PathProgress', 'long press', 'save panktee');
+    trackEvent('PathProgress', 'long_press', 'save panktee');
 
     if (selection.found) {
       selection.setFound(false);

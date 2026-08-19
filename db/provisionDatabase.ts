@@ -29,10 +29,6 @@ import {
  */
 export const provisionDatabase = async (): Promise<void> => {
   try {
-    if (await isDatabaseInstalled()) {
-      store.dispatch(dbReady());
-      return;
-    }
     // A reconnect can arrive just before the old, offline native request
     // finishes failing. Join that request without resetting its UI progress;
     // if it then fails while we are online, immediately start a new attempt
@@ -47,6 +43,16 @@ export const provisionDatabase = async (): Promise<void> => {
       ) {
         await provisionDatabase();
       }
+      return;
+    }
+    if (await isDatabaseInstalled()) {
+      store.dispatch(dbReady());
+      return;
+    }
+    // Foreground events can fire while NetInfo already knows the device is
+    // offline. Wait for the reconnect edge instead of burning a retry and
+    // reporting an expected network-unavailable failure to Crashlytics.
+    if (!store.getState().network.isOnline) {
       return;
     }
     if (await isDatabaseDownloadBlockedByStorage()) {

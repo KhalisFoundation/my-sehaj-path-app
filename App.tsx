@@ -35,7 +35,8 @@ import { outbox, persistence } from './store/instance';
 import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syncLifecycle';
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
-import { noteAppState, provisionDatabase } from './db';
+import { abortDatabaseDownload, provisionDatabase } from './db';
+
 export type RootStackParamList = {
   Splash: undefined;
   Home: undefined;
@@ -47,6 +48,11 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+export const isNetInfoOnline = (state: {
+  isConnected: boolean | null;
+  isInternetReachable: boolean | null;
+}): boolean => state.isConnected !== false && state.isInternetReachable !== false;
 
 /**
  * Enables analytics/crashlytics collection when the user has consented.
@@ -115,10 +121,19 @@ const App = () => {
     // flush anything queued while offline (Step 10 reconnect trigger).
     let wasOnline = store.getState().network.isOnline;
     const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
-      const online = Boolean(state.isConnected && state.isInternetReachable);
+      // `isInternetReachable` is null while NetInfo is still probing. Treat
+      // unknown as online unless NetInfo has positively reported a disconnect;
+      // otherwise an online device is temporarily locked out of DB checks.
+      const online = isNetInfoOnline(state);
       store.dispatch(setOnline(online));
       if (online) {
         retrySessionProfile();
+      }
+      if (!online && wasOnline) {
+        // End an in-flight download now. iOS never reports the dropped
+        // connection, so otherwise it sits pending and the reconnect below is
+        // swallowed by the "already in progress" guard.
+        abortDatabaseDownload();
       }
       if (online && !wasOnline) {
         onReconnect();
@@ -133,10 +148,6 @@ const App = () => {
     // the foreground → best-effort durability flush plus a checkpoint push. The
     // on-disk journal covers a batch that had already started before suspension.
     const appStateSub = AppState.addEventListener('change', (state) => {
-      // Test instrumentation: lets a failed DB download report whether the app
-      // was backgrounded mid-transfer. `db/` cannot subscribe to AppState itself
-      // — those modules initialise before react-native's lazy exports exist.
-      noteAppState(state);
       if (state === 'active') {
         retrySessionProfile();
         onForeground();

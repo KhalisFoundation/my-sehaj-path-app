@@ -10,6 +10,7 @@ module.exports = {
   hash: jest.fn(() => Promise.resolve('')),
   stat: jest.fn(() => Promise.resolve({ size: 0 })),
   stopDownload: jest.fn(),
+  resumeDownload: jest.fn(),
   downloadFile: jest.fn(() => ({
     jobId: 1,
     promise: Promise.resolve({ statusCode: 200, bytesWritten: 0, jobId: 1 }),

@@ -89,4 +89,20 @@ describe('recordError custom keys', () => {
     // Losing a filter label must never cost the report itself.
     expect(mockRecordNative).toHaveBeenCalledTimes(1);
   });
+
+  it('continues reporting when a native attribute write never settles', async () => {
+    jest.useFakeTimers();
+    mockSetAttributes.mockImplementationOnce(() => new Promise(() => undefined));
+
+    recordError(new Error('first'), 'db: first', { db_failure_kind: 'network-timeout' });
+    recordError(new Error('second'), 'auth: second');
+    await drain();
+    // Must clear ATTRIBUTE_WRITE_TIMEOUT_MS (5s), or the hung write is still
+    // pending and the queue legitimately holds both reports.
+    await jest.advanceTimersByTimeAsync(10_000);
+    await drain();
+
+    expect(mockRecordNative).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
+  });
 });

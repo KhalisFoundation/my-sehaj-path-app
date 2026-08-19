@@ -20,6 +20,7 @@ import {
 import { recordError } from '../../utils/crashlytics';
 import { trackEvent } from '../../utils/analytics';
 import { store } from '../../store';
+import { dbDownloadStarted } from '../../store/slices/dbSlice';
 import { setOnline } from '../../store/slices/networkSlice';
 
 const mockedInstalled = isDatabaseInstalled as jest.Mock;
@@ -79,6 +80,35 @@ describe('provisionDatabase', () => {
 
     expect(mockedDownload).not.toHaveBeenCalled();
     expect(store.getState().db.status).toBe('failed');
+  });
+
+  it('does not start a foreground provisioning attempt while offline', async () => {
+    store.dispatch(setOnline(false));
+
+    await provisionDatabase();
+
+    expect(mockedDownload).not.toHaveBeenCalled();
+    expect(recordError).not.toHaveBeenCalled();
+  });
+
+  it('does not mark an installed old DB ready while a manual update is active', async () => {
+    let finish!: (result: { status: 'failed'; reason: string }) => void;
+    mockedInProgress.mockReturnValue(true);
+    mockedInstalled.mockResolvedValue(true);
+    mockedDownload.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    store.dispatch(dbDownloadStarted());
+
+    const pending = provisionDatabase();
+    await Promise.resolve();
+    expect(store.getState().db.status).not.toBe('ready');
+
+    finish({ status: 'failed', reason: 'connection lost' });
+    await pending;
+    expect(mockedInstalled).toHaveBeenCalledTimes(1);
   });
 
   it('retries after reconnect when the old active request fails after the online edge', async () => {

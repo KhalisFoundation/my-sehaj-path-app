@@ -8,6 +8,7 @@ import {
 } from '@react-native-firebase/crashlytics';
 
 const instance = getCrashlytics();
+const ATTRIBUTE_WRITE_TIMEOUT_MS = 5_000;
 
 const toError = (error: unknown): Error =>
   error instanceof Error ? error : new Error(String(error));
@@ -32,6 +33,24 @@ const logBreadcrumb = (message: string): void => {
 const blanked = (attributes: Record<string, string>): Record<string, string> =>
   Object.fromEntries(Object.keys(attributes).map((key) => [key, '']));
 
+const withTimeout = <T>(promise: Promise<T>, milliseconds: number): Promise<T> =>
+  new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error('Crashlytics attribute write timed out')),
+      milliseconds
+    );
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+
 /**
  * Writes one report with its keys scoped to just that report.
  *
@@ -52,7 +71,7 @@ const writeReport = async (
 ): Promise<void> => {
   if (attributes) {
     try {
-      await setAttributes(instance, attributes);
+      await withTimeout(setAttributes(instance, attributes), ATTRIBUTE_WRITE_TIMEOUT_MS);
     } catch (_error) {
       // Still report it, just without the filterable key.
     }
@@ -67,7 +86,7 @@ const writeReport = async (
   }
   if (attributes) {
     try {
-      await setAttributes(instance, blanked(attributes));
+      await withTimeout(setAttributes(instance, blanked(attributes)), ATTRIBUTE_WRITE_TIMEOUT_MS);
     } catch (_error) {
       // Silent failure
     }
