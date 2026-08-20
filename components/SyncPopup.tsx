@@ -90,10 +90,21 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(false);
   const [automaticSwitchFailed, setAutomaticSwitchFailed] = useState(false);
+  /** Lets an offline user read on-device content; reconnecting asks again. */
+  const [syncDeferredOffline, setSyncDeferredOffline] = useState(false);
   /** The account just put away — keeps the closing notice on screen to be read. */
   const [switchedFrom, setSwitchedFrom] = useState<string | null>(null);
   const automaticSwitchTarget = useRef<string | null>(null);
   const silentAssociationTarget = useRef<string | null>(null);
+  /**
+   * An email whose silent association was started and has not yet succeeded.
+   *
+   * A partially-successful attempt pulls the account's paths into Redux and
+   * then fails before `approveSync`, leaving `account` null with data present —
+   * which looks exactly like unowned local progress and made the dialog flash
+   * up asking about paths it had just downloaded FROM that account.
+   */
+  const silentAssociationPending = useRef<string | null>(null);
 
   const status = useAppSelector((state) => state.auth.status);
   const email = useAppSelector((state) => state.auth.email);
@@ -116,7 +127,12 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const previousAccountIsFullySynced = useAppSelector(
     (state) =>
       !state.sync.recoveryNeeded &&
-      state.sync.lastSyncedAt > 0 &&
+      // `lastSyncedAt` is only the server pull cursor. Older accounts can have
+      // a zero cursor even when every path is confirmed on the server, so it
+      // must not make an otherwise safe account switch ask "Keep it safe".
+      // With no paths, however, local-only date/quarantined history cannot be
+      // proven on the server and must still be protected by the prompt.
+      (!deviceHasData || state.paths.paths.length > 0) &&
       state.paths.paths.every((path) => {
         const meta = state.sync.meta[path.pathId];
         return !!meta && meta.onServer && meta.deletedAt == null;
@@ -145,12 +161,28 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       : account === null &&
         !answered &&
         !recoveryNeeded &&
+        !syncDeferredOffline &&
         deviceHasData &&
         // A silent association may be in flight for a device that was empty a
         // moment ago. Creating a path during that window flips `deviceHasData`
         // and would ask "what about your local progress?" about a path the user
         // just made, while it is already being connected.
-        !associating);
+        !associating &&
+        // `!associating` alone is too narrow: it only covers the in-flight
+        // moment. A silent attempt that pulled the account's paths and THEN
+        // failed releases `busy` with `account` still null, so the data on the
+        // device is the account's own — not unowned progress to ask about. Stay
+        // quiet until that attempt has actually succeeded; the next foreground
+        // or reconnect retries it.
+        silentAssociationPending.current !== email);
+
+  // "Continue offline" is only a temporary dismissal, never an answer to a
+  // data-ownership question. Bring the safety prompt back once sync is usable.
+  useEffect(() => {
+    if (isOnline) {
+      setSyncDeferredOffline(false);
+    }
+  }, [isOnline]);
 
   const completeAccountSwitch = async (addPreviousProgress: boolean, automatic = false) => {
     if (!email || syncing) {
@@ -212,6 +244,9 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       const ok = await runConfirmedAccountSync(store, email);
       if (ok) {
         dispatch(approveSync(email));
+        // Succeeded: this device is connected, so the dialog may speak again if
+        // it ever legitimately needs to.
+        silentAssociationPending.current = null;
         // Pull once more before releasing the busy state. Home's focus effect
         // does NOT re-fire when the user was already standing on Home as they
         // signed in, so nothing else would fetch what another device synced
@@ -245,6 +280,8 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       !accountSwitchNeedsChoice &&
       !recoveryNeeded &&
       !automaticSwitchFailed &&
+      !syncDeferredOffline &&
+      isOnline &&
       automaticSwitchTarget.current !== target &&
       !syncing
     ) {
@@ -262,6 +299,8 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     accountSwitchNeedsChoice,
     recoveryNeeded,
     automaticSwitchFailed,
+    syncDeferredOffline,
+    isOnline,
     syncing,
   ]);
 
@@ -280,13 +319,15 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   useEffect(() => {
     if (canAssociateSilently && silentAssociationTarget.current !== attemptKey && !syncing) {
       silentAssociationTarget.current = attemptKey;
+      silentAssociationPending.current = email;
       associate(true);
     }
-  }, [canAssociateSilently, attemptKey, syncing, associate]);
+  }, [canAssociateSilently, attemptKey, syncing, associate, email]);
 
   // `Dialog` is memoised, so an inline arrow here would be a fresh prop on every
   // render and defeat the memo. Setter identity is stable, so these are too.
   const dismissSwitchedNotice = useCallback(() => setSwitchedFrom(null), []);
+  const continueOffline = useCallback(() => setSyncDeferredOffline(true), []);
   // Guarded like the Cancel button beside it. The button is `disabled={syncing}`,
   // but the Android back gesture reaches this directly — without the guard it
   // closed the dialog while `discardLocalDataAndSync` was still deleting, so the
@@ -322,6 +363,29 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
         <View style={styles.loadingState} accessibilityLabel={Constants.LOADING_PROGRESS}>
           <ActivityIndicator size="large" color="#11336A" />
           <Text style={styles.message}>{Constants.LOADING_PROGRESS}</Text>
+        </View>
+      </Dialog>
+    );
+  }
+
+  // --- Offline: never trap the user behind a decision that needs the server --
+  const needsSyncDecision =
+    (mode === 'unowned' && isVisible) ||
+    (mode === 'accountSwitch' && isAccountSwitch && !syncing && !syncDeferredOffline);
+  if (needsSyncDecision && !isOnline) {
+    return (
+      <Dialog visible onRequestClose={continueOffline}>
+        <Text style={styles.title}>{Constants.SYNC_UNAVAILABLE_TITLE}</Text>
+        <Text style={styles.message}>{Constants.SYNC_UNAVAILABLE_MESSAGE}</Text>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={continueOffline}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.CONTINUE_OFFLINE}
+          >
+            <Text style={styles.primaryText}>{Constants.CONTINUE_OFFLINE}</Text>
+          </TouchableOpacity>
         </View>
       </Dialog>
     );
@@ -368,7 +432,9 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     !!email &&
     !accountSwitchNeedsChoice &&
     !automaticSwitchFailed &&
-    !recoveryNeeded;
+    !recoveryNeeded &&
+    !syncDeferredOffline &&
+    isOnline;
   if (switchNeedsNoDecision) {
     return (
       <Dialog visible onRequestClose={ignoreRequestClose}>
@@ -389,7 +455,8 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     mode === 'accountSwitch' &&
     (isAccountSwitch || syncing) &&
     status === 'signedIn' &&
-    !!email
+    !!email &&
+    !syncDeferredOffline
   ) {
     const blockedByRecovery = recoveryNeeded;
     // Title and body must describe the SAME state. A silent switch showing
@@ -571,7 +638,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       and `syncPopupAnswered` meant they were never asked again. "Later" was
       really "never", with the account's history hidden behind it.
     */
-    <Dialog visible={isVisible} onRequestClose={noop}>
+    <Dialog visible={mode === 'unowned' && isVisible} onRequestClose={noop}>
       <Text style={styles.title}>
         {Constants.WELCOME}
         {name ? `, ${name}` : ''}!
@@ -596,7 +663,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
         </TouchableOpacity>
       </View>
       {/*
-        Three actions only, and no Logout here. This progress belongs to nobody
+        Two actions only, and no Logout here. This progress belongs to nobody
         yet, so signing out resolves nothing — it just leaves the same question
         waiting at the next login. Logout stays on the account-switch dialog,
         where "wrong account" is a real answer.

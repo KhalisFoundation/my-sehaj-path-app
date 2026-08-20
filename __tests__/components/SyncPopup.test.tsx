@@ -158,6 +158,29 @@ describe('SyncPopup — unowned progress', () => {
     expect(labels(renderer)).not.toContain(Constants.LOGOUT);
   });
 
+  it('lets a user continue reading offline and asks again after reconnecting', async () => {
+    mockState.network.isOnline = false;
+    const renderer = await renderUnowned();
+
+    expect(labels(renderer)).toEqual([Constants.CONTINUE_OFFLINE]);
+    expect(mockRun).not.toHaveBeenCalled();
+
+    await act(async () => {
+      renderer.root
+        .find((node) => node.props.accessibilityLabel === Constants.CONTINUE_OFFLINE)
+        .props.onPress();
+    });
+    expect(renderer.root.find((node) => node.type === ('Dialog' as never)).props.visible).toBe(
+      false
+    );
+
+    mockState.network.isOnline = true;
+    await act(async () => {
+      renderer.update(<SyncPopup mode="unowned" />);
+    });
+    expect(labels(renderer)).toContain(Constants.SYNC_LOCAL_ACTION);
+  });
+
   it('associates silently when the device has nothing to ask about', async () => {
     mockState.paths.paths = [];
     mockState.paths.dates = [];
@@ -396,6 +419,45 @@ describe('SyncPopup — account switch guard', () => {
     expect(onAccountSwitched).toHaveBeenCalledTimes(1);
   });
 
+  it('lets an account switch continue offline and asks again after reconnecting', async () => {
+    mockState.auth.email = 'b@e.com';
+    mockState.sync.account = 'a@e.com';
+    mockState.sync.pathOps = { 1: { kind: 'update' } };
+    mockState.network.isOnline = false;
+    const firstCallback = jest.fn();
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <SyncPopup mode="accountSwitch" onAccountSwitched={firstCallback} />
+      );
+    });
+
+    expect(
+      renderer.root.findAll(
+        (node) => node.props.accessibilityLabel === Constants.CONTINUE_OFFLINE
+      )
+    ).not.toHaveLength(0);
+    expect(mockSwitchAccount).not.toHaveBeenCalled();
+
+    await act(async () => {
+      renderer.root
+        .find((node) => node.props.accessibilityLabel === Constants.CONTINUE_OFFLINE)
+        .props.onPress();
+    });
+    expect(renderer.root.find((node) => node.type === ('Dialog' as never)).props.visible).toBe(
+      false
+    );
+
+    mockState.network.isOnline = true;
+    await act(async () => {
+      renderer.update(<SyncPopup mode="accountSwitch" onAccountSwitched={jest.fn()} />);
+    });
+    expect(
+      renderer.root.findAll((node) => node.props.accessibilityLabel === 'Keep it safe for a@e.com')
+    ).not.toHaveLength(0);
+  });
+
   it('shows a loading dialog while B’s saved progress is being refreshed', async () => {
     mockState.auth.email = 'b@e.com';
     mockState.sync.account = 'a@e.com';
@@ -432,11 +494,12 @@ describe('SyncPopup — account switch guard', () => {
     });
   });
 
-  it('switches automatically when A is already fully backed up', async () => {
+  it('switches automatically when A is already fully backed up without a pull cursor', async () => {
     mockState.auth.email = 'b@e.com';
     mockState.sync.account = 'a@e.com';
-    // The cursor proves this account has completed at least one server sync.
-    mockState.sync.lastSyncedAt = 10;
+    // `lastSyncedAt` is a pull cursor, not proof of a successful backup.
+    // This is the legacy-account case that previously showed "Keep it safe".
+    mockState.sync.lastSyncedAt = 0;
     // "Fully backed up" means every path is provably on the server, not just
     // that a sync happened once.
     mockState.sync.meta = { 1: { onServer: true, deletedAt: null } };

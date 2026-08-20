@@ -59,24 +59,18 @@ describe('DatabaseUpdate storage handling', () => {
       );
     });
 
-    // The screen now opens idle — it must not spend a network round trip on a
-    // question the user did not ask. The check is an explicit action.
-    const checkButton = renderer.root
+    // With no installed DB, "Download now" must start the transfer directly;
+    // checking first only manufactures an "update available" intermediate step.
+    const downloadButton = renderer.root
       .findAllByType(TouchableOpacity)
-      .find((node) => node.props.accessibilityLabel === DatabaseUpdateText.CHECK_UPDATE_A11Y);
-    expect(checkButton).toBeDefined();
+      .find((node) => node.props.accessibilityLabel === DatabaseUpdateText.DOWNLOAD_NOW);
+    expect(downloadButton).toBeDefined();
     await act(async () => {
-      await checkButton?.props.onPress();
+      await downloadButton?.props.onPress();
     });
 
-    const updateButton = renderer.root
-      .findAllByType(TouchableOpacity)
-      .find((node) => node.props.accessibilityLabel === DatabaseUpdateText.UPDATE_NOW);
-    expect(updateButton).toBeDefined();
-
-    await act(async () => {
-      await updateButton?.props.onPress();
-    });
+    expect(mockRunDatabaseUpdate).toHaveBeenCalledTimes(1);
+    expect(mockCheckForDatabaseUpdate).not.toHaveBeenCalled();
 
     expect(textContent(renderer)).toEqual(
       expect.arrayContaining([

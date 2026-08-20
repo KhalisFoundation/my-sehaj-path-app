@@ -3,7 +3,7 @@
 export const DatabaseUpdateText = {
   NAV_TITLE: 'Database',
   BACK: 'Back',
-  SUBTITLE: 'Database helps you to read path even without internet',
+  SUBTITLE: 'Read your path anytime, even with no internet connection',
   CHECK_UPDATES: 'Check for updates',
   CHECK_AGAIN: 'Check again',
   CHECK_UPDATE_A11Y: 'Check for database update',
@@ -12,10 +12,10 @@ export const DatabaseUpdateText = {
   UPDATE_AVAILABLE_MESSAGE: 'A newer reading database is available. Update now to get the latest.',
   UPDATING_TITLE: 'Updating database',
   UPDATING_START_MESSAGE: 'Starting the update…',
-  IDLE_TITLE: 'Read without internet',
+  IDLE_TITLE: 'Offline reading is ready',
   IDLE_MESSAGE:
     'You already have the offline database. Tap below to check for a new database version.',
-  IDLE_MISSING_TITLE: 'Read without internet',
+  IDLE_MISSING_TITLE: 'Set up offline reading',
   IDLE_MISSING_MESSAGE:
     'Download the offline database to read your path without an internet connection.',
   DOWNLOAD_NOW: 'Download now',

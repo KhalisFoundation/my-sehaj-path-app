@@ -58,6 +58,7 @@ export const Constants: Constant = {
   SYNC_NOW: 'Sync now',
   SYNCING: 'Syncing…',
   NOT_NOW: 'Not now',
+  CONTINUE_OFFLINE: 'Continue offline',
   DATABASE: 'Database',
 
   // --- login/sync decision flow -------------------------------------------

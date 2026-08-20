@@ -285,9 +285,13 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
             {showCheckAgain && (
               <TouchableOpacity
                 style={styles.button}
-                onPress={onCheckAgain}
+                onPress={hasDatabase ? onCheckAgain : startUpdate}
                 accessibilityRole="button"
-                accessibilityLabel={DatabaseUpdateText.CHECK_UPDATE_A11Y}
+                accessibilityLabel={
+                  hasDatabase
+                    ? DatabaseUpdateText.CHECK_UPDATE_A11Y
+                    : DatabaseUpdateText.DOWNLOAD_NOW
+                }
               >
                 <Text style={styles.buttonText}>{checkLabel}</Text>
               </TouchableOpacity>
