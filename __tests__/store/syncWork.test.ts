@@ -8,6 +8,7 @@ import {
   syncRequestFingerprint,
   utf8ByteLength,
 } from '../../store/syncRequest';
+import { setQuarantinedRecords } from '../../store/persistence';
 import {
   blockPathOp,
   blockSettings,
@@ -16,6 +17,7 @@ import {
   hasAnyUnsentWork,
   hasSendableWork,
   hasWorkBlockingPull,
+  isFullyBackedUp,
   isSyncBodyBlocked,
 } from '../../store/syncWork';
 
@@ -97,6 +99,113 @@ describe('hasAnyUnsentWork', () => {
     // It is still progress the server never received, so the account is not
     // backed up and must not be hidden by a silent switch.
     expect(hasAnyUnsentWork(state)).toBe(true);
+  });
+});
+
+describe('isFullyBackedUp', () => {
+  // This gate decides whether logout DELETES the device's reading, so every case
+  // here is "would the server be able to give this back?". It must fail closed.
+  type Meta = Record<number, { onServer: boolean; deletedAt?: number | null }>;
+
+  const backedUpState = (
+    over: {
+      paths?: number[];
+      dates?: number[];
+      meta?: Meta;
+      recoveryNeeded?: boolean;
+      pathOps?: PathOps;
+      scrollDirty?: Record<number, number>;
+      pendingSettingsUpdatedAt?: number | null;
+    } = {}
+  ): RootState => {
+    const pathIds = over.paths ?? [1];
+    const meta: Meta =
+      over.meta ??
+      Object.fromEntries(pathIds.map((id) => [id, { onServer: true, deletedAt: null }]));
+    return {
+      paths: {
+        paths: pathIds.map((pathId) => ({ pathId })),
+        dates: (over.dates ?? pathIds).map((pathid) => ({ pathid })),
+      },
+      sync: {
+        meta,
+        recoveryNeeded: over.recoveryNeeded ?? false,
+        pathOps: over.pathOps ?? {},
+        scrollDirty: over.scrollDirty ?? {},
+        pendingSettingsUpdatedAt: over.pendingSettingsUpdatedAt ?? null,
+      },
+    } as unknown as RootState;
+  };
+
+  it('is true when every path is confirmed on the server', () => {
+    expect(isFullyBackedUp(newStore(), backedUpState())).toBe(true);
+  });
+
+  it('is true for a device with no reading at all', () => {
+    expect(isFullyBackedUp(newStore(), backedUpState({ paths: [], dates: [] }))).toBe(true);
+  });
+
+  it('is false for a path the server never confirmed', () => {
+    // Every path starts `onServer: false` (syncStampMiddleware), so this is the
+    // state of anything created offline or whose sync never completed.
+    const state = backedUpState({ meta: { 1: { onServer: false, deletedAt: null } } });
+    expect(isFullyBackedUp(newStore(), state)).toBe(false);
+  });
+
+  it('is false for a path with no meta entry at all', () => {
+    expect(isFullyBackedUp(newStore(), backedUpState({ meta: {} }))).toBe(false);
+  });
+
+  it('is false when one path of several is unconfirmed', () => {
+    const state = backedUpState({
+      paths: [1, 2, 3],
+      meta: {
+        1: { onServer: true, deletedAt: null },
+        2: { onServer: false, deletedAt: null },
+        3: { onServer: true, deletedAt: null },
+      },
+    });
+    expect(isFullyBackedUp(newStore(), state)).toBe(false);
+  });
+
+  it('is false for a delete the server has not seen', () => {
+    const state = backedUpState({ meta: { 1: { onServer: true, deletedAt: 123 } } });
+    expect(isFullyBackedUp(newStore(), state)).toBe(false);
+  });
+
+  it('is false while any edit is still queued', () => {
+    const queued = backedUpState({ pathOps: { 1: { kind: 'update', localUpdatedAt: 5 } } });
+    expect(isFullyBackedUp(newStore(), queued)).toBe(false);
+    expect(isFullyBackedUp(newStore(), backedUpState({ scrollDirty: { 1: 99 } }))).toBe(false);
+    expect(isFullyBackedUp(newStore(), backedUpState({ pendingSettingsUpdatedAt: 7 }))).toBe(false);
+  });
+
+  it('is false for a permanently blocked op, which no sync will ever clear', () => {
+    // `hasSendableWork` ignores these — the outbox must not spin on them — but
+    // they are still reading the server never received, so deleting would lose it.
+    const store = newStore();
+    const state = backedUpState({ pathOps: { 1: { kind: 'update', localUpdatedAt: 5 } } });
+    blockPathOp(store, 1, 5);
+    expect(hasSendableWork(store, state)).toBe(false);
+    expect(isFullyBackedUp(store, state)).toBe(false);
+  });
+
+  it('is false when recovery is needed, because nothing can be matched to the cloud', () => {
+    expect(isFullyBackedUp(newStore(), backedUpState({ recoveryNeeded: true }))).toBe(false);
+  });
+
+  it('is false for an orphan date record whose path is gone', () => {
+    // The path it belonged to no longer exists, so it is never sent again — it
+    // is real reading history that lives only here.
+    const state = backedUpState({ paths: [1], dates: [1, 99] });
+    expect(isFullyBackedUp(newStore(), state)).toBe(false);
+  });
+
+  it('is false while quarantined records exist, which can never be synced', () => {
+    const store = newStore();
+    expect(isFullyBackedUp(store, backedUpState())).toBe(true);
+    setQuarantinedRecords(store, { paths: [{ id: 1 }], dates: [] } as never);
+    expect(isFullyBackedUp(store, backedUpState())).toBe(false);
   });
 });
 

@@ -308,6 +308,21 @@ const clearActiveAccountDataDurably = async (store: AppStore): Promise<boolean> 
 };
 
 /**
+ * Remove the account's reading from this device on logout, so a signed-out user
+ * sees the guest UI rather than someone else's progress.
+ *
+ * Callers MUST have proven `isFullyBackedUp` first. Unlike an account switch,
+ * nothing is stashed here — the server copy is the only copy afterwards, and
+ * signing back in re-downloads it. That is safe precisely because the gate
+ * refuses to clear anything the server cannot give back.
+ *
+ * Returns false when the clear could not be made durable; the data is then left
+ * exactly as it was and the caller must not present a guest UI.
+ */
+export const clearLocalDataForLogout = async (store: AppStore): Promise<boolean> =>
+  clearActiveAccountDataDurably(store);
+
+/**
  * The user explicitly chose the signed-in account's cloud data over unrelated
  * local paths on this device. Clear only after that choice, make the clear
  * durable, then download the account. If download fails, restore the local

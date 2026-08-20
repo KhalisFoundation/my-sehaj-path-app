@@ -52,13 +52,39 @@ export const Constants: Constant = {
   WELCOME: 'Welcome',
   SYNC_PROGRESS_PROMPT: 'Do you want to sync your progress now?',
   OK: 'OK',
+  /**
+   * Two different reasons sync cannot run, deliberately kept apart.
+   *
+   * UNAVAILABLE is for a build with no server configured at all
+   * (`!isApiConfigured()`), where nothing the user does will help — telling them
+   * to check their connection would send them chasing a fault that isn't there.
+   * OFFLINE is for a device that simply has no connection, where checking it is
+   * exactly the right advice.
+   */
   SYNC_UNAVAILABLE_TITLE: 'Sync is unavailable',
   SYNC_UNAVAILABLE_MESSAGE:
     "We can't reach the sync server right now, so your progress can't be backed up to your account. Everything you read is still saved safely on this device.",
+  SYNC_OFFLINE_TITLE: 'No internet connection',
+  SYNC_OFFLINE_MESSAGE:
+    "Please check your internet connection. Your progress can't be backed up to your account until you reconnect, but everything you read is still saved safely on this device.",
   SYNC_NOW: 'Sync now',
   SYNCING: 'Syncing…',
   NOT_NOW: 'Not now',
   CONTINUE_OFFLINE: 'Continue offline',
+
+  /**
+   * Shown when signing in could not reach the account.
+   *
+   * After a logout that cleared this device the account's copy is the only one,
+   * so an empty screen reads as "my reading is gone". Say plainly that it is
+   * safe and that this is a connection problem, and offer the retry.
+   */
+  RESTORE_FAILED_TITLE: 'Unable to load your progress',
+  RESTORE_FAILED_MESSAGE:
+    "We couldn't reach your account. Your saved reading is safe — check your internet connection and try again.",
+  RESTORE_OFFLINE_MESSAGE:
+    'You are offline. Your saved reading is safe and will load automatically as soon as you reconnect.',
+  RETRY: 'Retry',
   DATABASE: 'Database',
 
   // --- login/sync decision flow -------------------------------------------
@@ -104,8 +130,19 @@ export const Constants: Constant = {
   LOGIN_SYNC_PROMPT:
     'Log in to sync your paths and settings across your devices, so you never lose your progress.',
   SESSION_EXPIRED_TITLE: 'Session expired',
+  /**
+   * Two messages, chosen by `isFullyBackedUp` — the same gate logout uses.
+   *
+   * The difference is not decoration. Signing out stops the outbox, so anything
+   * the server has not already confirmed stays on this device alone for as long
+   * as the user keeps reading signed out. Telling everyone "your progress is
+   * still saved on this device" reads as reassurance in exactly the case where
+   * it should read as a warning.
+   */
   SESSION_EXPIRED_MESSAGE:
-    'Your session has expired. Your progress is still saved on this device. Log in again to sync your progress across devices.',
+    'Your session has expired. Your reading is saved to your account — log in again to keep syncing across your devices.',
+  SESSION_EXPIRED_UNSYNCED_MESSAGE:
+    'Your session has expired. Some of your reading is not saved to your account yet — log in again to back it up.',
   CLOSE_MENU: 'Close menu',
   ALL_PATHS: 'All Paths',
   PROGRESS: 'Progress',

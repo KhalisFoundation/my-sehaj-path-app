@@ -12,6 +12,8 @@ import { approveSync, declineSync } from '../../store/slices/syncSlice';
 
 const mockDispatch = jest.fn();
 const mockShowError = jest.fn();
+const mountedRenderers = new Set<ReactTestRenderer.ReactTestRenderer>();
+const originalCreate = ReactTestRenderer.create.bind(ReactTestRenderer);
 // Signed in, data not yet associated → the popup is visible.
 const mockState: {
   auth: { status: string; email: string; firstname: string };
@@ -50,7 +52,10 @@ jest.mock('../../store/confirmedSync', () => ({
   switchAccountData: jest.fn(),
 }));
 jest.mock('../../store/syncLifecycle', () => ({ onForeground: jest.fn() }));
-jest.mock('../../store', () => ({ store: {} }));
+// `getState` is real work here, not ceremony: `associate` reads it to tell a
+// genuinely failed restore from an attempt that was rejected because the account
+// was already associated.
+jest.mock('../../store', () => ({ store: { getState: () => mockState } }));
 jest.mock('../../store/persistence', () => ({ hasQuarantinedRecords: () => false }));
 jest.mock('@auth', () => ({ logout: jest.fn() }));
 jest.mock('@utils', () => ({
@@ -84,6 +89,10 @@ const pressSyncNow = async () => {
 };
 
 beforeEach(() => {
+  // SyncPopup schedules restore retries. Keeping timers fake for every test
+  // prevents a retry from firing after this test has finished; the retry test
+  // advances this clock explicitly.
+  jest.useFakeTimers();
   jest.clearAllMocks();
   mockDiscard.mockResolvedValue(true);
   mockSwitchAccount.mockResolvedValue(true);
@@ -102,6 +111,27 @@ beforeEach(() => {
   // nothing to ask about and associates silently instead.
   mockState.paths.paths = [{ pathId: 1 }];
   mockState.paths.dates = [];
+});
+
+beforeAll(() => {
+  jest.spyOn(ReactTestRenderer, 'create').mockImplementation((element, options) => {
+    const renderer = originalCreate(element, options);
+    mountedRenderers.add(renderer);
+    return renderer;
+  });
+});
+
+afterEach(() => {
+  act(() => {
+    mountedRenderers.forEach((renderer) => renderer.unmount());
+  });
+  mountedRenderers.clear();
+  jest.clearAllTimers();
+  jest.useRealTimers();
+});
+
+afterAll(() => {
+  jest.restoreAllMocks();
 });
 
 describe('SyncPopup — Sync now', () => {
@@ -221,9 +251,18 @@ describe('SyncPopup — unowned progress', () => {
       renderer.update(<SyncPopup />);
     });
 
-    expect(renderer.root.find((node) => node.type === ('Dialog' as never)).props.visible).toBe(
-      false
-    );
+    // The point is that it does not ASK. It used to assert "no dialog at all",
+    // which was the same thing back when a silent restore rendered nothing; the
+    // restore now shows its own loading state, so the assertion has to name the
+    // prompt it must not be.
+    expect(
+      renderer.root.findAll((node) => node.props.accessibilityLabel === Constants.SYNC_LOCAL_ACTION)
+    ).toHaveLength(0);
+    expect(
+      renderer.root.findAll(
+        (node) => node.props.accessibilityLabel === Constants.DISCARD_LOCAL_LINK
+      )
+    ).toHaveLength(0);
     await act(async () => {
       finish(true);
     });
@@ -434,9 +473,7 @@ describe('SyncPopup — account switch guard', () => {
     });
 
     expect(
-      renderer.root.findAll(
-        (node) => node.props.accessibilityLabel === Constants.CONTINUE_OFFLINE
-      )
+      renderer.root.findAll((node) => node.props.accessibilityLabel === Constants.CONTINUE_OFFLINE)
     ).not.toHaveLength(0);
     expect(mockSwitchAccount).not.toHaveBeenCalled();
 
@@ -726,5 +763,122 @@ describe('SyncPopup — account switch guard', () => {
     expect(
       renderer.root.findAll((node) => node.props.accessibilityLabel === Constants.NOT_NOW)
     ).toHaveLength(0);
+  });
+});
+
+describe('SyncPopup — a restore that could not reach the account', () => {
+  /**
+   * The device a clean logout leaves behind: no paths, no owner. The account's
+   * copy is the only one, so the silent restore on sign-in is the whole story.
+   */
+  // Renderers are unmounted by the shared cleanup above, which also cancels
+  // their restore-retry timeouts.
+  let mounted: ReactTestRenderer.ReactTestRenderer | null = null;
+  afterEach(() => {
+    const renderer = mounted;
+    mounted = null;
+    // Inside `act`: unmounting runs cleanup, which is a React update like any
+    // other. Without it React logs "an update was not wrapped in act(...)".
+    if (renderer) {
+      act(() => {
+        renderer.unmount();
+      });
+    }
+  });
+
+  const renderClearedDevice = async () => {
+    mockState.paths.paths = [];
+    mockState.paths.dates = [];
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(<SyncPopup />);
+    });
+    mounted = renderer;
+    return renderer;
+  };
+
+  const textsOf = (renderer: ReactTestRenderer.ReactTestRenderer) =>
+    renderer.root
+      .findAll((node) => typeof node.props.children === 'string')
+      .map((node) => node.props.children as string);
+
+  it('says so instead of leaving the user on a blank screen', async () => {
+    // Before this, a failed silent restore showed nothing at all: the user saw
+    // an empty app with no explanation, which reads as "my reading is gone".
+    mockRun.mockResolvedValue(false);
+
+    const renderer = await renderClearedDevice();
+
+    expect(mockRun).toHaveBeenCalledTimes(1);
+    expect(textsOf(renderer)).toContain(Constants.RESTORE_FAILED_TITLE);
+    expect(textsOf(renderer)).toContain(Constants.RETRY);
+    // Silent means no alert — the dialog carries the message instead.
+    expect(mockShowError).not.toHaveBeenCalled();
+  });
+
+  it('retries when asked, which one failed attempt used to make impossible', async () => {
+    // `silentAssociationTarget` is set to `attemptKey` BEFORE the attempt, and
+    // that key only changes when connectivity flips — so on a slow-but-connected
+    // network the session got exactly one try. Retry clears the target.
+    mockRun.mockResolvedValue(false);
+    const renderer = await renderClearedDevice();
+    expect(mockRun).toHaveBeenCalledTimes(1);
+
+    mockRun.mockResolvedValue(true);
+    const retry = renderer.root.findAll(
+      (node) => node.props.accessibilityLabel === Constants.RETRY
+    )[0];
+    await act(async () => {
+      retry.props.onPress();
+    });
+
+    expect(mockRun).toHaveBeenCalledTimes(2);
+    expect(mockDispatch).toHaveBeenCalledWith(approveSync('u@e.com'));
+  });
+
+  it('lets the user leave and keep reading offline', async () => {
+    // The downloaded database still works with no connection, so this must never
+    // be a dead end.
+    mockRun.mockResolvedValue(false);
+    const renderer = await renderClearedDevice();
+
+    const leave = renderer.root.findAll(
+      (node) => node.props.accessibilityLabel === Constants.CONTINUE_OFFLINE
+    )[0];
+    await act(async () => {
+      leave.props.onPress();
+    });
+
+    expect(textsOf(renderer)).not.toContain(Constants.RESTORE_FAILED_TITLE);
+  });
+
+  it('gives up retrying on its own, leaving Retry as the explicit way back', async () => {
+    // Unbounded automatic retries turn a server outage into unlimited requests
+    // and duplicate Crashlytics reports, from every affected device, for as long
+    // as the screen stays open.
+    mockRun.mockResolvedValue(false);
+    const renderer = await renderClearedDevice();
+    expect(mockRun).toHaveBeenCalledTimes(1);
+
+    // Far past the 15s + 30s + 60s the backoff can ever schedule.
+    for (let i = 0; i < 8; i += 1) {
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(60_000);
+      });
+    }
+
+    // One initial attempt plus a fixed budget of automatic ones — never more.
+    expect(mockRun).toHaveBeenCalledTimes(4);
+    // The dialog stays, so the user still has a way to try again themselves.
+    expect(textsOf(renderer)).toContain(Constants.RETRY);
+  });
+
+  it('stays quiet when the restore succeeds', async () => {
+    mockRun.mockResolvedValue(true);
+
+    const renderer = await renderClearedDevice();
+
+    expect(textsOf(renderer)).not.toContain(Constants.RESTORE_FAILED_TITLE);
+    expect(mockDispatch).toHaveBeenCalledWith(approveSync('u@e.com'));
   });
 });

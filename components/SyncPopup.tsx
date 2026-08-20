@@ -19,6 +19,20 @@ import { Dialog } from './Dialog';
 /** The account-switch dialogs are answer-only; the OS back gesture must not decide for the user. */
 const noop = (): void => undefined;
 
+/** Delay before the first automatic retry of a failed restore; doubles after that. */
+const RESTORE_RETRY_MS = 15_000;
+/**
+ * How many times a failed restore retries by itself before it stops asking.
+ *
+ * Bounded on purpose. An unbounded timer turns a server outage into unlimited
+ * requests and a stream of duplicate Crashlytics reports for as long as the
+ * screen stays open — from every affected device at once. Three attempts at
+ * 15s/30s/60s cover the ordinary case (a connection that comes back within a
+ * minute or two); past that the outage is not something retrying will fix, and
+ * Retry stays on screen as the user's explicit way to try again.
+ */
+const MAX_RESTORE_RETRIES = 3;
+
 /**
  * The login/sync decision, reduced to a small tree.
  *
@@ -90,6 +104,10 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(false);
   const [automaticSwitchFailed, setAutomaticSwitchFailed] = useState(false);
+  /** A silent restore could not reach the account — the user must be told. */
+  const [restoreFailed, setRestoreFailed] = useState(false);
+  /** Automatic retries already spent on the current failure. */
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
   /** Lets an offline user read on-device content; reconnecting asks again. */
   const [syncDeferredOffline, setSyncDeferredOffline] = useState(false);
   /** The account just put away — keeps the closing notice on screen to be read. */
@@ -107,6 +125,16 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const silentAssociationPending = useRef<string | null>(null);
 
   const status = useAppSelector((state) => state.auth.status);
+  /**
+   * The sign-in is still settling.
+   *
+   * `establishSession` dispatches `setSignedIn` — which is what populates
+   * `email` and lets the silent restore start — BEFORE `loginCallback` clears
+   * this flag. So a restore can begin, and fail, while "Signing you in…" is
+   * still on screen. Announcing "Unable to load your progress" underneath that
+   * notice contradicts it.
+   */
+  const signingIn = useAppSelector((state) => state.auth.signingIn);
   const email = useAppSelector((state) => state.auth.email);
   const firstname = useAppSelector((state) => state.auth.firstname);
   const answered = useAppSelector((state) => state.sync.syncPopupAnswered);
@@ -262,14 +290,57 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
         return;
       }
       setBusy(null);
-      // A silent association that fails must stay silent: the data is untouched
-      // and still readable, and the next foreground or reconnect retries it.
       if (!silent) {
         showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+        return;
       }
+      // A silent association used to fail silently, on the reasoning that the
+      // local data was untouched and still readable. That stopped being true
+      // once logout began clearing this device: the account's copy is now the
+      // ONLY copy, so a failed pull leaves an empty app and says nothing —
+      // which reads as "my reading is gone" rather than "no connection".
+      //
+      // It also could not recover on its own. `silentAssociationTarget` is set
+      // to `attemptKey` BEFORE the attempt, and that key only changes when
+      // connectivity flips, so a slow-but-connected network got exactly one try
+      // for the whole session. The dialog's Retry is what breaks that.
+      //
+      // But `false` does NOT mean "the restore failed". It means "this attempt
+      // did not complete", and several of those reasons are entirely benign:
+      // another attempt was already in flight (`inFlight`), the session changed
+      // mid-request, or the account had already been associated by another
+      // trigger. Reporting all of them as failure put "Unable to load your
+      // progress" on screen next to the data it claimed could not be loaded.
+      if (store.getState().sync.account === email) {
+        silentAssociationPending.current = null;
+        return;
+      }
+      setRestoreFailed(true);
     },
     [dispatch, email]
   );
+
+  /**
+   * Run the restore again, directly.
+   *
+   * Deliberately NOT by clearing `silentAssociationTarget` and waiting for the
+   * effect: a ref is not a dependency, so nothing would re-run and the button
+   * would do nothing at all. Leaving the target set also keeps the automatic
+   * path honest — the effect still fires by itself when connectivity flips, and
+   * this stays the one manual attempt the user asked for.
+   */
+  const retryRestore = useCallback(() => {
+    if (!email) {
+      return;
+    }
+    trackEvent('SyncAssociate', 'click', 'retry account restore');
+    setRestoreFailed(false);
+    setRestoreAttempt(0);
+    silentAssociationPending.current = email;
+    associate(true);
+  }, [associate, email]);
+
+  const dismissRestoreFailed = useCallback(() => setRestoreFailed(false), []);
 
   // Case 4: a provably backed-up account is replaced without asking.
   useEffect(() => {
@@ -324,6 +395,53 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     }
   }, [canAssociateSilently, attemptKey, syncing, associate, email]);
 
+  /**
+   * Retract the failure notice the moment the account is genuinely associated.
+   *
+   * The check inside `associate` catches an attempt that was rejected because
+   * the work was already DONE. This catches the other order: an attempt rejected
+   * because the work was still RUNNING, which returns `false` while `account` is
+   * legitimately not set yet — and is then set a moment later when the attempt
+   * that won actually lands. Without this, that race left a stale "Unable to
+   * load your progress" sitting on top of freshly restored reading.
+   */
+  useEffect(() => {
+    if (account !== null && account === email) {
+      setRestoreFailed(false);
+      setRestoreAttempt(0);
+    }
+  }, [account, email]);
+
+  /**
+   * Keep retrying a failed restore on its own, until it lands.
+   *
+   * The automatic trigger is `attemptKey`, and it only changes when NetInfo
+   * reports a connectivity EDGE. It frequently reports none: `reachabilityLong
+   * Timeout` is 60 s, so a connection that drops and comes back inside that
+   * window leaves `isOnline` true the whole time. The key never changes, the
+   * effect never re-runs, and the restore waits for a manual Retry the user has
+   * no reason to expect — on a device cleared by logout, staring at an empty app.
+   *
+   * Self-limiting rather than a poll: it exists only while a restore is still
+   * owed, and the effect above tears it down the moment the account associates.
+   * It also stays out of the way while an attempt is already running, so it can
+   * never stack requests on a slow connection.
+   */
+  useEffect(() => {
+    if (!restoreFailed || !email || !isOnline || syncing || restoreAttempt >= MAX_RESTORE_RETRIES) {
+      return;
+    }
+    // Backing off rather than a fixed beat: the first retry covers a connection
+    // that blipped, the later ones a server that needs a moment, and the gap
+    // grows instead of hammering something already struggling.
+    const timer = setTimeout(() => {
+      setRestoreAttempt((attempt) => attempt + 1);
+      silentAssociationPending.current = email;
+      associate(true);
+    }, RESTORE_RETRY_MS * 2 ** restoreAttempt);
+    return () => clearTimeout(timer);
+  }, [restoreFailed, email, isOnline, syncing, associate, restoreAttempt]);
+
   // `Dialog` is memoised, so an inline arrow here would be a fresh prop on every
   // render and defeat the memo. Setter identity is stable, so these are too.
   const dismissSwitchedNotice = useCallback(() => setSwitchedFrom(null), []);
@@ -357,12 +475,72 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
 
   const name = firstname?.trim() || email || '';
 
-  if (loadingProgress) {
+  // A silent restore in flight is the account's reading arriving, which is worth
+  // saying out loud: on a device cleared by logout there is nothing on screen
+  // yet, so an unexplained wait looks like an empty app. The prompted
+  // association is excluded — its own button already shows a spinner, and a
+  // modal on top of that would be the same news twice.
+  const restoring = associating && silentAssociationPending.current !== null;
+  if (loadingProgress || restoring) {
     return (
       <Dialog visible onRequestClose={ignoreRequestClose}>
         <View style={styles.loadingState} accessibilityLabel={Constants.LOADING_PROGRESS}>
           <ActivityIndicator size="large" color="#11336A" />
           <Text style={styles.message}>{Constants.LOADING_PROGRESS}</Text>
+        </View>
+      </Dialog>
+    );
+  }
+
+  // --- A restore that could not reach the account ---------------------------
+  // Deliberately ahead of every other branch. This device is empty, so none of
+  // the ownership dialogs below can fire — their conditions all need either an
+  // owner or local data — and without this the user would be left on a blank
+  // Home with no explanation of where their reading went.
+  //
+  // `!signingIn` matters as much as the rest: the sign-in notice is still up
+  // during the first attempt, and a failure dialog under a "Signing you in…"
+  // banner tells the user two opposite things at once. Holding it until the
+  // sign-in settles also gives the association a chance to land on its own, in
+  // which case the effect above retracts this entirely and nothing is shown.
+  if (restoreFailed && !signingIn && status === 'signedIn' && !!email) {
+    return (
+      <Dialog visible onRequestClose={dismissRestoreFailed}>
+        <Text style={styles.title}>{Constants.RESTORE_FAILED_TITLE}</Text>
+        <Text style={styles.message}>
+          {isOnline ? Constants.RESTORE_FAILED_MESSAGE : Constants.RESTORE_OFFLINE_MESSAGE}
+        </Text>
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={retryRestore}
+            disabled={syncing}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.RETRY}
+          >
+            <ActionLabel
+              running={busy === 'sync'}
+              idle={Constants.RETRY}
+              textStyle={styles.primaryText}
+              spinnerColor="#FFFFFF"
+            />
+          </TouchableOpacity>
+        </View>
+        {/*
+          Never a dead end. The downloaded database still works offline, so a
+          user with no connection must be able to leave this and keep reading —
+          signing in again, or a later retry, still restores the account.
+        */}
+        <View style={styles.links}>
+          <TouchableOpacity
+            style={styles.linkButton}
+            onPress={dismissRestoreFailed}
+            disabled={syncing}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.CONTINUE_OFFLINE}
+          >
+            <Text style={styles.linkText}>{Constants.CONTINUE_OFFLINE}</Text>
+          </TouchableOpacity>
         </View>
       </Dialog>
     );
@@ -375,8 +553,14 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   if (needsSyncDecision && !isOnline) {
     return (
       <Dialog visible onRequestClose={continueOffline}>
-        <Text style={styles.title}>{Constants.SYNC_UNAVAILABLE_TITLE}</Text>
-        <Text style={styles.message}>{Constants.SYNC_UNAVAILABLE_MESSAGE}</Text>
+        {/*
+          The offline wording, not the unavailable one. This branch is guarded on
+          `!isOnline`, so the connection genuinely is the problem and checking it
+          is the fix — unlike `SyncUnavailablePopup`, where no server is
+          configured and that advice would send the user chasing nothing.
+        */}
+        <Text style={styles.title}>{Constants.SYNC_OFFLINE_TITLE}</Text>
+        <Text style={styles.message}>{Constants.SYNC_OFFLINE_MESSAGE}</Text>
         <View style={styles.actions}>
           <TouchableOpacity
             style={styles.primaryButton}
@@ -575,6 +759,12 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
             Never disabled. This dialog cannot be dismissed any other way, so if a
             switch hangs or keeps failing, disabling Logout while `syncing` is
             true traps the user in a modal with no way out.
+
+            Deliberately the plain `logout()`, NOT the drawer's clear-then-logout.
+            The data on screen belongs to the previous account and its ownership
+            is exactly what is still unresolved here — often because it is not
+            backed up, which is why this dialog is up at all. Clearing on the way
+            out would delete it while answering that question by force.
           */}
           <TouchableOpacity
             style={styles.linkButton}

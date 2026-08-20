@@ -172,3 +172,39 @@ export const hasAnyUnsentWork = (state: RootState): boolean =>
   Object.keys(state.sync.pathOps).length > 0 ||
   Object.keys(state.sync.scrollDirty).length > 0 ||
   state.sync.pendingSettingsUpdatedAt != null;
+
+/**
+ * True when EVERY piece of reading on this device is provably held by the server.
+ *
+ * This is the gate for destroying local data on logout, so it answers "can the
+ * server give all of this back?" rather than "does anything look unsaved?". It
+ * must therefore fail closed: anything we cannot positively prove is on the
+ * server counts as not backed up.
+ *
+ * Note that `onServer` starts FALSE for every path (`syncStampMiddleware`) and
+ * only becomes true when a server response confirms it, so this is a real check
+ * and not a formality — reading offline, a failed request, or logging out before
+ * the outbox drains all leave paths behind.
+ *
+ * The four ways local-only reading can exist:
+ *  - unsent work (a queued edit, a dirty scroll, a pending settings change);
+ *  - a path the server has never confirmed, or one deleted only locally;
+ *  - an orphan date record, whose path is gone and so is never sent again;
+ *  - quarantined records, which live outside Redux and cannot be synced at all.
+ *
+ * `recoveryNeeded` fails too: in that state we cannot even match local paths to
+ * cloud paths, so "it is on the server" is exactly what we are unable to claim.
+ */
+export const isFullyBackedUp = (store: AppStore, state: RootState = store.getState()): boolean => {
+  if (state.sync.recoveryNeeded || hasAnyUnsentWork(state) || hasQuarantinedRecords(store)) {
+    return false;
+  }
+  const livePathIds = new Set(state.paths.paths.map((path) => path.pathId));
+  if (state.paths.dates.some((entry) => !livePathIds.has(entry.pathid))) {
+    return false;
+  }
+  return state.paths.paths.every((path) => {
+    const meta = state.sync.meta[path.pathId];
+    return !!meta && meta.onServer && meta.deletedAt == null;
+  });
+};

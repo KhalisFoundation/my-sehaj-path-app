@@ -48,22 +48,62 @@ const queueDirtyScroll = (store: AppStore): void => {
  */
 export const runManualSync = async (store: AppStore, email: string): Promise<boolean> => {
   const state = store.getState();
-  if (
-    !isApiConfigured() || // no server configured in this build
-    !email ||
-    state.auth.email !== email ||
-    !state.network.isOnline ||
-    state.sync.recoveryNeeded
-  ) {
-    // The user pressed a button; a tap that produces no visible result reads as
-    // a broken button. Surface it through the normal status notice so every
-    // outcome of Sync now arrives in the same place.
+  // The user pressed a button, so every refusal below must still say something —
+  // a tap with no visible result reads as a broken button. But it must say the
+  // RIGHT thing: these conditions used to share one `'network'` label, which put
+  // "Unable to reach the sync server" in front of people whose connection was
+  // fine and whose actual problem was something else entirely.
+  if (!state.network.isOnline) {
     store.dispatch(setSyncError('network'));
+    return false;
+  }
+  if (
+    !isApiConfigured() || // no server configured in this build at all
+    !email || // the profile fetch has not landed yet
+    state.auth.email !== email || // a stale caller, from a session since replaced
+    state.sync.recoveryNeeded // sync is paused until the user resolves recovery
+  ) {
+    // None of these are about the connection. The generic wording — "Unable to
+    // sync some progress. Your local progress is safe." — is true for all of
+    // them and sends nobody chasing a network fault that isn't there.
+    store.dispatch(setSyncError('rejected'));
     return false;
   }
 
   if (state.sync.account !== email) {
-    return runConfirmedAccountSync(store, email);
+    // This branch runs whenever the device is not yet associated — including
+    // right after a login whose restore could not reach the server, which is
+    // precisely when the user reaches for Sync now.
+    //
+    // `runConfirmedAccountSync` reports nothing on failure: it records to
+    // Crashlytics and returns false. Delegating to it bare therefore undid the
+    // guarantee the guard above exists for, and a tapped Sync now that could not
+    // reach the server produced no notice at all — the same silent button.
+    const associated = await runConfirmedAccountSync(store, email);
+    if (associated) {
+      return true;
+    }
+    const after = store.getState();
+    // `false` covers several outcomes that are not failures to report, so each
+    // is ruled out before claiming one.
+    //
+    // Already associated: a concurrent attempt won the single-flight guard and
+    // finished the job. Nothing went wrong.
+    if (after.sync.account === email) {
+      return true;
+    }
+    // Signed out: the request came back 401 and the session-expiry notice is
+    // already up. That message is the accurate one and must not be replaced
+    // with a claim about the server being unreachable.
+    if (after.auth.status !== 'signedIn') {
+      return false;
+    }
+    // Everything else is real, but only some of it is about the network — a
+    // failed durable write and incomplete UUID metadata both land here too.
+    // Blame the connection only when the device actually lost it; otherwise use
+    // the generic wording, which does not tell the user something untrue.
+    store.dispatch(setSyncError(after.network.isOnline ? 'rejected' : 'network'));
+    return false;
   }
 
   // Manual Sync is the user's escape hatch for work the automatic path has given
