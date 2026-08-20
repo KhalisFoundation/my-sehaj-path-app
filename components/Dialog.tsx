@@ -6,6 +6,12 @@ interface DialogProps {
   visible: boolean;
   /** Android back / swipe-to-dismiss handler. */
   onRequestClose?: () => void;
+  /**
+   * Fires when the modal is genuinely on screen. iOS silently refuses to
+   * present a modal while another one (or an in-app browser) already owns the
+   * screen, and `visible` alone cannot tell you that happened.
+   */
+  onShow?: () => void;
   /** The dialog's content — title, message, buttons, or anything else. */
   children: React.ReactNode;
 }
@@ -17,8 +23,14 @@ interface DialogProps {
  * to show inside. Shared inner styles live in `DialogStyles` (title, message,
  * actions, buttons) for callers that want the default treatment.
  */
-const DialogComponent = ({ visible, onRequestClose, children }: DialogProps) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onRequestClose}>
+const DialogComponent = ({ visible, onRequestClose, onShow, children }: DialogProps) => (
+  <Modal
+    visible={visible}
+    transparent
+    animationType="fade"
+    onRequestClose={onRequestClose}
+    onShow={onShow}
+  >
     <View style={styles.backdrop}>
       <View style={styles.card}>{children}</View>
     </View>

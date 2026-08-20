@@ -115,6 +115,7 @@ const App = () => {
     // One NetInfo subscription for the whole app. On a false→true transition,
     // flush anything queued while offline (Step 10 reconnect trigger).
     let wasOnline = store.getState().network.isOnline;
+
     const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
       const online = Boolean(state.isConnected && state.isInternetReachable);
       store.dispatch(setOnline(online));
@@ -123,6 +124,9 @@ const App = () => {
       }
       if (online && !wasOnline) {
         onReconnect();
+        // Same reasoning as the foreground retry: a download aborted by a
+        // dropped connection should resume being attempted once there is one.
+        provisionDatabase();
       }
       wasOnline = online;
     });
@@ -134,6 +138,13 @@ const App = () => {
       if (state === 'active') {
         retrySessionProfile();
         onForeground();
+        // Returning to the app is the moment to pick the offline DB back up.
+        // A download does not survive the app losing focus — the SSO browser
+        // alone is enough to kill it — and provisioning otherwise ran only once
+        // at boot, so a single interruption left the app on the API until it was
+        // fully relaunched. This no-ops when the DB is present or a download is
+        // already running.
+        provisionDatabase();
       } else if (state === 'inactive' || state === 'background') {
         persistence.flush();
         onCheckpoint();

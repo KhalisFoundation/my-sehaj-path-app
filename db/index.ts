@@ -5,8 +5,9 @@ export {
   checkForDatabaseUpdate,
   performDatabaseUpdate,
   isDatabaseInstalled,
-  type DownloadProgress,
+  isDatabaseDownloadBlockedByStorage,
   type DownloadResult,
+  type InsufficientStorageResult,
   type DatabaseCheckResult,
   type DatabaseUpdateResult,
 } from './downloadDatabase';

@@ -452,9 +452,13 @@ const SyncStatusNoticeComponent = () => {
     return null;
   }
 
+  // Names the cause rather than only the symptom. The offline phase outranks
+  // this one, so by the time it shows the device believes it HAS a connection —
+  // meaning the server is the part that could not be reached, and "unable to
+  // sync" alone left the user with nothing to act on.
   const errorMessage =
     lastError === 'network'
-      ? 'Unable to sync. Your progress is safe on this device.'
+      ? 'Unable to reach the sync server. Your progress is safe on this device.'
       : 'Unable to sync some progress. Your local progress is safe.';
   const isSettings = kind.current === 'settings';
   const isSignIn = kind.current === 'signIn';

@@ -62,7 +62,7 @@ describe('SyncStatusNotice', () => {
     });
 
     expect(renderer.root.findAllByType(Text).map((node) => node.props.children)).toContain(
-      'Unable to sync. Your progress is safe on this device.'
+      'Unable to reach the sync server. Your progress is safe on this device.'
     );
   });
 

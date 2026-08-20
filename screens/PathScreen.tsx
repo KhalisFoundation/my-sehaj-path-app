@@ -144,7 +144,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   useScreenAnalytics('PathScreen', 'PathScreen');
 
   const fetchFromBaniDB = useCallback(
-    async (angNumber: number) => {
+    async (angNumber: number, options?: { isInitialLoad?: boolean }) => {
       alertIndicator.current = <ActivityIndicator size={'large'} color={'#000'} />;
       setReaderContentHeight(0);
       const pathFromBaniDB = await getAngContent(angNumber);
@@ -161,7 +161,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             [
               {
                 text: 'OK',
-                onPress: () => navigation.replace(Routes.Home),
+                // Leaving is only right for the FIRST load, which has no content
+                // to fall back to. Turning a page has content already on screen,
+                // so sending the reader Home would throw away what they are
+                // reading over a page that simply could not be fetched — and the
+                // effect below re-fetches it as soon as the network returns.
+                onPress: options?.isInitialLoad ? () => navigation.replace(Routes.Home) : undefined,
               },
             ]
           );
@@ -512,7 +517,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
           setPathAng(pathAngData);
 
           scrolledToSavedPath.current = false;
-          await fetchFromBaniDB(pathAngData);
+          await fetchFromBaniDB(pathAngData, { isInitialLoad: true });
         }
       } catch (error) {
         recordError(error, 'PathScreen: failed to load path data');

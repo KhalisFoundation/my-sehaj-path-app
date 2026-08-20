@@ -22,14 +22,23 @@ import {
 } from '@constants';
 import { DrawerMenuStyles } from '@styles';
 import { KhalisIcon, LoginIcon, SaveIcon } from '@icons';
-import { showErrorAlert, showLogoutConfirmAlert, trackEvent } from '@utils';
+import {
+  recordError,
+  showErrorAlert,
+  showLogoutConfirmAlert,
+  showUnsyncedBeforeLogoutAlert,
+  showOfflineBeforeLogoutAlert,
+  showOfflineSyncAlert,
+  trackEvent,
+} from '@utils';
 import { DonationIcon } from '@icons/Donation.icon';
 import { startLogin, logout } from '@auth';
 import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
 import { useAppSelector } from '../store/hooks';
 import { store } from '../store';
-import { restoreCloudDataAfterSyncRecovery } from '../store/confirmedSync';
+import { clearLocalDataForLogout, restoreCloudDataAfterSyncRecovery } from '../store/confirmedSync';
 import { runManualSync } from '../store/manualSync';
+import { isFullyBackedUp } from '../store/syncWork';
 import { setRecoveryRestoreStatus } from '../store/slices/syncSlice';
 
 interface DrawerMenuProps {
@@ -78,6 +87,7 @@ const DrawerMenuComponent = ({
   const authStatus = useAppSelector((state) => state.auth.status);
   const userEmail = useAppSelector((state) => state.auth.email);
   const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
+  const isOnline = useAppSelector((state) => state.network.isOnline);
   const isSignedIn = authStatus === 'signedIn';
 
   const handleLoginPress = () => {
@@ -86,25 +96,122 @@ const DrawerMenuComponent = ({
     onClose();
   };
 
+  /**
+   * Sign out and leave the guest UI behind.
+   *
+   * The local copy is removed so a signed-out device never shows the previous
+   * account's reading. Clearing is attempted first, while still signed in: if it
+   * cannot be made durable, stay signed in. Signing out while the previous
+   * account's paths remain would expose that account's data in guest mode.
+   */
+  const performLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      if (!(await clearLocalDataForLogout(store))) {
+        recordError(
+          new Error('logout: local data could not be cleared'),
+          'drawer: logout clear failed'
+        );
+        showErrorAlert(ErrorConstants.FAILED_TO_LOG_OUT);
+        return;
+      }
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+      onClose();
+    }
+  };
+
+  const confirmThenLogout = () => showLogoutConfirmAlert({ onConfirm: performLogout });
+
+  /**
+   * Sync first, and only offer logout once it actually landed. Re-checking after
+   * the sync rather than trusting its return value keeps the gate honest: a
+   * partial success still leaves reading that only exists here.
+   */
+  const syncThenOfferLogout = async () => {
+    if (manualSyncInFlight.current) {
+      return;
+    }
+    // Offline is checked FIRST, and before the email.
+    //
+    // Being signed in does not guarantee we know who: `establishSession` signs in
+    // on the stored token alone when the profile request fails, leaving
+    // `auth.email` null until a later fetch succeeds — and offline, that fetch
+    // never succeeds. Testing the email first therefore turned every offline tap
+    // into a silent no-op, blaming a missing profile for what is really a missing
+    // connection. Offline is also the thing the user can actually act on.
+    if (!isOnline) {
+      showOfflineBeforeLogoutAlert();
+      return;
+    }
+    // Online but still no profile: a sync cannot be addressed to an account we
+    // cannot name. Rare and self-healing, but it must never be a dead button.
+    if (!userEmail) {
+      showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+      return;
+    }
+    // Close the drawer first, exactly as `handleSyncPress` does. This menu is a
+    // Modal rendered in its own window, so the sync status notice — an ordinary
+    // positioned View — cannot draw over it at any zIndex. Left open, it would
+    // hide the very progress this tap exists to show.
+    onClose();
+    manualSyncInFlight.current = true;
+    setIsManualSyncing(true);
+    let synced = false;
+    try {
+      trackEvent('ManualSync', 'click', 'Sync before logout');
+      synced = await runManualSync(store, userEmail);
+    } finally {
+      manualSyncInFlight.current = false;
+      setIsManualSyncing(false);
+    }
+    if (isFullyBackedUp(store)) {
+      // Straight to the logout question — the status notice has already shown
+      // "Synced", so a separate confirmation would be the same news twice.
+      confirmThenLogout();
+      return;
+    }
+    // A failed sync reports itself through that same notice, and `performSync`
+    // deliberately avoids adding a second message for one tap. Speak up only in
+    // the case the notice cannot describe: the sync claimed success, yet reading
+    // still exists only on this device.
+    if (synced) {
+      showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
+    }
+  };
+
   const handleLogoutPress = () => {
     trackEvent('AuthButton', 'click', 'Log out pressed');
+    // Logging out now DELETES the local copy, so reading the server has not
+    // confirmed would be gone for good. Every path starts `onServer: false`, so
+    // this is reachable through ordinary use — reading offline, a failed sync,
+    // or logging out before the outbox drains.
+    if (!isFullyBackedUp(store)) {
+      // How often real users actually hit this gate is the question that decides
+      // whether the whole prompt earns its place — and pairs with the
+      // 'Sync before logout' event below to show how many finish the sync
+      // rather than abandoning the logout.
+      trackEvent('Logout', 'blocked', 'unsynced progress');
+      showUnsyncedBeforeLogoutAlert({ onSyncNow: syncThenOfferLogout });
+      return;
+    }
+    trackEvent('Logout', 'click', 'fully backed up');
     // Confirm first, then show a loading overlay while local logout settles.
     // The best-effort SSO browser logout opens afterwards without holding UI.
-    showLogoutConfirmAlert({
-      onConfirm: async () => {
-        setIsLoggingOut(true);
-        try {
-          await logout();
-        } finally {
-          setIsLoggingOut(false);
-          onClose();
-        }
-      },
-    });
+    confirmThenLogout();
   };
 
   const performSync = async () => {
-    if (!userEmail || manualSyncInFlight.current) {
+    if (manualSyncInFlight.current) {
+      return;
+    }
+    // Same trap as the logout path: signed in does not mean we know who. When
+    // `establishSession` could not fetch the profile, `auth.email` stays null and
+    // this returned silently — a Sync now button that did nothing at all, with no
+    // message to explain it.
+    if (!userEmail) {
+      showErrorAlert(ErrorConstants.FAILED_TO_SYNC);
       return;
     }
     manualSyncInFlight.current = true;
@@ -144,6 +251,13 @@ const DrawerMenuComponent = ({
 
   const handleSyncPress = () => {
     if (!recoveryNeeded) {
+      // Offline is a precondition, not an outcome — same as the logout path.
+      // Checked before the menu closes, so it stays put and the tap has a
+      // visible answer rather than dismissing the drawer and little else.
+      if (!isOnline) {
+        showOfflineSyncAlert();
+        return;
+      }
       // Close first. This drawer is a Modal, which renders in its own window
       // above the app, so the status notice — an ordinary positioned View —
       // cannot draw over it no matter its zIndex. Leaving the menu open would
