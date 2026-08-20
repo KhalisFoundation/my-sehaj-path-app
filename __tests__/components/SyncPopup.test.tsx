@@ -12,6 +12,7 @@ import { approveSync, declineSync } from '../../store/slices/syncSlice';
 
 const mockDispatch = jest.fn();
 const mockShowError = jest.fn();
+const mockRecordError = jest.fn();
 const mountedRenderers = new Set<ReactTestRenderer.ReactTestRenderer>();
 const originalCreate = ReactTestRenderer.create.bind(ReactTestRenderer);
 // Signed in, data not yet associated → the popup is visible.
@@ -60,6 +61,7 @@ jest.mock('../../store/persistence', () => ({ hasQuarantinedRecords: () => false
 jest.mock('@auth', () => ({ logout: jest.fn() }));
 jest.mock('@utils', () => ({
   showErrorAlert: (...args: unknown[]) => mockShowError(...args),
+  recordError: (...args: unknown[]) => mockRecordError(...args),
   trackEvent: jest.fn(),
 }));
 jest.mock('../../components/Dialog', () => {

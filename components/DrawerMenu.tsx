@@ -188,9 +188,15 @@ const DrawerMenuComponent = ({
     // this is reachable through ordinary use — reading offline, a failed sync,
     // or logging out before the outbox drains.
     if (!isFullyBackedUp(store)) {
+      // How often real users actually hit this gate is the question that decides
+      // whether the whole prompt earns its place — and pairs with the
+      // 'Sync before logout' event below to show how many finish the sync
+      // rather than abandoning the logout.
+      trackEvent('Logout', 'blocked', 'unsynced progress');
       showUnsyncedBeforeLogoutAlert({ onSyncNow: syncThenOfferLogout });
       return;
     }
+    trackEvent('Logout', 'click', 'fully backed up');
     // Confirm first, then show a loading overlay while local logout settles.
     // The best-effort SSO browser logout opens afterwards without holding UI.
     confirmThenLogout();

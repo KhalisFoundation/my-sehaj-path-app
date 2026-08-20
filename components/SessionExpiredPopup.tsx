@@ -2,6 +2,7 @@ import React, { useCallback } from 'react';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { Constants } from '@constants';
 import { startLogin } from '@auth';
+import { trackEvent } from '@utils';
 import { DialogStyles as styles } from '@styles';
 import { store } from '../store';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -43,6 +44,10 @@ const SessionExpiredPopupComponent = () => {
    * "never ask again" for exactly the user who most needs asking.
    */
   const dismiss = useCallback(() => {
+    // Distinguished by risk: dismissing with everything backed up is harmless,
+    // dismissing with reading that exists only here is the choice worth knowing
+    // about.
+    trackEvent('SessionExpired', 'click', backedUp ? 'not now' : 'not now with unsynced');
     dispatch(dismissSessionExpired());
     if (!backedUp) {
       dispatch(showSignInPopupAgain());
@@ -54,6 +59,7 @@ const SessionExpiredPopupComponent = () => {
   }, [dispatch, backedUp]);
 
   const login = useCallback(() => {
+    trackEvent('SessionExpired', 'click', 'log in again');
     dispatch(dismissSessionExpired());
     // Silence the sign-in prompt for this session, but never persist it.
     //

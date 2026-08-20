@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
 import { Constants, ErrorConstants } from '@constants';
 import { logout } from '@auth';
-import { showErrorAlert, trackEvent } from '@utils';
+import { recordError, showErrorAlert, trackEvent } from '@utils';
 import { DialogStyles as styles } from '@styles';
 import { store } from '../store';
 import {
@@ -108,6 +108,8 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   const [restoreFailed, setRestoreFailed] = useState(false);
   /** Automatic retries already spent on the current failure. */
   const [restoreAttempt, setRestoreAttempt] = useState(0);
+  /** Stops the give-up report firing again on every later render. */
+  const exhaustionReported = useRef(false);
   /** Lets an offline user read on-device content; reconnecting asks again. */
   const [syncDeferredOffline, setSyncDeferredOffline] = useState(false);
   /** The account just put away — keeps the closing notice on screen to be read. */
@@ -336,6 +338,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     trackEvent('SyncAssociate', 'click', 'retry account restore');
     setRestoreFailed(false);
     setRestoreAttempt(0);
+    exhaustionReported.current = false;
     silentAssociationPending.current = email;
     associate(true);
   }, [associate, email]);
@@ -409,6 +412,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     if (account !== null && account === email) {
       setRestoreFailed(false);
       setRestoreAttempt(0);
+      exhaustionReported.current = false;
     }
   }, [account, email]);
 
@@ -428,6 +432,21 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
    * never stack requests on a slow connection.
    */
   useEffect(() => {
+    if (restoreFailed && restoreAttempt >= MAX_RESTORE_RETRIES && !exhaustionReported.current) {
+      // The only signal that this happened at all.
+      //
+      // `runConfirmedAccountSync` reports just its `catch`; the guard and
+      // error-response paths return false silently. So a user left staring at an
+      // empty app — on a device whose local copy logout deleted — produced no
+      // Crashlytics event whatsoever. Reported once, after the retries are spent,
+      // rather than per attempt: the point is "this device never recovered", and
+      // per-attempt reporting is what made an unbounded retry a flood.
+      exhaustionReported.current = true;
+      recordError(
+        new Error('account restore gave up after exhausting automatic retries'),
+        'syncPopup: restore unrecoverable'
+      );
+    }
     if (!restoreFailed || !email || !isOnline || syncing || restoreAttempt >= MAX_RESTORE_RETRIES) {
       return;
     }
