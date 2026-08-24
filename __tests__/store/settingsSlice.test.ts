@@ -22,7 +22,7 @@ describe('settingsSlice initial state', () => {
    */
   it('matches the legacy useLocal fallbacks field-for-field', () => {
     expect(initial()).toEqual({
-      fontSize: { fontSize: 'Small (Default)', number: 18 },
+      fontSize: { fontSize: 'Small (Default)', number: 24 },
       larivaar: false,
       paragraphMode: false,
       vishraam: false,
@@ -36,8 +36,9 @@ describe('settingsSlice initial state', () => {
     expect(initial().vishraamsSource.source).toBe('sttm');
   });
 
-  it('defaults fontSize number to 18', () => {
-    expect(initial().fontSize.number).toBe(18);
+  it('defaults fontSize to Small on the shared scale', () => {
+    // The scale is shared across our apps, including its default of Small.
+    expect(initial().fontSize.number).toBe(24);
   });
 
   it('defaults analyticsConsent to true', () => {
@@ -99,7 +100,7 @@ describe('settingsSlice hydrateSettings', () => {
     expect(after.larivaar).toBe(true);
     expect(after.analyticsConsent).toBe(false);
     // untouched
-    expect(after.fontSize).toEqual({ fontSize: 'Small (Default)', number: 18 });
+    expect(after.fontSize).toEqual({ fontSize: 'Small (Default)', number: 24 });
     expect(after.vishraamsSource).toEqual({ source: 'sttm' });
     expect(after.angsFormat).toEqual({ format: 'Punjabi' });
   });

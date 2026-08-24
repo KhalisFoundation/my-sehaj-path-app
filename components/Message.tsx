@@ -1,5 +1,6 @@
 import React from 'react';
-import { Animated, Text } from 'react-native';
+import { Animated } from 'react-native';
+import { AppText as Text } from './AppText';
 import { NavContent } from '@components';
 import { SaveIcon } from '@icons';
 import { MessageStyles } from '@styles';

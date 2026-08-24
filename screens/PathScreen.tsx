@@ -26,6 +26,7 @@ import {
 } from '@hooks';
 import { store } from '../store';
 import { useAppSelector } from '../store/hooks';
+import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { savePathProgress, savePathScrollPosition, undoPathCompletion } from '../store/commands';
 import { onScreenBlur, setActiveReaderPath } from '../store/syncLifecycle';
 import {
@@ -77,7 +78,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // settings itself, so only the ones this screen actually uses are selected here.
   const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
   const angsFormat = useAppSelector((state) => state.settings.angsFormat);
-  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const fontSize = useReaderFontSize();
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);
@@ -119,6 +120,21 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const completionUndoStartScrollYRef = useRef<number | null>(null);
   /** Guards the leave checkpoint so `blur` + `beforeRemove` run it only once. */
   const leaveCheckpointDone = useRef<boolean>(false);
+  /**
+   * Set when the user explicitly declines to save before leaving.
+   *
+   * Declining navigates immediately, and `beforeRemove` fires the leave
+   * checkpoint on the way out — which would persist `pathAng`. That is still the
+   * jumped ang: the revert is a `setState` that has not committed, and the
+   * checkpoint closes over the previous render's value either way. Without this
+   * flag, "don't save" saved exactly what the user declined.
+   */
+  const skipLeavePersist = useRef<boolean>(false);
+  // Set once the reader auto-saves a position the user scrolled to themselves.
+  // The leave checkpoint needs this because the auto-save writes the scroll
+  // offset WITHOUT recording a reading day, which makes the durable state look
+  // identical to "opened and left untouched".
+  const didReadThisSession = useRef<boolean>(false);
 
   const resetTransientUiState = useCallback(() => {
     setIsSaving(false);
@@ -301,6 +317,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         if (!saved) {
           return;
         }
+        // `isRestoringScroll` above already excluded the restore, so reaching
+        // here means the user moved through the text themselves — they read.
+        didReadThisSession.current = true;
       } catch {
         // Background auto-save remains silent; the command records the failure.
       }
@@ -380,7 +399,15 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       // Opening a path restores its saved ang/scroll position. Leaving straight
       // away must not turn that restore into a new "read today" update: it can
       // block newer progress fetched from another device despite A doing nothing.
+      //
+      // The durable comparison alone cannot tell that apart from a real reading
+      // session, because the scroll auto-save has already written the position
+      // the user scrolled to — and it records no reading day of its own. Reading
+      // within one ang therefore matched on all three and returned here, so the
+      // day never reached `dates` and the streak missed it. `didReadThisSession`
+      // is the part the durable state cannot express.
       const unchangedSinceOpen =
+        !didReadThisSession.current &&
         durablePath.saveData.angNumber === pathAng &&
         durablePath.saveData.verseId === verseIdToKeep &&
         (durableDate?.scrollPosition ?? 0) === scrollOffset.current;
@@ -413,6 +440,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       clearTimeout(debounceTimer.current);
       debounceTimer.current = null;
     }
+    // The user chose to leave without saving. Skip the write, but still run the
+    // blur handler: it promotes and flushes progress saved EARLIER in this
+    // session, which they did not decline.
+    if (skipLeavePersist.current) {
+      skipLeavePersist.current = false;
+      onScreenBlur();
+      return;
+    }
     await persistCurrentScrollPosition();
     onScreenBlur();
   }, [persistCurrentScrollPosition]);
@@ -425,6 +460,9 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     updatePathAng,
     navigation,
     persistCurrentScroll: persistCurrentScrollPosition,
+    suppressLeaveSave: () => {
+      skipLeavePersist.current = true;
+    },
   });
 
   const handlePathDrawerNavigate = useCallback(
@@ -459,6 +497,15 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     setIsSaving(true);
     fadeAnim.current.setValue(1);
   }, []);
+
+  const jumpToAng = useCallback(
+    (angNumber: number) => {
+      scrollOffset.current = 0;
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+      updatePathAng(angNumber);
+    },
+    [updatePathAng]
+  );
 
   const handleAngsRightArrow = useCallback(() => {
     handleRightArrow(pathAng);
@@ -817,7 +864,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             isAngNavigation={isAngNavigation}
             setIsAngNavigation={setIsAngNavigation}
             fetchAngData={fetchFromBaniDB}
-            updatePathAng={updatePathAng}
+            updatePathAng={jumpToAng}
           />
         )}
         <DrawerMenu

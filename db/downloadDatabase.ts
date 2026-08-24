@@ -16,7 +16,7 @@ import { LOCAL_DB_PATH, TEMP_DB_PATH } from './paths';
 /**
  * Downloads the offline reading database and saves it for the reader to open.
  *
- * FS approach mirrors sundar-gutka-react (`src/common/rnfs.js` + the download
+ * FS approach mirrors our other app (`src/common/rnfs.js` + the download
  * component): download to a temp file with a progress callback, then atomically
  * swap it onto the real path. Added on top: a SQLite-header integrity check, so
  * a truncated download or an HTML error page can never become the live DB.

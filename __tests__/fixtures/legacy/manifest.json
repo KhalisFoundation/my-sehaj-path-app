@@ -1,6 +1,9 @@
 {
-  "note": "Production legacy-storage fixtures, keyed by storage-shape id (iOS and Android version numbers are desynced, so shape id is the stable key). `provenance` is 'derived' (reconstructed from the released writer code) or 'device-captured' (a byte-for-byte dump from a real installed build). `source` = raw AsyncStorage strings; `expected` = the FULL Redux store state after hydration. The RELEASE gate (yarn test:release) requires each id in requiredShapes to have at least one DEVICE-CAPTURED fixture — derived fixtures give regression coverage in normal `yarn test` but do NOT satisfy the release blocker. See README.md for the one-step capture tool.",
-  "requiredShapes": ["shape-6key", "shape-9key"],
+  "note": "Production legacy-storage fixtures, keyed by storage-shape id (iOS and Android version numbers are desynced, so shape id is the stable key). `provenance` is 'derived' (reconstructed from the released writer code) or 'device-captured' (a byte-for-byte dump from a real installed build). `source` = raw AsyncStorage strings; `expected` = the FULL Redux store state after hydration. The RELEASE gate (yarn test:release) requires each id in requiredShapes to have at least one DEVICE-CAPTURED fixture \u2014 derived fixtures give regression coverage in normal `yarn test` but do NOT satisfy the release blocker. See README.md for the one-step capture tool.",
+  "requiredShapes": [
+    "shape-6key",
+    "shape-9key"
+  ],
   "shapeCatalog": {
     "shape-legacy-toplevel": "PRE-RELEASE BETA ONLY (never shipped to a store). Top-level angNumber, no saveData/pathName/verseId, DateData dates:[{}]. Forward-upgrade of the path record is best-effort (unit-tested in persistence.test.ts), NOT a production gate shape. Write-back does NOT target it (see README rollback window).",
     "shape-6key": "saveData nested; 6 keys (no paragraphMode/vishraam/vishraamsSource). Android 1.0.2 & 1.0.3, iOS 1.0.4.",
@@ -12,9 +15,21 @@
       "provenance": "derived",
       "origin": "derived from origin/main useLocal.ts write code",
       "platforms": [
-        { "platform": "android", "appVersion": "1.0.2", "build": 6 },
-        { "platform": "android", "appVersion": "1.0.3", "build": 7 },
-        { "platform": "ios", "appVersion": "1.0.4", "build": 6 }
+        {
+          "platform": "android",
+          "appVersion": "1.0.2",
+          "build": 6
+        },
+        {
+          "platform": "android",
+          "appVersion": "1.0.3",
+          "build": 7
+        },
+        {
+          "platform": "ios",
+          "appVersion": "1.0.4",
+          "build": 6
+        }
       ],
       "source": {
         "pathDetails": "[{\"pathId\":1,\"progress\":8.391608391608392,\"saveData\":{\"angNumber\":120,\"verseId\":4501},\"startDate\":\"1-August-2025\",\"completionDate\":\"\",\"pathName\":\"Path #1\"},{\"pathId\":2,\"progress\":100,\"saveData\":{\"angNumber\":1430,\"verseId\":60403},\"startDate\":\"5-August-2025\",\"completionDate\":\"20-September-2025\",\"pathName\":\"Path #2\"}]",
@@ -29,7 +44,10 @@
           {
             "pathId": 1,
             "progress": 8.391608391608392,
-            "saveData": { "angNumber": 120, "verseId": 4501 },
+            "saveData": {
+              "angNumber": 120,
+              "verseId": 4501
+            },
             "startDate": "1-August-2025",
             "completionDate": "",
             "pathName": "Path #1"
@@ -37,7 +55,10 @@
           {
             "pathId": 2,
             "progress": 100,
-            "saveData": { "angNumber": 1430, "verseId": 60403 },
+            "saveData": {
+              "angNumber": 1430,
+              "verseId": 60403
+            },
             "startDate": "5-August-2025",
             "completionDate": "20-September-2025",
             "pathName": "Path #2"
@@ -46,18 +67,40 @@
         "dates": [
           {
             "pathid": 1,
-            "dates": [{ "date": "1-August-2025" }, { "date": "2-August-2025" }],
+            "dates": [
+              {
+                "date": "1-August-2025"
+              },
+              {
+                "date": "2-August-2025"
+              }
+            ],
             "scrollPosition": 340
           },
-          { "pathid": 2, "dates": [{ "date": "20-September-2025" }], "scrollPosition": 0 }
+          {
+            "pathid": 2,
+            "dates": [
+              {
+                "date": "20-September-2025"
+              }
+            ],
+            "scrollPosition": 0
+          }
         ],
         "settings": {
-          "fontSize": { "fontSize": "Medium", "number": 24 },
+          "fontSize": {
+            "fontSize": "Small (Default)",
+            "number": 24
+          },
           "larivaar": true,
           "paragraphMode": false,
           "vishraam": false,
-          "vishraamsSource": { "source": "sttm" },
-          "angsFormat": { "format": "English" },
+          "vishraamsSource": {
+            "source": "sttm"
+          },
+          "angsFormat": {
+            "format": "English"
+          },
           "analyticsConsent": false
         }
       }
@@ -66,7 +109,13 @@
       "shapeId": "shape-6key",
       "provenance": "device-captured",
       "origin": "Android emulator capture from archived signed release APK android/app/release/app-release.apk (SHA-256 a96e65c4aeccdd934fe91784668e60165bef474b2da22c09223b7eb1250e97ff)",
-      "platforms": [{ "platform": "android", "appVersion": "1.0.3", "build": 7 }],
+      "platforms": [
+        {
+          "platform": "android",
+          "appVersion": "1.0.3",
+          "build": 7
+        }
+      ],
       "source": {
         "pathDetails": "[{\"pathId\":1,\"progress\":1,\"saveData\":{\"angNumber\":0,\"verseId\":0},\"startDate\":\"28-July-2026\",\"completionDate\":\"\",\"pathName\":\"Path #1\"}]",
         "pathDateDetails": "[{\"pathid\":1,\"dates\":[],\"scrollPosition\":0}]",
@@ -80,20 +129,36 @@
           {
             "pathId": 1,
             "progress": 1,
-            "saveData": { "angNumber": 0, "verseId": 0 },
+            "saveData": {
+              "angNumber": 0,
+              "verseId": 0
+            },
             "startDate": "28-July-2026",
             "completionDate": "",
             "pathName": "Path #1"
           }
         ],
-        "dates": [{ "pathid": 1, "dates": [], "scrollPosition": 0 }],
+        "dates": [
+          {
+            "pathid": 1,
+            "dates": [],
+            "scrollPosition": 0
+          }
+        ],
         "settings": {
-          "fontSize": { "fontSize": "Medium", "number": 24 },
+          "fontSize": {
+            "fontSize": "Small (Default)",
+            "number": 24
+          },
           "larivaar": true,
           "paragraphMode": false,
           "vishraam": false,
-          "vishraamsSource": { "source": "sttm" },
-          "angsFormat": { "format": "English" },
+          "vishraamsSource": {
+            "source": "sttm"
+          },
+          "angsFormat": {
+            "format": "English"
+          },
           "analyticsConsent": false
         }
       }
@@ -103,8 +168,16 @@
       "provenance": "derived",
       "origin": "derived from origin/dev useLocal.ts write code",
       "platforms": [
-        { "platform": "android", "appVersion": "1.0.5", "build": 10 },
-        { "platform": "ios", "appVersion": "1.0.6", "build": 9 }
+        {
+          "platform": "android",
+          "appVersion": "1.0.5",
+          "build": 10
+        },
+        {
+          "platform": "ios",
+          "appVersion": "1.0.6",
+          "build": 9
+        }
       ],
       "source": {
         "pathDetails": "[{\"pathId\":1,\"progress\":8.391608391608392,\"saveData\":{\"angNumber\":120,\"verseId\":4501},\"startDate\":\"1-December-2025\",\"completionDate\":\"\",\"pathName\":\"Path #1\"}]",
@@ -122,20 +195,40 @@
           {
             "pathId": 1,
             "progress": 8.391608391608392,
-            "saveData": { "angNumber": 120, "verseId": 4501 },
+            "saveData": {
+              "angNumber": 120,
+              "verseId": 4501
+            },
             "startDate": "1-December-2025",
             "completionDate": "",
             "pathName": "Path #1"
           }
         ],
-        "dates": [{ "pathid": 1, "dates": [{ "date": "1-December-2025" }], "scrollPosition": 512 }],
+        "dates": [
+          {
+            "pathid": 1,
+            "dates": [
+              {
+                "date": "1-December-2025"
+              }
+            ],
+            "scrollPosition": 512
+          }
+        ],
         "settings": {
-          "fontSize": { "fontSize": "Large", "number": 30 },
+          "fontSize": {
+            "fontSize": "Medium",
+            "number": 30
+          },
           "larivaar": false,
           "paragraphMode": true,
           "vishraam": true,
-          "vishraamsSource": { "source": "igurbani" },
-          "angsFormat": { "format": "Punjabi" },
+          "vishraamsSource": {
+            "source": "igurbani"
+          },
+          "angsFormat": {
+            "format": "Punjabi"
+          },
           "analyticsConsent": true
         }
       }
@@ -144,7 +237,13 @@
       "shapeId": "shape-9key",
       "provenance": "device-captured",
       "origin": "Android emulator capture from release APK built at production release commit aadc7588aea89f273cf19d72e0dd4e6868ea0846 (SHA-256 b5d3c6750e40a39aac79222f1bcb9ab04d88dcbf0abdb732caa0755578f2c779)",
-      "platforms": [{ "platform": "android", "appVersion": "1.0.5", "build": 10 }],
+      "platforms": [
+        {
+          "platform": "android",
+          "appVersion": "1.0.5",
+          "build": 10
+        }
+      ],
       "source": {
         "pathDetails": "[{\"pathId\":1,\"progress\":1,\"saveData\":{\"angNumber\":0,\"verseId\":0},\"startDate\":\"28-July-2026\",\"completionDate\":\"\",\"pathName\":\"Path #1\"}]",
         "pathDateDetails": "[{\"pathid\":1,\"dates\":[],\"scrollPosition\":0}]",
@@ -161,20 +260,36 @@
           {
             "pathId": 1,
             "progress": 1,
-            "saveData": { "angNumber": 0, "verseId": 0 },
+            "saveData": {
+              "angNumber": 0,
+              "verseId": 0
+            },
             "startDate": "28-July-2026",
             "completionDate": "",
             "pathName": "Path #1"
           }
         ],
-        "dates": [{ "pathid": 1, "dates": [], "scrollPosition": 0 }],
+        "dates": [
+          {
+            "pathid": 1,
+            "dates": [],
+            "scrollPosition": 0
+          }
+        ],
         "settings": {
-          "fontSize": { "fontSize": "Large", "number": 30 },
+          "fontSize": {
+            "fontSize": "Medium",
+            "number": 30
+          },
           "larivaar": true,
           "paragraphMode": true,
           "vishraam": true,
-          "vishraamsSource": { "source": "igurbani" },
-          "angsFormat": { "format": "English" },
+          "vishraamsSource": {
+            "source": "igurbani"
+          },
+          "angsFormat": {
+            "format": "English"
+          },
           "analyticsConsent": false
         }
       }

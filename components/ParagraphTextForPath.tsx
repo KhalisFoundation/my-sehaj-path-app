@@ -11,6 +11,7 @@ import {
   pathTextPropsAreEqual,
 } from '@utils';
 import { useAppSelector } from '../store/hooks';
+import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { usePathSelection } from './PathSelectionContext';
 import { VishraamsText } from './VishraamsText';
 
@@ -34,7 +35,7 @@ const ParagraphTextForPathComponent = ({
 
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
-  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const fontSize = useReaderFontSize();
   const isVishraam = useAppSelector((state) => state.settings.vishraam);
   const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
 

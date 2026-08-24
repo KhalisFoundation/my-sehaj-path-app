@@ -123,6 +123,13 @@ describe.each(versions)('legacy fixture: $shapeId', (fixture) => {
     expect(store.getState().paths.dates).toEqual(fixture.expected.dates);
     expect(store.getState().settings).toEqual(fixture.expected.settings);
 
+    // The font scale was realigned, so a size saved by an older
+    // version can carry a label that now belongs to a different step. The label
+    // may move; the SIZE must not — nobody's scripture changes size because we
+    // renumbered a scale.
+    const seededFontSize = JSON.parse(fixture.source.fontSize as string) as { number: number };
+    expect(store.getState().settings.fontSize.number).toBe(seededFontSize.number);
+
     // 4. mutate and let the coordinator write through to legacy format
     const persistence = createLegacyPersistence(store);
     persistence.start();
@@ -138,8 +145,12 @@ describe.each(versions)('legacy fixture: $shapeId', (fixture) => {
     // 5. rollback-readable: booleans stay raw "true"/"false" (an older binary
     //    reads `larivaar === 'true'`), JSON keys stay valid JSON.
     expect(await AsyncStorage.getItem('larivaar')).toBe(String(nextLarivaar));
-    expect(JSON.parse((await AsyncStorage.getItem('fontSize'))!)).toEqual(
-      store.getState().settings.fontSize
+    // Only the SIZE has to round-trip. The label on disk is deliberately left
+    // as the older version wrote it: normalising happens on read, so a downgrade
+    // still finds a value its own scale understands. Rewriting the label here
+    // would hand an old binary a name that means a different size to it.
+    expect(JSON.parse((await AsyncStorage.getItem('fontSize'))!).number).toBe(
+      store.getState().settings.fontSize.number
     );
 
     // 6. a fresh boot from the just-written bytes reproduces the live store

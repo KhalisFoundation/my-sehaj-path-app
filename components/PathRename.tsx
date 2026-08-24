@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from './AppText';
 import { BlurView } from '@react-native-community/blur';
 import { CrossIcon } from '@icons';
 import { PathRenameStyle } from '@styles';
@@ -60,6 +61,7 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
           </Pressable>
           <Text style={PathRenameStyle.renameText}>Rename Your Path:</Text>
           <TextInput
+            allowFontScaling={false}
             style={PathRenameStyle.input}
             placeholder="Enter New Name"
             placeholderTextColor={'grey'}

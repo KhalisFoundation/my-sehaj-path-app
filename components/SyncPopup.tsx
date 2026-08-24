@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, TouchableOpacity, View } from 'react-native';
+import { AppText as Text } from './AppText';
 import { Constants, ErrorConstants } from '@constants';
 import { logout } from '@auth';
 import { recordError, showErrorAlert, trackEvent } from '@utils';

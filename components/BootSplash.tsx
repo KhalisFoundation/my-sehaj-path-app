@@ -1,5 +1,6 @@
 import React from 'react';
-import { ImageBackground, Text, View } from 'react-native';
+import { ImageBackground, View } from 'react-native';
+import { AppText as Text } from './AppText';
 import { Constants } from '@constants';
 import { SplashScreenStyles } from '@styles';
 

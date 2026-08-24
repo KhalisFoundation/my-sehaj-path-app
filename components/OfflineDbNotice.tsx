@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
+import { AppText as Text } from './AppText';
 import { Constants } from '@constants';
 import { DialogStyles as styles } from '@styles';
 import { useAppDispatch, useAppSelector } from '../store/hooks';

@@ -7,7 +7,11 @@ let mockCompleted: 'installed' | 'updated' | null = null;
 
 jest.mock('../../store/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) =>
-    selector({ db: { completed: mockCompleted } }),
+    selector({
+      db: { completed: mockCompleted },
+      // Present because the dialog's text reads it through AppText.
+      settings: { fontSize: { fontSize: 'Small (Default)', number: 24 } },
+    }),
   useAppDispatch: () => mockDispatch,
 }));
 

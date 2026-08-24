@@ -13,6 +13,7 @@ import {
   pathTextPropsAreEqual,
 } from '@utils';
 import { useAppSelector } from '../store/hooks';
+import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { usePathSelection } from './PathSelectionContext';
 import { VishraamsText } from './VishraamsText';
 
@@ -30,7 +31,7 @@ const SimpleTextForPathComponent = ({
 
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
-  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const fontSize = useReaderFontSize();
   const isVishraam = useAppSelector((state) => state.settings.vishraam);
   const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
 
@@ -88,14 +89,15 @@ const SimpleTextForPathComponent = ({
         ) : (
           gurbaniLine
         )}
+        {isSelected && (
+          <SaveIcon
+            color={UIConstants.SAVE_ICON_COLOR}
+            width={fontSize * 1.2}
+            height={fontSize * 1.2}
+            style={{ transform: [{ translateY: -(fontSize * 0.25) }] }}
+          />
+        )}
       </Text>
-      {isSelected && (
-        <SaveIcon
-          color={UIConstants.SAVE_ICON_COLOR}
-          width={fontSize * 1.2}
-          height={fontSize * 1.2}
-        />
-      )}
     </Pressable>
   );
 };

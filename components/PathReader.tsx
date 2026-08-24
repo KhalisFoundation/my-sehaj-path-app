@@ -7,8 +7,10 @@ import { usePathReaderCentering } from './usePathReaderCentering';
 import { trackEvent } from '@utils/analytics';
 import { getLarivaarRenderData, type LarivaarRenderData } from '@utils';
 import { PATH_DATA } from '@constants';
+import { paragraphLineHeight } from '@constants/FontSize';
 import { savePathProgress } from '../store/commands';
 import { useAppSelector } from '../store/hooks';
+import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { usePathSelection } from './PathSelectionContext';
 import type { Verse, PathContent } from '@hooks';
 
@@ -81,7 +83,7 @@ const PathReaderComponent = ({
   const isLarivaar = useAppSelector((state) => state.settings.larivaar);
   const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
   const isVishraam = useAppSelector((state) => state.settings.vishraam);
-  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const fontSize = useReaderFontSize();
 
   const {
     clearMeasuredVerses,
@@ -241,7 +243,7 @@ const PathReaderComponent = ({
   const paragraphShabadTextStyle = useMemo(
     () => ({
       marginBottom: 14,
-      lineHeight: fontSize * 1.6,
+      lineHeight: paragraphLineHeight(fontSize),
     }),
     [fontSize]
   );

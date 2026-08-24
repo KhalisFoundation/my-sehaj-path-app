@@ -22,7 +22,7 @@ export interface SettingsState {
  * settingsSlice test asserts these values to catch drift.
  */
 export const SETTINGS_DEFAULTS: SettingsState = {
-  fontSize: { fontSize: 'Small (Default)', number: 18 },
+  fontSize: { fontSize: 'Small (Default)', number: 24 },
   larivaar: false,
   paragraphMode: false,
   vishraam: false,

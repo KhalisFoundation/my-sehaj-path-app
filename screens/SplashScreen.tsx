@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, ImageBackground, Animated } from 'react-native';
+import { View, ImageBackground, Animated } from 'react-native';
+import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Constants, Routes, EDGES_ALL_SIDES } from '@constants';

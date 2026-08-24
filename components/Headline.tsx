@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { AppText as Text } from './AppText';
 import { HeadlineStyle } from '@styles';
 
 interface Props {

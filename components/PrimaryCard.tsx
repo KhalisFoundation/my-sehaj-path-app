@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { AppText as Text } from './AppText';
 import Svg, { Circle, Path, LinearGradient, Stop, Defs } from 'react-native-svg';
 import { PathProgressCardStyles } from '@styles';
 import { Constants, UIConstants } from '@constants';

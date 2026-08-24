@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { AppText as Text } from './AppText';
 import { LabelStyles } from '@styles';
 
 interface Props {

@@ -132,7 +132,9 @@ describe('hydrateStore', () => {
     expect(state.paths.dates).toEqual(DATES_FIXTURE);
     expect(state.paths.hydrated).toBe(true);
     expect(state.settings).toEqual({
-      fontSize: { fontSize: 'Large', number: 30 },
+      // Seeded as 'Large' at 30pt. The scale was realigned, so
+      // 30 is now Medium — hydration keeps the SIZE and updates the name.
+      fontSize: { fontSize: 'Medium', number: 30 },
       larivaar: true,
       paragraphMode: false,
       vishraam: true,
