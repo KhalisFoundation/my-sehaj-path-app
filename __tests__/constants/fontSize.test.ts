@@ -105,6 +105,65 @@ describe('the scale the reader is offered', () => {
   });
 });
 
+describe("updating the app must not resize anybody's text", () => {
+  // Every size any stylesheet in the app declares. The app is in production: a
+  // person who never opens Settings must see the screen they saw yesterday.
+  const DECLARED_SIZES = [12, 13, 14, 15, 16, 18, 20, 21, 22, 24, 26, 28];
+
+  it('renders every declared size exactly as declared, at the default setting', () => {
+    // The failure this guards against: the rows cannot hold all twelve sizes, so
+    // snapping each style to its nearest row value quantised them down to a
+    // handful — an 18pt heading came out at 16 and a 24pt one at 20, on a screen
+    // nobody had touched. A row supplies a ratio instead, which is 1 at the
+    // default because the interface anchor IS the default reader size.
+    for (const size of DECLARED_SIZES) {
+      const role = roleForBase(size);
+      expect(role).toBeDefined();
+      expect(scaleFontSize(size, role!, DEFAULT_FONT_SIZE_INDEX)).toBe(size);
+    }
+  });
+
+  it('starts every row at exactly the size the stylesheets ask for', () => {
+    // Rows are derived, so this is the guard that a tuning change can never
+    // resize a screen for somebody who has not touched the setting.
+    expect(FontScale.caption[DEFAULT_FONT_SIZE_INDEX]).toBe(12);
+    expect(FontScale.label[DEFAULT_FONT_SIZE_INDEX]).toBe(14);
+    expect(FontScale.body[DEFAULT_FONT_SIZE_INDEX]).toBe(16);
+    expect(FontScale.callout[DEFAULT_FONT_SIZE_INDEX]).toBe(18);
+    expect(FontScale.title[DEFAULT_FONT_SIZE_INDEX]).toBe(20);
+    expect(FontScale.headline[DEFAULT_FONT_SIZE_INDEX]).toBe(24);
+    expect(FontScale.display[DEFAULT_FONT_SIZE_INDEX]).toBe(28);
+    expect(FontScale.hero[DEFAULT_FONT_SIZE_INDEX]).toBe(48);
+  });
+
+  it('keeps two different sizes apart instead of collapsing them together', () => {
+    // Snapping made 18, 21, 22 and 24 all render at 20, flattening a hierarchy
+    // the designs rely on.
+    FontSizes.forEach((_, step) => {
+      const rendered = DECLARED_SIZES.map((size) => scaleFontSize(size, roleForBase(size)!, step));
+      for (let i = 1; i < rendered.length; i += 1) {
+        expect(rendered[i]).toBeGreaterThanOrEqual(rendered[i - 1]);
+      }
+      expect(new Set(rendered).size).toBeGreaterThanOrEqual(DECLARED_SIZES.length - 2);
+    });
+  });
+
+  it('moves every declared size in the right direction away from the default', () => {
+    for (const size of DECLARED_SIZES) {
+      const role = roleForBase(size)!;
+      expect(scaleFontSize(size, role, 0)).toBeLessThan(size);
+      expect(scaleFontSize(size, role, FontSizes.length - 1)).toBeGreaterThan(size);
+    }
+  });
+
+  it('clamps a setting index that is out of range rather than throwing', () => {
+    expect(scaleFontSize(18, 'callout', -5)).toBe(scaleFontSize(18, 'callout', 0));
+    expect(scaleFontSize(18, 'callout', 99)).toBe(
+      scaleFontSize(18, 'callout', FontSizes.length - 1)
+    );
+  });
+});
+
 describe('leading for Gurbani', () => {
   it('holds the chosen ratios, at every setting', () => {
     // The reader is in production and people are mid-path. Leading decides how a
@@ -113,8 +172,8 @@ describe('leading for Gurbani', () => {
     // one is a deliberate act that updates this test with it.
     //
     // Line mode is the 2.2 the app has always shipped. Paragraph mode shipped at
-    // 1.6 and was raised to 1.8. Neither depends on the comparison switch: that
-    // chooses sizes, not leading.
+    // 1.6 and was raised to 1.8. Leading is set here and nowhere else, so these
+    // move only when somebody decides to move them.
     expect(FontScale.reader.map(readerLineHeight)).toEqual(
       FontScale.reader.map((size) => Math.round(size * 2.2))
     );

@@ -1,42 +1,17 @@
 import type { FontSizeData } from '../types';
 
 /**
- * ⚠️ COMPARISON SWITCH — pick a scale, then delete the other and this flag.
+ * The five sizes Gurbani is offered at, shared across our apps.
  *
- * It answers ONE question: which numbers should Gurbani be read at?
+ * Every step is 6pt. The shared numbers themselves end 36 → 48, a double jump,
+ * which read as disproportionate here against interface text topping out at 34;
+ * 42 keeps the step even and the reader in proportion with the screen around it.
  *
- *   `true`  → this app's own steps, 12/18/24/30/36
- *   `false` → the steps shared across our apps, 18/24/30/36/42
- *
- * Nothing else changes. **Both modes are the global font system**: one setting
- * moves the reader and every screen together, so Medium → Large grows the whole
- * app either way. The switch is not old-app-versus-new-app — the app-wide
- * behaviour is settled, and only the reader's five numbers are still open.
- *
- * That matters for judging it: the old numbers were chosen when the reader was
- * the only thing this setting touched. Whether they still hold up now that they
- * sit beside interface text that moves with them is exactly what to look for.
- *
- * One caveat on the shared numbers: point sizes only compare across apps when
- * the typeface does. The reader here is Baloo Paaji 2, so the same number will
- * not render at the same visual size as it does in an app using a different
- * Gurmukhi face.
+ * Point sizes only compare across apps when the typeface does — the reader here
+ * is Baloo Paaji 2, so these will not render at the same visual size as they do
+ * in an app using a different Gurmukhi face.
  */
-export const USE_LEGACY_FONT_SCALE = true;
-
-/** What the app shipped with before the realignment. */
-export const LEGACY_READER_SCALE = [12, 18, 24, 30, 36] as const;
-/**
- * The shared scale, with its top step brought back into line.
- *
- * Every step here is 6pt. The shared numbers end 36 → 48, a double jump, which
- * is why Extra Large read as disproportionate against interface text that tops
- * out at 26: scripture at 48 was nearly twice the largest heading on screen,
- * while every other setting sat in proportion.
- */
-export const SHARED_READER_SCALE = [18, 24, 30, 36, 42] as const;
-
-const READER_SCALE = USE_LEGACY_FONT_SCALE ? LEGACY_READER_SCALE : SHARED_READER_SCALE;
+const READER_SCALE = [18, 24, 30, 36, 42] as const;
 
 /**
  * Leading for Gurbani, as a multiple of the size.
@@ -112,16 +87,10 @@ const TextRoles = {
  * Gurbani render 18pt body text under one scale and 21pt under the other: the
  * same page as two different apps, purely because the scales sit a step apart.
  *
- * This intentionally stays at 24pt even while comparing the legacy scale:
- * shared Medium and legacy Large both render Gurbani at 30pt, so their UI text
- * must match too. It is a visual anchor, not the Settings default.
- *
- * ⚠️ ON MIGRATION: once a scale is chosen and {@link USE_LEGACY_FONT_SCALE} is
- * deleted, this MUST equal that scale's default step. It already does for the
- * shared scale. Choosing the legacy scale and leaving this at 24 would render
- * every interface size below the one its stylesheet asks for — 16pt body text
- * at 14, 20pt titles at 18 — for every user who never opened Settings. The
- * test "is anchored to the default of the scale it ships" enforces it.
+ * It must stay equal to the default step of {@link READER_SCALE}. Retuning the
+ * scale without moving this with it would render every interface size below the
+ * one its stylesheet asks for — 16pt body text at 14, 20pt titles at 18 — for
+ * every user who never opened Settings. A test enforces the pairing.
  */
 export const INTERFACE_ANCHOR_PT = TextRoles.reader.base;
 
@@ -156,12 +125,7 @@ const createFontScale = (readerScale: readonly number[]) =>
     caption: rowFor(readerScale, TextRoles.caption),
   } as const);
 
-/** Both candidates are exported so the comparison relationship has direct tests. */
-export const LEGACY_FONT_SCALE = createFontScale(LEGACY_READER_SCALE);
-export const SHARED_FONT_SCALE = createFontScale(SHARED_READER_SCALE);
-
-/** The candidate selected by the temporary comparison switch. */
-export const FontScale = USE_LEGACY_FONT_SCALE ? LEGACY_FONT_SCALE : SHARED_FONT_SCALE;
+export const FontScale = createFontScale(READER_SCALE);
 
 type TextRole = keyof typeof FontScale;
 
