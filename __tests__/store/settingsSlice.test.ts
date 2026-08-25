@@ -11,6 +11,7 @@ import {
   setVishraamsSource,
   type SettingsState,
 } from '../../store/slices/settingsSlice';
+import { DEFAULT_FONT_SIZE } from '../../constants/FontSize';
 
 const { reducer } = settingsSlice;
 const initial = (): SettingsState => reducer(undefined, { type: '@@INIT' });
@@ -20,9 +21,9 @@ describe('settingsSlice initial state', () => {
    * Landmine #6: these defaults are the contract with every existing user who
    * never explicitly set a value. Drift here silently changes their app.
    */
-  it('matches the legacy useLocal fallbacks field-for-field', () => {
+  it('uses the active scale default for a new install', () => {
     expect(initial()).toEqual({
-      fontSize: { fontSize: 'Small (Default)', number: 24 },
+      fontSize: DEFAULT_FONT_SIZE,
       larivaar: false,
       paragraphMode: false,
       vishraam: false,
@@ -36,9 +37,8 @@ describe('settingsSlice initial state', () => {
     expect(initial().vishraamsSource.source).toBe('sttm');
   });
 
-  it('defaults fontSize to Small on the shared scale', () => {
-    // The scale is shared across our apps, including its default of Small.
-    expect(initial().fontSize.number).toBe(24);
+  it('defaults fontSize to the selected scale option', () => {
+    expect(initial().fontSize).toEqual(DEFAULT_FONT_SIZE);
   });
 
   it('defaults analyticsConsent to true', () => {
@@ -100,7 +100,7 @@ describe('settingsSlice hydrateSettings', () => {
     expect(after.larivaar).toBe(true);
     expect(after.analyticsConsent).toBe(false);
     // untouched
-    expect(after.fontSize).toEqual({ fontSize: 'Small (Default)', number: 24 });
+    expect(after.fontSize).toEqual(DEFAULT_FONT_SIZE);
     expect(after.vishraamsSource).toEqual({ source: 'sttm' });
     expect(after.angsFormat).toEqual({ format: 'Punjabi' });
   });

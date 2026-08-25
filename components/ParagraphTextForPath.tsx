@@ -138,6 +138,7 @@ const ParagraphTextForPathComponent = ({
       disabled={selection.isSaved || selection.found}
       suppressHighlighting={true}
       style={textStyle}
+      allowFontScaling={false}
       onLayout={onLayout}
       onTextLayout={onTextLayout}
     >
@@ -148,10 +149,16 @@ const ParagraphTextForPathComponent = ({
         paragraph mode a whole shabad is one text tree, so that doubled the nodes
         Android had to lay out.
       */}
-      {isSelected ? <Text style={selectedTextStyle}>{verseContent}</Text> : verseContent}
+      {isSelected ? (
+        <Text style={selectedTextStyle} allowFontScaling={false}>
+          {verseContent}
+        </Text>
+      ) : (
+        verseContent
+      )}
 
       {isSelected && (
-        <Text>
+        <Text allowFontScaling={false}>
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}

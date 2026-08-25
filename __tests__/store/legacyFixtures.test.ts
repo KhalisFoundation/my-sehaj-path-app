@@ -4,6 +4,7 @@ import { makeStore } from '../../store';
 import { hydrateStore, createLegacyPersistence } from '../../store/persistence';
 import { setLarivaar } from '../../store/slices/settingsSlice';
 import { setScrollPosition } from '../../store/slices/pathsSlice';
+import { normalizeFontSize } from '@constants/FontSize';
 
 jest.mock('../../utils/crashlytics', () => ({
   recordError: jest.fn(),
@@ -121,7 +122,13 @@ describe.each(versions)('legacy fixture: $shapeId', (fixture) => {
     //    never wrote (the settings block is the full post-hydrate state).
     expect(store.getState().paths.paths).toEqual(fixture.expected.paths);
     expect(store.getState().paths.dates).toEqual(fixture.expected.dates);
-    expect(store.getState().settings).toEqual(fixture.expected.settings);
+    // The label a size carries depends on which scale this build runs, so it is
+    // read from the scale rather than frozen in the manifest. The SIZE is the
+    // guarantee, asserted immediately below.
+    expect(store.getState().settings).toEqual({
+      ...fixture.expected.settings,
+      fontSize: normalizeFontSize(fixture.expected.settings.fontSize as { number: number }),
+    });
 
     // The font scale was realigned, so a size saved by an older
     // version can carry a label that now belongs to a different step. The label

@@ -113,4 +113,17 @@ describe('the reader follows the font setting', () => {
       expect(readerSizeOf(renderer)).toBe(FontSizes[step].number);
     }
   });
+
+  it('does not apply the device accessibility scale on top of the app setting', async () => {
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <PathSelectionProvider {...selection}>
+          <SimpleTextForPath {...props} />
+        </PathSelectionProvider>
+      );
+    });
+
+    expect(renderer.root.findAllByType(RNText)[0].props.allowFontScaling).toBe(false);
+  });
 });

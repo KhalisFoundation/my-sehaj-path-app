@@ -6,6 +6,4 @@ interface Props {
   label: string;
 }
 
-export const Label = ({ label }: Props) => {
-  return <Text style={LabelStyles.label}>{label}</Text>;
-};
+export const Label = ({ label }: Props) => <Text style={LabelStyles.label}>{label}</Text>;

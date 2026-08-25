@@ -267,6 +267,7 @@ const PathReaderComponent = ({
                 }))
               )}
               style={paragraphShabadTextStyle}
+              allowFontScaling={false}
             >
               {shabad.verses.map(
                 ({ verse, renderedText, renderWordSegments }, verseIndex: number) => {

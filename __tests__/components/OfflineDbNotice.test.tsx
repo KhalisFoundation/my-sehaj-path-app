@@ -4,6 +4,7 @@ import { Modal } from 'react-native';
 
 const mockDispatch = jest.fn();
 let mockCompleted: 'installed' | 'updated' | null = null;
+const mountedRenderers = new Set<ReactTestRenderer.ReactTestRenderer>();
 
 jest.mock('../../store/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) =>
@@ -23,6 +24,7 @@ const render = async () => {
   await act(async () => {
     renderer = ReactTestRenderer.create(<OfflineDbNotice />);
   });
+  mountedRenderers.add(renderer);
   return renderer;
 };
 
@@ -31,6 +33,13 @@ const modalOf = (renderer: ReactTestRenderer.ReactTestRenderer) => renderer.root
 beforeEach(() => {
   mockDispatch.mockClear();
   mockCompleted = null;
+});
+
+afterEach(() => {
+  act(() => {
+    mountedRenderers.forEach((renderer) => renderer.unmount());
+  });
+  mountedRenderers.clear();
 });
 
 describe('OfflineDbNotice', () => {

@@ -220,7 +220,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   <SecondaryHeading
                     text={pathState.pathName || pathState.pathData?.pathName || ''}
                     textStyles={ContinueScreenStyles.sehajHeading}
-                    variant="hero"
                   />
                 </Pressable>
                 <ImportantText

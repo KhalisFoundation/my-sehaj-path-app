@@ -78,7 +78,7 @@ const SimpleTextForPathComponent = ({
       disabled={selection.isSaved || selection.found}
       onLayout={onLayout}
     >
-      <Text suppressHighlighting={true} style={textStyle}>
+      <Text suppressHighlighting={true} style={textStyle} allowFontScaling={false}>
         {isVishraam ? (
           <VishraamsText
             gurbaniLine={gurbaniLine}

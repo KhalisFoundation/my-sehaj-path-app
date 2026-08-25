@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { StyleSheet, Text as RNText, TextInput as RNTextInput, type TextStyle } from 'react-native';
-import { FontSizes, FontScale, DEFAULT_FONT_SIZE_INDEX } from '@constants/FontSize';
+import { FontSizes, FontScale, DEFAULT_FONT_SIZE_INDEX, scaleFontSize } from '@constants/FontSize';
 
 let mockFontSize: { fontSize: string; number: number } = FontSizes[1];
 
@@ -15,6 +15,7 @@ import { AppText, AppTextInput } from '../../components/AppText';
 const styles = StyleSheet.create({
   title: { fontSize: 20 },
   caption: { fontSize: 11 },
+  hero: { fontSize: 48 },
   noSize: { color: 'red' },
 });
 
@@ -34,9 +35,11 @@ beforeEach(() => {
 });
 
 describe('AppText', () => {
-  it('renders a style at its own size on the default setting', () => {
-    // 20pt is a title; the table's title at the default step is 20.
-    expect(FontScale.title[DEFAULT_FONT_SIZE_INDEX]).toBe(20);
+  it('renders a style at its own size on the default setting', async () => {
+    // The active candidate owns its default column. In legacy comparison mode
+    // this is deliberately smaller than the shared scale's 20pt default.
+    const node = await renderText({ style: styles.title, children: 'x' });
+    expect(sizeOf(node)).toBe(FontScale.title[DEFAULT_FONT_SIZE_INDEX]);
   });
 
   it('places a style in the table from the size it declares', async () => {
@@ -45,7 +48,8 @@ describe('AppText', () => {
     const caption = sizeOf(await renderText({ style: styles.caption, children: 'x' }));
 
     expect(title).toBe(FontScale.title[3]);
-    expect(caption).toBe(FontScale.caption[3]);
+    // 11pt is a caption, carried by that row's ratio rather than replaced by it.
+    expect(caption).toBe(scaleFontSize(11, 'caption', 3));
     // A title stays bigger than a caption at every setting.
     expect(title).toBeGreaterThan(caption!);
   });
@@ -57,23 +61,17 @@ describe('AppText', () => {
     );
   });
 
-  it('honours an explicit variant over the row its size would imply', async () => {
-    // 11pt would be a caption, which barely grows. Asked for the reader row it
-    // travels that row's curve instead — starting, as always, from the size the
-    // style declares.
+  it('infers the hero role for the Continue screen path heading', async () => {
     mockFontSize = FontSizes[4];
-    const node = await renderText({ style: styles.caption, variant: 'reader', children: 'x' });
+    const node = await renderText({ style: styles.hero, children: 'x' });
 
-    const growth = FontScale.reader[4] / FontScale.reader[DEFAULT_FONT_SIZE_INDEX];
-    expect(sizeOf(node)).toBe(Math.round(11 * growth));
-    expect(sizeOf(node)).toBeGreaterThan(FontScale.caption[4]);
+    expect(sizeOf(node)).toBe(scaleFontSize(48, 'hero', 4));
   });
 
-  it('takes the row outright when there is no declared size to carry', async () => {
-    // Nothing to scale from, so the row's own number is the only answer.
+  it('leaves text without a base size to React Native', async () => {
     mockFontSize = FontSizes[4];
-    const node = await renderText({ style: styles.noSize, variant: 'reader', children: 'x' });
-    expect(sizeOf(node)).toBe(FontScale.reader[4]);
+    const node = await renderText({ style: styles.noSize, children: 'x' });
+    expect(sizeOf(node)).toBeUndefined();
   });
 
   it('carries a declared line height across with the size', async () => {
@@ -86,7 +84,7 @@ describe('AppText', () => {
     const node = await renderText({ style: paired.p, children: 'x' });
     const flat = StyleSheet.flatten(node.props.style) as TextStyle;
 
-    expect(flat.fontSize).toBe(Math.round(18 * (FontScale.body[4] / FontScale.body[1])));
+    expect(flat.fontSize).toBe(scaleFontSize(18, 'callout', 4));
     // The ratio survives, so the line box still clears the glyphs.
     expect(flat.lineHeight! / flat.fontSize!).toBeCloseTo(28 / 18, 1);
   });
@@ -95,7 +93,7 @@ describe('AppText', () => {
     // Nothing to take a ratio from, and inventing one would change spacing the
     // style set deliberately.
     const orphan = StyleSheet.create({ o: { lineHeight: 30 } });
-    const node = await renderText({ style: orphan.o, variant: 'body', children: 'x' });
+    const node = await renderText({ style: orphan.o, children: 'x' });
     expect((StyleSheet.flatten(node.props.style) as TextStyle).lineHeight).toBe(30);
   });
 
