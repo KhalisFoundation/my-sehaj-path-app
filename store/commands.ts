@@ -12,10 +12,12 @@ import {
   clearPathCompletion,
   getNextDefaultPathNumber,
   getNextPathId,
+  removePathLocal,
   renamePath,
   setScrollPosition,
   updatePath,
 } from './slices/pathsSlice';
+import { markPathDeleted } from './slices/syncSlice';
 import type { SettingsState } from './slices/settingsSlice';
 import { showErrorAlert } from '@utils/Error';
 
@@ -216,7 +218,17 @@ export const savePathProgress = async (
   angNumber: number,
   verseId: number,
   scrollPosition: number,
-  options: { silent?: boolean } = {}
+  options: {
+    /** Suppress the failure alert. */
+    silent?: boolean;
+    /**
+     * Keep the sync itself quiet too. Defaults to `silent`, which is right for
+     * the background auto-save but NOT for a save the user explicitly asked
+     * for: those two were one flag, so choosing "Save" on the way out of the
+     * reader saved and uploaded without ever saying so.
+     */
+    silentSync?: boolean;
+  } = {}
 ): Promise<boolean> => {
   const completed = isPathCompleted(angNumber, verseId);
   const todayDate = todayString();
@@ -254,7 +266,7 @@ export const savePathProgress = async (
         completionDate,
         todayDate,
         scrollPosition,
-        silentSync: options.silent === true,
+        silentSync: options.silentSync ?? options.silent === true,
       })
     );
   });
@@ -292,6 +304,66 @@ export const renamePathCommand = async (pathId: number, name: string): Promise<b
     showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
   }
   return saved;
+};
+
+/**
+ * Deletes a path.
+ *
+ * Two shapes, because a path the server has never heard of has nothing to
+ * tombstone. One that IS on the server is marked deleted and left in place: the
+ * outbox needs the row to build the request from, and dropping it here would
+ * make the coordinator treat the queued delete as stale and cancel it — the
+ * path would vanish on this device and quietly survive on every other one.
+ *
+ * A marked path is still in `paths`, so screens must read through
+ * `selectVisiblePaths` rather than the raw slice, or a deleted path keeps
+ * showing until the server confirms — which offline means indefinitely.
+ */
+export const deletePathCommand = async (pathId: number): Promise<boolean> => {
+  // Captured inside the lock, so the report describes the state the delete
+  // actually ran against rather than whatever it drifted to afterwards.
+  let attempted: Record<string, string> = {};
+
+  const deleted = await runExclusive(async () => {
+    const state = store.getState();
+    const meta = state.sync.meta[pathId];
+    const exists = state.paths.paths.some((path) => path.pathId === pathId);
+    attempted = {
+      pathId: String(pathId),
+      pathExists: String(exists),
+      hadSyncMeta: String(!!meta),
+      onServer: String(meta?.onServer ?? false),
+      pendingOp: meta ? String(state.sync.pathOps[pathId]?.kind ?? 'none') : 'none',
+      authStatus: state.auth.status,
+      pathsHydrated: String(state.paths.hydrated),
+      syncHydrated: String(state.sync.hydrated),
+      recoveryNeeded: String(state.sync.recoveryNeeded),
+    };
+    if (!exists) {
+      return false;
+    }
+    // No meta means it was never synced and never will be: remove it outright
+    // instead of queueing a delete for a row no server has.
+    if (!meta) {
+      return dispatchDurable(removePathLocal({ pathId }));
+    }
+    return dispatchDurable(markPathDeleted({ pathId, at: Date.now() }));
+  });
+
+  if (!deleted) {
+    // The user is told it failed; this is the other half of that — the state the
+    // delete was refused in, which is the only way to find out from a device we
+    // cannot reach why the durable write would not take.
+    recordError(
+      new Error('Path delete was not saved'),
+      'commands: deletePathCommand refused',
+      attempted
+    );
+    showErrorAlert(ErrorConstants.FAILED_TO_DELETE_PATH);
+    return false;
+  }
+  trackEvent('PathDeleted', 'deleted', 'path deleted');
+  return true;
 };
 
 export const undoPathCompletion = async (

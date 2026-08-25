@@ -39,7 +39,7 @@ import { provisionDatabase } from './db';
 
 export type RootStackParamList = {
   Splash: undefined;
-  Home: undefined;
+  Home: { deletedPathName?: string } | undefined;
   Continue: { pathId: number; initialTab?: string };
   Path: { pathId: number };
   Setting: undefined;

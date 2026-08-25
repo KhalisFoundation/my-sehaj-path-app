@@ -292,7 +292,7 @@ export const createOutboxCoordinator = (
           return classify(res.response?.status);
         }
         // 2xx or 404 → the path is gone on the server; remove it locally.
-        store.dispatch(removePathLocal(pathId));
+        store.dispatch(removePathLocal({ pathId }));
         store.dispatch(dropMeta(pathId));
         return 'acked';
       }

@@ -295,7 +295,7 @@ export const reconcileDeletions = (
     ) {
       continue;
     }
-    store.dispatch(removePathLocal(pathId));
+    store.dispatch(removePathLocal({ pathId }));
     store.dispatch(dropMeta(pathId));
   }
 };
@@ -387,7 +387,7 @@ export const applySyncResult = (
     ) {
       return;
     }
-    store.dispatch(removePathLocal(pathId));
+    store.dispatch(removePathLocal({ pathId }));
     store.dispatch(dropMeta(pathId));
   });
 

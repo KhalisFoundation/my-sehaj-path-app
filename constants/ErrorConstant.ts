@@ -14,6 +14,7 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_SAVE_PATH_PROGRESS: 'Failed to save your path progress. Please try again.',
   FAILED_TO_LOAD_PATH_PROGRESS: 'Failed to load your path progress.',
   FAILED_TO_RENAME_PATH: 'Failed to rename the path. Please try again.',
+  FAILED_TO_DELETE_PATH: 'Failed to delete the path. Please try again.',
   FAILED_TO_SYNC: "Couldn't sync your progress. Check your connection and try again.",
   FAILED_TO_LOG_OUT: "Couldn't log out safely. Please try again.",
   NO_INTERNET_TITLE: 'Please connect to the internet.',
