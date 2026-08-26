@@ -39,7 +39,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const isCreatingRef = useRef(false);
   // Set by Continue on its way here. Cleared once read, so returning to Home
   // later never replays a confirmation for something deleted minutes ago.
-  const deletedPathName = route.params?.deletedPathName;
+  const pathDeleted = route.params?.pathDeleted === true;
   useScreenAnalytics('HomeScreen', 'HomeScreen');
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
@@ -177,12 +177,12 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
             ) : undefined}
           </View>
         </ScrollView>
-        {deletedPathName ? (
+        {pathDeleted ? (
           <Message
             message={Constants.PATH_DELETED}
             icon={<SyncedCheckIcon />}
             style={HomeScreenStyles.deletedNotice}
-            onHidden={() => navigation.setParams({ deletedPathName: undefined })}
+            onHidden={() => navigation.setParams({ pathDeleted: undefined })}
           />
         ) : null}
         <DrawerMenu

@@ -199,7 +199,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   // would return to a path that no longer exists.
                   onDeleted={() =>
                     navigation.replace(Routes.Home, {
-                      deletedPathName: pathState.pathName || pathState.pathData?.pathName || '',
+                      pathDeleted: true,
                     })
                   }
                   onDeletingChange={(deleting) => {
