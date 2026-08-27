@@ -34,6 +34,7 @@ import { isSilentPathOp } from '../../store/syncWork';
 import { recordError } from '../../utils/crashlytics';
 import { selectVisiblePaths } from '../../store/selectors';
 import { setLarivaar } from '../../store/slices/settingsSlice';
+import { setSignedIn, setSignedOut } from '../../store/slices/authSlice';
 import type { DateData, PathData } from '../../types';
 
 const pathWithId = (pathId: number): PathData => ({
@@ -494,6 +495,17 @@ describe('overlapping commands', () => {
 });
 
 describe('deletePathCommand', () => {
+  beforeEach(() => {
+    store.dispatch(
+      setSignedIn({
+        token: 'test-token',
+        email: 'test@example.com',
+        firstname: null,
+        lastname: null,
+      })
+    );
+  });
+
   it('hides the path immediately and queues the deletion for the server', async () => {
     const id = await createPath();
     expect(await deletePathCommand(id!)).toBe(true);
@@ -599,5 +611,15 @@ describe('deletePathCommand', () => {
     const visible = selectVisiblePaths(store.getState()).map((p) => p.pathId);
     expect(visible).toContain(keep);
     expect(visible).not.toContain(drop);
+  });
+
+  it('permanently removes a guest path because it has no account to sync', async () => {
+    store.dispatch(setSignedOut());
+    const id = await createPath();
+
+    expect(await deletePathCommand(id!)).toBe(true);
+    expect(store.getState().paths.paths.some((path) => path.pathId === id)).toBe(false);
+    expect(store.getState().sync.meta[id!]).toBeUndefined();
+    expect(store.getState().sync.pathOps[id!]).toBeUndefined();
   });
 });

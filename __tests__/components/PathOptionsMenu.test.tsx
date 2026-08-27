@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { StyleSheet, type ViewStyle } from 'react-native';
-import { Constants } from '@constants';
+import { Constants, ErrorConstants } from '@constants';
 
 jest.mock('@icons', () => {
   const ReactForMock = jest.requireActual<typeof React>('react');
@@ -14,6 +14,10 @@ jest.mock('@utils/analytics', () => ({ trackEvent: (...a: unknown[]) => mockTrac
 const mockDelete = jest.fn();
 jest.mock('../../store/commands', () => ({
   deletePathCommand: (...args: unknown[]) => mockDelete(...args),
+}));
+const mockRecordError = jest.fn();
+jest.mock('../../utils/crashlytics', () => ({
+  recordError: (...args: unknown[]) => mockRecordError(...args),
 }));
 jest.mock('../../store/hooks', () => ({
   useAppSelector: (selector: (state: unknown) => unknown) =>
@@ -167,6 +171,33 @@ describe('deleting a path from the three-dot menu', () => {
     expect(onDeletingChange).toHaveBeenLastCalledWith(false);
   });
 
+  it('shows a custom failure dialog when the delete could not be saved', async () => {
+    mockDelete.mockResolvedValue(false);
+    const renderer = await render();
+    await press(renderer, 'More options for Path #7');
+    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE);
+
+    expect(labels(renderer)).toContain(Constants.OK);
+    expect(
+      renderer.root.findAll((node) => node.props?.children === ErrorConstants.FAILED_TO_DELETE_PATH)
+    ).not.toHaveLength(0);
+  });
+
+  it('recovers to the same custom dialog when the delete command throws', async () => {
+    const error = new Error('test delete failure');
+    mockDelete.mockRejectedValue(error);
+    const renderer = await render();
+    await press(renderer, 'More options for Path #7');
+    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE);
+
+    expect(mockRecordError).toHaveBeenCalledWith(error, 'PathOptionsMenu: delete command failed', {
+      pathId: '7',
+    });
+    expect(labels(renderer)).toContain(Constants.OK);
+  });
+
   it('deletes and tells the screen to leave once confirmed', async () => {
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
@@ -189,8 +220,8 @@ describe('deleting a path from the three-dot menu', () => {
   });
 
   it('keeps the screen in place when the delete could not be saved', async () => {
-    // The command alerts on failure. Navigating away as well would tell the
-    // user it worked while the path is still on their account.
+    // Navigating away would tell the user it worked while the path is still on
+    // their account. The menu keeps it in place and shows its failure dialog.
     mockDelete.mockResolvedValue(false);
     const renderer = await render();
     await press(renderer, 'More options for Path #7');

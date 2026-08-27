@@ -639,7 +639,7 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
-  it('DELETEs a tombstoned path, then removes the row and meta', async () => {
+  it('DELETEs a tombstoned path, then removes its local copy', async () => {
     const { store, coordinator } = setup();
     await seedSyncedPath(store, coordinator); // path 1 now on server
     store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));

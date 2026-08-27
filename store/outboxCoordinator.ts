@@ -9,15 +9,13 @@ import { isApiConfigured, SYNC_REQUEST_TIMEOUT_MS } from '@api/config';
 import { clearCurrentToken } from '../auth/tokenUtils';
 import { recordError } from '../utils/crashlytics';
 import { applyServerPath, applySyncResult, captureSyncSnapshot } from './applyServerResponse';
-import type { AppStore, RootState } from './index';
+import { removePathAndSyncState, type AppStore, type RootState } from './index';
 import { setSignedOut } from './slices/authSlice';
-import { removePathLocal } from './slices/pathsSlice';
 import {
   ackServerPathExists,
   clearOpIfUnchanged,
   clearScrollIfUnchanged,
   clearSettingsIfUnchanged,
-  dropMeta,
   setSyncError,
   setSyncStatus,
   showSessionExpired,
@@ -289,11 +287,18 @@ export const createOutboxCoordinator = (
           return 'stale';
         }
         if (res.error && res.response?.status !== 404) {
-          return classify(res.response?.status);
+          const outcome = classify(res.response?.status);
+          if (outcome === 'permanent') {
+            recordError(
+              new Error(`Path delete rejected (HTTP ${res.response?.status})`),
+              'outbox: delete permanently rejected',
+              { pathId: String(pathId), status: String(res.response?.status) }
+            );
+          }
+          return outcome;
         }
-        // 2xx or 404 → the path is gone on the server; remove it locally.
-        store.dispatch(removePathLocal({ pathId }));
-        store.dispatch(dropMeta(pathId));
+        // 2xx or 404 means the path is gone on the server; remove it locally.
+        store.dispatch(removePathAndSyncState({ pathId }));
         return 'acked';
       }
 

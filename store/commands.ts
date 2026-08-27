@@ -4,7 +4,12 @@ import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
 import type { DateData, PathData } from '../types';
-import { restoreDurableState, rollbackDurableMutation, store } from './index';
+import {
+  removePathAndSyncState,
+  restoreDurableState,
+  rollbackDurableMutation,
+  store,
+} from './index';
 import { persistence } from './instance';
 import { getQuarantinedPathIds } from './persistence';
 import {
@@ -12,7 +17,6 @@ import {
   clearPathCompletion,
   getNextDefaultPathNumber,
   getNextPathId,
-  removePathLocal,
   renamePath,
   setScrollPosition,
   updatePath,
@@ -309,11 +313,10 @@ export const renamePathCommand = async (pathId: number, name: string): Promise<b
 /**
  * Deletes a path.
  *
- * Two shapes, because a path the server has never heard of has nothing to
- * tombstone. One that IS on the server is marked deleted and left in place: the
- * outbox needs the row to build the request from, and dropping it here would
- * make the coordinator treat the queued delete as stale and cancel it — the
- * path would vanish on this device and quietly survive on every other one.
+ * A guest delete is permanent: without an account, there is nowhere to keep a
+ * cloud deletion. Signed-in paths are tombstoned only until the outbox has sent
+ * the delete. The outbox needs the row to build its request, then removes the
+ * local copy after the server acknowledges it.
  *
  * A marked path is still in `paths`, so screens must read through
  * `selectVisiblePaths` rather than the raw slice, or a deleted path keeps
@@ -323,7 +326,6 @@ export const deletePathCommand = async (pathId: number): Promise<boolean> => {
   // Captured inside the lock, so the report describes the state the delete
   // actually ran against rather than whatever it drifted to afterwards.
   let attempted: Record<string, string> = {};
-
   const deleted = await runExclusive(async () => {
     const state = store.getState();
     const meta = state.sync.meta[pathId];
@@ -342,24 +344,22 @@ export const deletePathCommand = async (pathId: number): Promise<boolean> => {
     if (!exists) {
       return false;
     }
-    // No meta means it was never synced and never will be: remove it outright
-    // instead of queueing a delete for a row no server has.
-    if (!meta) {
-      return dispatchDurable(removePathLocal({ pathId }));
+    // A signed-out device has no account to tell about the deletion, so remove
+    // its content AND any local sync intent together.
+    if (state.auth.status !== 'signedIn' || !meta) {
+      return dispatchDurable(removePathAndSyncState({ pathId }));
     }
     return dispatchDurable(markPathDeleted({ pathId, at: Date.now() }));
   });
 
   if (!deleted) {
-    // The user is told it failed; this is the other half of that — the state the
-    // delete was refused in, which is the only way to find out from a device we
-    // cannot reach why the durable write would not take.
+    // Keep the command UI-free. The caller owns the failure dialog; this report
+    // still records the state in which the durable write was refused.
     recordError(
       new Error('Path delete was not saved'),
       'commands: deletePathCommand refused',
       attempted
     );
-    showErrorAlert(ErrorConstants.FAILED_TO_DELETE_PATH);
     return false;
   }
   trackEvent('PathDeleted', 'deleted', 'path deleted');

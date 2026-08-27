@@ -21,13 +21,14 @@ jest.mock('../../utils/analytics', () => ({
   allowTracking: jest.fn(),
 }));
 
-import { store } from '../../store';
+import { removePathAndSyncState, store } from '../../store';
 import { hydrateStore } from '../../store/persistence';
 import { persistence } from '../../store/instance';
 import { createPath, deletePathCommand } from '../../store/commands';
-import { removePathLocal, setAll } from '../../store/slices/pathsSlice';
+import { setAll } from '../../store/slices/pathsSlice';
 import { dropMeta } from '../../store/slices/syncSlice';
 import { selectVisiblePaths } from '../../store/selectors';
+import { setSignedIn, setSignedOut } from '../../store/slices/authSlice';
 
 /** The three keys a path occupies, read back as raw bytes. */
 const onDisk = async () => {
@@ -49,6 +50,9 @@ beforeEach(async () => {
   jest.clearAllMocks();
   store.dispatch(setAll({ paths: [], dates: [] }));
   await hydrateStore(store);
+  store.dispatch(
+    setSignedIn({ token: 'test-token', email: 'test@example.com', firstname: null, lastname: null })
+  );
   persistence.start();
 });
 
@@ -94,17 +98,17 @@ describe('deleting a path the server knows about', () => {
     expect(selectVisiblePaths(store.getState()).some((path) => path.pathId === id)).toBe(false);
   });
 
-  it('leaves nothing behind once the server confirms', async () => {
+  it('removes the durable local copy once the server confirms deletion', async () => {
     const id = await createPath();
     await deletePathCommand(id!);
     await persistence.flush();
 
     // What the outbox does on a 204 — or a 404, which means already gone.
-    store.dispatch(removePathLocal({ pathId: id! }));
-    store.dispatch(dropMeta(id!));
+    store.dispatch(removePathAndSyncState({ pathId: id! }));
     await persistence.flush();
 
     expect(await onDisk()).toEqual({ paths: [], dates: [], meta: [] });
+    expect(selectVisiblePaths(store.getState())).toEqual([]);
   });
 });
 
@@ -120,5 +124,18 @@ describe('deleting a path the server has never seen', () => {
     // No `serverPathId`, so no request to build and no reason to keep the row.
     expect(await onDisk()).toEqual({ paths: [], dates: [], meta: [] });
     expect(store.getState().sync.pathOps[id!]).toBeUndefined();
+  });
+});
+
+describe('deleting while signed out', () => {
+  it('permanently removes the path and its sync metadata from disk', async () => {
+    store.dispatch(setSignedOut());
+    const id = await createPath();
+    await persistence.flush();
+
+    expect(await deletePathCommand(id!)).toBe(true);
+    await persistence.flush();
+
+    expect(await onDisk()).toEqual({ paths: [], dates: [], meta: [] });
   });
 });

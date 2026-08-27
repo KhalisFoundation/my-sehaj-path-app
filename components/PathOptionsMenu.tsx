@@ -2,8 +2,9 @@ import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, Modal, Pressable, TouchableOpacity, View } from 'react-native';
 import { AppText as Text } from './AppText';
 import { MoreOptionsIcon } from '@icons';
-import { Constants } from '@constants';
+import { Constants, ErrorConstants } from '@constants';
 import { trackEvent } from '@utils/analytics';
+import { recordError } from '@utils/crashlytics';
 import { deletePathCommand } from '../store/commands';
 import { DialogStyles, PathOptionsMenuStyles as styles } from '@styles';
 
@@ -22,7 +23,7 @@ interface Props {
   onDeletingChange?: (isDeleting: boolean) => void;
 }
 
-type MenuView = 'closed' | 'menu' | 'confirm';
+type MenuView = 'closed' | 'menu' | 'confirm' | 'error';
 
 /** Breathing room between the dots and the menu, and against the screen edge. */
 const MENU_GAP = 8;
@@ -73,20 +74,28 @@ export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange 
       return;
     }
     setIsDeleting(true);
+    trackEvent('PathDeleted', 'click', 'delete confirmed');
     // Before the command, not after: the path disappears from the host screen
     // partway through it, and the screen has to already know why.
     onDeletingChange?.(true);
-    const deleted = await deletePathCommand(pathId);
+    let deleted = false;
+    try {
+      deleted = await deletePathCommand(pathId);
+    } catch (error) {
+      // A command should normally return false for a handled failure. Keep this
+      // boundary for a genuinely unexpected exception so the menu can recover.
+      recordError(error, 'PathOptionsMenu: delete command failed', { pathId: String(pathId) });
+    }
     setIsDeleting(false);
-    setView('closed');
-    // The command alerts on failure; the screen only leaves when it worked.
     if (deleted) {
+      setView('closed');
       onDeleted();
       return;
     }
     // Rolled back, so the path is on screen again and a later genuine load
     // failure must still be reported.
     onDeletingChange?.(false);
+    setView('error');
   }, [isDeleting, pathId, onDeleted, onDeletingChange]);
 
   return (
@@ -133,7 +142,7 @@ export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange 
               </TouchableOpacity>
             </Pressable>
           </Pressable>
-        ) : (
+        ) : view === 'confirm' ? (
           <View style={DialogStyles.backdrop}>
             <View style={DialogStyles.card}>
               <Text style={DialogStyles.title}>{Constants.DELETE_PATH_TITLE}</Text>
@@ -163,6 +172,23 @@ export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange 
                   <Text style={DialogStyles.primaryText}>
                     {isDeleting ? Constants.DELETING : Constants.DELETE}
                   </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={DialogStyles.backdrop}>
+            <View style={DialogStyles.card}>
+              <Text style={DialogStyles.title}>{Constants.DELETE_PATH_FAILED_TITLE}</Text>
+              <Text style={DialogStyles.message}>{ErrorConstants.FAILED_TO_DELETE_PATH}</Text>
+              <View style={DialogStyles.actions}>
+                <TouchableOpacity
+                  onPress={close}
+                  style={DialogStyles.primaryButton}
+                  accessibilityLabel={Constants.OK}
+                  accessibilityRole="button"
+                >
+                  <Text style={DialogStyles.primaryText}>{Constants.OK}</Text>
                 </TouchableOpacity>
               </View>
             </View>
