@@ -22,6 +22,7 @@ export { OfflineDbNoticeStyles } from './OfflineDbNoticeStyles';
 export { StreakStyles } from './StreakStyles';
 export { ErrorScreenStyles } from './ErrorScreen';
 export { DatabaseUpdateScreenStyles } from './DatabaseUpdateScreen';
+export { AboutScreenStyles } from './AboutScreen';
 export { SafeAreaStyle } from './SafeAreaStyle';
 export { CalenderStyles } from './CalenderStyles';
 export { PathReaderStyles } from './PathReaderStyles';

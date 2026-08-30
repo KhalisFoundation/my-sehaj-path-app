@@ -1,5 +1,5 @@
-import React from 'react';
-import { TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Alert, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
 import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
@@ -14,6 +14,9 @@ import {
 } from '@styles';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics, useSetting } from '@hooks';
+import { deleteAccount } from '@auth';
+import { showDeleteAccountConfirmAlert, showErrorAlert } from '@utils';
+import { useAppSelector } from '../store/hooks';
 import {
   Constants,
   EDGES_ALL_SIDES,
@@ -40,6 +43,78 @@ type SettingProps = NativeStackScreenProps<RootStackParamList, 'Setting'>;
 
 export const Settings = ({ navigation }: SettingProps) => {
   useScreenAnalytics('Settings', 'Settings');
+
+  const isSignedIn = useAppSelector((state) => state.auth.status === 'signedIn');
+
+  // iOS only, by product decision. Apple guideline 5.1.1(v) makes this mandatory
+  // for App Store review; Google Play requires the same of any app offering
+  // sign-up, so shipping it hidden on Android is a known, accepted gap rather
+  // than an oversight — the flow underneath is platform-agnostic and the row is
+  // the only thing gated, so turning it on for Android is a one-line change.
+  const canDeleteAccount = isSignedIn && Platform.OS === 'ios';
+
+  // Disabled while in flight: a second tap fires a second DELETE, and the server
+  // answers that one 409 — harmless, but it reads as a failure to a user whose
+  // account is being deleted perfectly well.
+  const [deleting, setDeleting] = useState(false);
+
+  const runDeleteAccount = useCallback(async () => {
+    setDeleting(true);
+    const result = await deleteAccount();
+    setDeleting(false);
+
+    // Success, already-scheduled and unauthorized have all signed this device
+    // out already, so the app falls back to the signed-out UI by itself and
+    // there is no navigation to do. What each still needs is to be TOLD — an app
+    // that silently empties itself is alarming.
+    // A rolled-back wipe leaves the previous account's paths on disk, so the
+    // user must be told to reinstall rather than reassured. Both branches below
+    // deleted the account server-side, so neither is an ordinary failure.
+    if (result.ok) {
+      if (result.cleared) {
+        Alert.alert(Constants.ACCOUNT_DELETED_TITLE, Constants.ACCOUNT_DELETED_MESSAGE);
+      } else {
+        showErrorAlert(ErrorConstants.ACCOUNT_DELETED_NOT_CLEARED);
+      }
+      return;
+    }
+
+    if (result.reason === 'already_scheduled') {
+      if (result.cleared === false) {
+        showErrorAlert(ErrorConstants.ACCOUNT_DELETED_NOT_CLEARED);
+        return;
+      }
+      Alert.alert(
+        Constants.ACCOUNT_ALREADY_SCHEDULED_TITLE,
+        Constants.ACCOUNT_ALREADY_SCHEDULED_MESSAGE
+      );
+      return;
+    }
+
+    if (result.reason === 'last_admin') {
+      // NOT a deletion. The account still exists and this device still holds its
+      // reading, so this must never read like the others.
+      showErrorAlert(ErrorConstants.ACCOUNT_DELETION_LAST_ADMIN);
+      return;
+    }
+
+    if (result.reason === 'network' || result.reason === 'server') {
+      // Showing the status beats hiding it while this flow is new: "(HTTP 404)"
+      // tells whoever is testing that the endpoint is not deployed, where a bare
+      // apology tells them nothing.
+      const detail = result.reason === 'network' ? 'No response' : `HTTP ${result.status}`;
+      showErrorAlert(`${ErrorConstants.FAILED_TO_DELETE_ACCOUNT} (${detail})`);
+    }
+    // `unauthorized` and `no_session` need no alert: the device is already
+    // signed out, and the sign-in prompt is what greets them.
+  }, []);
+
+  const confirmDeleteAccount = () =>
+    showDeleteAccountConfirmAlert({
+      onConfirm: () => {
+        runDeleteAccount();
+      },
+    });
 
   const [fontSize, changeFontSize] = useSetting(
     (state) => state.settings.fontSize,
@@ -95,7 +170,17 @@ export const Settings = ({ navigation }: SettingProps) => {
             <NavContent text={Constants.SETTINGS} contentStyle={SettingScreenStyle.navText} />
           </TouchableOpacity>
         </View>
-        <View style={SettingScreenStyle.settingContainer}>
+        {/*
+          Scrollable, not a plain View. The list already overflows a small screen
+          at the larger font settings, and the two most consequential rows —
+          About and Delete Account — sit at the very bottom, so an unscrollable
+          list makes account deletion unreachable. That is the one thing App
+          Store review checks for.
+        */}
+        <ScrollView
+          contentContainerStyle={SettingScreenStyle.settingContainer}
+          showsVerticalScrollIndicator={false}
+        >
           <View>
             <View>
               <SimpleText simpleText={Constants.DISPLAY_OPTIONS} />
@@ -212,7 +297,42 @@ export const Settings = ({ navigation }: SettingProps) => {
             </View>
             <RightChevronIcon />
           </TouchableOpacity>
-        </View>
+
+          <TouchableOpacity
+            style={SettingScreenStyle.databaseUpdateRow}
+            onPress={() => navigation.push(Routes.About)}
+            accessibilityRole="button"
+            accessibilityLabel="About"
+            accessibilityHint="Who made this app, and the privacy policy"
+          >
+            <View style={SettingScreenStyle.databaseUpdateCopy}>
+              <Text style={SettingScreenStyle.databaseUpdateText}>{Constants.ABOUT}</Text>
+            </View>
+            <RightChevronIcon />
+          </TouchableOpacity>
+
+          {/*
+            Required by App Store guideline 5.1.1(v), which insists the option
+            lives in the app and is not buried behind support. Only shown while
+            signed in — there is no account to delete otherwise, and a dead row
+            would be the kind of thing a reviewer taps first.
+          */}
+          {canDeleteAccount && (
+            <TouchableOpacity
+              style={SettingScreenStyle.deleteAccountRow}
+              onPress={confirmDeleteAccount}
+              disabled={deleting}
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
+              accessibilityHint="Permanently deletes your Khalis account after 30 days"
+            >
+              <View style={SettingScreenStyle.databaseUpdateCopy}>
+                <Text style={SettingScreenStyle.deleteAccountText}>{Constants.DELETE_ACCOUNT}</Text>
+              </View>
+              <RightChevronIcon />
+            </TouchableOpacity>
+          )}
+        </ScrollView>
       </View>
     </SafeAreaView>
   );

@@ -12,6 +12,7 @@ export type { VishraamsColorConfig } from './VishraamsTheme';
 export { BANIDB_API, KHALIS_FOUNDATION_DONATE_URL } from './API';
 export { SEHAJ_DB_REMOTE_URL, SEHAJ_DB_MD5_URL, DB_FILE_NAME } from './DB';
 export { DatabaseUpdateText } from './DatabaseUpdate';
+export { AboutText, KHALIS_FOUNDATION_URL, KHALIS_PRIVACY_POLICY_URL, BANIDB_URL } from './About';
 export { Routes } from './Routes';
 export { EDGES_ALL_SIDES, EDGES_DRAWER_MENU } from './UIConstants';
 export { PATH_DATA } from './PathData';

@@ -56,6 +56,14 @@ export const Constants: Constant = {
   DONATE: 'Donate',
   LOGIN: 'Login',
   LOGOUT: 'Logout',
+  DELETE_ACCOUNT: 'Delete Account',
+  ACCOUNT_DELETED_TITLE: 'Account deleted',
+  ACCOUNT_DELETED_MESSAGE:
+    'Your Khalis account has been deleted and you are signed out of every Khalis app. ' +
+    'You have 30 days to contact support if you change your mind.',
+  ACCOUNT_ALREADY_SCHEDULED_TITLE: 'Already being deleted',
+  ACCOUNT_ALREADY_SCHEDULED_MESSAGE:
+    'This account is already scheduled for deletion, so you have been signed out here too.',
   LOGGING_OUT: 'Signing out…',
   WELCOME: 'Welcome',
   SYNC_PROGRESS_PROMPT: 'Do you want to sync your progress now?',
@@ -94,6 +102,7 @@ export const Constants: Constant = {
     'You are offline. Your saved reading is safe and will load automatically as soon as you reconnect.',
   RETRY: 'Retry',
   DATABASE: 'Database',
+  ABOUT: 'About',
 
   // --- login/sync decision flow -------------------------------------------
   // Every dialog below has at most two main buttons; anything destructive is a

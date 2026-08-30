@@ -6,4 +6,5 @@
 declare module '@env' {
   export const SEHAJ_API_URL: string | undefined;
   export const SSO_SERVICE_URL: string | undefined;
+  export const SSO_IDP_URL: string | undefined;
 }

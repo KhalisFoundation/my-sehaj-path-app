@@ -13,6 +13,7 @@ import {
   PathScreen,
   Settings,
   DatabaseUpdate,
+  About,
   Error,
 } from '@screens';
 import {
@@ -44,6 +45,7 @@ export type RootStackParamList = {
   Path: { pathId: number };
   Setting: undefined;
   DatabaseUpdate: undefined;
+  About: undefined;
   Error: undefined;
 };
 
@@ -207,6 +209,7 @@ const App = () => {
               <Stack.Screen name={Routes.Path} component={PathScreen} />
               <Stack.Screen name={Routes.Setting} component={Settings} />
               <Stack.Screen name={Routes.DatabaseUpdate} component={DatabaseUpdate} />
+              <Stack.Screen name={Routes.About} component={About} />
               <Stack.Screen name={Routes.Error} component={Error} />
             </Stack.Navigator>
           </NavigationContainer>

@@ -58,6 +58,35 @@ export const showLogoutConfirmAlert = ({ onConfirm }: { onConfirm: () => void })
 };
 
 /**
+ * Confirms account deletion before the browser flow opens.
+ *
+ * Says three things people do not expect, because both stores require the
+ * consequences to be disclosed before the user commits:
+ *   - it signs them out of EVERY Khalis app and site, not just this one;
+ *   - there is a 30-day window in which signing in cancels it;
+ *   - the reading on this device goes as well, so the grace period is not a
+ *     promise that everything comes back — only what had already synced does.
+ */
+export const showDeleteAccountConfirmAlert = ({ onConfirm }: { onConfirm: () => void }) => {
+  Alert.alert(
+    'Delete your Khalis account?',
+    'You will be signed out of every Khalis app and website, and your reading on this device will be removed.\n\n' +
+      'Your account is deleted after 30 days. Signing in before then cancels it and restores anything that had synced.',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Delete My Account',
+        onPress: onConfirm,
+        style: 'destructive',
+      },
+    ]
+  );
+};
+
+/**
  * How long to wait before raising UI from inside an alert button handler.
  *
  * iOS will not present a second alert while the first is still dismissing, and

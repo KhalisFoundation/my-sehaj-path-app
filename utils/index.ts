@@ -4,6 +4,7 @@ export {
   showSaveProgressAlert,
   showLeaveAnywayAlert,
   showLogoutConfirmAlert,
+  showDeleteAccountConfirmAlert,
   showUnsyncedBeforeLogoutAlert,
   showOfflineBeforeLogoutAlert,
   showOfflineSyncAlert,

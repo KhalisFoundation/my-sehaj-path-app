@@ -308,6 +308,69 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
+  /**
+   * The server refuses to revive a tombstone on create, because the create body
+   * carries no `updatedAt` to weigh against the deletion time. It answers 409
+   * and the decision moves to `/sync`, which has both timestamps.
+   *
+   * These two cover the whole route end to end, and they are the pair that must
+   * not collapse into one another: the same 409 has to be able to end in either
+   * outcome, decided by the server rather than by which request went out.
+   */
+  it('a CREATE 409 fires one /sync, which revives the path when the local edit is newer', async () => {
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const uuid = store.getState().sync.meta[1].serverPathId;
+
+    // Deleted on another device; this one edited afterwards, so /sync revives it.
+    mockCreate.mockResolvedValueOnce(fail(409));
+    mockSync.mockResolvedValueOnce(
+      ok(200, {
+        paths: [serverSehaj({ pathId: uuid, name: 'Revived', updatedAt: 300_000 })],
+        deletedPathIds: [],
+        settings: null,
+        syncedAt: 999,
+      })
+    );
+
+    await coordinator.flushNow();
+
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(store.getState().paths.paths).toHaveLength(1);
+    expect(store.getState().paths.paths[0].pathName).toBe('Revived');
+    expect(store.getState().sync.meta[1].deletedAt).toBeFalsy(); // not tombstoned
+    expect(store.getState().sync.pathOps[1]).toBeUndefined(); // reconciled, not parked
+    expect(store.getState().sync.lastError).toBeNull();
+    coordinator.stop();
+  });
+
+  it('a CREATE 409 fires one /sync, which removes the stale copy when the deletion wins', async () => {
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const uuid = store.getState().sync.meta[1].serverPathId;
+
+    // The other device deleted it and this one never edited after that, so the
+    // server sends it back as deleted and this copy goes. Without the create
+    // refusing, this path would instead have been resurrected on every device.
+    mockCreate.mockResolvedValueOnce(fail(409));
+    mockSync.mockResolvedValueOnce(
+      ok(200, {
+        paths: [],
+        deletedPathIds: [uuid],
+        settings: null,
+        syncedAt: 999,
+      })
+    );
+
+    await coordinator.flushNow();
+
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.pathOps[1]).toBeUndefined();
+    expect(store.getState().sync.lastError).toBeNull();
+    coordinator.stop();
+  });
+
   it('parks the conflicting op when the reconciling /sync is permanently rejected', async () => {
     // Regression: PATCH 409 → /sync 400 used to leave the op sendable, so the
     // next drain repeated PATCH → 409 → blocked /sync forever, and the path
