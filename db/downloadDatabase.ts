@@ -72,11 +72,33 @@ type ReportedFailureKind =
   | 'rejected-by-host'
   | 'invalid-file'
   | 'checksum-mismatch'
-  | 'checksum-unavailable';
+  | 'checksum-unavailable'
+  | 'hash-failed';
 
 const failureAttributes = (kind: ReportedFailureKind): Record<string, string> => ({
   db_failure_kind: kind,
 });
+
+/**
+ * The only failure this app is willing to stay quiet about.
+ *
+ * `connection-interrupted` means a socket that was ESTABLISHED and then cut —
+ * `unexpected end of stream`, `ECONNRESET`, `Software caused connection abort`.
+ * By definition it can only happen mid-transfer, which is why no separate
+ * "was it mid-download?" check is needed.
+ *
+ * Everything else reports, deliberately. A missing connection is only ever a
+ * complete explanation for a transfer that was already running and got cut. It
+ * does NOT explain a host that never answered (`network-unavailable` may be our
+ * DNS), a server that hung (`network-timeout`), or a checksum file the host did
+ * not serve (`checksum-unavailable`) — each of those can be our problem, and
+ * silence would hide it.
+ *
+ * Even this kind only goes quiet when the phone CONFIRMS it is offline, or the
+ * app is not on screen. Cut mid-transfer while online and foregrounded, and it
+ * is reported like anything else.
+ */
+const SUPPRESSIBLE_KINDS = new Set<ReportedFailureKind>(['connection-interrupted']);
 
 /**
  * Report a download failure — unless it is one the app itself caused, or one the
@@ -97,11 +119,6 @@ const failureAttributes = (kind: ReportedFailureKind): Record<string, string> =>
  * who signs in during the first-run download filed a crash report for behaviour
  * the app asked for.
  *
- * `insufficient-storage` is exempt from both. A full disk is a genuine problem
- * whatever the network or lifecycle is doing, and it is the one kind the app acts
- * on — `dbFailed` plus a persisted block that stops automatic retries — so it
- * must stay visible.
- *
  * Connectivity is read live rather than from the store: the store's copy is
  * stale at exactly this moment, still holding `true` for a connection that has
  * just dropped and is the reason we are in here at all.
@@ -116,7 +133,7 @@ const reportDownloadFailure = async (
   context: string,
   kind: ReportedFailureKind
 ): Promise<void> => {
-  if (kind !== 'insufficient-storage') {
+  if (SUPPRESSIBLE_KINDS.has(kind)) {
     if (AppState.currentState !== 'active') {
       return;
     }
@@ -363,9 +380,13 @@ const verifyDownloadedDatabase = async (path: string): Promise<VerifyResult> => 
   try {
     actual = (await hash(path, 'md5')).toLowerCase();
   } catch {
+    // NOT `checksum-unavailable`. Hashing reads a file already on this device,
+    // so a connection has nothing to do with it — sharing a kind with the fetch
+    // above meant a phone that could not read its own download was silenced
+    // whenever the reader happened to be offline.
     return {
       ok: false,
-      kind: 'checksum-unavailable',
+      kind: 'hash-failed',
       reason: 'could not compute the downloaded database checksum',
     };
   }
@@ -575,13 +596,21 @@ export const checkForDatabaseUpdate = async (): Promise<DatabaseCheckResult> => 
     const available = await bani.checkForUpdate(localMd5, SEHAJ_DB_MD5_URL);
     return available ? { status: 'update-available' } : { status: 'up-to-date' };
   } catch (error) {
-    // Only worth reporting with a connection. The check fetches the published
-    // `.md5`, so without one it fails by definition and says nothing — the
-    // guard is what makes reaching `recordError` mean the check failed DESPITE
-    // being online, which is the only version of this that is a real problem.
-    if (await isOnlineNow()) {
-      recordError(error, 'db: update check failed while online');
-    }
+    // Same gate as every other network-caused DB failure, so this cannot become
+    // the one site that reports what the others suppress. The check fetches the
+    // published `.md5`, so with no connection — or with the app backgrounded and
+    // its sockets torn down — it fails by definition and says nothing. Reaching
+    // `recordError` therefore means the check failed DESPITE being online and on
+    // screen, which is the only version of this worth anyone's attention.
+    // `checksum-unavailable`, not `other`: this check's whole job is fetching the
+    // published `.md5` and comparing it, so a failure here IS a checksum it could
+    // not obtain. It also has to stay suppressible — `other` is always reported,
+    // and an update check failing with no connection is expected, not a defect.
+    await reportDownloadFailure(
+      error,
+      'db: update check failed while online',
+      'checksum-unavailable'
+    );
     return {
       status: 'check-failed',
       reason: error instanceof Error ? error.message : 'unknown error',
