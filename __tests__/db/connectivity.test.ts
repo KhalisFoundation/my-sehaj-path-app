@@ -1,71 +1,88 @@
-jest.mock('@react-native-community/netinfo', () => ({
-  __esModule: true,
-  default: { fetch: jest.fn() },
-}));
-
-import NetInfo from '@react-native-community/netinfo';
 import { isOnlineNow } from '../../db/connectivity';
 import { store } from '../../store';
 import { setOnline } from '../../store/slices/networkSlice';
 
-const mockedFetch = NetInfo.fetch as jest.Mock;
+/**
+ * `isOnlineNow` deliberately does NOT ask NetInfo for a positive answer.
+ *
+ * Three NetInfo approaches were tried on a real device and all returned stale
+ * state: the store's cached copy, `NetInfo.fetch()`, and `NetInfo.refresh()`
+ * with native reachability disabled — the last resolving in the same
+ * millisecond as its caller, which no real probe can do. Each time, cellular had
+ * been switched off and the download's socket already cut, and NetInfo still
+ * said `isConnected=true isInternetReachable=true`.
+ *
+ * So these tests are about the probe: a request either completes or it does not.
+ */
+const fetchMock = jest.fn();
 
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useRealTimers();
   store.dispatch(setOnline(true));
+  globalThis.fetch = fetchMock as unknown as typeof fetch;
 });
 
-describe('reading the live connection', () => {
-  it('reports online when the phone is connected and reachable', async () => {
-    mockedFetch.mockResolvedValue({ isConnected: true, isInternetReachable: true });
+describe('proving the connection by using it', () => {
+  it('reports online when the probe answers', async () => {
+    fetchMock.mockResolvedValue({ status: 204 });
     await expect(isOnlineNow()).resolves.toBe(true);
   });
 
-  it('reports offline when the phone is disconnected, even though the store says online', async () => {
-    // The whole point: the store is a cached reading and is wrong at exactly the
-    // moment a download is failing because the connection just dropped.
-    mockedFetch.mockResolvedValue({ isConnected: false, isInternetReachable: false });
+  it('sends a HEAD request that cannot be served from cache', async () => {
+    // A cached 204 from before the connection dropped would defeat the point.
+    fetchMock.mockResolvedValue({ status: 204 });
+    await isOnlineNow();
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.method).toBe('HEAD');
+    expect(init.cache).toBe('no-store');
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('reports offline when the probe fails, even though the store says online', async () => {
+    // The case every NetInfo approach got wrong: the phone still believes it is
+    // connected, but nothing can actually reach the network.
+    fetchMock.mockRejectedValue(new Error('Unable to resolve host'));
     await expect(isOnlineNow()).resolves.toBe(false);
   });
 
-  it('treats unknown reachability as connected', async () => {
-    // `isInternetReachable` is null while the probe is still running, which is
-    // normal right after reconnecting. Reading unknown as offline would suppress
-    // work that should run.
-    mockedFetch.mockResolvedValue({ isConnected: true, isInternetReachable: null });
+  it('reports offline when the probe answers with an error status', async () => {
+    fetchMock.mockResolvedValue({ status: 500 });
+    await expect(isOnlineNow()).resolves.toBe(false);
+  });
+
+  it('accepts a redirect as proof the network works', async () => {
+    // A captive portal answering 302 still proves packets are moving, and the
+    // question here is only whether the device can reach anything at all.
+    fetchMock.mockResolvedValue({ status: 302 });
     await expect(isOnlineNow()).resolves.toBe(true);
   });
 
-  it('does not ask NetInfo at all when the store already says offline', async () => {
+  it('does not probe at all when the store already says offline', async () => {
+    // The one thing the cached value is trusted for: a negative. If the listener
+    // has already seen the drop there is nothing left to verify.
     store.dispatch(setOnline(false));
+
     await expect(isOnlineNow()).resolves.toBe(false);
-    expect(mockedFetch).not.toHaveBeenCalled();
-  });
-});
-
-describe('when NetInfo cannot answer', () => {
-  it('falls back to the store if the native call throws', async () => {
-    mockedFetch.mockRejectedValue(new Error('netinfo unavailable'));
-    await expect(isOnlineNow()).resolves.toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('gives up after the timeout instead of hanging forever', async () => {
-    // This is the severe one. `isOnlineNow` runs on the download's FAILURE path,
-    // and that path holds the single-flight lock. If it never settles, the
-    // `finally` that clears `activeDownload` never runs — so every later
-    // foreground and reconnect joins a dead promise and the offline database can
-    // never download again until the app is restarted.
-    //
-    // `NetInfo.fetch()` is a bridge call with no timeout of its own. Resolving
-    // at all is the assertion; without the race this test would time out.
+  it('gives up rather than hanging when the probe never answers', async () => {
+    // This runs while the download's single-flight lock is held. If it never
+    // settles, the lock is never released and the database can never download
+    // again until the app restarts. Resolving at all is the assertion.
     jest.useFakeTimers();
-    mockedFetch.mockReturnValue(new Promise(() => undefined)); // never settles
+    fetchMock.mockImplementation(
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          init.signal.addEventListener('abort', () => reject(new Error('Aborted')));
+        })
+    );
 
     const pending = isOnlineNow();
-    await Promise.resolve();
-    jest.advanceTimersByTime(3_000);
+    await jest.advanceTimersByTimeAsync(3_000);
 
-    await expect(pending).resolves.toBe(true);
+    await expect(pending).resolves.toBe(false);
   });
 });

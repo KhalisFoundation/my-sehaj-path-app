@@ -1,58 +1,78 @@
-import NetInfo from '@react-native-community/netinfo';
 import { store } from '../store';
 
 /**
- * Is the device online RIGHT NOW — asked of NetInfo, not of the store.
+ * A no-content endpoint used only to ask "does this device have working
+ * internet, right now?".
  *
- * `network.isOnline` is a cached NetInfo reading, and it is wrong at exactly the
- * moments the database code needs it most: a connection that has just dropped is
- * still `true` in the store until the listener delivers the edge, which is the
- * same instant an in-flight download is failing *because* of that drop.
+ * `generate_204` returns HTTP 204 with an empty body. It sends nothing about the
+ * user, carries no cookies, and is the same endpoint Android itself uses for
+ * captive-portal detection, so it is already being contacted by the OS on every
+ * network change. Swap it for a Khalis-hosted equivalent if that is preferred —
+ * the only requirements are that it is tiny, highly available, and NOT one of
+ * our own database hosts (probing the host that just failed cannot tell "the
+ * user is offline" from "that host is down").
+ */
+const PROBE_URL = 'https://clients3.google.com/generate_204';
+
+/**
+ * Long enough for a slow-but-working connection to answer, short enough that the
+ * download's failure path is never held up for meaningfully long. This runs
+ * while the single-flight download lock is held, so it must always settle.
+ */
+const PROBE_TIMEOUT_MS = 3_000;
+
+/**
+ * Is the device online RIGHT NOW — established by actually using the network.
  *
- * `isInternetReachable` is `null` while reachability is still being determined,
- * which is common in the first moments after a reconnect. Treating unknown as
- * offline would suppress work that should run, so it falls back to `isConnected`
- * rather than to `false`.
+ * NetInfo cannot answer this, and three attempts proved it on a real device:
  *
- * Short-circuits when the store already says offline (the listener knows; there
- * is nothing to verify), and falls back to the store if the native call fails or
- * takes too long, so NetInfo can never become a way for the database to stop
- * working.
+ * 1. `network.isOnline` in the store is a cached NetInfo reading, so it still
+ *    said `true` for a connection that had already gone.
+ * 2. `NetInfo.fetch()` returned the same stale answer — its state, not a fresh
+ *    check.
+ * 3. `NetInfo.refresh()` with `useNativeReachability: false` resolved in the
+ *    SAME MILLISECOND as the caller, which no real HTTP probe can do: it handed
+ *    back cache too. And `isConnected` comes from Android's ConnectivityManager
+ *    whatever NetInfo is configured to do, which lags the socket being cut.
  *
- * The timeout is not defensive padding. This runs on the download's FAILURE path,
- * and that path holds the single-flight lock: if it never settles, the `finally`
- * that clears `activeDownload` never runs, every later foreground and reconnect
- * joins a dead promise, and the database can never download again until the app
- * is restarted. `NetInfo.fetch()` is a bridge call with no timeout of its own, so
- * bounding it here is what keeps one wedged native call from disabling the
- * offline database for the rest of the process.
+ * Measured each time: cellular switched off, the download's socket cut instantly
+ * with `Software caused connection abort`, and NetInfo still reporting
+ * `isConnected=true isInternetReachable=true` milliseconds later.
+ *
+ * So this stops asking and tests instead. A HEAD request either completes or it
+ * does not, and that is the same question the download itself was asking — which
+ * makes it the only answer that cannot be stale.
+ *
+ * The store is still consulted first, purely as a fast negative: when the
+ * listener has already seen the drop there is nothing to verify, and we skip the
+ * request. It is never trusted for a positive.
+ *
+ * Any failure — timeout, DNS, abort, non-2xx/3xx — is treated as offline. That
+ * is the point: if a small HEAD to a highly available endpoint cannot complete,
+ * this device does not have usable internet, whatever the OS believes.
  *
  * Lives here rather than in `provisionDatabase` so `downloadDatabase` can use it
  * too: provisioning imports the downloader, so the reverse would be a cycle.
  */
-const NETINFO_TIMEOUT_MS = 3_000;
-
 export const isOnlineNow = async (): Promise<boolean> => {
-  const cached = store.getState().network.isOnline;
-  if (!cached) {
+  if (!store.getState().network.isOnline) {
     return false;
   }
-  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   try {
-    // Resolving to the cached value on timeout rather than rejecting keeps the
-    // unknown case behaving exactly like the catch below.
-    const timeout = new Promise<boolean>((resolve) => {
-      timer = setTimeout(() => resolve(store.getState().network.isOnline), NETINFO_TIMEOUT_MS);
+    const response = await fetch(PROBE_URL, {
+      method: 'HEAD',
+      // A cached 204 from before the connection dropped would defeat the whole
+      // purpose of asking.
+      cache: 'no-store',
+      signal: controller.signal,
     });
-    const live = NetInfo.fetch().then((state) =>
-      Boolean(state.isConnected && (state.isInternetReachable ?? state.isConnected))
-    );
-    return await Promise.race([live, timeout]);
+    return response.status >= 200 && response.status < 400;
   } catch {
-    return store.getState().network.isOnline;
+    return false;
   } finally {
-    // Without this the timer keeps the app awake for the rest of the budget on
-    // every successful check.
     clearTimeout(timer);
   }
 };
