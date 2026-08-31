@@ -445,6 +445,16 @@ export interface LegacyPersistence {
   stop: () => void;
   /** Resolves true only once the snapshot current at call time is durable. */
   flush: () => Promise<boolean>;
+  /**
+   * False once `stop()` has made the coordinator inert.
+   *
+   * `flush()` answers `false` both when a write was attempted and failed and
+   * when it refused to run at all, and those mean opposite things: the first is
+   * a disk the app could not write to, the second is a writer that was
+   * deliberately shut down with nothing written and nothing at risk. Callers
+   * that report or alert on a failed save need to tell them apart.
+   */
+  isRunning: () => boolean;
 }
 
 /**
@@ -705,6 +715,8 @@ export const createLegacyPersistence = (store: AppStore): LegacyPersistenceInter
         drain();
       });
     },
+
+    isRunning: () => unsubscribe !== null,
 
     getStatus: () => ({ running: unsubscribe !== null, dirty: pending !== null }),
   };

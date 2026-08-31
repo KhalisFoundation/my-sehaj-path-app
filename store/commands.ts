@@ -62,6 +62,38 @@ const runExclusive = <T>(task: () => Promise<T>): Promise<T> => {
 };
 
 /**
+ * Report a rollback that could not be made durable — unless the writer was
+ * simply shut down.
+ *
+ * `flush()` answers `false` for two opposite situations: a write that was
+ * attempted and failed, and one that was refused outright because `stop()` had
+ * already made the coordinator inert. Only the first is a problem.
+ *
+ * The second is the ordinary shape of teardown. App's effect cleanup calls
+ * `persistence.stop()`, and a command already queued behind `runExclusive` —
+ * a leave checkpoint from the reader, typically — then lands its flush against
+ * a stopped writer. No commit is attempted, so the on-disk journal is exactly as
+ * it was, and "may be stale" describes a disk failure that did not happen. The
+ * giveaway in a report is the absence of any `persistence: commit attempt N
+ * failed` alongside it: nothing ever reached the disk to fail.
+ */
+const reportRollbackNotDurable = (context: string): void => {
+  if (!persistence.isRunning()) {
+    // Logged as well as the reported case, because the suppression IS the fix:
+    // with only the line below, a working build and dead code look identical
+    // from the console.
+    if (__DEV__) {
+      console.log(`[commands] rollback flush failed — SUPPRESSED, writer stopped (${context})`);
+    }
+    return;
+  }
+  if (__DEV__) {
+    console.log(`[commands] rollback flush failed — REPORTING, writer running (${context})`);
+  }
+  recordError(new Error('rollback flush failed; on-disk journal may be stale'), context);
+};
+
+/**
  * Dispatches, flushes, and restores only the changed record if the write
  * failed, so a concurrent server response for another record survives.
  *
@@ -86,15 +118,10 @@ const dispatchDurable = async (action: UnknownAction): Promise<boolean> => {
       .flush()
       .then((restored) => {
         if (!restored) {
-          recordError(
-            new Error('rollback flush failed; on-disk journal may be stale'),
-            'commands: rollback not durable'
-          );
+          reportRollbackNotDurable('commands: rollback not durable');
         }
       })
-      .catch(() => {
-        // flush never rejects, but keep the floating promise safe.
-      });
+      .catch(() => {});
   }
   return saved;
 };
@@ -145,10 +172,7 @@ export const commitSettingChange = (action: UnknownAction): Promise<boolean> => 
       .flush()
       .then((restored) => {
         if (!restored) {
-          recordError(
-            new Error('rollback flush failed; on-disk journal may be stale'),
-            'commands: settings rollback not durable'
-          );
+          reportRollbackNotDurable('commands: settings rollback not durable');
         }
       })
       .catch(() => {

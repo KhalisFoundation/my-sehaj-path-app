@@ -19,6 +19,7 @@ jest.mock('../../utils/analytics', () => ({
 import { rollbackDurableMutation, store, makeStore } from '../../store';
 import { hydrateStore } from '../../store/persistence';
 import { persistence } from '../../store/instance';
+import { recordError } from '../../utils/crashlytics';
 import {
   commitSettingChange,
   createPath,
@@ -435,5 +436,54 @@ describe('overlapping commands', () => {
     await hydrateStore(fresh);
     const path = fresh.getState().paths.paths.find((p) => p.pathId === id);
     expect(path?.saveData.angNumber).not.toBe(999); // the failed value did not replay
+  });
+});
+
+describe('a rollback that lands after the writer was stopped', () => {
+  /**
+   * The background rollback flush is deliberately not awaited by the command,
+   * and on a failing disk it runs COMMIT_ATTEMPTS with a 20ms-per-attempt
+   * backoff — so a microtask tick is not enough to see its outcome.
+   */
+  const settleBackgroundFlush = () => new Promise<void>((r) => setTimeout(r, 150));
+
+  it('reports nothing — no commit was attempted, so no journal is stale', async () => {
+    // Device report, Redmi 9A, 2.0.1: "rollback flush failed; on-disk journal may
+    // be stale" with NO `persistence: commit attempt N failed` beside it. That
+    // absence is the whole story — nothing ever reached the disk to fail.
+    //
+    // App's effect cleanup calls `persistence.stop()` on teardown, and a command
+    // already queued behind `runExclusive` (a reader leave-checkpoint) then lands
+    // its flush against a stopped writer. `flush()` answers false from a guard,
+    // the command rolls back, and the rollback flush answers false from the same
+    // guard — which was reported as a corrupt journal on every backgrounded read.
+    const id = await createPath();
+    (recordError as jest.Mock).mockClear();
+
+    persistence.stop();
+    const saved = await savePathProgress(id!, 999, 42, 0);
+    await settleBackgroundFlush();
+
+    // Still honest with the caller: the write genuinely did not happen.
+    expect(saved).toBe(false);
+    expect(recordError).not.toHaveBeenCalled();
+  });
+
+  it('still reports a genuine write failure while the writer is running', async () => {
+    // The guard above must key on the writer being stopped, never on "the
+    // rollback flush failed" alone — suppressing that would hide the real disk
+    // failures this report exists to catch.
+    const id = await createPath();
+    (recordError as jest.Mock).mockClear();
+
+    // Fails the save AND its rollback, with the coordinator still running.
+    (AsyncStorage.multiSet as jest.Mock).mockRejectedValue(new Error('disk full'));
+    const saved = await savePathProgress(id!, 999, 42, 0);
+    await settleBackgroundFlush();
+    restoreStorageImpls();
+
+    expect(saved).toBe(false);
+    const contexts = (recordError as jest.Mock).mock.calls.map((call) => call[1]);
+    expect(contexts).toContain('commands: rollback not durable');
   });
 });
