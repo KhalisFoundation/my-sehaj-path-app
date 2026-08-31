@@ -78,19 +78,9 @@ const runExclusive = <T>(task: () => Promise<T>): Promise<T> => {
  * failed` alongside it: nothing ever reached the disk to fail.
  */
 const reportRollbackNotDurable = (context: string): void => {
-  if (!persistence.isRunning()) {
-    // Logged as well as the reported case, because the suppression IS the fix:
-    // with only the line below, a working build and dead code look identical
-    // from the console.
-    if (__DEV__) {
-      console.log(`[commands] rollback flush failed — SUPPRESSED, writer stopped (${context})`);
-    }
-    return;
+  if (persistence.isRunning()) {
+    recordError(new Error('rollback flush failed; on-disk journal may be stale'), context);
   }
-  if (__DEV__) {
-    console.log(`[commands] rollback flush failed — REPORTING, writer running (${context})`);
-  }
-  recordError(new Error('rollback flush failed; on-disk journal may be stale'), context);
 };
 
 /**
