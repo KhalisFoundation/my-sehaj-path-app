@@ -1,6 +1,10 @@
 jest.mock('../../utils/crashlytics', () => ({ recordError: jest.fn() }));
 jest.mock('../../utils/analytics', () => ({ trackEvent: jest.fn() }));
 jest.mock('../../db/connection', () => ({ getBani: jest.fn(), resetBani: jest.fn() }));
+jest.mock('@react-native-community/netinfo', () => ({
+  __esModule: true,
+  default: { fetch: jest.fn() },
+}));
 jest.mock('../../db/downloadDatabase', () => ({
   downloadDatabase: jest.fn(),
   isDatabaseDownloadBlockedByStorage: jest.fn(() => Promise.resolve(false)),
@@ -22,12 +26,14 @@ import { trackEvent } from '../../utils/analytics';
 import { store } from '../../store';
 import { dbDownloadStarted } from '../../store/slices/dbSlice';
 import { setOnline } from '../../store/slices/networkSlice';
+import NetInfo from '@react-native-community/netinfo';
 
 const mockedInstalled = isDatabaseInstalled as jest.Mock;
 const mockedDownload = downloadDatabase as jest.Mock;
 const mockedStorageBlocked = isDatabaseDownloadBlockedByStorage as jest.Mock;
 const mockedInProgress = isDatabaseDownloadInProgress as jest.Mock;
 const mockedPerformUpdate = performDatabaseUpdate as jest.Mock;
+const mockedNetInfoFetch = NetInfo.fetch as jest.Mock;
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -37,6 +43,8 @@ beforeEach(() => {
   mockedDownload.mockResolvedValue({ status: 'downloaded' });
   mockedPerformUpdate.mockResolvedValue({ status: 'updated' });
   store.dispatch(setOnline(true));
+  // Default: the live check agrees with the store.
+  mockedNetInfoFetch.mockResolvedValue({ isConnected: true, isInternetReachable: true });
 });
 
 describe('provisionDatabase', () => {
@@ -121,6 +129,58 @@ describe('provisionDatabase', () => {
 
     expect(mockedDownload).toHaveBeenCalledTimes(2);
     expect(store.getState().db.status).toBe('ready');
+  });
+
+  it('does not burn a second attempt when the connection dropped mid-download', async () => {
+    // Device report, 2.0.1: two failures logged in the SAME second, every time —
+    // "connection interrupted" then "network unavailable". Each line is one
+    // attempt, so a single dropped connection was reported to Crashlytics twice.
+    //
+    // The store's `isOnline` is a cached NetInfo reading, and it is wrong at
+    // exactly the moment this decision is made: the connection has just gone,
+    // the in-flight download is failing because of it, and the listener has not
+    // delivered the false edge yet. The retry then starts against a dead
+    // connection and cannot possibly succeed.
+    mockedInProgress.mockReturnValueOnce(true).mockReturnValue(false);
+    store.dispatch(setOnline(true)); // stale — the drop has not propagated
+    mockedNetInfoFetch.mockResolvedValue({ isConnected: false, isInternetReachable: false });
+    mockedDownload.mockResolvedValue({
+      status: 'failed',
+      reason: 'unexpected end of stream',
+    });
+
+    await provisionDatabase();
+
+    expect(mockedDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('still retries when reachability is not yet known after a reconnect', async () => {
+    // `isInternetReachable` is null while the probe is still running, which is
+    // normal in the first moments after reconnecting — exactly when this retry
+    // exists to fire. Reading unknown as offline would suppress it.
+    mockedInProgress.mockReturnValueOnce(true).mockReturnValue(false);
+    mockedNetInfoFetch.mockResolvedValue({ isConnected: true, isInternetReachable: null });
+    mockedDownload
+      .mockResolvedValueOnce({ status: 'failed', reason: 'Unable to resolve host' })
+      .mockResolvedValueOnce({ status: 'downloaded' });
+
+    await provisionDatabase();
+
+    expect(mockedDownload).toHaveBeenCalledTimes(2);
+    expect(store.getState().db.status).toBe('ready');
+  });
+
+  it('falls back to the store when the live network check throws', async () => {
+    // A NetInfo failure must never be able to stop provisioning altogether.
+    mockedInProgress.mockReturnValueOnce(true).mockReturnValue(false);
+    mockedNetInfoFetch.mockRejectedValue(new Error('netinfo unavailable'));
+    mockedDownload
+      .mockResolvedValueOnce({ status: 'failed', reason: 'Unable to resolve host' })
+      .mockResolvedValueOnce({ status: 'downloaded' });
+
+    await provisionDatabase();
+
+    expect(mockedDownload).toHaveBeenCalledTimes(2);
   });
 
   it('does not restart a joined request while the device is still offline', async () => {

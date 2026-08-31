@@ -7,10 +7,12 @@ import {
   stopDownload,
   unlink,
 } from '@dr.pogodin/react-native-fs';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SEHAJ_DB_MD5_URL, SEHAJ_DB_REMOTE_URL } from '@constants';
 import { recordError } from '@utils';
 import { getBani, resetBani } from './connection';
+import { isOnlineNow } from './connectivity';
 import { LOCAL_DB_PATH, TEMP_DB_PATH } from './paths';
 
 /**
@@ -75,6 +77,55 @@ type ReportedFailureKind =
 const failureAttributes = (kind: ReportedFailureKind): Record<string, string> => ({
   db_failure_kind: kind,
 });
+
+/**
+ * Report a download failure — unless it is one the app itself caused, or one the
+ * user's own network state fully explains.
+ *
+ * Two suppressions, both about the same thing: a report should mean "something
+ * is wrong with the app", and neither of these does.
+ *
+ * **Offline.** A reader with no connection cannot fetch a ~181 MB file, and every
+ * way that attempt ends is the expected outcome rather than a defect: a dead
+ * socket, a timeout, or a truncated file that then fails its own header check.
+ *
+ * **Not in the foreground.** Android tears the socket down when the app loses
+ * focus, and the app does that to itself every time it hands off to the SSO
+ * browser. Measured on device: a download started, the browser opened 3.8s later,
+ * and the transfer died 6.1s after that with `Software caused connection abort`
+ * — classified `connection-interrupted`, nowhere near any timeout. So every user
+ * who signs in during the first-run download filed a crash report for behaviour
+ * the app asked for.
+ *
+ * `insufficient-storage` is exempt from both. A full disk is a genuine problem
+ * whatever the network or lifecycle is doing, and it is the one kind the app acts
+ * on — `dbFailed` plus a persisted block that stops automatic retries — so it
+ * must stay visible.
+ *
+ * Connectivity is read live rather than from the store: the store's copy is
+ * stale at exactly this moment, still holding `true` for a connection that has
+ * just dropped and is the reason we are in here at all.
+ *
+ * Deliberately conservative: this reads the CURRENT lifecycle state, so a
+ * rejection that arrives only after the app is foregrounded again is still
+ * reported. Over-reporting is the safe direction — the failure is real either
+ * way, and the alternative risks hiding one.
+ */
+const reportDownloadFailure = async (
+  error: unknown,
+  context: string,
+  kind: ReportedFailureKind
+): Promise<void> => {
+  if (kind !== 'insufficient-storage') {
+    if (AppState.currentState !== 'active') {
+      return;
+    }
+    if (!(await isOnlineNow())) {
+      return;
+    }
+  }
+  recordError(error, context, failureAttributes(kind));
+};
 
 const DOWNLOAD_FAILURE_CONTEXT: Record<DownloadFailureKind, string> = {
   'insufficient-storage': 'db: database download failed - insufficient storage',
@@ -408,10 +459,10 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
       // file has been fetched too often), which is exactly what needs to be
       // visible after a change of host.
       const reason = `HTTP ${result.statusCode}`;
-      recordError(
+      await reportDownloadFailure(
         new Error(reason),
         'db: database download rejected by host',
-        failureAttributes('rejected-by-host')
+        'rejected-by-host'
       );
       return { status: 'failed', reason };
     }
@@ -421,10 +472,10 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
       // Nothing is installed unless the digest matched, so the existing
       // database — if any — is left exactly as it was and the user can retry.
       await safeUnlink(TEMP_DB_PATH);
-      recordError(
+      await reportDownloadFailure(
         new Error(verified.reason),
         `db: downloaded database failed verification - ${verified.kind}`,
-        failureAttributes(verified.kind)
+        verified.kind
       );
       return { status: 'failed', reason: verified.reason };
     }
@@ -449,7 +500,7 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
     // stack trace, so every kind raised from this same catch would otherwise
     // collapse into one issue. The custom key is what makes "out of disk"
     // filterable apart from "the connection dropped".
-    recordError(error, DOWNLOAD_FAILURE_CONTEXT[failureKind], failureAttributes(failureKind));
+    await reportDownloadFailure(error, DOWNLOAD_FAILURE_CONTEXT[failureKind], failureKind);
     if (failureKind === 'insufficient-storage') {
       return { status: 'insufficient-storage' };
     }
@@ -524,7 +575,13 @@ export const checkForDatabaseUpdate = async (): Promise<DatabaseCheckResult> => 
     const available = await bani.checkForUpdate(localMd5, SEHAJ_DB_MD5_URL);
     return available ? { status: 'update-available' } : { status: 'up-to-date' };
   } catch (error) {
-    recordError(error, 'db: update check failed (offline?)');
+    // Only worth reporting with a connection. The check fetches the published
+    // `.md5`, so without one it fails by definition and says nothing — the
+    // guard is what makes reaching `recordError` mean the check failed DESPITE
+    // being online, which is the only version of this that is a real problem.
+    if (await isOnlineNow()) {
+      recordError(error, 'db: update check failed while online');
+    }
     return {
       status: 'check-failed',
       reason: error instanceof Error ? error.message : 'unknown error',

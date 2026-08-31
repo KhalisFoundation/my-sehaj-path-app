@@ -8,6 +8,7 @@ import {
   dbReady,
 } from '../store/slices/dbSlice';
 import { resetBani } from './connection';
+import { isOnlineNow } from './connectivity';
 import {
   downloadDatabase,
   isDatabaseDownloadBlockedByStorage,
@@ -37,7 +38,7 @@ export const provisionDatabase = async (): Promise<void> => {
       const activeResult = await downloadDatabase();
       if (
         activeResult.status !== 'insufficient-storage' &&
-        store.getState().network.isOnline &&
+        (await isOnlineNow()) &&
         !(await isDatabaseInstalled())
       ) {
         await provisionDatabase();
