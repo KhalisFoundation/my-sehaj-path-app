@@ -228,6 +228,55 @@ describe('SyncPopup — unowned progress', () => {
     expect(mockRun).toHaveBeenCalledWith(expect.anything(), 'u@e.com');
   });
 
+  it('restores again after signing out and back in as the same account', async () => {
+    // Device report: sign in, and nothing happens at all — no loading, no error,
+    // no progress — until the app is restarted.
+    //
+    // The attempt guard is a ref on a component that never unmounts: the unowned
+    // popup lives in HomeScreen, and Home stays mounted while the drawer signs
+    // the user out and back in. `logout()` resets the sync slice, but Redux is
+    // all it can reach. The key is only email + connectivity, so signing back in
+    // as the SAME account reproduced the spent key exactly — the effect saw its
+    // own finished attempt and declined. No attempt meant no busy state (so no
+    // loading dialog) and no failure (so no retry and no message): the account
+    // simply stayed unconnected. Restarting "fixed" it only because a fresh
+    // mount gives fresh refs.
+    mockState.paths.paths = [];
+    mockState.paths.dates = [];
+    mockRun.mockResolvedValue(true);
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(<SyncPopup mode="unowned" />);
+    });
+    expect(mockRun).toHaveBeenCalledTimes(1);
+
+    // `SyncPopup` is memoised and the mocked selector does not subscribe, so an
+    // update with identical props would bail out and never re-read the state
+    // below. A fresh callback identity re-renders the SAME instance — remounting
+    // (a new `key`) would hand it the fresh refs whose absence is the bug.
+    const rerender = async () => {
+      await act(async () => {
+        renderer.update(<SyncPopup mode="unowned" onAccountSwitched={() => undefined} />);
+      });
+    };
+
+    // Sign out, exactly as `logout()` leaves it: session gone, same mount.
+    mockState.auth.status = 'signedOut';
+    mockState.auth.email = '';
+    mockState.sync.account = null;
+    mockState.sync.syncPopupAnswered = false;
+    await rerender();
+
+    // Back in as the same user, so `attemptKey` is byte-identical to the spent
+    // one. This is the assertion that fails without the reset.
+    mockState.auth.status = 'signedIn';
+    mockState.auth.email = 'u@e.com';
+    await rerender();
+
+    expect(mockRun).toHaveBeenCalledTimes(2);
+  });
+
   it('does not ask about local progress while the account is still connecting', async () => {
     // Device report: signed in with a new account and no reading, created a
     // path, and was asked what to do with "local progress" — on an account that
