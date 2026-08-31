@@ -32,7 +32,7 @@ export function getSSOLoginUrl(): string {
 }
 
 /**
- * Account deletion, required by App Store guideline 5.1.1(v) and Google Play.
+ * Account deletion, required by App Store guideline 5.1.1(v).
  *
  * On the IDENTITY PROVIDER, not the service provider — the two are different
  * hosts, which is why this builds from `IDP_API` rather than `SP_API`.

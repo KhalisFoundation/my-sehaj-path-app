@@ -45,11 +45,13 @@ export const Settings = ({ navigation }: SettingProps) => {
 
   const isSignedIn = useAppSelector((state) => state.auth.status === 'signedIn');
 
-  // iOS only, by product decision. Apple guideline 5.1.1(v) makes this mandatory
-  // for App Store review; Google Play requires the same of any app offering
-  // sign-up, so shipping it hidden on Android is a known, accepted gap rather
-  // than an oversight — the flow underneath is platform-agnostic and the row is
-  // the only thing gated, so turning it on for Android is a one-line change.
+  // iOS only, by product decision.
+  //
+  // Apple guideline 5.1.1(v) makes in-app account deletion mandatory for App
+  // Store review, so the row exists to satisfy that.
+  //
+  // Only the row is gated: `deleteAccount` itself is platform-agnostic and makes
+  // the same call wherever it runs.
   const canDeleteAccount = isSignedIn && Platform.OS === 'ios';
 
   // Disabled while in flight: a second tap fires a second DELETE, and the server
