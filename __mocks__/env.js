@@ -4,4 +4,5 @@
 module.exports = {
   SEHAJ_API_URL: 'http://localhost:3500',
   SSO_SERVICE_URL: 'https://sso.test.local',
+  SSO_IDP_URL: 'https://idp.test.local',
 };

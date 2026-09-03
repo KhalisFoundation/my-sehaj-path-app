@@ -7,10 +7,12 @@ import {
   stopDownload,
   unlink,
 } from '@dr.pogodin/react-native-fs';
+import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SEHAJ_DB_MD5_URL, SEHAJ_DB_REMOTE_URL } from '@constants';
 import { recordError } from '@utils';
 import { getBani, resetBani } from './connection';
+import { isOnlineNow } from './connectivity';
 import { LOCAL_DB_PATH, TEMP_DB_PATH } from './paths';
 
 /**
@@ -70,11 +72,77 @@ type ReportedFailureKind =
   | 'rejected-by-host'
   | 'invalid-file'
   | 'checksum-mismatch'
-  | 'checksum-unavailable';
+  | 'checksum-unavailable'
+  | 'hash-failed';
 
 const failureAttributes = (kind: ReportedFailureKind): Record<string, string> => ({
   db_failure_kind: kind,
 });
+
+/**
+ * The only failure this app is willing to stay quiet about.
+ *
+ * `connection-interrupted` means a socket that was ESTABLISHED and then cut —
+ * `unexpected end of stream`, `ECONNRESET`, `Software caused connection abort`.
+ * By definition it can only happen mid-transfer, which is why no separate
+ * "was it mid-download?" check is needed.
+ *
+ * Everything else reports, deliberately. A missing connection is only ever a
+ * complete explanation for a transfer that was already running and got cut. It
+ * does NOT explain a host that never answered (`network-unavailable` may be our
+ * DNS), a server that hung (`network-timeout`), or a checksum file the host did
+ * not serve (`checksum-unavailable`) — each of those can be our problem, and
+ * silence would hide it.
+ *
+ * Even this kind only goes quiet when the phone CONFIRMS it is offline, or the
+ * app is not on screen. Cut mid-transfer while online and foregrounded, and it
+ * is reported like anything else.
+ */
+const SUPPRESSIBLE_KINDS = new Set<ReportedFailureKind>(['connection-interrupted']);
+
+/**
+ * Report a download failure — unless it is one the app itself caused, or one the
+ * user's own network state fully explains.
+ *
+ * Two suppressions, both about the same thing: a report should mean "something
+ * is wrong with the app", and neither of these does.
+ *
+ * **Offline.** A reader with no connection cannot fetch a ~181 MB file, and every
+ * way that attempt ends is the expected outcome rather than a defect: a dead
+ * socket, a timeout, or a truncated file that then fails its own header check.
+ *
+ * **Not in the foreground.** Android tears the socket down when the app loses
+ * focus, and the app does that to itself every time it hands off to the SSO
+ * browser. Measured on device: a download started, the browser opened 3.8s later,
+ * and the transfer died 6.1s after that with `Software caused connection abort`
+ * — classified `connection-interrupted`, nowhere near any timeout. So every user
+ * who signs in during the first-run download filed a crash report for behaviour
+ * the app asked for.
+ *
+ * Connectivity is read live rather than from the store: the store's copy is
+ * stale at exactly this moment, still holding `true` for a connection that has
+ * just dropped and is the reason we are in here at all.
+ *
+ * Deliberately conservative: this reads the CURRENT lifecycle state, so a
+ * rejection that arrives only after the app is foregrounded again is still
+ * reported. Over-reporting is the safe direction — the failure is real either
+ * way, and the alternative risks hiding one.
+ */
+const reportDownloadFailure = async (
+  error: unknown,
+  context: string,
+  kind: ReportedFailureKind
+): Promise<void> => {
+  if (SUPPRESSIBLE_KINDS.has(kind)) {
+    if (AppState.currentState !== 'active') {
+      return;
+    }
+    if (!(await isOnlineNow())) {
+      return;
+    }
+  }
+  recordError(error, context, failureAttributes(kind));
+};
 
 const DOWNLOAD_FAILURE_CONTEXT: Record<DownloadFailureKind, string> = {
   'insufficient-storage': 'db: database download failed - insufficient storage',
@@ -312,9 +380,13 @@ const verifyDownloadedDatabase = async (path: string): Promise<VerifyResult> => 
   try {
     actual = (await hash(path, 'md5')).toLowerCase();
   } catch {
+    // NOT `checksum-unavailable`. Hashing reads a file already on this device,
+    // so a connection has nothing to do with it — sharing a kind with the fetch
+    // above meant a phone that could not read its own download was silenced
+    // whenever the reader happened to be offline.
     return {
       ok: false,
-      kind: 'checksum-unavailable',
+      kind: 'hash-failed',
       reason: 'could not compute the downloaded database checksum',
     };
   }
@@ -408,10 +480,10 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
       // file has been fetched too often), which is exactly what needs to be
       // visible after a change of host.
       const reason = `HTTP ${result.statusCode}`;
-      recordError(
+      await reportDownloadFailure(
         new Error(reason),
         'db: database download rejected by host',
-        failureAttributes('rejected-by-host')
+        'rejected-by-host'
       );
       return { status: 'failed', reason };
     }
@@ -421,10 +493,10 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
       // Nothing is installed unless the digest matched, so the existing
       // database — if any — is left exactly as it was and the user can retry.
       await safeUnlink(TEMP_DB_PATH);
-      recordError(
+      await reportDownloadFailure(
         new Error(verified.reason),
         `db: downloaded database failed verification - ${verified.kind}`,
-        failureAttributes(verified.kind)
+        verified.kind
       );
       return { status: 'failed', reason: verified.reason };
     }
@@ -449,7 +521,7 @@ const downloadDatabaseInternal = async (force = false): Promise<DownloadResult> 
     // stack trace, so every kind raised from this same catch would otherwise
     // collapse into one issue. The custom key is what makes "out of disk"
     // filterable apart from "the connection dropped".
-    recordError(error, DOWNLOAD_FAILURE_CONTEXT[failureKind], failureAttributes(failureKind));
+    await reportDownloadFailure(error, DOWNLOAD_FAILURE_CONTEXT[failureKind], failureKind);
     if (failureKind === 'insufficient-storage') {
       return { status: 'insufficient-storage' };
     }
@@ -524,7 +596,21 @@ export const checkForDatabaseUpdate = async (): Promise<DatabaseCheckResult> => 
     const available = await bani.checkForUpdate(localMd5, SEHAJ_DB_MD5_URL);
     return available ? { status: 'update-available' } : { status: 'up-to-date' };
   } catch (error) {
-    recordError(error, 'db: update check failed (offline?)');
+    // Same gate as every other network-caused DB failure, so this cannot become
+    // the one site that reports what the others suppress. The check fetches the
+    // published `.md5`, so with no connection — or with the app backgrounded and
+    // its sockets torn down — it fails by definition and says nothing. Reaching
+    // `recordError` therefore means the check failed DESPITE being online and on
+    // screen, which is the only version of this worth anyone's attention.
+    // `checksum-unavailable`, not `other`: this check's whole job is fetching the
+    // published `.md5` and comparing it, so a failure here IS a checksum it could
+    // not obtain. It also has to stay suppressible — `other` is always reported,
+    // and an update check failing with no connection is expected, not a defect.
+    await reportDownloadFailure(
+      error,
+      'db: update check failed while online',
+      'checksum-unavailable'
+    );
     return {
       status: 'check-failed',
       reason: error instanceof Error ? error.message : 'unknown error',

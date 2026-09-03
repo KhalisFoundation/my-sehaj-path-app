@@ -323,6 +323,28 @@ export const clearLocalDataForLogout = async (store: AppStore): Promise<boolean>
   clearActiveAccountDataDurably(store);
 
 /**
+ * Remove the account's reading after the user deleted their Khalis account.
+ *
+ * The same durable clear as logout, and deliberately WITHOUT logout's
+ * `isFullyBackedUp` gate. That gate exists to guarantee the server can give the
+ * reading back; here the server copy is itself being destroyed, so waiting for a
+ * sync would only upload data to an account that is being deleted. Requiring it
+ * would also block a store-mandated flow behind a network condition, which is
+ * exactly what Apple and Google forbid.
+ *
+ * What the user can still recover, and what they cannot, follows from the grace
+ * period rather than from this function: reading that HAD synced comes back if
+ * they sign in within 30 days, because that cancels the deletion. Reading that
+ * had never left the device does not — which is why the confirmation copy says
+ * the removal is from this device too, rather than implying a sign-in undoes it.
+ *
+ * Returns false when the clear could not be made durable, leaving the data
+ * exactly as it was so the caller can say so rather than silently keeping it.
+ */
+export const clearLocalDataForAccountDeletion = async (store: AppStore): Promise<boolean> =>
+  clearActiveAccountDataDurably(store);
+
+/**
  * The user explicitly chose the signed-in account's cloud data over unrelated
  * local paths on this device. Clear only after that choice, make the clear
  * durable, then download the account. If download fails, restore the local
