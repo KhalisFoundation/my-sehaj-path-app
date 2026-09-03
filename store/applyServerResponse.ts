@@ -7,21 +7,15 @@ import {
 import { clearCurrentToken } from '../auth/tokenUtils';
 import type { AngsFormat, DateData, FontSizeData, PathData, VishraamsSource } from '../types';
 import { recordError } from '../utils/crashlytics';
-import type { AppStore, RootState } from './index';
+import { removePathAndSyncState, type AppStore, type RootState } from './index';
 import { getQuarantinedPathIds } from './persistence';
 import { setSignedOut } from './slices/authSlice';
-import {
-  addServerPath,
-  applyServerPathData,
-  getNextPathId,
-  removePathLocal,
-} from './slices/pathsSlice';
+import { addServerPath, applyServerPathData, getNextPathId } from './slices/pathsSlice';
 import { hydrateSettings, type SettingsState } from './slices/settingsSlice';
 import {
   ackServerPath,
   clearScrollIfUnchanged,
   clearSettingsIfUnchanged,
-  dropMeta,
   markSettingsDirty,
   setLastSyncedAt,
   setSyncError,
@@ -295,8 +289,7 @@ export const reconcileDeletions = (
     ) {
       continue;
     }
-    store.dispatch(removePathLocal(pathId));
-    store.dispatch(dropMeta(pathId));
+    store.dispatch(removePathAndSyncState({ pathId }));
   }
 };
 
@@ -387,8 +380,7 @@ export const applySyncResult = (
     ) {
       return;
     }
-    store.dispatch(removePathLocal(pathId));
-    store.dispatch(dropMeta(pathId));
+    store.dispatch(removePathAndSyncState({ pathId }));
   });
 
   snapshot.scroll.forEach((ts, pathId) => {
@@ -495,34 +487,37 @@ const performRefreshPathsFromServer = async (
     // "Nothing changed" is a successful answer, not a failure. Without this the
     // client reports "unable to sync" for a refresh the server answered fine.
     const pathsUnchanged = pathsResult.error && pathsResult.response?.status === 304;
-    if (pathsUnchanged) {
-      store.dispatch(setSyncError(null));
-      store.dispatch(setSyncStatus('idle'));
-      return true;
-    }
-    if (pathsResult.error || !pathsResult.data || (settingsResult.error && !settingsMissing)) {
+    if (
+      (pathsResult.error && !pathsUnchanged) ||
+      (!pathsUnchanged && !pathsResult.data) ||
+      (settingsResult.error && !settingsMissing)
+    ) {
       // A foreground refresh has no caller that can show its false result. Put
       // the failure in sync state so the in-app status notice can tell the user
       // their cloud copy could not be loaded instead of showing an empty/stale UI.
       store.dispatch(setSyncError('network'));
       return false;
     }
-    pathsResult.data.forEach((sp) => {
-      // Leave the path open in the reader completely untouched — don't apply the
-      // server's name/progress/readDates under an active reader. It reconciles on
-      // the next safe refresh once the reader exits.
-      const localId = findLocalIdByServerPathId(store.getState(), sp.pathId);
-      if (localId != null && localId === activePathId) {
-        return;
-      }
-      applyServerPath(store, sp);
-    });
-    reconcileDeletions(
-      store,
-      new Set(pathsResult.data.map((sp) => sp.pathId)),
-      activePathId,
-      expectedMeta
-    );
+    if (!pathsUnchanged && pathsResult.data) {
+      pathsResult.data.forEach((sp) => {
+        // Leave the path open in the reader completely untouched — don't apply the
+        // server's name/progress/readDates under an active reader. It reconciles on
+        // the next safe refresh once the reader exits.
+        const localId = findLocalIdByServerPathId(store.getState(), sp.pathId);
+        if (localId != null && localId === activePathId) {
+          return;
+        }
+        applyServerPath(store, sp);
+      });
+    }
+    if (!pathsUnchanged && pathsResult.data) {
+      reconcileDeletions(
+        store,
+        new Set(pathsResult.data.map((path) => path.pathId)),
+        activePathId,
+        expectedMeta
+      );
+    }
     // A local settings edit wins until its own PUT is acknowledged. Otherwise
     // this is the normal place a second device's settings reach this device.
     if (

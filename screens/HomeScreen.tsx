@@ -14,26 +14,32 @@ import {
   SyncPopup,
   SignInPopup,
   SyncUnavailablePopup,
+  Message,
 } from '@components';
 import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
 import { recordError, showErrorAlert, trackEvent } from '@utils';
 import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
-import { MenuIcon } from '@icons';
+import { MenuIcon, SyncedCheckIcon } from '@icons';
 import { useAppSelector } from '../store/hooks';
+import { selectVisiblePaths } from '../store/selectors';
 import { createPath } from '../store/commands';
 import { onForeground } from '../store/syncLifecycle';
 import { sortPathsForHome } from '../store/pathOrdering';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
+export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
-  const paths = useAppSelector((state) => state.paths.paths);
+  // Not the raw slice: a deleted path lingers there until the server confirms.
+  const paths = useAppSelector(selectVisiblePaths);
   const syncMeta = useAppSelector((state) => state.sync.meta);
   const { handleDrawerNavigate } = useDrawerNavigation();
   const isCreatingRef = useRef(false);
+  // Set by Continue on its way here. Cleared once read, so returning to Home
+  // later never replays a confirmation for something deleted minutes ago.
+  const pathDeleted = route.params?.pathDeleted === true;
   useScreenAnalytics('HomeScreen', 'HomeScreen');
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
@@ -171,6 +177,14 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
             ) : undefined}
           </View>
         </ScrollView>
+        {pathDeleted ? (
+          <Message
+            message={Constants.PATH_DELETED}
+            icon={<SyncedCheckIcon />}
+            style={HomeScreenStyles.deletedNotice}
+            onHidden={() => navigation.setParams({ pathDeleted: undefined })}
+          />
+        ) : null}
         <DrawerMenu
           isVisible={isDrawerVisible}
           onClose={handleCloseDrawer}

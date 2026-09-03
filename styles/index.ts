@@ -36,3 +36,4 @@ export { ParagraphModeStyles } from './ParagraphModeStyles';
 export { DrawerMenuStyles } from './DrawerMenuStyles';
 export { DialogStyles } from './DialogStyles';
 export { SyncStatusNoticeStyles } from './SyncStatusNoticeStyles';
+export { PathOptionsMenuStyles } from './PathOptionsMenuStyles';

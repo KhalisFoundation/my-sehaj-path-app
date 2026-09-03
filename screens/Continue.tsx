@@ -13,6 +13,7 @@ import {
   SecondaryHeading,
   ImportantText,
   PathRename,
+  PathOptionsMenu,
   Calender,
 } from '@components';
 import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, PATH_DATA } from '@constants';
@@ -20,6 +21,7 @@ import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
 import { PathData, useScreenAnalytics } from '@hooks';
 import { showErrorAlert, trackEvent } from '@utils';
 import { useAppSelector } from '../store/hooks';
+import { selectVisiblePaths } from '../store/selectors';
 import { LeftArrowIcon, ContinueIcon } from '@icons';
 import { RootStackParamList } from '../App';
 
@@ -54,8 +56,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   });
 
   const streak = useRef<number>(0);
+  /** Set while a delete is in flight, so the path vanishing is not an error. */
+  const isDeletingRef = useRef<boolean>(false);
   const matchedPath = useAppSelector((state) =>
-    state.paths.paths.find((path: PathData) => path.pathId === pathId)
+    selectVisiblePaths(state).find((path: PathData) => path.pathId === pathId)
   );
   const previousRoute = useNavigationState((state) => state.routes[state.index - 1]?.name);
   const isFromPath = previousRoute === Routes.Path;
@@ -83,6 +87,11 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const updateTheData = useCallback(() => {
     if (!matchedPath) {
+      // A path the user just deleted is SUPPOSED to disappear. Reporting that as
+      // a failed load told them the delete had gone wrong when it had worked.
+      if (isDeletingRef.current) {
+        return;
+      }
       showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA, () => navigation.goBack(), 'Retry');
       return;
     }
@@ -169,18 +178,36 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           showsVerticalScrollIndicator={false}
         >
           <View style={ContinueScreenStyles.container}>
-            <Pressable
-              style={ContinueScreenStyles.navContainer}
-              onPress={handleBackPress}
-              accessibilityLabel={isFromPath ? Constants.BACK_TO_PATH : 'Back to home'}
-              accessibilityRole="button"
-              accessibilityHint={
-                isFromPath ? 'Tap to go back to the path screen' : 'Tap to go back to home screen'
-              }
-            >
-              <NavContent navIcon={<LeftArrowIcon />} onPress={handleBackPress} />
-              <NavContent text={isFromPath ? Constants.BACK_TO_PATH : Constants.SEE_ALL_PATH} />
-            </Pressable>
+            <View style={ContinueScreenStyles.navRow}>
+              <Pressable
+                style={ContinueScreenStyles.navContainer}
+                onPress={handleBackPress}
+                accessibilityLabel={isFromPath ? Constants.BACK_TO_PATH : 'Back to home'}
+                accessibilityRole="button"
+                accessibilityHint={
+                  isFromPath ? 'Tap to go back to the path screen' : 'Tap to go back to home screen'
+                }
+              >
+                <NavContent navIcon={<LeftArrowIcon />} onPress={handleBackPress} />
+                <NavContent text={isFromPath ? Constants.BACK_TO_PATH : Constants.SEE_ALL_PATH} />
+              </Pressable>
+              {matchedPath ? (
+                <PathOptionsMenu
+                  pathId={pathId}
+                  pathName={pathState.pathName || pathState.pathData?.pathName || ''}
+                  // Always Home, never `goBack`: coming from the reader, back
+                  // would return to a path that no longer exists.
+                  onDeleted={() =>
+                    navigation.replace(Routes.Home, {
+                      pathDeleted: true,
+                    })
+                  }
+                  onDeletingChange={(deleting) => {
+                    isDeletingRef.current = deleting;
+                  }}
+                />
+              ) : null}
+            </View>
             <View style={ContinueScreenStyles.tabsContainer}>
               <Pressable
                 style={uiState.tabs === 'progress' ? ContinueScreenStyles.tabActive : null}

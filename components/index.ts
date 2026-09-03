@@ -33,3 +33,4 @@ export { SyncUnavailablePopup } from './SyncUnavailablePopup';
 export { SessionExpiredPopup } from './SessionExpiredPopup';
 export { PathSelectionProvider, usePathSelection } from './PathSelectionContext';
 export type { PathSelection } from './PathSelectionContext';
+export { PathOptionsMenu } from './PathOptionsMenu';

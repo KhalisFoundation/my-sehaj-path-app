@@ -1,7 +1,8 @@
 import React, { useCallback } from 'react';
-import { Image, Linking, ScrollView, TouchableOpacity, View, Text } from 'react-native';
+import { Image, Linking, ScrollView, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppText as Text } from '../components/AppText';
 import { NavContent } from '@components';
 import { LeftArrowIcon } from '@icons';
 import {
