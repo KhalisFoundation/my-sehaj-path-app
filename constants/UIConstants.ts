@@ -24,6 +24,34 @@ export const UIConstants: UIConstant = {
   PATH_SELECTED_BACKGROUND_COLOR: 'rgba(253, 198, 6, 0.3)',
   PADDING: 12,
   RHYTHM: 12,
+
+  // Shared screen chrome. These were literals repeated across the style files
+  // (#0D2346 and #11336A appear in eight of them); naming them here is what lets
+  // a screen be restyled without hunting for hex codes.
+  SCREEN_BACKGROUND: '#FFFFFF',
+  NAV_BACKGROUND: '#0D2346',
+  NAV_TEXT_COLOR: '#FFFFFF',
+  NAV_TITLE_FONT_SIZE: 20,
+
+  // Text roles, darkest to lightest.
+  BRAND_TEXT_COLOR: '#11336A',
+  BODY_TEXT_COLOR: '#2C3E50',
+  MUTED_TEXT_COLOR: '#6B7B8F',
+  DIVIDER_COLOR: '#E3E9F2',
+
+  // Base sizes. `AppText` scales these by the user's font-size setting, so they
+  // are the value at the default setting rather than a fixed rendered size.
+  TITLE_FONT_SIZE: 28,
+  SUBTITLE_FONT_SIZE: 20,
+  BODY_FONT_SIZE: 16,
+  BODY_LINE_HEIGHT: 26,
+  CAPTION_FONT_SIZE: 14,
+
+  // About screen artwork, sized to the aspect ratio of each source image.
+  ABOUT_KHALIS_LOGO_WIDTH: 220,
+  ABOUT_KHALIS_LOGO_HEIGHT: 74,
+  ABOUT_BANIDB_LOGO_SIZE: 64,
+  DIVIDER_HEIGHT: 1,
   DRAWER_REDUCED_TRANSPARENCY_FALLBACK: 'rgba(0, 0, 0, 0.3)',
 };
 

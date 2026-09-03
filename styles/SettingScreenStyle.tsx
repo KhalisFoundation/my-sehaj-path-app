@@ -19,6 +19,9 @@ export const SettingScreenStyle = StyleSheet.create({
     marginTop: 15,
     padding: UIConstants.RHYTHM * 1.1,
     paddingTop: 0,
+    // Room below the last row so it clears the home indicator when scrolled to
+    // the end, rather than sitting flush against it.
+    paddingBottom: UIConstants.RHYTHM * 3,
   },
   backButton: {
     flexDirection: 'row',
@@ -38,6 +41,19 @@ export const SettingScreenStyle = StyleSheet.create({
   },
   databaseUpdateText: {
     color: '#11336A',
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: 20,
+  },
+  // Account deletion reuses the database row's shape so it sits flush with the
+  // rest of the list; only the colour differs, because it is destructive.
+  deleteAccountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 15,
+  },
+  deleteAccountText: {
+    color: '#B3261E',
     fontFamily: font.Brandon_Grotesque_Regular,
     fontSize: 20,
   },

@@ -389,6 +389,33 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
   // Keying on connectivity too gives a natural retry: coming back online is a
   // new opportunity, and the attempt runs again. It cannot spin, because the key
   // only changes when the network state actually changes.
+  /**
+   * Release the one-shot attempt guards when the session ends.
+   *
+   * These are refs on a component that never unmounts: `SyncPopup mode="unowned"`
+   * lives in HomeScreen, and Home stays mounted while the drawer signs the user
+   * out and back in. `logout()` resets the sync slice, but Redux is the only
+   * thing it can reach — the refs below survived it.
+   *
+   * `attemptKey` is just email + connectivity, so signing back in as the SAME
+   * account produced a key identical to the spent one. The effect below saw its
+   * own completed attempt, declined to run, and the device was never associated:
+   * no busy state, so no loading dialog, and no failure either, so nothing
+   * retried and nothing was shown. The account simply stayed unconnected until
+   * the app was restarted — which "fixed" it only because a fresh mount gives
+   * fresh refs.
+   */
+  useEffect(() => {
+    if (status !== 'signedIn' || !email) {
+      silentAssociationTarget.current = null;
+      silentAssociationPending.current = null;
+      automaticSwitchTarget.current = null;
+      exhaustionReported.current = false;
+      setRestoreFailed(false);
+      setRestoreAttempt(0);
+    }
+  }, [status, email]);
+
   const attemptKey = `${email ?? ''}:${isOnline ? 'online' : 'offline'}`;
   useEffect(() => {
     if (canAssociateSilently && silentAssociationTarget.current !== attemptKey && !syncing) {

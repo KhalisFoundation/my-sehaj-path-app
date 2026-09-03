@@ -8,6 +8,7 @@ import {
   dbReady,
 } from '../store/slices/dbSlice';
 import { resetBani } from './connection';
+import { isOnlineNow } from './connectivity';
 import {
   downloadDatabase,
   isDatabaseDownloadBlockedByStorage,
@@ -37,7 +38,7 @@ export const provisionDatabase = async (): Promise<void> => {
       const activeResult = await downloadDatabase();
       if (
         activeResult.status !== 'insufficient-storage' &&
-        store.getState().network.isOnline &&
+        (await isOnlineNow()) &&
         !(await isDatabaseInstalled())
       ) {
         await provisionDatabase();
@@ -48,10 +49,21 @@ export const provisionDatabase = async (): Promise<void> => {
       store.dispatch(dbReady());
       return;
     }
-    // Foreground events can fire while NetInfo already knows the device is
-    // offline. Wait for the reconnect edge instead of burning a retry and
-    // reporting an expected network-unavailable failure to Crashlytics.
-    if (!store.getState().network.isOnline) {
+    // Prove the connection before starting a ~181 MB transfer.
+    //
+    // The store's flag is a cached NetInfo reading and it is wrong in both
+    // directions. Going offline it stays `true` for a moment; coming back online
+    // it turns `true` before the network is usable — the reconnect edge fires,
+    // this starts a download immediately, and it dies on DNS with "Unable to
+    // resolve host". Measured: switching data back on produced exactly that,
+    // followed by "Failed to connect", both from attempts that never had a
+    // chance.
+    //
+    // `isOnlineNow` settles it by actually reaching the network, which costs one
+    // small request on a path that only runs at boot, on reconnect, and on
+    // foreground — against a download that would otherwise be started, fail, and
+    // be reported for nothing.
+    if (!(await isOnlineNow())) {
       return;
     }
     if (await isDatabaseDownloadBlockedByStorage()) {
