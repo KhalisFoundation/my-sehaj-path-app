@@ -501,6 +501,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     fadeAnim.current.setValue(1);
   }, []);
 
+  /**
+   * Ang navigation jumps to a different ang, so the old scroll offset means
+   * nothing there — keeping it drops the reader part-way down a page they have
+   * not seen. The arrows already reset it; this is what makes "go to ang" match.
+   *
+   * Reset before `updatePathAng` so the new content renders at the top rather
+   * than visibly jumping after it lands.
+   */
   const jumpToAng = useCallback(
     (angNumber: number) => {
       scrollOffset.current = 0;

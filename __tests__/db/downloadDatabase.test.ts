@@ -9,9 +9,11 @@ jest.mock('../../db/connection', () => ({
   getBani: jest.fn(),
   resetBani: jest.fn(),
 }));
+jest.mock('../../db/connectivity', () => ({ isOnlineNow: jest.fn() }));
 
 import * as RNFS from '@dr.pogodin/react-native-fs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState } from 'react-native';
 import {
   downloadDatabase,
   checkForDatabaseUpdate,
@@ -20,6 +22,7 @@ import {
 } from '../../db/downloadDatabase';
 import { getBani } from '../../db/connection';
 import { recordError } from '../../utils/crashlytics';
+import { isOnlineNow } from '../../db/connectivity';
 
 /** Stubs the published `.md5` endpoint the download verification fetches. */
 const mockFetchChecksum = (digest: string | null) => {
@@ -37,6 +40,7 @@ const downloadFile = RNFS.downloadFile as jest.Mock;
 const hash = RNFS.hash as jest.Mock;
 const stat = RNFS.stat as jest.Mock;
 const mockedGetBani = getBani as jest.Mock;
+const mockedOnline = isOnlineNow as jest.Mock;
 const mockedCheckForUpdate = jest.fn();
 
 const drainMicrotasks = async () => {
@@ -47,6 +51,10 @@ const drainMicrotasks = async () => {
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // Online and foregrounded unless a test says otherwise: a failure that happens
+  // with a connection, while the user is looking at the app, is a real one.
+  mockedOnline.mockResolvedValue(true);
+  (AppState as { currentState: string }).currentState = 'active';
   await AsyncStorage.clear();
   exists.mockImplementation(
     async (path: string) => path === '/mock/Documents/banidb-sehajpath.db.download'
@@ -214,6 +222,176 @@ describe('downloadDatabase', () => {
     expect(downloadFile).toHaveBeenCalledTimes(3);
   });
 
+  describe('when the app is not in the foreground', () => {
+    // Measured on device: a download started, the SSO browser took the
+    // foreground 3.8s later, and the transfer died 6.1s after that with
+    // "Software caused connection abort" — a socket Android tore down, nowhere
+    // near any timeout. The app caused that by handing off to the browser, so
+    // every user who signed in during the first-run download filed a report for
+    // behaviour the app asked for.
+    beforeEach(() => {
+      (AppState as { currentState: string }).currentState = 'background';
+    });
+
+    it('does not report a socket the OS killed on backgrounding', async () => {
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.reject(new Error('Software caused connection abort')),
+      });
+
+      await expect(downloadDatabase()).resolves.toEqual({
+        status: 'failed',
+        reason: 'Software caused connection abort',
+      });
+      expect(recordError).not.toHaveBeenCalled();
+    });
+
+    it('STILL reports a full disk — the lifecycle does not explain that', async () => {
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.reject(new Error('ENOSPC: no space left on device')),
+      });
+
+      await expect(downloadDatabase()).resolves.toEqual({ status: 'insufficient-storage' });
+      expect(recordError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'db: database download failed - insufficient storage',
+        { db_failure_kind: 'insufficient-storage' }
+      );
+    });
+  });
+
+  describe('when the device is offline', () => {
+    // A reader with no connection cannot fetch a ~181 MB file. Every way that
+    // ends — dead socket, timeout, truncated file failing its header check — is
+    // the expected outcome of their network state, not a defect, and reporting
+    // it once per foreground buries the failures that are real.
+    beforeEach(() => {
+      mockedOnline.mockResolvedValue(false);
+    });
+
+    it('STILL reports a host it could not reach — that may be our DNS', async () => {
+      // Being offline does not explain a host that never answered. The name may
+      // not resolve because the phone has no connection, or because something is
+      // wrong with our own DNS or host, and those are indistinguishable here.
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.reject(new Error('Unable to resolve host')),
+      });
+
+      await downloadDatabase();
+
+      expect(recordError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'db: database download failed - network unavailable',
+        { db_failure_kind: 'network-unavailable' }
+      );
+    });
+
+    it('STILL reports a file that is not a database — the host served that', async () => {
+      // Reaching this proves the connection WAS working: the transfer finished
+      // with a 200. And a truncated download keeps a valid SQLite header, so
+      // failing the header check means an error page, not a half-finished file.
+      // Losing the connection afterwards says nothing about it.
+      read.mockResolvedValue('<!DOCTYPE html');
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.resolve({ statusCode: 200, bytesWritten: 10 }),
+      });
+
+      await downloadDatabase();
+
+      expect(recordError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'db: downloaded database failed verification - invalid-file',
+        { db_failure_kind: 'invalid-file' }
+      );
+    });
+
+    it('STILL reports a host that refused the request', async () => {
+      // A non-200 means the host answered, so we were online when it happened.
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.resolve({ statusCode: 403, bytesWritten: 0 }),
+      });
+
+      await downloadDatabase();
+
+      expect(recordError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'db: database download rejected by host',
+        { db_failure_kind: 'rejected-by-host' }
+      );
+    });
+
+    it('STILL reports a file it could not hash — that never needed a connection', async () => {
+      // Hashing reads a file already on this device. It used to share a kind
+      // with the checksum FETCH, so a phone that could not read its own download
+      // was silenced whenever the reader happened to be offline.
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.resolve({ statusCode: 200, bytesWritten: 100 }),
+      });
+      hash.mockRejectedValue(new Error('EIO: cannot read file'));
+
+      await downloadDatabase();
+
+      expect(recordError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'db: downloaded database failed verification - hash-failed',
+        { db_failure_kind: 'hash-failed' }
+      );
+    });
+
+    it('STILL reports a checksum it could not fetch — the host may not be serving it', async () => {
+      mockFetchChecksum(null);
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.resolve({ statusCode: 200, bytesWritten: 100 }),
+      });
+
+      await downloadDatabase();
+
+      expect(recordError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'db: downloaded database failed verification - checksum-unavailable',
+        { db_failure_kind: 'checksum-unavailable' }
+      );
+    });
+
+    it('STILL reports a failure it could not classify', async () => {
+      // `other` means the classifier recognised nothing, which makes it the most
+      // likely of all the kinds to be a genuine bug. Staying quiet about the
+      // failures nobody has seen yet is exactly backwards.
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.reject(new Error('something nobody has seen before')),
+      });
+
+      await downloadDatabase();
+
+      expect(recordError).toHaveBeenCalledWith(expect.any(Error), 'db: database download failed', {
+        db_failure_kind: 'other',
+      });
+    });
+
+    it('STILL reports a full disk — that is real whatever the network is doing', async () => {
+      // The one kind the app acts on: it dispatches `dbFailed` and persists a
+      // block that stops automatic retries, so it must stay visible.
+      downloadFile.mockReturnValue({
+        jobId: 1,
+        promise: Promise.reject(new Error('ENOSPC: no space left on device')),
+      });
+
+      await expect(downloadDatabase()).resolves.toEqual({ status: 'insufficient-storage' });
+      expect(recordError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'db: database download failed - insufficient storage',
+        { db_failure_kind: 'insufficient-storage' }
+      );
+    });
+  });
+
   it.each([
     {
       error: new Error('Unable to resolve host: No address associated with hostname'),
@@ -345,6 +523,32 @@ describe('downloadDatabase', () => {
 
     expect(result.status).toBe('check-failed');
     expect(downloadFile).not.toHaveBeenCalled();
+  });
+
+  it('checkForDatabaseUpdate reports a failed check even offline', async () => {
+    // The screen only offers this while online, so it should not fire with no
+    // connection at all — and if it does, the published .md5 may be missing from
+    // the host, which is ours to fix.
+    exists.mockResolvedValue(true);
+    mockedOnline.mockResolvedValue(false);
+    mockedCheckForUpdate.mockRejectedValue(new Error('Network request failed'));
+
+    await checkForDatabaseUpdate();
+
+    expect(recordError).toHaveBeenCalled();
+  });
+
+  it('checkForDatabaseUpdate reports a check that failed while online and on screen', async () => {
+    exists.mockResolvedValue(true);
+    mockedCheckForUpdate.mockRejectedValue(new Error('500 from the host'));
+
+    await checkForDatabaseUpdate();
+
+    expect(recordError).toHaveBeenCalledWith(
+      expect.any(Error),
+      'db: update check failed while online',
+      { db_failure_kind: 'checksum-unavailable' }
+    );
   });
 
   it('checkForDatabaseUpdate reports update-available (repair) when the local MD5 cannot be read', async () => {
