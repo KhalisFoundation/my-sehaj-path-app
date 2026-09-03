@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { normalizeFontSize } from '@constants/FontSize';
 import { makeStore } from '../../store';
 import {
   createLegacyPersistence,
@@ -132,7 +133,10 @@ describe('hydrateStore', () => {
     expect(state.paths.dates).toEqual(DATES_FIXTURE);
     expect(state.paths.hydrated).toBe(true);
     expect(state.settings).toEqual({
-      fontSize: { fontSize: 'Large', number: 30 },
+      // Seeded as 'Large' at 30pt. Which step 30 lands on depends on the scale
+      // this build is running, so the label is read from the scale rather than
+      // written down here. What must never move is the SIZE, asserted below.
+      fontSize: normalizeFontSize({ number: 30 }),
       larivaar: true,
       paragraphMode: false,
       vishraam: true,

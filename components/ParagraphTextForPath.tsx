@@ -11,6 +11,7 @@ import {
   pathTextPropsAreEqual,
 } from '@utils';
 import { useAppSelector } from '../store/hooks';
+import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { usePathSelection } from './PathSelectionContext';
 import { VishraamsText } from './VishraamsText';
 
@@ -34,7 +35,7 @@ const ParagraphTextForPathComponent = ({
 
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
-  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const fontSize = useReaderFontSize();
   const isVishraam = useAppSelector((state) => state.settings.vishraam);
   const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
 
@@ -137,6 +138,7 @@ const ParagraphTextForPathComponent = ({
       disabled={selection.isSaved || selection.found}
       suppressHighlighting={true}
       style={textStyle}
+      allowFontScaling={false}
       onLayout={onLayout}
       onTextLayout={onTextLayout}
     >
@@ -147,10 +149,16 @@ const ParagraphTextForPathComponent = ({
         paragraph mode a whole shabad is one text tree, so that doubled the nodes
         Android had to lay out.
       */}
-      {isSelected ? <Text style={selectedTextStyle}>{verseContent}</Text> : verseContent}
+      {isSelected ? (
+        <Text style={selectedTextStyle} allowFontScaling={false}>
+          {verseContent}
+        </Text>
+      ) : (
+        verseContent
+      )}
 
       {isSelected && (
-        <Text>
+        <Text allowFontScaling={false}>
           <SaveIcon
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}

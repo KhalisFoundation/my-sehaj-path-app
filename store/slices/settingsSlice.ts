@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
+import { DEFAULT_FONT_SIZE } from '../../constants/FontSize';
 import type { AngsFormat, FontSizeData, VishraamsSource } from '../../types';
 
 export interface SettingsState {
@@ -22,7 +23,7 @@ export interface SettingsState {
  * settingsSlice test asserts these values to catch drift.
  */
 export const SETTINGS_DEFAULTS: SettingsState = {
-  fontSize: { fontSize: 'Small (Default)', number: 18 },
+  fontSize: { ...DEFAULT_FONT_SIZE },
   larivaar: false,
   paragraphMode: false,
   vishraam: false,

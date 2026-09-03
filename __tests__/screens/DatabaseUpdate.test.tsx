@@ -7,10 +7,17 @@ import { DatabaseUpdate } from '../../screens/DatabaseUpdate';
 const mockCheckForDatabaseUpdate = jest.fn();
 const mockRunDatabaseUpdate = jest.fn();
 const mockIsBlockedByStorage = jest.fn(() => Promise.resolve(false));
-let mockStoreState = {
+/**
+ * Every screen's text reads the app's font setting through `AppText`, so this
+ * slice must be present exactly as it always is in the real store. Spread it
+ * into any per-test override rather than replacing the whole object.
+ */
+const baseStoreState = {
   db: { status: 'failed', progress: 0 },
   network: { isOnline: true },
+  settings: { fontSize: { fontSize: 'Small (Default)', number: 18 } },
 };
+let mockStoreState: typeof baseStoreState = baseStoreState;
 
 jest.mock('../../db', () => ({
   checkForDatabaseUpdate: (...args: unknown[]) => mockCheckForDatabaseUpdate(...args),
@@ -40,10 +47,7 @@ const textContent = (renderer: ReactTestRenderer.ReactTestRenderer): string[] =>
 describe('DatabaseUpdate storage handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockStoreState = {
-      db: { status: 'failed', progress: 0 },
-      network: { isOnline: true },
-    };
+    mockStoreState = baseStoreState;
     mockCheckForDatabaseUpdate.mockResolvedValue({ status: 'update-available' });
     mockRunDatabaseUpdate.mockResolvedValue({ status: 'insufficient-storage' });
   });
@@ -88,6 +92,7 @@ describe('DatabaseUpdate storage handling', () => {
 
   it('shows an automatic-resume message and no download action while offline', async () => {
     mockStoreState = {
+      ...baseStoreState,
       db: { status: 'downloading', progress: 42 },
       network: { isOnline: false },
     };

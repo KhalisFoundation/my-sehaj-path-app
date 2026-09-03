@@ -26,6 +26,7 @@ import {
 } from '@hooks';
 import { store } from '../store';
 import { useAppSelector } from '../store/hooks';
+import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { savePathProgress, savePathScrollPosition, undoPathCompletion } from '../store/commands';
 import { onScreenBlur, setActiveReaderPath } from '../store/syncLifecycle';
 import {
@@ -77,7 +78,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // settings itself, so only the ones this screen actually uses are selected here.
   const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
   const angsFormat = useAppSelector((state) => state.settings.angsFormat);
-  const fontSize = useAppSelector((state) => state.settings.fontSize.number);
+  const fontSize = useReaderFontSize();
   const matchedPath = useRef<PathData | undefined>(undefined);
   const matchedPathDate = useRef<DateData | undefined>(undefined);
   const [isAngsNavigationVisible, setIsAngsNavigationVisible] = useState<boolean>(false);

@@ -349,6 +349,23 @@ describe('savePathScrollPosition', () => {
     expect(store.getState().sync.pathOps[id!]).toEqual(existingOp);
     expect(store.getState().sync.scrollDirty[id!]).toBeDefined();
   });
+
+  it('records no reading day, so something else has to claim the day', async () => {
+    // This asymmetry is deliberate — a scroll checkpoint fires constantly and
+    // must stay cheap — but it is what broke the streak: the reader's leave
+    // checkpoint decided "nothing changed" by comparing against durable state
+    // that this call had ALREADY moved, so it skipped the save that records the
+    // day. A session spent reading inside one ang left no trace on the calendar.
+    const id = await createPath();
+    expect(await savePathScrollPosition(id!, 480)).toBe(true);
+
+    expect(store.getState().paths.dates[0].dates).toEqual([]);
+
+    // The progress save is the only thing that claims a day, and it still does
+    // so when the position it is handed is already the durable one.
+    expect(await savePathProgress(id!, 413, 0, 480)).toBe(true);
+    expect(store.getState().paths.dates[0].dates).toHaveLength(1);
+  });
 });
 
 describe('renamePathCommand', () => {

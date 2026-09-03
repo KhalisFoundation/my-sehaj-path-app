@@ -1,4 +1,5 @@
 import type { SehajPath, SehajPathSyncResult } from '@api/generated/types.gen';
+import { resolveFontSize } from '../constants/FontSize';
 import {
   sehajPathSettingsControllerGet,
   sehajPathsControllerFindAll,
@@ -92,8 +93,16 @@ const isAngsFormat = (value: unknown): value is AngsFormat => {
 /** Applies a server settings document, keeping only known, well-typed keys. */
 const applyServerSettings = (store: AppStore, settings: Record<string, unknown>): void => {
   const patch: Partial<SettingsState> = {};
-  if (isFontSize(settings.fontSize)) {
-    patch.fontSize = settings.fontSize;
+  // Resolved, not normalised: another device may be on the old scale or an older
+  // app version, so the value still has to be mapped onto the current one. But
+  // if it cannot be mapped at all, the account's document is left unapplied and
+  // this device keeps the size its owner chose. Falling back to the default here
+  // would quietly reset somebody's setting because another device wrote rubbish.
+  const serverFontSize = isFontSize(settings.fontSize)
+    ? resolveFontSize(settings.fontSize)
+    : undefined;
+  if (serverFontSize) {
+    patch.fontSize = serverFontSize;
   }
   if (typeof settings.larivaar === 'boolean') {
     patch.larivaar = settings.larivaar;

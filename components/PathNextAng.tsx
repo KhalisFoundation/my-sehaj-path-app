@@ -1,6 +1,7 @@
 import React from 'react';
 import { LeftLineIcon, RightArrowIcon, RightLineIcon } from '@icons';
-import { View, Text, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, TouchableOpacity, ImageBackground } from 'react-native';
+import { AppText as Text } from './AppText';
 import { PathNextAngStyles } from '@styles/PathNextAngStyles';
 import { Constants } from '@constants';
 

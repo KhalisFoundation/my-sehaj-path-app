@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleProp, Text, TextStyle } from 'react-native';
+import { StyleProp, TextStyle } from 'react-native';
+import { AppText as Text } from './AppText';
 import { SecondaryHeadingStyles } from '@styles';
 
 interface Props {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from './AppText';
 import { BlurView } from '@react-native-community/blur';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
@@ -104,6 +105,7 @@ export const AngsNavigation = ({
               <LeftArrowIcon />
             </TouchableOpacity>
             <TextInput
+              allowFontScaling={false}
               style={AngsNavigationStyle.input}
               placeholder="Enter Ang Number"
               placeholderTextColor={'grey'}
