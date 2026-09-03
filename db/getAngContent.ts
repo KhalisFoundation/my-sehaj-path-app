@@ -1,4 +1,4 @@
-import type { Ang } from '@sikhi-ui/banidb';
+import type { Ang } from '@khalisfoundation/banidb';
 import { BaniDB, recordError } from '@utils';
 import type { PathContent, VishraamsMarker } from '../types';
 import { getBani } from './connection';
@@ -12,7 +12,7 @@ import { isDatabaseInstalled } from './downloadDatabase';
  * read fails (e.g. a corrupted DB), it falls back to the BaniDB API, which needs
  * the network — so the caller's connectivity handling only kicks in then.
  * Returns the same `{ success, data }` shape the reader already consumes;
- * `@sikhi-ui/banidb.getAng` already returns the API response shape, so mapping
+ * `@khalisfoundation/banidb.getAng` already returns the API response shape, so mapping
  * it to the app's `PathContent` is a field pick.
  */
 export interface AngContentResult {
