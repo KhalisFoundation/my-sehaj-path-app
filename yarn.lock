@@ -2158,6 +2158,11 @@
   resolved "https://registry.yarnpkg.com/@jsdevtools/ono/-/ono-7.1.3.tgz#9df03bbd7c696a5c58885c34aa06da41c8543796"
   integrity sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==
 
+"@khalisfoundation/banidb@^0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@khalisfoundation/banidb/-/banidb-0.1.0.tgz#c996baaf5e0f3feca88fef6d024429a42868bb1f"
+  integrity sha512-+WzL/7ypk2ucMUq3KrRCkUi+5qjDEvbn48U+7yuvm8Q0dX+kiMGRhqXoeCM+rXj3I4N6s6FtsDA5Vl+LPKFosw==
+
 "@lukeed/ms@2.0.2":
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@lukeed/ms/-/ms-2.0.2.tgz#07f09e59a74c52f4d88c6db5c1054e819538e2a8"
@@ -2780,11 +2785,6 @@
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/@sideway/pinpoint/-/pinpoint-2.0.0.tgz#cff8ffadc372ad29fd3f78277aeb29e632cc70df"
   integrity sha512-RNiOoTPkptFtSVzQevY/yWtZwf/RxyVnPy/OcA9HBM3MlGDnBEYL5B41H0MTn0Uec8Hi+2qUtTfG2WWZBmMejQ==
-
-"@sikhi-ui/banidb@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.npmjs.org/@sikhi-ui/banidb/-/banidb-0.1.0.tgz#02d0fc04e602e306ef30280317ef3518e1972ed4"
-  integrity sha512-LSEAtLiOxL6PckvU6y2+f2tJzO3/PEkkKQkJYj4Fd03xVy63s/h+q5n+srm4l6XAGTxEyoz61vW7rmBggjKoyA==
 
 "@sinclair/typebox@^0.27.8":
   version "0.27.8"

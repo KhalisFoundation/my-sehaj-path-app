@@ -11,7 +11,7 @@ const mockedInstalled = isDatabaseInstalled as jest.Mock;
 const mockedGetBani = getBani as jest.Mock;
 const mockedApi = BaniDB as jest.Mock;
 
-// A single ang exactly as @sikhi-ui/banidb.getAng returns it (verified against
+// A single ang exactly as @khalisfoundation/banidb.getAng returns it (verified against
 // the real DB): `source.pageNo`, full verse fields, `visraam` keyed by source.
 const ANG = {
   source: { sourceId: 'G', gurmukhi: null, unicode: null, english: null, pageNo: 5 },
