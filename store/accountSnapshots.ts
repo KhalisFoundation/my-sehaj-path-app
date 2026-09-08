@@ -9,6 +9,7 @@ import {
 } from './legacyFormat';
 import { parseSyncMeta } from './syncFormat';
 import { SETTINGS_DEFAULTS } from './slices/settingsSlice';
+import { parseReadingPreferences, serializeReadingPreferences } from './readingPreferences';
 
 export const ACCOUNT_SNAPSHOTS_KEY = 'sehajAccountSnapshots_v1';
 
@@ -23,6 +24,7 @@ interface StoredAccountSnapshot {
   version: 1;
   legacy: RawLegacy;
   syncMeta: string;
+  readingPreferences?: string;
 }
 
 interface AccountSnapshotEnvelope {
@@ -80,6 +82,7 @@ const encodeSnapshot = (snapshot: Snapshot): StoredAccountSnapshot => {
     version: 1,
     legacy,
     syncMeta: serializeKey('sehajSyncMeta_v1', snapshot),
+    readingPreferences: serializeReadingPreferences(snapshot.settings),
   };
 };
 
@@ -92,7 +95,11 @@ const decodeSnapshot = (stored: StoredAccountSnapshot, owner: string): AccountSn
   return {
     status: 'valid',
     snapshot: {
-      settings: { ...SETTINGS_DEFAULTS, ...legacy.value.settings },
+      settings: {
+        ...SETTINGS_DEFAULTS,
+        ...legacy.value.settings,
+        ...parseReadingPreferences(stored.readingPreferences),
+      },
       paths: legacy.value.paths,
       dates: legacy.value.dates,
       sync: sync.value,

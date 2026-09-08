@@ -1,3 +1,4 @@
+import { READING_PREFERENCES_KEY, parseReadingPreferences } from './readingPreferences';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { recordError } from '../utils/crashlytics';
 import type { AppStore, RootState } from './index';
@@ -391,9 +392,12 @@ export const hydrateStore = async (
     // Sync metadata is validated independently: a malformed sync key must not
     // block legacy path hydration, and vice versa.
     const syncResult = await readSyncMeta();
+    const readingPreferences = parseReadingPreferences(
+      await AsyncStorage.getItem(READING_PREFERENCES_KEY)
+    );
 
     quarantinedRecordsByStore.set(store, parsed.quarantinedRecords);
-    store.dispatch(hydrateSettings(parsed.value.settings));
+    store.dispatch(hydrateSettings({ ...parsed.value.settings, ...readingPreferences }));
     store.dispatch(setAll({ paths: parsed.value.paths, dates: parsed.value.dates }));
     switch (syncResult.status) {
       case 'valid':

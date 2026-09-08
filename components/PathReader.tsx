@@ -81,6 +81,7 @@ const PathReaderComponent = ({
   const isLarivaar = useAppSelector((state) => state.settings.larivaar);
   const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
   const isVishraam = useAppSelector((state) => state.settings.vishraam);
+  const isLarivaarAssist = useAppSelector((state) => state.settings.larivaarAssist);
   const fontSize = useAppSelector((state) => state.settings.fontSize.number);
 
   const {
@@ -295,7 +296,7 @@ const PathReaderComponent = ({
       // Line mode can render directly from per-verse data because each verse is
       // already its own measurable block.
       const larivaarRenderData =
-        isLarivaar && isVishraam
+        isLarivaar && (isVishraam || isLarivaarAssist)
           ? getLarivaarRenderData(path.larivaar.unicode, path.verse.unicode)
           : null;
       const gurbaniLine = isLarivaar ? path.larivaar.unicode : path.verse.unicode;
@@ -321,6 +322,7 @@ const PathReaderComponent = ({
     pathContent?.page,
     isLarivaar,
     isVishraam,
+    isLarivaarAssist,
     createSelectionHandler,
     createSaveHandler,
     createLayoutHandler,

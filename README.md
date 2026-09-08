@@ -23,6 +23,7 @@ Sehaj Path is a traditional Sikh practice of reading the complete Guru Granth Sa
 ### Reading Experience
 - **Font Size Customization**: Adjustable text size for comfortable reading
 - **Larivaar Support**: Option to read in continuous text format
+- **Larivaar Assist**: Optional alternating word colours in line and paragraph reading. Enable Larivaar first, then Larivaar Assist under Settings → Bani Options. Assist takes priority over Vishraam colours while enabled.
 - **Punjabi/English Numbers**: Toggle between Punjabi and English number formats
 - **Auto-scroll**: Automated reading progression with pause/resume functionality
 - **Swipe Navigation**: Gesture-based navigation between pages

@@ -24,6 +24,7 @@ describe('settingsSlice initial state', () => {
     expect(initial()).toEqual({
       fontSize: { fontSize: 'Small (Default)', number: 18 },
       larivaar: false,
+      larivaarAssist: false,
       paragraphMode: false,
       vishraam: false,
       vishraamsSource: { source: 'sttm' },

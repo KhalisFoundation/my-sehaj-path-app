@@ -33,6 +33,7 @@ import {
   setAnalyticsConsent,
   setFontSize,
   setLarivaar,
+  setLarivaarAssist,
   setParagraphMode,
   setVishraam,
   setVishraamsSource,
@@ -146,6 +147,11 @@ export const Settings = ({ navigation }: SettingProps) => {
     (state) => state.settings.larivaar,
     setLarivaar,
     ErrorConstants.FAILED_TO_SAVE_LARIVAAR
+  );
+  const [larivaarAssist, changeLarivaarAssist] = useSetting(
+    (state) => state.settings.larivaarAssist,
+    setLarivaarAssist,
+    ErrorConstants.FAILED_TO_SAVE_LARIVAAR_ASSIST
   );
   const [analyticsConsent, changeAnalyticsConsent] = useSetting(
     (state) => state.settings.analyticsConsent,
@@ -273,6 +279,25 @@ export const Settings = ({ navigation }: SettingProps) => {
               containerStyle={LarivaarStyles.container}
               textStyle={LarivaarStyles.fontSizeText}
             />
+            <SwitchSettingItem
+              settingKey="larivaarAssist"
+              label={Constants.LARIVAAR_ASSIST}
+              value={larivaarAssist}
+              onValueChange={changeLarivaarAssist}
+              disabled={!larivaar}
+              accessibilityHint={
+                larivaar
+                  ? Constants.LARIVAAR_ASSIST_DESCRIPTION
+                  : Constants.LARIVAAR_ASSIST_REQUIRES_LARIVAAR
+              }
+              containerStyle={LarivaarStyles.container}
+              textStyle={LarivaarStyles.fontSizeText}
+            />
+            <Text style={SettingScreenStyle.settingDescription}>
+              {larivaar
+                ? Constants.LARIVAAR_ASSIST_DESCRIPTION
+                : Constants.LARIVAAR_ASSIST_REQUIRES_LARIVAAR}
+            </Text>
           </View>
 
           <View>

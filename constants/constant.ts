@@ -33,6 +33,10 @@ export const Constants: Constant = {
   RESUMING_SAVED_PROGRESS: 'Resuming saved progress',
   SELECT_YOUR_FONT_SIZE: 'Select your font size',
   LARIVAAR: 'Larivaar',
+  LARIVAAR_ASSIST: 'Larivaar Assist',
+  LARIVAAR_ASSIST_DESCRIPTION:
+    'Alternating word colours help you read Larivaar. Vishraam colours resume when Assist is off.',
+  LARIVAAR_ASSIST_REQUIRES_LARIVAAR: 'Turn on Larivaar to use alternating word colours.',
   PARAGRAPH_MODE: 'Paragraph Mode',
   SETTINGS: 'Settings',
   SELECT_YOUR_ANG_FORMAT: 'Select your ang format',

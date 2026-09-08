@@ -9,6 +9,7 @@ import type {
 import { SETTINGS_DEFAULTS, type SettingsState } from './slices/settingsSlice';
 import type { PersistedSyncState } from './slices/syncSlice';
 import { SYNC_META_KEY, serializeSyncMeta } from './syncFormat';
+import { READING_PREFERENCES_KEY, serializeReadingPreferences } from './readingPreferences';
 
 /**
  * The nine keys written by every production build to date. Phase 1 freezes
@@ -32,10 +33,10 @@ export type LegacySettingKey = Exclude<LegacyKey, 'pathDetails' | 'pathDateDetai
 
 /**
  * Every key the write coordinator owns: the nine frozen legacy keys plus the
- * app-private sync-bookkeeping key. Path/date data and the sync intent that
+ * app-private sync and reader-preference keys. Path/date data and the sync intent that
  * describes it are committed through one journal so they stay atomic.
  */
-export const DURABLE_KEYS = [...LEGACY_KEYS, SYNC_META_KEY] as const;
+export const DURABLE_KEYS = [...LEGACY_KEYS, SYNC_META_KEY, READING_PREFERENCES_KEY] as const;
 export type DurableKey = (typeof DURABLE_KEYS)[number];
 
 /** App-private key. Older binaries ignore unknown keys, so this is safe to add. */
@@ -420,6 +421,8 @@ export interface Snapshot {
  */
 export const serializeKey = (key: DurableKey, snapshot: Snapshot): string => {
   switch (key) {
+    case READING_PREFERENCES_KEY:
+      return serializeReadingPreferences(snapshot.settings);
     case SYNC_META_KEY:
       return serializeSyncMeta(snapshot.sync);
     case 'larivaar':

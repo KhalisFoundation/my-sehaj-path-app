@@ -134,6 +134,7 @@ describe('hydrateStore', () => {
     expect(state.settings).toEqual({
       fontSize: { fontSize: 'Large', number: 30 },
       larivaar: true,
+      larivaarAssist: false,
       paragraphMode: false,
       vishraam: true,
       vishraamsSource: { source: 'igurbani' },

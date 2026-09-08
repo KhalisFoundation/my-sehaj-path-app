@@ -30,6 +30,14 @@ export const SettingScreenStyle = StyleSheet.create({
     width: '50%',
     padding: UIConstants.RHYTHM * 1.5,
   },
+  settingDescription: {
+    color: UIConstants.BODY_TEXT_COLOR,
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: 16,
+    lineHeight: 22,
+    paddingHorizontal: 15,
+    paddingBottom: 15,
+  },
   databaseUpdateRow: {
     flexDirection: 'row',
     alignItems: 'center',

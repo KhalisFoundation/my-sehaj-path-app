@@ -4,6 +4,7 @@ interface ErrorConstant {
 export const ErrorConstants: ErrorConstant = {
   FAILED_TO_SAVE_ANG_FORMAT: 'Failed to save your angs format preference. Please try again.',
   FAILED_TO_SAVE_FONT_SIZE: 'Failed to save your font size preference. Please try again.',
+  FAILED_TO_SAVE_LARIVAAR_ASSIST: 'Failed to save Larivaar Assist. Please try again.',
   FAILED_TO_SAVE_LARIVAAR: 'Failed to save your larivaar preference. Please try again.',
   FAILED_TO_LOAD_SETTINGS_RECOVERED:
     'Some settings could not be loaded and were reset to their defaults. Your saved path progress was not changed.',

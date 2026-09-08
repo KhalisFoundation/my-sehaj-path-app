@@ -95,6 +95,9 @@ const applyServerSettings = (store: AppStore, settings: Record<string, unknown>)
   if (isFontSize(settings.fontSize)) {
     patch.fontSize = settings.fontSize;
   }
+  if (typeof settings.larivaarAssist === 'boolean') {
+    patch.larivaarAssist = settings.larivaarAssist;
+  }
   if (typeof settings.larivaar === 'boolean') {
     patch.larivaar = settings.larivaar;
   }

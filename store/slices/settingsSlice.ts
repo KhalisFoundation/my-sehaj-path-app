@@ -4,6 +4,7 @@ import type { AngsFormat, FontSizeData, VishraamsSource } from '../../types';
 export interface SettingsState {
   fontSize: FontSizeData;
   larivaar: boolean;
+  larivaarAssist: boolean;
   paragraphMode: boolean;
   vishraam: boolean;
   vishraamsSource: VishraamsSource;
@@ -24,6 +25,7 @@ export interface SettingsState {
 export const SETTINGS_DEFAULTS: SettingsState = {
   fontSize: { fontSize: 'Small (Default)', number: 18 },
   larivaar: false,
+  larivaarAssist: false,
   paragraphMode: false,
   vishraam: false,
   vishraamsSource: { source: 'sttm' },
@@ -44,6 +46,9 @@ export const settingsSlice = createSlice({
     },
     setLarivaar: (state, action: PayloadAction<boolean>) => {
       state.larivaar = action.payload;
+    },
+    setLarivaarAssist: (state, action: PayloadAction<boolean>) => {
+      state.larivaarAssist = action.payload;
     },
     setParagraphMode: (state, action: PayloadAction<boolean>) => {
       state.paragraphMode = action.payload;
@@ -67,6 +72,7 @@ export const {
   hydrateSettings,
   setFontSize,
   setLarivaar,
+  setLarivaarAssist,
   setParagraphMode,
   setVishraam,
   setVishraamsSource,

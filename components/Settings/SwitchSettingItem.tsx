@@ -10,6 +10,8 @@ interface SwitchSettingItemProps {
   settingKey: string;
   label: string;
   value: boolean;
+  disabled?: boolean;
+  accessibilityHint?: string;
   onValueChange: (value: boolean) => Promise<boolean>;
   analyticsCategory?: string;
   containerStyle?: StyleProp<ViewStyle>;
@@ -25,6 +27,8 @@ export const SwitchSettingItem = ({
   settingKey,
   label,
   value,
+  disabled = false,
+  accessibilityHint,
   onValueChange,
   analyticsCategory = 'Settings',
   containerStyle,
@@ -51,6 +55,7 @@ export const SwitchSettingItem = ({
       <SimpleText simpleText={label} simpleTextStyle={textStyle} />
       <Switch
         value={value}
+        disabled={disabled}
         onValueChange={handleToggle}
         trackColor={{
           false: UIConstants.SWITCH_TRACK_COLOR_FALSE,
@@ -61,8 +66,8 @@ export const SwitchSettingItem = ({
         }
         accessibilityLabel={`${label} setting`}
         accessibilityRole="switch"
-        accessibilityHint={`Tap to ${value ? 'disable' : 'enable'} ${label}`}
-        accessibilityState={{ checked: value }}
+        accessibilityHint={accessibilityHint ?? `Tap to ${value ? 'disable' : 'enable'} ${label}`}
+        accessibilityState={{ checked: value, disabled }}
       />
     </View>
   );

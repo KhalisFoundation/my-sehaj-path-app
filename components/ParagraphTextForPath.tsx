@@ -12,7 +12,7 @@ import {
 } from '@utils';
 import { useAppSelector } from '../store/hooks';
 import { usePathSelection } from './PathSelectionContext';
-import { VishraamsText } from './VishraamsText';
+import { ReaderVerseText } from './ReaderVerseText';
 
 type ParagraphTextForPathProps = PathTextProps & {
   onTextLayout?: (event: any) => void;
@@ -35,8 +35,6 @@ const ParagraphTextForPathComponent = ({
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
   const fontSize = useAppSelector((state) => state.settings.fontSize.number);
-  const isVishraam = useAppSelector((state) => state.settings.vishraam);
-  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
 
   const isSelected = useIsSelected(
     verseId,
@@ -113,16 +111,11 @@ const ParagraphTextForPathComponent = ({
   // flow AND the layout matcher measures each verse as `${renderedText} `.
   const verseContent = (
     <>
-      {isVishraam ? (
-        <VishraamsText
-          gurbaniLine={gurbaniLine}
-          renderWordSegments={renderWordSegments}
-          vishraams={vishraams}
-          vishraamsSource={vishraamsSource}
-        />
-      ) : (
-        gurbaniLine
-      )}{' '}
+      <ReaderVerseText
+        gurbaniLine={gurbaniLine}
+        renderWordSegments={renderWordSegments}
+        vishraams={vishraams}
+      />{' '}
     </>
   );
 

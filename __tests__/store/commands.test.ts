@@ -29,7 +29,8 @@ import {
   undoPathCompletion,
 } from '../../store/commands';
 import { addServerPath, renamePath, setAll } from '../../store/slices/pathsSlice';
-import { setLarivaar } from '../../store/slices/settingsSlice';
+import { READING_PREFERENCES_KEY } from '../../store/readingPreferences';
+import { setLarivaarAssist, setLarivaar } from '../../store/slices/settingsSlice';
 import type { DateData, PathData } from '../../types';
 
 const pathWithId = (pathId: number): PathData => ({
@@ -254,6 +255,28 @@ describe('atomic rollback', () => {
     expect(successfulLarivaarWrites).not.toContain('true');
     expect(successfulLarivaarWrites).toContain('false');
     expect(await AsyncStorage.getItem('larivaar')).toBe('false');
+  });
+});
+
+describe('Larivaar Assist durable changes', () => {
+  it('rolls back a failed Assist save in the UI and on disk', async () => {
+    const realMultiSet = ORIGINAL_IMPLS.get('multiSet') as (
+      entries: Array<[string, string]>
+    ) => Promise<void>;
+    let attempts = 0;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(
+      async (entries: Array<[string, string]>) => {
+        attempts += 1;
+        if (attempts <= 2) {
+          throw new Error('transient write failure');
+        }
+        await realMultiSet(entries);
+      }
+    );
+    expect(await commitSettingChange(setLarivaarAssist(true))).toBe(false);
+    expect(await persistence.flush()).toBe(true);
+    expect(store.getState().settings.larivaarAssist).toBe(false);
+    expect(await AsyncStorage.getItem(READING_PREFERENCES_KEY)).toBe('{"larivaarAssist":false}');
   });
 });
 

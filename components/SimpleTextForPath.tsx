@@ -14,7 +14,7 @@ import {
 } from '@utils';
 import { useAppSelector } from '../store/hooks';
 import { usePathSelection } from './PathSelectionContext';
-import { VishraamsText } from './VishraamsText';
+import { ReaderVerseText } from './ReaderVerseText';
 
 const SimpleTextForPathComponent = ({
   gurbaniLine,
@@ -31,8 +31,6 @@ const SimpleTextForPathComponent = ({
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
   const fontSize = useAppSelector((state) => state.settings.fontSize.number);
-  const isVishraam = useAppSelector((state) => state.settings.vishraam);
-  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
 
   const isSelected = useIsSelected(
     verseId,
@@ -78,16 +76,11 @@ const SimpleTextForPathComponent = ({
       onLayout={onLayout}
     >
       <Text suppressHighlighting={true} style={textStyle}>
-        {isVishraam ? (
-          <VishraamsText
-            gurbaniLine={gurbaniLine}
-            renderWordSegments={renderWordSegments}
-            vishraams={vishraams}
-            vishraamsSource={vishraamsSource}
-          />
-        ) : (
-          gurbaniLine
-        )}
+        <ReaderVerseText
+          gurbaniLine={gurbaniLine}
+          renderWordSegments={renderWordSegments}
+          vishraams={vishraams}
+        />
       </Text>
       {isSelected && (
         <SaveIcon
