@@ -8,6 +8,7 @@ export const toSettingsBody = (settings: SettingsState) => ({
   settings: {
     fontSize: settings.fontSize,
     larivaar: settings.larivaar,
+    keepScreenAwake: settings.keepScreenAwake,
     paragraphMode: settings.paragraphMode,
     vishraam: settings.vishraam,
     vishraamsSource: settings.vishraamsSource,

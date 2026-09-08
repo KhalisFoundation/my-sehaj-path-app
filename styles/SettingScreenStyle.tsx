@@ -30,6 +30,10 @@ export const SettingScreenStyle = StyleSheet.create({
     width: '50%',
     padding: UIConstants.RHYTHM * 1.5,
   },
+  readerPreferenceText: {
+    flexShrink: 1,
+    marginRight: 12,
+  },
   databaseUpdateRow: {
     flexDirection: 'row',
     alignItems: 'center',

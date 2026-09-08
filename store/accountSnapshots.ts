@@ -23,6 +23,7 @@ interface StoredAccountSnapshot {
   version: 1;
   legacy: RawLegacy;
   syncMeta: string;
+  keepScreenAwake?: boolean;
 }
 
 interface AccountSnapshotEnvelope {
@@ -80,6 +81,7 @@ const encodeSnapshot = (snapshot: Snapshot): StoredAccountSnapshot => {
     version: 1,
     legacy,
     syncMeta: serializeKey('sehajSyncMeta_v1', snapshot),
+    keepScreenAwake: snapshot.settings.keepScreenAwake,
   };
 };
 
@@ -92,7 +94,11 @@ const decodeSnapshot = (stored: StoredAccountSnapshot, owner: string): AccountSn
   return {
     status: 'valid',
     snapshot: {
-      settings: { ...SETTINGS_DEFAULTS, ...legacy.value.settings },
+      settings: {
+        ...SETTINGS_DEFAULTS,
+        ...legacy.value.settings,
+        keepScreenAwake: stored.keepScreenAwake === true,
+      },
       paths: legacy.value.paths,
       dates: legacy.value.dates,
       sync: sync.value,

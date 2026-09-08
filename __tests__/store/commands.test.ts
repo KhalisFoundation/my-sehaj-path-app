@@ -29,7 +29,7 @@ import {
   undoPathCompletion,
 } from '../../store/commands';
 import { addServerPath, renamePath, setAll } from '../../store/slices/pathsSlice';
-import { setLarivaar } from '../../store/slices/settingsSlice';
+import { setKeepScreenAwake, setLarivaar } from '../../store/slices/settingsSlice';
 import type { DateData, PathData } from '../../types';
 
 const pathWithId = (pathId: number): PathData => ({
@@ -254,6 +254,28 @@ describe('atomic rollback', () => {
     expect(successfulLarivaarWrites).not.toContain('true');
     expect(successfulLarivaarWrites).toContain('false');
     expect(await AsyncStorage.getItem('larivaar')).toBe('false');
+  });
+});
+
+describe('keep-awake durable changes', () => {
+  it('rolls back a failed opt-in on screen and disk', async () => {
+    const realMultiSet = ORIGINAL_IMPLS.get('multiSet') as (
+      entries: Array<[string, string]>
+    ) => Promise<void>;
+    let attempts = 0;
+    (AsyncStorage.multiSet as jest.Mock).mockImplementation(
+      async (entries: Array<[string, string]>) => {
+        attempts += 1;
+        if (attempts <= 2) {
+          throw new Error('transient write failure');
+        }
+        await realMultiSet(entries);
+      }
+    );
+    expect(await commitSettingChange(setKeepScreenAwake(true))).toBe(false);
+    expect(await persistence.flush()).toBe(true);
+    expect(store.getState().settings.keepScreenAwake).toBe(false);
+    expect(await AsyncStorage.getItem('sehajKeepScreenAwake_v1')).toBe('false');
   });
 });
 

@@ -3,6 +3,7 @@ import { recordError } from '../utils/crashlytics';
 import type { AppStore, RootState } from './index';
 import {
   DURABLE_KEYS,
+  KEEP_SCREEN_AWAKE_KEY,
   JOURNAL_KEY,
   LEGACY_KEYS,
   changedKeys,
@@ -393,7 +394,10 @@ export const hydrateStore = async (
     const syncResult = await readSyncMeta();
 
     quarantinedRecordsByStore.set(store, parsed.quarantinedRecords);
-    store.dispatch(hydrateSettings(parsed.value.settings));
+    // Only an explicit opt-in keeps the screen awake. Missing/malformed values
+    // retain the original auto-lock behavior, including upgrades from old builds.
+    const keepScreenAwake = (await AsyncStorage.getItem(KEEP_SCREEN_AWAKE_KEY)) === 'true';
+    store.dispatch(hydrateSettings({ ...parsed.value.settings, keepScreenAwake }));
     store.dispatch(setAll({ paths: parsed.value.paths, dates: parsed.value.dates }));
     switch (syncResult.status) {
       case 'valid':

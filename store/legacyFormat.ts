@@ -30,12 +30,15 @@ export const LEGACY_KEYS = [
 export type LegacyKey = (typeof LEGACY_KEYS)[number];
 export type LegacySettingKey = Exclude<LegacyKey, 'pathDetails' | 'pathDateDetails'>;
 
+/** New opt-in preference; the frozen legacy key set stays unchanged. */
+export const KEEP_SCREEN_AWAKE_KEY = 'sehajKeepScreenAwake_v1';
+
 /**
  * Every key the write coordinator owns: the nine frozen legacy keys plus the
- * app-private sync-bookkeeping key. Path/date data and the sync intent that
- * describes it are committed through one journal so they stay atomic.
+ * app-private sync and keep-awake preference keys. Path/date data and its sync
+ * intent are committed through one journal so they stay atomic.
  */
-export const DURABLE_KEYS = [...LEGACY_KEYS, SYNC_META_KEY] as const;
+export const DURABLE_KEYS = [...LEGACY_KEYS, SYNC_META_KEY, KEEP_SCREEN_AWAKE_KEY] as const;
 export type DurableKey = (typeof DURABLE_KEYS)[number];
 
 /** App-private key. Older binaries ignore unknown keys, so this is safe to add. */
@@ -420,6 +423,8 @@ export interface Snapshot {
  */
 export const serializeKey = (key: DurableKey, snapshot: Snapshot): string => {
   switch (key) {
+    case KEEP_SCREEN_AWAKE_KEY:
+      return String(snapshot.settings.keepScreenAwake);
     case SYNC_META_KEY:
       return serializeSyncMeta(snapshot.sync);
     case 'larivaar':

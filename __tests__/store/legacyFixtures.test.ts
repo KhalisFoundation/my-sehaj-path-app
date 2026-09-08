@@ -121,7 +121,10 @@ describe.each(versions)('legacy fixture: $shapeId', (fixture) => {
     //    never wrote (the settings block is the full post-hydrate state).
     expect(store.getState().paths.paths).toEqual(fixture.expected.paths);
     expect(store.getState().paths.dates).toEqual(fixture.expected.dates);
-    expect(store.getState().settings).toEqual(fixture.expected.settings);
+    expect(store.getState().settings).toEqual({
+      ...fixture.expected.settings,
+      keepScreenAwake: false,
+    });
 
     // 4. mutate and let the coordinator write through to legacy format
     const persistence = createLegacyPersistence(store);

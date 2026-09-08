@@ -98,6 +98,9 @@ const applyServerSettings = (store: AppStore, settings: Record<string, unknown>)
   if (typeof settings.larivaar === 'boolean') {
     patch.larivaar = settings.larivaar;
   }
+  if (typeof settings.keepScreenAwake === 'boolean') {
+    patch.keepScreenAwake = settings.keepScreenAwake;
+  }
   if (typeof settings.paragraphMode === 'boolean') {
     patch.paragraphMode = settings.paragraphMode;
   }

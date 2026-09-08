@@ -293,6 +293,13 @@ describe('applySyncResult', () => {
     expect(store.getState().paths.dates[0].scrollPosition).not.toBe(999);
   });
 
+  it.each([true, false, 'true', null])('validates remote keep-awake preference %j', (value) => {
+    const { store } = syncedStore();
+    const settings = { settings: { keepScreenAwake: value }, userId: 'u', updatedAt: 'x' };
+    applySyncResult(store, result({ settings }), captureSyncSnapshot(store.getState()));
+    expect(store.getState().settings.keepScreenAwake).toBe(value === true);
+  });
+
   it('applies settings only when no local settings edit is pending', () => {
     const { store } = syncedStore();
     const settings = { settings: { larivaar: true }, userId: 'u', updatedAt: 'x' };

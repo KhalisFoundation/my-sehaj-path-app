@@ -17,6 +17,7 @@ module.exports = {
     '^react-native-encrypted-storage$': '<rootDir>/__mocks__/react-native-encrypted-storage.js',
     '^react-native-inappbrowser-reborn$': '<rootDir>/__mocks__/react-native-inappbrowser-reborn.js',
     '^@op-engineering/op-sqlite$': '<rootDir>/__mocks__/op-sqlite.js',
+    '^@sayem314/react-native-keep-awake$': '<rootDir>/__mocks__/keep-awake.js',
     '^@dr.pogodin/react-native-fs$': '<rootDir>/__mocks__/dr-pogodin-react-native-fs.js',
     'react-native-linear-gradient': '<rootDir>/__mocks__/react-native-linear-gradient.js',
     'react-native-safe-area-context': '<rootDir>/__mocks__/react-native-safe-area-context.js',

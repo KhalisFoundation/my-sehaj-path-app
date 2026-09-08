@@ -23,6 +23,7 @@ import {
   usePathNavigation,
   useScrollToSavedPath,
   useDrawerNavigation,
+  useReaderKeepAwake,
 } from '@hooks';
 import { store } from '../store';
 import { useAppSelector } from '../store/hooks';
@@ -75,6 +76,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // Settings are reactive from the store: no fetch-on-focus, and a change in the
   // Settings screen is reflected here immediately. PathReader reads the display
   // settings itself, so only the ones this screen actually uses are selected here.
+  const keepScreenAwake = useAppSelector((state) => state.settings.keepScreenAwake);
   const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
   const angsFormat = useAppSelector((state) => state.settings.angsFormat);
   const fontSize = useAppSelector((state) => state.settings.fontSize.number);
@@ -84,6 +86,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   const [isAngNavigation, setIsAngNavigation] = useState<boolean>(false);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
+  useReaderKeepAwake(
+    keepScreenAwake &&
+      Boolean(pathContent?.page?.length) &&
+      !isDrawerVisible &&
+      !isAngsNavigationVisible
+  );
   const [retryState, setRetryState] = useState<{
     needsRetry: boolean;
     lastFailedAng: number | null;

@@ -33,6 +33,7 @@ export const Constants: Constant = {
   RESUMING_SAVED_PROGRESS: 'Resuming saved progress',
   SELECT_YOUR_FONT_SIZE: 'Select your font size',
   LARIVAAR: 'Larivaar',
+  KEEP_SCREEN_AWAKE: 'Keep screen awake while reading',
   PARAGRAPH_MODE: 'Paragraph Mode',
   SETTINGS: 'Settings',
   SELECT_YOUR_ANG_FORMAT: 'Select your ang format',

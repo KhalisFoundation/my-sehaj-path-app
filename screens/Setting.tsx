@@ -33,6 +33,7 @@ import {
   setAnalyticsConsent,
   setFontSize,
   setLarivaar,
+  setKeepScreenAwake,
   setParagraphMode,
   setVishraam,
   setVishraamsSource,
@@ -147,6 +148,11 @@ export const Settings = ({ navigation }: SettingProps) => {
     setLarivaar,
     ErrorConstants.FAILED_TO_SAVE_LARIVAAR
   );
+  const [keepScreenAwake, changeKeepScreenAwake] = useSetting(
+    (state) => state.settings.keepScreenAwake,
+    setKeepScreenAwake,
+    ErrorConstants.FAILED_TO_SAVE_KEEP_SCREEN_AWAKE
+  );
   const [analyticsConsent, changeAnalyticsConsent] = useSetting(
     (state) => state.settings.analyticsConsent,
     setAnalyticsConsent,
@@ -229,6 +235,18 @@ export const Settings = ({ navigation }: SettingProps) => {
               onValueChange={changeParagraphMode}
               containerStyle={ParagraphModeStyles.container}
               textStyle={ParagraphModeStyles.fontSizeText}
+            />
+
+            <SwitchSettingItem
+              settingKey="keepScreenAwake"
+              label={Constants.KEEP_SCREEN_AWAKE}
+              value={keepScreenAwake}
+              onValueChange={changeKeepScreenAwake}
+              containerStyle={ParagraphModeStyles.container}
+              textStyle={[
+                ParagraphModeStyles.fontSizeText,
+                SettingScreenStyle.readerPreferenceText,
+              ]}
             />
 
             <SwitchSettingItem

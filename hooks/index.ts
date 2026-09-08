@@ -17,3 +17,4 @@ export type {
 } from '../types';
 export { useScreenAnalytics } from './useScreenAnalytics';
 export { useDrawerNavigation } from './useDrawerNavigation';
+export { useReaderKeepAwake } from './useReaderKeepAwake';
