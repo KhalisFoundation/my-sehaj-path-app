@@ -23,12 +23,15 @@ export const MembersRowStyles = StyleSheet.create({
     fontSize: 16,
   },
   memberList: {
-    maxHeight: 320,
+    flex: 1,
     paddingHorizontal: 0,
     paddingVertical: 0,
   },
   memberListContent: {
     paddingBottom: 2,
+  },
+  memberListContentFilled: {
+    flexGrow: 1,
   },
   memberActions: {
     marginTop: 'auto',

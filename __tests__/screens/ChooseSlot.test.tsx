@@ -3,9 +3,22 @@ import { Provider } from 'react-redux';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { ChooseSlot } from '../../screens/ChooseSlot';
 import { store } from '../../store';
-import { bookSlot, loadPlan } from '../../store/groupApi';
+import { bookSlot, loadPlan, updateSlot } from '../../store/groupApi';
 
-jest.mock('../../store/groupApi', () => ({ loadPlan: jest.fn(), bookSlot: jest.fn() }));
+jest.mock('@notifee/react-native', () => ({
+  __esModule: true,
+  default: {
+    createChannel: jest.fn(),
+    displayNotification: jest.fn(),
+  },
+  AndroidImportance: { HIGH: 4 },
+}));
+
+jest.mock('../../store/groupApi', () => ({
+  loadPlan: jest.fn(),
+  bookSlot: jest.fn(),
+  updateSlot: jest.fn(),
+}));
 jest.mock('@react-native-community/datetimepicker', () => {
   const { Pressable, Text } = require('react-native');
   return {
@@ -27,6 +40,7 @@ jest.mock('@react-native-community/datetimepicker', () => {
 
 const loadPlanMock = loadPlan as jest.MockedFunction<typeof loadPlan>;
 const bookSlotMock = bookSlot as jest.MockedFunction<typeof bookSlot>;
+const updateSlotMock = updateSlot as jest.MockedFunction<typeof updateSlot>;
 const goBack = jest.fn();
 const navigation = { goBack } as never;
 const route = { key: 'ChooseSlot', name: 'ChooseSlot', params: { sehajPathId: 'p1' } } as never;
@@ -130,5 +144,38 @@ describe('ChooseSlot', () => {
     ).toMatchObject({
       disabled: true,
     });
+  });
+
+  it("uses an edited overnight turn's actual local calendar date", async () => {
+    const now = new Date();
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 10);
+    const editRoute = {
+      key: 'ChooseSlot-edit',
+      name: 'ChooseSlot',
+      params: {
+        sehajPathId: 'p1',
+        slotId: 'slot-1',
+        initialStartsAt: tomorrow.toISOString(),
+        initialDurationMinutes: 15,
+      },
+    } as never;
+    updateSlotMock.mockResolvedValue({ ok: true, data: {} } as never);
+
+    const { findByText } = render(
+      <Provider store={store}>
+        <ChooseSlot navigation={navigation} route={editRoute} />
+      </Provider>
+    );
+
+    expect(
+      await findByText(
+        tomorrow.toLocaleDateString([], {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
+      )
+    ).toBeTruthy();
   });
 });

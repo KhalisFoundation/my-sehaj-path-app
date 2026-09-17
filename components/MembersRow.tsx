@@ -76,7 +76,10 @@ export const MembersRow = ({
       </View>
       <ScrollView
         style={[styles.memberList, members.length === 0 && styles.emptyMemberList]}
-        contentContainerStyle={styles.memberListContent}
+        contentContainerStyle={[
+          styles.memberListContent,
+          members.length > 0 && styles.memberListContentFilled,
+        ]}
         nestedScrollEnabled
         showsVerticalScrollIndicator={members.length > 0}
       >

@@ -51,7 +51,7 @@ export const displayPushMessage = async (
 };
 
 /** Requests permission, registers the current token, and tracks token rotation. */
-export const registerPushNotifications = async (): Promise<() => void> => {
+export const registerPushNotifications = async (authToken?: string | null): Promise<() => void> => {
   try {
     // Android 13+ does not show notifications until the runtime permission is
     // granted. Firebase's iOS-oriented requestPermission API alone does not
@@ -76,13 +76,27 @@ export const registerPushNotifications = async (): Promise<() => void> => {
 
     const register = async (token: string): Promise<void> => {
       const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
-      await pushControllerRegister({
+      const result = await pushControllerRegister({
+        // Pass the current SSO token through the generated operation. This is
+        // important for the optional-auth device endpoint: an interceptor can
+        // run after the SDK has already resolved security, leaving the token
+        // registered anonymously and `attachedToUser` false.
+        auth: authToken ?? undefined,
         body: {
           token,
           platform: Platform.OS === 'ios' ? 'ios' : 'android',
           ...(typeof timeZone === 'string' && timeZone.length > 0 ? { timeZone } : {}),
         },
       });
+
+      if (result.error !== undefined || result.data === undefined) {
+        const status = 'response' in result ? result.response?.status ?? 0 : 0;
+        throw new Error(
+          status > 0
+            ? `Push device registration failed with HTTP ${status}`
+            : 'Push device registration failed'
+        );
+      }
     };
 
     await register(await messaging().getToken());

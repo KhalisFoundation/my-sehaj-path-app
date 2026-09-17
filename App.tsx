@@ -118,7 +118,7 @@ const PushRegistration = () => {
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
     const start = async () => {
-      unsubscribe = await registerPushNotifications();
+      unsubscribe = await registerPushNotifications(authToken);
     };
     start().catch((error) => recordError(error, 'push: startup failed'));
     const foreground = messaging().onMessage(displayPushMessage);
@@ -131,6 +131,13 @@ const PushRegistration = () => {
 };
 
 const App = () => {
+  // Push registration is rendered as a child below. Configure the generated
+  // client before that child can mount: React runs child effects before the
+  // parent effect that used to configure this, which let a cold-start token
+  // registration go out with no API base URL or bearer-token getter.
+  configureApiClient();
+  setTokenGetter(() => Promise.resolve(store.getState().auth.token));
+
   // null = hydrating, false = failed (fail-closed), true = ready
   const [ready, setReady] = useState<boolean | null>(null);
 
@@ -166,11 +173,6 @@ const App = () => {
 
   useEffect(() => {
     hydrate();
-
-    // Point the generated API client at the configured base URL and have it
-    // attach the current SSO token (held in the auth slice) on every request.
-    configureApiClient();
-    setTokenGetter(() => Promise.resolve(store.getState().auth.token));
 
     // Resolve auth: consume a cold-start login callback, else hydrate the
     // stored token (serialized so they can't race).

@@ -8,23 +8,28 @@ import type {
 } from '../../store/liveSession';
 
 jest.mock('../../hooks/useLiveReading', () => ({ useLiveReading: jest.fn() }));
-jest.mock('../../store/groupApi', () => ({ finishReading: jest.fn() }));
+jest.mock('../../store/groupApi', () => ({
+  checkpointReading: jest.fn().mockResolvedValue({ ok: true }),
+  finishReading: jest.fn(),
+}));
 jest.mock('../../utils/sharedPathAnalytics', () => ({ trackSharedPathEvent: jest.fn() }));
 
 const useLiveReadingMock = useLiveReading as jest.MockedFunction<typeof useLiveReading>;
 type SessionValue = ReturnType<typeof useReadingSession>;
 
 let callbacks!: {
+  onReadingEnded?: (event: { readerLabel: string; endAng: number }) => void;
   onTakeoverStarted?: (event: LiveReaderTakeoverStarted) => void;
   onTakeoverCancelled?: (event: { takeoverId: string }) => void;
   onTakeoverCompleted?: (event: LiveReaderTakeoverCompleted) => void;
 };
 let latest!: SessionValue;
-const navigation = { goBack: jest.fn(), reset: jest.fn() };
+const navigation = { goBack: jest.fn(), popTo: jest.fn(), reset: jest.fn() };
 
 const Probe = ({ live }: { live: Parameters<typeof useReadingSession>[0]['live'] }) => {
   latest = useReadingSession({
     live,
+    pathId: 1,
     pathAng: 1,
     centerVerseId: 10,
     scrollOffset: { current: 0 },
@@ -67,6 +72,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
   navigation.goBack.mockClear();
+  navigation.popTo.mockClear();
   navigation.reset.mockClear();
   useLiveReadingMock.mockImplementation((options) => {
     callbacks = options;
@@ -118,5 +124,21 @@ describe('useReadingSession takeover feedback', () => {
       });
     });
     expect(navigation.goBack).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a follower to the existing Continue screen after the reader finishes', async () => {
+    await mount({ ...reader, driving: false });
+    await act(async () => {
+      callbacks.onReadingEnded?.({ readerLabel: 'Reader', endAng: 2 });
+    });
+
+    await act(async () => {
+      latest.leaveAfterReading();
+    });
+
+    expect(navigation.popTo).toHaveBeenCalledWith('Continue', {
+      pathId: 1,
+      initialTab: 'progress',
+    });
   });
 });

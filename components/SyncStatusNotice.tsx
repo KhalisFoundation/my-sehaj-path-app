@@ -90,14 +90,13 @@ const SyncStatusNoticeComponent = () => {
       Object.keys(state.sync.pathOps).length + (state.sync.pendingSettingsUpdatedAt == null ? 0 : 1)
   );
   // Creating a path is automatically durable and its upload is routine. It
-  // should not announce itself; later reading progress and settings changes
-  // remain worth reporting during the post-login catch-up.
-  const hasNoticeWorthyPendingWork = useAppSelector(
-    (state) =>
-      state.sync.pendingSettingsUpdatedAt != null ||
-      Object.entries(state.sync.pathOps).some(
-        ([pathId, op]) => op.kind !== 'create' && !isSilentPathOp(Number(pathId), op.localUpdatedAt)
-      )
+  // should not announce itself. Settings sync is also deliberately silent:
+  // changing a preference still reaches the server, but it should not interrupt
+  // somebody who is simply adjusting the reader.
+  const hasNoticeWorthyPendingWork = useAppSelector((state) =>
+    Object.entries(state.sync.pathOps).some(
+      ([pathId, op]) => op.kind !== 'create' && !isSilentPathOp(Number(pathId), op.localUpdatedAt)
+    )
   );
   /** A settings edit with no path work queued alongside it. */
   const settingsOnly = useAppSelector(

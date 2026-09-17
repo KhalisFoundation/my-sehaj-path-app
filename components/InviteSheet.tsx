@@ -409,9 +409,9 @@ export const InviteSheet = ({
               style={styles.share}
               onPress={share}
               accessibilityRole="button"
-              accessibilityLabel={Constants.MORE_SHARING_OPTIONS}
+              accessibilityLabel={Constants.SHARING_OPTIONS}
             >
-              <Text style={styles.shareText}>{Constants.MORE_SHARING_OPTIONS}</Text>
+              <Text style={styles.shareText}>{Constants.SHARING_OPTIONS}</Text>
             </TouchableOpacity>
           </>
         )}

@@ -86,6 +86,18 @@ export const JoinPath = ({ route, navigation }: Props) => {
       return;
     }
 
+    // A public preview can show the path before sign-in, but joining itself
+    // cannot. Do not first offer Join Now only to replace it with Sign in after
+    // the tap — the receiver should have one clear flow: Sign in → Join Now.
+    if (authStatus !== 'signedIn') {
+      setStage({
+        name: 'signed-out',
+        pathName: preview.data.name,
+        memberCount: preview.data.memberCount,
+      });
+      return;
+    }
+
     if (preview.data.membership === 'ACTIVE') {
       setStage({ name: 'member', pathName: preview.data.name });
       return;
@@ -138,11 +150,13 @@ export const JoinPath = ({ route, navigation }: Props) => {
   const signIn = useCallback(async () => {
     try {
       await startLogin();
-      load().catch(() => undefined);
+      // Auth state changes after the SSO callback. The `load` effect above is
+      // keyed to that state, so it will refresh this invite with authenticated
+      // membership and show Join Now exactly once.
     } catch (error) {
       showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
     }
-  }, [load]);
+  }, []);
 
   if (stage.name === 'loading') {
     return (

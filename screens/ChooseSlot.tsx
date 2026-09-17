@@ -134,6 +134,19 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
+  // `navigate(ChooseSlot, …)` may reuse an existing sheet in the stack. Keep
+  // the displayed local calendar day in sync with the route in that case — in
+  // particular, a turn created just after midnight must not be edited as if it
+  // belonged to the previous day.
+  useEffect(() => {
+    const selection = initialSelection(route.params.initialStartsAt);
+    setDay(selection.day);
+    setTime(selection.time);
+    setDraftDay(selection.day);
+    setDraftTime(selection.time);
+    setMinutes(route.params.initialDurationMinutes ?? 15);
+  }, [route.params.initialDurationMinutes, route.params.initialStartsAt, editingSlotId]);
+
   const load = useCallback(async () => {
     setSlots(null);
     const { from, to } = planWindowFor(day);
@@ -274,7 +287,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   }, [availability, booking, editingSlotId, isEditing, load, navigation, sehajPathId]);
 
   const addDisabled = availability?.available !== true || booking;
-  let actionLabel = isEditing ? Constants.EDIT_TURN : Constants.ADD_TURN;
+  let actionLabel = isEditing ? Constants.SAVE_TURN_CHANGES : Constants.ADD_TURN;
   if (booking) {
     actionLabel = isEditing ? Constants.EDITING : Constants.BOOKING;
   }

@@ -1180,7 +1180,15 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       try {
         const result = await setMemberAdmin(sehajPathId, member.id, member.role !== 'ADMIN');
         if (result.ok) {
-          await loadMembers();
+          // The role endpoint returns the changed membership. Use it straight
+          // away so the Admin label and available actions do not wait for a
+          // second members-list request to complete.
+          setMembers((current) =>
+            current.map((entry) => (entry.id === member.id ? result.data : entry))
+          );
+          loadMembers().catch((error: unknown) => {
+            recordError(error, 'Continue: refresh members after role update failed');
+          });
         } else {
           showErrorAlert(result.message);
         }
@@ -1284,9 +1292,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   isFromPath ? 'Tap to go back to the path screen' : 'Tap to go back to home screen'
                 }
               >
-                <NavContent
-                  text={isFromPath ? Constants.BACK_TO_PATH : Constants.SEE_ALL_SEHAJ_PATH}
-                />
+                <NavContent text={isFromPath ? Constants.BACK_TO_PATH : Constants.HOME} />
               </BackButton>
               {matchedPath && canManagePath ? (
                 <PathOptionsMenu

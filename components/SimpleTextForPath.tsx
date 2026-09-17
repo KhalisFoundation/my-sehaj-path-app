@@ -25,6 +25,7 @@ const SimpleTextForPathComponent = ({
   onSave,
   verseId,
   vishraams,
+  vishraamEnabled,
   vishraamsSource: vishraamsSourceOverride,
   onLayout,
 }: PathTextProps) => {
@@ -33,7 +34,8 @@ const SimpleTextForPathComponent = ({
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
   const fontSize = useReaderFontSize();
-  const isVishraam = useAppSelector((state) => state.settings.vishraam);
+  const ownVishraam = useAppSelector((state) => state.settings.vishraam);
+  const isVishraam = vishraamEnabled ?? ownVishraam;
   const ownVishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
   const vishraamsSource = vishraamsSourceOverride ?? ownVishraamsSource;
 

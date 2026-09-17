@@ -10,7 +10,6 @@ import {
   setCatchUpSyncRunning,
 } from './slices/syncSlice';
 import {
-  hasLocalData,
   hasSendablePathOps,
   hasWorkBlockingPull,
   isPathOpBlocked,
@@ -42,17 +41,6 @@ export const canSyncNow = (): boolean => {
 };
 
 const hasPendingWork = (): boolean => hasWorkBlockingPull(store);
-
-/**
- * A cheap signature of the reading the user can see, used to tell whether the
- * catch-up actually brought anything down.
- */
-const pathSignature = (): string => {
-  const { paths } = store.getState();
-  return paths.paths
-    .map((path) => `${path.pathId}:${path.saveData.angNumber}.${path.saveData.verseId}`)
-    .join('|');
-};
 
 const promoteDirtyScroll = (announce = false): boolean => {
   const state = store.getState();
@@ -101,12 +89,7 @@ export const onForeground = async (activePathId?: number | null): Promise<void> 
   const isCatchUpSync = !store.getState().sync.catchUpSyncDone;
   if (isCatchUpSync) {
     store.dispatch(setCatchUpSyncRunning(true));
-    if (hasLocalData(store)) {
-      store.dispatch(requestSyncConfirmation());
-    }
   }
-  const before = isCatchUpSync ? pathSignature() : '';
-
   try {
     promoteDirtyScroll();
     if (hasPendingWork()) {
@@ -127,9 +110,10 @@ export const onForeground = async (activePathId?: number | null): Promise<void> 
     recordError(error, 'syncLifecycle: foreground sync failed');
   } finally {
     if (isCatchUpSync) {
-      if (pathSignature() !== before) {
-        store.dispatch(requestSyncConfirmation());
-      }
+      // Opening or returning to the app is a background refresh. It may bring
+      // down newer data, but it must not flash a Syncing/Synced notice over the
+      // screen. Explicit progress actions and reconnect recovery still request
+      // their own confirmation below.
       store.dispatch(markCatchUpSyncDone());
     }
   }

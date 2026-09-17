@@ -75,7 +75,7 @@ beforeEach(() => {
 describe('deleting a path from the three-dot menu', () => {
   it('does not offer the action until the menu is opened', async () => {
     const renderer = await render();
-    expect(labels(renderer)).not.toContain(Constants.DELETE_PATH);
+    expect(labels(renderer)).not.toContain(Constants.DELETE_SEHAJ_PATH);
   });
 
   it('asks before deleting, rather than deleting on the menu tap', async () => {
@@ -83,7 +83,7 @@ describe('deleting a path from the three-dot menu', () => {
     // represent months. It opens the confirmation and nothing else.
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
 
     expect(labels(renderer)).toContain(Constants.DELETE);
     expect(mockDelete).not.toHaveBeenCalled();
@@ -103,18 +103,18 @@ describe('deleting a path from the three-dot menu', () => {
   it('closes when the user taps anywhere outside it', async () => {
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    expect(labels(renderer)).toContain(Constants.DELETE_PATH);
+    expect(labels(renderer)).toContain(Constants.DELETE_SEHAJ_PATH);
 
     await press(renderer, 'Close menu');
 
-    expect(labels(renderer)).not.toContain(Constants.DELETE_PATH);
+    expect(labels(renderer)).not.toContain(Constants.DELETE_SEHAJ_PATH);
     expect(mockDelete).not.toHaveBeenCalled();
   });
 
   it('dims the screen for the confirmation, unlike the menu', async () => {
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
 
     const dimmed = renderer.root.findAll(
       (n) => !!(StyleSheet.flatten(n.props?.style) as ViewStyle | undefined)?.backgroundColor
@@ -129,14 +129,14 @@ describe('deleting a path from the three-dot menu', () => {
     await press(renderer, 'More options for Path #7');
     expect(mockTrack).toHaveBeenCalledWith('PathOptions', 'click', 'more options opened');
 
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     expect(mockTrack).toHaveBeenCalledWith('PathOptions', 'click', 'delete pressed');
   });
 
   it('reports the press even if the user then cancels', async () => {
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.CANCEL);
 
     expect(mockTrack).toHaveBeenCalledWith('PathOptions', 'click', 'delete pressed');
@@ -149,7 +149,7 @@ describe('deleting a path from the three-dot menu', () => {
     // deletion that had in fact succeeded.
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.DELETE);
 
     expect(onDeletingChange).toHaveBeenCalledWith(true);
@@ -165,7 +165,7 @@ describe('deleting a path from the three-dot menu', () => {
     mockDelete.mockResolvedValue(false);
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.DELETE);
 
     expect(onDeletingChange).toHaveBeenLastCalledWith(false);
@@ -175,12 +175,12 @@ describe('deleting a path from the three-dot menu', () => {
     mockDelete.mockResolvedValue(false);
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.DELETE);
 
     expect(labels(renderer)).toContain(Constants.OK);
     expect(
-      renderer.root.findAll((node) => node.props?.children === ErrorConstants.FAILED_TO_DELETE_PATH)
+      renderer.root.findAll((node) => node.props?.children === ErrorConstants.FAILED_TO_DELETE_SEHAJ_PATH)
     ).not.toHaveLength(0);
   });
 
@@ -189,7 +189,7 @@ describe('deleting a path from the three-dot menu', () => {
     mockDelete.mockRejectedValue(error);
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.DELETE);
 
     expect(mockRecordError).toHaveBeenCalledWith(error, 'PathOptionsMenu: delete command failed', {
@@ -201,7 +201,7 @@ describe('deleting a path from the three-dot menu', () => {
   it('deletes and tells the screen to leave once confirmed', async () => {
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.DELETE);
 
     expect(mockDelete).toHaveBeenCalledWith(7);
@@ -211,7 +211,7 @@ describe('deleting a path from the three-dot menu', () => {
   it('backing out of the confirmation deletes nothing', async () => {
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.CANCEL);
 
     expect(mockDelete).not.toHaveBeenCalled();
@@ -225,7 +225,7 @@ describe('deleting a path from the three-dot menu', () => {
     mockDelete.mockResolvedValue(false);
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
     await press(renderer, Constants.DELETE);
 
     expect(mockDelete).toHaveBeenCalledTimes(1);
@@ -241,7 +241,7 @@ describe('deleting a path from the three-dot menu', () => {
     );
     const renderer = await render();
     await press(renderer, 'More options for Path #7');
-    await press(renderer, Constants.DELETE_PATH);
+    await press(renderer, Constants.DELETE_SEHAJ_PATH);
 
     // Neither tap is awaited: the first is still in flight when the second lands.
     await tap(renderer, Constants.DELETE);

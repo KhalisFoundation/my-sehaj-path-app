@@ -151,11 +151,11 @@ export const PathOptionsMenu = ({
                   setView('confirm');
                 }}
                 style={styles.menuItem}
-                accessibilityLabel={Constants.DELETE_PATH}
+                accessibilityLabel={Constants.DELETE_SEHAJ_PATH}
                 accessibilityRole="button"
                 accessibilityHint="Tap to delete this Sehaj Path"
               >
-                <Text style={styles.destructiveItemText}>{Constants.DELETE_PATH}</Text>
+                <Text style={styles.destructiveItemText}>{Constants.DELETE_SEHAJ_PATH}</Text>
               </TouchableOpacity>
               {onLeave && (
                 <TouchableOpacity
@@ -174,11 +174,11 @@ export const PathOptionsMenu = ({
         ) : view === 'confirm' ? (
           <View style={DialogStyles.backdrop}>
             <View style={DialogStyles.card}>
-              <Text style={DialogStyles.title}>{Constants.DELETE_PATH_TITLE}</Text>
+              <Text style={DialogStyles.title}>{Constants.DELETE_SEHAJ_PATH_TITLE}</Text>
               <Text style={DialogStyles.message}>
-                {Constants.DELETE_PATH_MESSAGE_BEFORE}
+                {Constants.DELETE_SEHAJ_PATH_MESSAGE_BEFORE}
                 <Text style={DialogStyles.strong}>{pathName}</Text>
-                {Constants.DELETE_PATH_MESSAGE_AFTER}
+                {Constants.DELETE_SEHAJ_PATH_MESSAGE_AFTER}
               </Text>
               <View style={DialogStyles.actions}>
                 <TouchableOpacity
@@ -264,8 +264,8 @@ export const PathOptionsMenu = ({
         ) : view === 'error' ? (
           <View style={DialogStyles.backdrop}>
             <View style={DialogStyles.card}>
-              <Text style={DialogStyles.title}>{Constants.DELETE_PATH_FAILED_TITLE}</Text>
-              <Text style={DialogStyles.message}>{ErrorConstants.FAILED_TO_DELETE_PATH}</Text>
+              <Text style={DialogStyles.title}>{Constants.DELETE_SEHAJ_PATH_FAILED_TITLE}</Text>
+              <Text style={DialogStyles.message}>{ErrorConstants.FAILED_TO_DELETE_SEHAJ_PATH}</Text>
               <View style={DialogStyles.actions}>
                 <TouchableOpacity
                   onPress={close}

@@ -189,7 +189,11 @@ export const useReadingSession = ({
 
   const leaveAfterReading = useCallback(() => {
     setEndedNoticeOpen(false);
-    navigation.replace(Routes.Continue, { pathId, initialTab: 'progress' });
+    // Continue is already below the follower reader in the normal flow:
+    // Home → Continue → Path. Replacing Path with another Continue leaves two
+    // Continue routes in the stack, so Back appears to reopen the same screen.
+    // Return to the existing route instead.
+    navigation.popTo(Routes.Continue, { pathId, initialTab: 'progress' });
   }, [navigation, pathId]);
   const turnEnded = useRef(false);
   const requestExit = useCallback(() => {

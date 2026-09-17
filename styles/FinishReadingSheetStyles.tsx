@@ -42,6 +42,7 @@ export const FinishReadingSheetStyles = StyleSheet.create({
     fontSize: 20,
     color: UIConstants.PRIMARY_COLOR,
     marginBottom: 10,
+    textAlign: 'center',
   },
 
   label: {

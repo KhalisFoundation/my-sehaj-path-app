@@ -361,6 +361,7 @@ const PathReaderComponent = ({
                       index={globalIndex}
                       verseId={verseId}
                       vishraams={vishraam}
+                      vishraamEnabled={isVishraam}
                       vishraamsSource={vishraamsSource}
                     />
                   );
@@ -391,6 +392,7 @@ const PathReaderComponent = ({
           index={index + 1}
           verseId={path.verseId}
           vishraams={vishraam}
+          vishraamEnabled={isVishraam}
           vishraamsSource={vishraamsSource}
           renderWordSegments={larivaarRenderData?.wordSegments}
         />
