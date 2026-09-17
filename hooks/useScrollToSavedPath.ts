@@ -36,7 +36,12 @@ export const useScrollToSavedPath = ({
   isParagraphMode,
 }: UseScrollToSavedPathProps) => {
   const scrollToSavedPathData = useCallback(async () => {
-    if (matchedPathDate && !scrolledToSavedPath.current && scrollRef.current) {
+    if (
+      matchedPathDate &&
+      matchedPathDate.scrollPosition > 0 &&
+      !scrolledToSavedPath.current &&
+      scrollRef.current
+    ) {
       scrollOffset.current = matchedPathDate.scrollPosition;
       if (scrollRef.current) {
         // `scrollTo` emits the same `onScroll` events as a finger drag. Mark

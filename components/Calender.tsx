@@ -1,25 +1,82 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, TouchableOpacity, Image } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { AppText as Text } from './AppText';
 import dayjs from 'dayjs';
 import { CalenderStyles } from '@styles';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
 import { CalenderDays } from '@constants';
 import { useAppSelector } from '../store/hooks';
+import { listSharedReadingDays } from '../store/groupApi';
+import { store } from '../store';
+import { applyServerPathData } from '../store/slices/pathsSlice';
 
 interface Props {
   streak: React.MutableRefObject<number>;
   pathId: number;
+  sharedPathId?: string;
   onStreakUpdate?: (streakValue: number) => void;
 }
 
-export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
+export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props) => {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [days, setDays] = useState<string[]>([]);
+  const [sharedDates, setSharedDates] = useState<string[] | null>(null);
   // Reactive: no fetch-on-mount, and it updates as soon as progress is saved.
   const progressDates = useAppSelector((state) =>
     state.paths.dates.find((date) => date.pathid === pathId)
   );
+
+  const loadSharedDates = useCallback(async (): Promise<string[] | null> => {
+    if (!sharedPathId) {
+      return null;
+    }
+    const result = await listSharedReadingDays(sharedPathId);
+    return result.ok ? result.data.dates : [];
+  }, [sharedPathId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      loadSharedDates()
+        .then((dates) => {
+          if (active) {
+            setSharedDates(dates);
+            if (dates && dates.length > 0) {
+              const existing =
+                store.getState().paths.dates.find((entry) => entry.pathid === pathId)?.dates ?? [];
+              const merged = new Map(existing.map((entry) => [entry.date, entry]));
+              dates.forEach((date) => {
+                const localDate = dayjs(date).format('D-MMMM-YYYY');
+                merged.set(localDate, { date: localDate });
+              });
+              store.dispatch(
+                applyServerPathData({
+                  pathId,
+                  pathPatch: {},
+                  datePatch: { dates: [...merged.values()] },
+                })
+              );
+            }
+          }
+        })
+        .catch(() => {
+          if (active && sharedPathId) {
+            setSharedDates([]);
+          }
+        });
+      return () => {
+        active = false;
+      };
+    }, [loadSharedDates, pathId, sharedPathId])
+  );
+
+  const readingDateStrings = useMemo(() => {
+    if (sharedPathId) {
+      return (sharedDates ?? []).map((date) => dayjs(date).format('D-MMMM-YYYY'));
+    }
+    return progressDates?.dates?.map((date: any) => date.date) ?? [];
+  }, [progressDates, sharedDates, sharedPathId]);
 
   const calculateStreak = useCallback((dates: string[]): number => {
     if (!dates || dates.length === 0) {
@@ -27,8 +84,13 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
     }
     const today = dayjs();
     const todayString = today.format('D-MMMM-YYYY');
+    // A streak remains active through the current day until midnight. If the
+    // user has not read today yet, yesterday is the latest valid anchor rather
+    // than an immediate reset to zero.
+    const anchor = dates.includes(todayString) ? today : today.subtract(1, 'day');
+    const anchorString = anchor.format('D-MMMM-YYYY');
 
-    if (!dates.includes(todayString)) {
+    if (!dates.includes(anchorString)) {
       return 0;
     }
 
@@ -38,7 +100,14 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
 
     let currentStreak = 1;
 
-    for (let i = 0; i < sortedDates.length - 1; i++) {
+    const anchorIndex = sortedDates.findIndex(
+      (date) => date.format('D-MMMM-YYYY') === anchorString
+    );
+    if (anchorIndex < 0) {
+      return 0;
+    }
+
+    for (let i = anchorIndex; i < sortedDates.length - 1; i++) {
       const currentDate = sortedDates[i];
       const nextDate = sortedDates[i + 1];
       if (currentDate.diff(nextDate, 'day') === 1) {
@@ -52,12 +121,8 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
   }, []);
 
   const currentStreak = useMemo(() => {
-    if (!progressDates?.dates) {
-      return 0;
-    }
-    const dateStrings = progressDates.dates.map((d: any) => d.date);
-    return calculateStreak(dateStrings);
-  }, [progressDates, calculateStreak]);
+    return calculateStreak(readingDateStrings);
+  }, [calculateStreak, readingDateStrings]);
 
   const daysArray = useMemo(() => {
     const daysInMonth = currentMonth.daysInMonth();
@@ -89,13 +154,13 @@ export const Calender = ({ pathId, streak, onStreakUpdate }: Props) => {
 
   const hasProgress = useCallback(
     (date: dayjs.Dayjs): boolean => {
-      if (!progressDates?.dates) {
+      if (readingDateStrings.length === 0) {
         return false;
       }
       const dateString = date.format('D-MMMM-YYYY');
-      return progressDates.dates.some((d: any) => d.date === dateString);
+      return readingDateStrings.includes(dateString);
     },
-    [progressDates]
+    [readingDateStrings]
   );
 
   const dateRows = useMemo(() => {

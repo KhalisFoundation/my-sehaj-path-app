@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { View, ImageBackground, ScrollView, BackHandler, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -17,26 +17,29 @@ import {
   Message,
 } from '@components';
 import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
-import { recordError, showErrorAlert, trackEvent } from '@utils';
-import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
+import { Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { MenuIcon, SyncedCheckIcon } from '@icons';
-import { useAppSelector } from '../store/hooks';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { removePathAndSyncState } from '../store';
 import { selectVisiblePaths } from '../store/selectors';
-import { createPath } from '../store/commands';
 import { onForeground } from '../store/syncLifecycle';
 import { sortPathsForHome } from '../store/pathOrdering';
+import { avatarUrlFor, listMembers } from '../store/groupApi';
+import type { AvatarMember } from '../components/MemberAvatars';
+import { HomeScreenBackground } from '../assets/Images';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
+  const [membersByPathId, setMembersByPathId] = useState<Record<number, AvatarMember[]>>({});
+  const dispatch = useAppDispatch();
   // Not the raw slice: a deleted path lingers there until the server confirms.
   const paths = useAppSelector(selectVisiblePaths);
   const syncMeta = useAppSelector((state) => state.sync.meta);
   const { handleDrawerNavigate } = useDrawerNavigation();
-  const isCreatingRef = useRef(false);
   // Set by Continue on its way here. Cleared once read, so returning to Home
   // later never replays a confirmation for something deleted minutes ago.
   const pathDeleted = route.params?.pathDeleted === true;
@@ -70,6 +73,65 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
     }, [])
   );
 
+  // Member avatars are only meaningful for server-backed shared paths. Keep
+  // this request out of personal paths, and discard a late response when the
+  // user leaves Home before it finishes.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      const sharedPaths = paths.filter((path) => {
+        const meta = syncMeta[path.pathId];
+        return meta?.shared === true && meta.groupId !== undefined;
+      });
+
+      const loadMembers = async () => {
+        const entries = await Promise.all(
+          sharedPaths.map(async (path) => {
+            const groupId = syncMeta[path.pathId]?.groupId;
+            if (!groupId) {
+              return [path.pathId, []] as const;
+            }
+            const result = await listMembers(groupId);
+            if (!result.ok) {
+              // 403/404 both mean this account cannot access this group any
+              // more (the API may hide a missing path as 404). Do not remove
+              // it for 401, offline, or 5xx failures: those can recover and
+              // are not proof that the path was removed.
+              const accessWasRemoved =
+                result.kind === 'refused' && (result.status === 403 || result.status === 404);
+              if (accessWasRemoved && !cancelled) {
+                dispatch(removePathAndSyncState({ pathId: path.pathId }));
+              }
+              return [path.pathId, []] as const;
+            }
+            const members: AvatarMember[] = result.data
+              .filter((member) => member.status === 'ACTIVE')
+              .map((member) => ({
+                id: member.id,
+                displayLabel: member.displayLabel,
+                avatarUri: avatarUrlFor(groupId, member),
+              }));
+            return [path.pathId, members] as const;
+          })
+        );
+
+        if (!cancelled) {
+          setMembersByPathId(Object.fromEntries(entries));
+        }
+      };
+
+      loadMembers().catch(() => {
+        if (!cancelled) {
+          setMembersByPathId({});
+        }
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [dispatch, paths, syncMeta])
+  );
+
   // Home is the safe place to pull another device's progress. The lifecycle
   // helper first uploads any local work; it never applies a stale GET response
   // over offline edits.
@@ -83,28 +145,8 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
     }, [])
   );
 
-  const handleStart = useCallback(async () => {
-    // Guard against a rapid double-tap creating two paths (belt-and-braces with
-    // the id being allocated inside the command's lock).
-    if (isCreatingRef.current) {
-      return;
-    }
-    isCreatingRef.current = true;
-    try {
-      // Only navigate once the new path is actually durable on disk.
-      const newPathId = await createPath();
-      if (newPathId === null) {
-        showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
-        return;
-      }
-      trackEvent('PathCreated', 'click', 'start new path');
-      navigation.push(Routes.Continue, { pathId: newPathId });
-    } catch (error) {
-      recordError(error, 'HomeScreen: failed to create new sehaj path');
-      showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
-    } finally {
-      isCreatingRef.current = false;
-    }
+  const handleStart = useCallback(() => {
+    navigation.push(Routes.CreatePath);
   }, [navigation]);
 
   const handleCloseDrawer = useCallback(() => {
@@ -119,12 +161,13 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           sehajPathName={path.pathName}
           angNumber={path.saveData.angNumber}
           progress={path.progress}
+          members={membersByPathId[path.pathId]}
           onPress={() => {
             navigation.push(Routes.Continue, { pathId: path.pathId });
           }}
         />
       )),
-    [pathInProgress, navigation]
+    [pathInProgress, membersByPathId, navigation]
   );
 
   const pathCompletedCards = useMemo(
@@ -134,9 +177,10 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           key={path.pathId}
           pathName={path.pathName}
           pathCompletionDate={path.completionDate}
+          members={membersByPathId[path.pathId]}
         />
       )),
-    [pathCompleted]
+    [pathCompleted, membersByPathId]
   );
 
   return (
@@ -145,7 +189,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
       <SignInPopup />
       <SyncUnavailablePopup />
       <ImageBackground
-        source={require('../assets/Images/HomeScreenBg.png')}
+        source={HomeScreenBackground}
         resizeMode="cover"
         style={HomeScreenStyles.backgroundImage}
       >

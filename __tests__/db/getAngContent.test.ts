@@ -11,7 +11,7 @@ const mockedInstalled = isDatabaseInstalled as jest.Mock;
 const mockedGetBani = getBani as jest.Mock;
 const mockedApi = BaniDB as jest.Mock;
 
-// A single ang exactly as @sikhi-ui/banidb.getAng returns it (verified against
+// A single ang exactly as @khalisfoundation/banidb.getAng returns it (verified against
 // the real DB): `source.pageNo`, full verse fields, `visraam` keyed by source.
 const ANG = {
   source: { sourceId: 'G', gurmukhi: null, unicode: null, english: null, pageNo: 5 },
@@ -69,6 +69,15 @@ describe('getAngContent', () => {
     expect(result.success).toBe(true);
     expect(result.source).toBe('api');
     expect(mockedGetBani).not.toHaveBeenCalled();
+  });
+
+  it('reads Ang 1 when a new path still carries the Ang 0 progress sentinel', async () => {
+    mockedInstalled.mockResolvedValue(false);
+    mockedApi.mockResolvedValue({ success: true, data: { page: [], source: { pageNo: 1 } } });
+
+    await getAngContent(0);
+
+    expect(mockedApi).toHaveBeenCalledWith(1);
   });
 
   it('falls back to the API when an installed DB cannot be read', async () => {

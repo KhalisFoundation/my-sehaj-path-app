@@ -2,6 +2,7 @@ import type { SehajPath, SehajPathSyncResult } from '@api/generated/types.gen';
 import { resolveFontSize } from '../constants/FontSize';
 import {
   sehajPathSettingsControllerGet,
+  sehajPathMembersControllerFindAccessible,
   sehajPathsControllerFindAll,
 } from '@api/generated/sdk.gen';
 import { clearCurrentToken } from '../auth/tokenUtils';
@@ -13,6 +14,7 @@ import { setSignedOut } from './slices/authSlice';
 import { addServerPath, applyServerPathData, getNextPathId } from './slices/pathsSlice';
 import { hydrateSettings, type SettingsState } from './slices/settingsSlice';
 import {
+  setPathShared,
   ackServerPath,
   clearScrollIfUnchanged,
   clearSettingsIfUnchanged,
@@ -160,6 +162,63 @@ const allocateFromServer = (store: AppStore, sp: SehajPath): void => {
 };
 
 /**
+ * Give a path somebody else owns a local row, so it can be seen and read.
+ *
+ * A joined path never arrives through `GET /sehaj-path/paths` — that endpoint is
+ * owner-scoped — and `accessible` deliberately returns `pathId: null` for it,
+ * because handing back another device's client-generated id would invite this
+ * one to treat the path as its own. The consequence was that a member who
+ * joined a path saw nothing at all: the path existed, they had access, and
+ * their app had no row to render.
+ *
+ * The row is marked `shared` from the moment it is created, which is what keeps
+ * it out of the bulk `/sync` body — this device must never push a path it does
+ * not own. `serverPathId` is filled with the SERVER's id rather than a minted
+ * one: the value is never sent anywhere for a shared path, and inventing a
+ * second identifier for a row that already has one only creates something else
+ * to get out of step.
+ */
+const allocateJoinedPath = (
+  store: AppStore,
+  row: { id: string; name: string; angNumber: number; verseId: number; progress: number }
+): void => {
+  const state = store.getState();
+  const reserved = [
+    ...state.paths.dates.map((entry) => entry.pathid),
+    ...getQuarantinedPathIds(store),
+  ];
+  const pathId = getNextPathId(state.paths.paths, reserved);
+  const now = Date.now();
+
+  store.dispatch(
+    addServerPath({
+      path: {
+        pathId,
+        saveData: { angNumber: row.angNumber, verseId: row.verseId },
+        progress: row.progress,
+        startDate: '',
+        completionDate: '',
+        pathName: row.name,
+      },
+      date: { pathid: pathId, dates: [], scrollPosition: 0 },
+    })
+  );
+  store.dispatch(
+    upsertMeta({
+      pathId,
+      meta: {
+        serverPathId: row.id,
+        startDate: now,
+        localUpdatedAt: now,
+        serverUpdatedAt: now,
+        onServer: true,
+      },
+    })
+  );
+  store.dispatch(setPathShared({ pathId, shared: true, groupId: row.id }));
+};
+
+/**
  * Folds one `SehajPath` back into local state, timestamp-guarded so a concurrent
  * local edit is never lost. A clean closed path receives the server's whole
  * checkpoint (ang, verse, and scroll together); a direct write response keeps
@@ -266,6 +325,14 @@ export const reconcileDeletions = (
   for (const [key, meta] of Object.entries(state.sync.meta)) {
     const pathId = Number(key);
     if (!meta.onServer || presentServerIds.has(meta.serverPathId)) {
+      continue;
+    }
+    // A joined path is owned by somebody else, so it is ABSENT from the
+    // owner-scoped listing this set is built from — its absence says nothing
+    // about whether it still exists. Deleting on that basis would remove the
+    // path from every member's device the moment they synced. Losing access is
+    // reported separately, by `accessible` no longer returning it.
+    if (meta.shared) {
       continue;
     }
     if (expectedMeta) {
@@ -459,9 +526,20 @@ const performRefreshPathsFromServer = async (
   );
 
   try {
-    const [pathsResult, settingsResult] = await Promise.all([
+    const [pathsResult, settingsResult, accessibleResult] = await Promise.all([
       sehajPathsControllerFindAll({ headers: syncSessionHeaders(session) }),
       sehajPathSettingsControllerGet({ headers: syncSessionHeaders(session) }),
+      // Which of those paths are shared with a group.
+      //
+      // Never allowed to fail the refresh. It answers an extra question about
+      // rows the other two calls already fetched, so losing the answer means a
+      // shared path is momentarily treated as personal — the server refuses a
+      // rewind of a shared path regardless, so this is defence in depth, not
+      // the only guard. Failing the whole sync over it would trade a small
+      // degradation for a total one.
+      sehajPathMembersControllerFindAccessible({
+        headers: syncSessionHeaders(session),
+      }).catch(() => null),
     ]);
     // A logout or a different login may happen while GET is in flight. Never
     // let account A's response populate account B's local dataset.
@@ -510,6 +588,102 @@ const performRefreshPathsFromServer = async (
         applyServerPath(store, sp);
       });
     }
+    // Mark which local paths are actively shared, BEFORE anything else looks
+    // at them.
+    //
+    // This flag is what makes a group path behave as a group path: the bulk
+    // `/sync` body leaves it out, the middleware stops marking it dirty, and
+    // `isGroupPath` gates the reader. Every one of those was built and tested,
+    // and none of them did anything, because nothing set the flag — so a shared
+    // path was still being pushed through the owner-scoped merge that can
+    // rewind a group's reading.
+    //
+    // Only OWNED paths matter here. `GET /sehaj-path/paths` is owner-scoped, so
+    // a joined path has no local row to mark — and `accessible` returns
+    // `pathId: null` for exactly those.
+    if (accessibleResult?.data) {
+      // Read fresh rather than reusing the `state` captured at entry: the calls
+      // above have applied server paths since, so an older snapshot could miss
+      // the very meta this match needs.
+      const afterPaths = store.getState();
+      for (const row of accessibleResult.data) {
+        // `pathId: null` means this device does not own the path — it joined
+        // it. Those have no local row until one is made here.
+        if (!row.pathId) {
+          const joinedId = findLocalIdByServerPathId(store.getState(), row.id);
+          if (joinedId == null) {
+            allocateJoinedPath(store, row);
+          } else {
+            // Re-assert it on every refresh rather than only at creation.
+            // `setPathShared` is also what drops work queued for a path that
+            // can never be pushed, so skipping it here left a joined row
+            // retrying a `PATCH` for ever.
+            store.dispatch(setPathShared({ pathId: joinedId, shared: true, groupId: row.id }));
+            // And take the group's position from the same response.
+            //
+            // A joined path is a VIEW of a row this device does not own: it
+            // never appears in `GET /sehaj-path/paths`, so nothing else here
+            // ever updates it. Created once and never refreshed, it showed
+            // whatever the path stood at when the member joined — so two
+            // devices reading the same path disagreed about how far it had got,
+            // and the joined one only fell further behind.
+            store.dispatch(
+              applyServerPathData({
+                pathId: joinedId,
+                pathPatch: {
+                  pathName: row.name,
+                  progress: row.progress,
+                  saveData: { angNumber: row.angNumber, verseId: row.verseId },
+                },
+                datePatch: {},
+              })
+            );
+          }
+          continue;
+        }
+        const localId = findLocalIdByServerPathId(afterPaths, row.pathId);
+        if (localId == null) {
+          continue;
+        }
+        // `row.id` is the identifier every group endpoint keys on; `row.pathId`
+        // is only what this device syncs under. Keeping just the flag and
+        // discarding the id is what made every group call 404.
+        //
+        // PUBLIC means an invite link exists. It does *not* mean that another
+        // person has joined yet: the owner is the first active membership
+        // created with that link. Treat the path as group-owned only once the
+        // server reports another active member; until then it remains a normal
+        // personal reading path with an optional share link.
+        store.dispatch(
+          setPathShared({
+            pathId: localId,
+            shared: row.memberCount > 1,
+            groupId: row.id,
+          })
+        );
+      }
+
+      // Joined paths are represented locally even though they are absent from
+      // the owner-scoped paths response. Once membership is removed (or the
+      // group is deleted), accessible no longer returns their group id; remove
+      // the local view so Home cannot resurrect it as an empty personal path.
+      const accessibleGroupIds = new Set(accessibleResult.data.map((row) => row.id));
+      const refreshed = store.getState();
+      for (const [key, meta] of Object.entries(refreshed.sync.meta)) {
+        const localId = Number(key);
+        const isJoinedView =
+          meta.shared === true && meta.groupId !== undefined && meta.serverPathId === meta.groupId;
+        if (
+          isJoinedView &&
+          meta.groupId !== undefined &&
+          !accessibleGroupIds.has(meta.groupId) &&
+          localId !== activePathId
+        ) {
+          store.dispatch(removePathAndSyncState({ pathId: localId }));
+        }
+      }
+    }
+
     if (!pathsUnchanged && pathsResult.data) {
       reconcileDeletions(
         store,

@@ -23,6 +23,34 @@ export interface SyncMeta {
   deletedAt: number | null;
   /** True after the server has acknowledged this UUID. */
   onServer: boolean;
+  /**
+   * True when this path is shared with a group.
+   *
+   * A shared path is **server-owned**, not local-first. Several people write to
+   * it, so the local-first machinery is actively wrong for it: the outbox is
+   * built to insist, retrying until its version wins, and two devices insisting
+   * on one row is how a group's position gets corrupted. Optional so metadata
+   * persisted before group reading existed still loads — absent means personal.
+   *
+   * The one behaviour that depends on this: `buildSyncRequest` leaves these
+   * paths out of the bulk `/sync` body entirely.
+   */
+  shared?: boolean;
+  /**
+   * The SERVER's own id for this path, which is not `serverPathId`.
+   *
+   * A path has two identifiers. `serverPathId` is the UUID this device minted
+   * and syncs under; `groupId` is the row's own primary key. Every group
+   * endpoint keys on the latter, because a path shared with other people cannot
+   * be addressed by an id one member's device happened to generate — the other
+   * members never had it.
+   *
+   * Learned from `GET /sehaj-path/v2/paths`, which returns both. The app
+   * used to read that response for `sharing` alone and discard the id, then call
+   * the group endpoints with `serverPathId` — which they answer with a `404
+   * Path not found`, because that column is not what they look up.
+   */
+  groupId?: string;
 }
 
 export interface SyncState {
@@ -151,6 +179,27 @@ export const syncSlice = createSlice({
       state.scrollDirty = p.scrollDirty;
       state.settingsUpdatedAt = p.settingsUpdatedAt;
       state.pendingSettingsUpdatedAt = p.pendingSettingsUpdatedAt;
+
+      // Drop work queued for a path that is now shared.
+      //
+      // Such an op is unsendable — a shared path is left out of the `/sync`
+      // body — and it DEADLOCKS the device: pending work blocks the pull, and
+      // the pull is the only thing that would otherwise notice the path is
+      // shared and clear it. The result is a `PATCH` retried for ever against
+      // an id the group endpoints do not answer to, and a sync indicator that
+      // never goes out.
+      //
+      // Doing it here rather than only in `setPathShared` is what repairs a
+      // device that already persisted such an op: hydration is the one moment
+      // guaranteed to run before anything tries to send.
+      for (const key of Object.keys(state.meta)) {
+        const pathId = Number(key);
+        if (state.meta[pathId]?.shared) {
+          delete state.pathOps[pathId];
+          delete state.scrollDirty[pathId];
+        }
+      }
+
       resetRuntime(state);
       state.hydrated = true;
     },
@@ -191,6 +240,41 @@ export const syncSlice = createSlice({
         onServer: false,
       };
       state.meta[pathId] = { ...base, ...meta };
+    },
+    /**
+     * Record whether a path is shared with a group.
+     *
+     * Separate from `upsertMeta` because this is the server telling us what a
+     * path *is*, not a local edit — and it must never mark the path dirty or
+     * schedule a sync. Learning that a path is shared is precisely the moment
+     * we should stop syncing it.
+     */
+    setPathShared: (
+      state,
+      action: PayloadAction<{ pathId: number; shared: boolean; groupId?: string }>
+    ) => {
+      const meta = state.meta[action.payload.pathId];
+      if (!meta) {
+        return;
+      }
+      meta.shared = action.payload.shared;
+      // Recorded even for a personal path: it is the id every group endpoint
+      // needs, and sharing a path is exactly when it is too late to go and ask.
+      if (action.payload.groupId !== undefined) {
+        meta.groupId = action.payload.groupId;
+      }
+      if (action.payload.shared) {
+        // Drop anything already queued for this path. A shared path is left out
+        // of the `/sync` body, so a queued op can never be acknowledged — it
+        // retries for ever, holding the sync indicator on and re-issuing a
+        // `PATCH` the server answers with 404, because a shared path is
+        // addressed by its group id and not the one this device syncs under.
+        //
+        // Clearing here rather than only refusing new work is what repairs a
+        // device that queued something before the path became shared.
+        delete state.pathOps[action.payload.pathId];
+        delete state.scrollDirty[action.payload.pathId];
+      }
     },
     dropMeta: (state, action: PayloadAction<number>) => {
       const pathId = action.payload;
@@ -398,6 +482,7 @@ export const {
   setAccount,
   setLastSyncedAt,
   upsertMeta,
+  setPathShared,
   dropMeta,
   markPathEdited,
   markPathDeleted,

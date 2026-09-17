@@ -38,6 +38,7 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = KhalisSehajPathApp/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = KhalisSehajPathApp/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = KhalisSehajPathApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		13B07FB91A68108700A75B9A /* KhalisSehajPathApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = KhalisSehajPathApp.entitlements; path = KhalisSehajPathApp/KhalisSehajPathApp.entitlements; sourceTree = "<group>"; };
 		14C49625F62B3CB7FB2A1F16 /* Pods_KhalisSehajPathApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_KhalisSehajPathApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-RegularItalic.otf"; path = "../assets/fonts/BrandonGrotesque-RegularItalic.otf"; sourceTree = "<group>"; };
 		1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Medium.ttf"; path = "../assets/fonts/BalooPaaji2-Medium.ttf"; sourceTree = "<group>"; };
@@ -85,6 +86,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				13B07FB91A68108700A75B9A /* KhalisSehajPathApp.entitlements */,
 			);
 			name = KhalisSehajPathApp;
 			sourceTree = "<group>";
@@ -370,9 +372,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = BC6896D8247A3927D8865598 /* Pods-KhalisSehajPathApp.debug.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = 16;
+				CODE_SIGN_ENTITLEMENTS = KhalisSehajPathApp/KhalisSehajPathApp.entitlements;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = B3W82WVBU9;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = KhalisSehajPathApp/Info.plist;
@@ -382,7 +386,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 3.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",
@@ -402,9 +406,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 2C614AEF4502AE68E9E3E9B4 /* Pods-KhalisSehajPathApp.release.xcconfig */;
 			buildSettings = {
+				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
-				CURRENT_PROJECT_VERSION = 16;
+				CODE_SIGN_ENTITLEMENTS = KhalisSehajPathApp/KhalisSehajPathApp.entitlements;
+				CURRENT_PROJECT_VERSION = 19;
 				DEVELOPMENT_TEAM = B3W82WVBU9;
 				INFOPLIST_FILE = KhalisSehajPathApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Khalis Sehaj Path App";
@@ -413,7 +419,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2.0.0;
+				MARKETING_VERSION = 3.0.0;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"-ObjC",

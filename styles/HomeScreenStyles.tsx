@@ -6,14 +6,13 @@ export const HomeScreenStyles = StyleSheet.create({
     height: '100%',
   },
   container: {
-    backgroundColor: 'rgba(245, 245, 245,0.89)',
+    backgroundColor: UIConstants.SCREEN_OVERLAY,
     alignItems: 'center',
     justifyContent: 'center',
     padding: UIConstants.PADDING,
     flex: 1,
     borderWidth: 4,
-    borderRightWidth: 5,
-    borderColor: 'rgba(253, 198, 6, 0.3)',
+    borderColor: UIConstants.SCREEN_BORDER_COLOR,
   },
   scrollContainer: {
     flexGrow: 1,

@@ -21,9 +21,15 @@ interface Props {
    * unless the screen is told the disappearance was asked for.
    */
   onDeletingChange?: (isDeleting: boolean) => void;
+  /** Present only for a shared-path admin. */
+  onLeave?: () => void;
+  /** The final active admin must transfer administration before leaving. */
+  leaveRequiresAdminTransfer?: boolean;
+  /** Opens the Members tab so the admin can promote somebody. */
+  onMakeAdmin?: () => void;
 }
 
-type MenuView = 'closed' | 'menu' | 'confirm' | 'error';
+type MenuView = 'closed' | 'menu' | 'confirm' | 'error' | 'leaveConfirm' | 'leaveBlocked';
 
 /** Breathing room between the dots and the menu, and against the screen edge. */
 const MENU_GAP = 8;
@@ -38,7 +44,15 @@ const MENU_GAP = 8;
  * appear after the menu closed — the tap would look ignored. One modal has
  * nothing to dismiss, so the transition cannot lose the race.
  */
-export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange }: Props) => {
+export const PathOptionsMenu = ({
+  pathId,
+  pathName,
+  onDeleted,
+  onDeletingChange,
+  onLeave,
+  leaveRequiresAdminTransfer = false,
+  onMakeAdmin,
+}: Props) => {
   const [view, setView] = useState<MenuView>('closed');
   const [isDeleting, setIsDeleting] = useState(false);
   const triggerRef = useRef<React.ComponentRef<typeof TouchableOpacity>>(null);
@@ -118,14 +132,17 @@ export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange 
           // user is still looking at. Only the destructive confirmation below
           // dims, because that one wants their full attention. The backdrop is
           // invisible but still full-screen, so a tap anywhere closes the menu.
-          <Pressable
-            style={styles.menuBackdrop}
-            onPress={close}
-            accessibilityRole="button"
-            accessibilityLabel="Close menu"
-          >
-            {/* Swallows taps so pressing the menu itself does not dismiss it. */}
-            <Pressable style={[styles.menu, anchor]} onPress={() => {}}>
+          <View style={styles.menuOverlay}>
+            <Pressable
+              style={styles.menuBackdrop}
+              onPress={close}
+              accessibilityRole="button"
+              accessibilityLabel="Close menu"
+            />
+            {/* A sibling of the backdrop, not its child: nested Pressables can
+                bubble the tap to the backdrop and dismiss this popover before
+                its selected action receives it. */}
+            <View style={[styles.menu, anchor]}>
               <TouchableOpacity
                 onPress={() => {
                   // The intent, recorded before the confirmation. Paired with
@@ -140,8 +157,20 @@ export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange 
               >
                 <Text style={styles.destructiveItemText}>{Constants.DELETE_PATH}</Text>
               </TouchableOpacity>
-            </Pressable>
-          </Pressable>
+              {onLeave && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setView(leaveRequiresAdminTransfer ? 'leaveBlocked' : 'leaveConfirm');
+                  }}
+                  style={styles.menuItem}
+                  accessibilityLabel={Constants.LEAVE_PATH}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.destructiveItemText}>{Constants.LEAVE_PATH}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
         ) : view === 'confirm' ? (
           <View style={DialogStyles.backdrop}>
             <View style={DialogStyles.card}>
@@ -176,7 +205,63 @@ export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange 
               </View>
             </View>
           </View>
-        ) : (
+        ) : view === 'leaveBlocked' ? (
+          <View style={DialogStyles.backdrop}>
+            <View style={DialogStyles.card}>
+              <Text style={DialogStyles.title}>{Constants.LEAVE_PATH_ADMIN_TITLE}</Text>
+              <Text style={DialogStyles.message}>{Constants.LEAVE_PATH_ADMIN_MESSAGE}</Text>
+              <View style={DialogStyles.actions}>
+                <TouchableOpacity
+                  onPress={close}
+                  style={DialogStyles.secondaryButton}
+                  accessibilityLabel={Constants.CANCEL}
+                  accessibilityRole="button"
+                >
+                  <Text style={DialogStyles.secondaryText}>{Constants.CANCEL}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setView('closed');
+                    onMakeAdmin?.();
+                  }}
+                  style={DialogStyles.primaryButton}
+                  accessibilityLabel={Constants.MAKE_AN_ADMIN}
+                  accessibilityRole="button"
+                >
+                  <Text style={DialogStyles.primaryText}>{Constants.MAKE_AN_ADMIN}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ) : view === 'leaveConfirm' ? (
+          <View style={DialogStyles.backdrop}>
+            <View style={DialogStyles.card}>
+              <Text style={DialogStyles.title}>{Constants.LEAVE_PATH_TITLE}</Text>
+              <Text style={DialogStyles.message}>{Constants.LEAVE_PATH_MESSAGE}</Text>
+              <View style={DialogStyles.actions}>
+                <TouchableOpacity
+                  onPress={close}
+                  style={DialogStyles.secondaryButton}
+                  accessibilityLabel={Constants.CANCEL}
+                  accessibilityRole="button"
+                >
+                  <Text style={DialogStyles.secondaryText}>{Constants.CANCEL}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setView('closed');
+                    onLeave?.();
+                  }}
+                  style={DialogStyles.destructiveButton}
+                  accessibilityLabel={Constants.LEAVE_PATH}
+                  accessibilityRole="button"
+                >
+                  <Text style={DialogStyles.primaryText}>{Constants.LEAVE_PATH}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        ) : view === 'error' ? (
           <View style={DialogStyles.backdrop}>
             <View style={DialogStyles.card}>
               <Text style={DialogStyles.title}>{Constants.DELETE_PATH_FAILED_TITLE}</Text>
@@ -193,7 +278,7 @@ export const PathOptionsMenu = ({ pathId, pathName, onDeleted, onDeletingChange 
               </View>
             </View>
           </View>
-        )}
+        ) : null}
       </Modal>
     </>
   );

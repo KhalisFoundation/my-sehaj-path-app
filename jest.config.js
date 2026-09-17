@@ -19,6 +19,7 @@ module.exports = {
     '^@op-engineering/op-sqlite$': '<rootDir>/__mocks__/op-sqlite.js',
     '^@dr.pogodin/react-native-fs$': '<rootDir>/__mocks__/dr-pogodin-react-native-fs.js',
     'react-native-linear-gradient': '<rootDir>/__mocks__/react-native-linear-gradient.js',
+    '^@react-native-clipboard/clipboard$': '<rootDir>/__mocks__/clipboard.js',
     'react-native-safe-area-context': '<rootDir>/__mocks__/react-native-safe-area-context.js',
     'react-native-svg': '<rootDir>/__mocks__/react-native-svg.js',
     // Anchored: an unanchored pattern also matches the mock's own internal

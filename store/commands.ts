@@ -203,20 +203,21 @@ const runPathMutation = (pathId: number, build: () => UnknownAction): Promise<bo
  * cannot both read the same `getNextPathId` and mint duplicate ids (which the
  * next boot's hydration would then reject).
  */
-export const createPath = (): Promise<number | null> =>
+export const createPath = (requestedName?: string): Promise<number | null> =>
   runExclusive(async () => {
     const { paths, dates } = store.getState().paths;
     const reservedIds = [...dates.map((date) => date.pathid), ...getQuarantinedPathIds(store)];
     const pathId = getNextPathId(paths, reservedIds);
     const defaultPathNumber = getNextDefaultPathNumber(paths);
 
+    const pathName = requestedName?.trim() || `Path #${defaultPathNumber}`;
     const path: PathData = {
       pathId,
       progress: 1,
       saveData: { angNumber: 0, verseId: 0 },
       startDate: todayString(),
       completionDate: '',
-      pathName: `Path #${defaultPathNumber}`,
+      pathName,
     };
     const date: DateData = { pathid: pathId, dates: [], scrollPosition: 0 };
 

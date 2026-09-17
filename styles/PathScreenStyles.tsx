@@ -2,6 +2,44 @@ import { StyleSheet } from 'react-native';
 import { UIConstants } from '@constants/UIConstants';
 
 export const PathScreenStyles = StyleSheet.create({
+  // Sits above the reader so a follower always knows the page is being moved
+  // for them rather than by them.
+  followingBanner: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(17, 51, 106, 0.92)',
+    paddingVertical: 12,
+    // Clears the home indicator, so the label is not sitting under it.
+    paddingBottom: 26,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  followingText: { color: 'white', fontSize: 13 },
+
+  // Above the controls, not over them — a reader still needs every control
+  // while this is showing.
+  readerNotice: {
+    position: 'absolute',
+    bottom: 96,
+    left: 16,
+    right: 16,
+    backgroundColor: 'rgba(17, 51, 106, 0.94)',
+    borderRadius: 20,
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  readerNoticeText: { color: 'white', fontSize: 13 },
+  readerNoticeHint: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+
   container: {
     height: '100%',
     width: '100%',

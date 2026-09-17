@@ -1,15 +1,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
+import messaging from '@react-native-firebase/messaging';
 import { Provider } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import {
+  ChooseSlot,
+  JoinPath,
+  GroupPath,
+  InviteMember,
   SplashScreen,
   HomeScreen,
   Continue,
+  CreatePath,
   PathScreen,
   Settings,
   DatabaseUpdate,
@@ -25,10 +31,19 @@ import {
   SessionExpiredPopup,
 } from '@components';
 import { ErrorConstants, Routes } from '@constants';
+import { linking } from './navigation/linking';
 import { initAuth, retrySessionProfile, useSSOLogin } from '@auth';
 import { readSyncPrefs } from './store/syncPrefs';
 import { hydrateSignInPopup } from './store/slices/syncSlice';
-import { allowTracking, allowCrashReporting, recordError, showErrorAlert } from '@utils';
+import { isOnlineFrom } from './store/slices/networkSlice';
+import {
+  allowTracking,
+  allowCrashReporting,
+  recordError,
+  showErrorAlert,
+  displayPushMessage,
+  registerPushNotifications,
+} from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
 import { useAppSelector } from './store/hooks';
@@ -41,12 +56,42 @@ import { provisionDatabase } from './db';
 export type RootStackParamList = {
   Splash: undefined;
   Home: { pathDeleted?: boolean } | undefined;
-  Continue: { pathId: number; initialTab?: string };
-  Path: { pathId: number };
+  Continue: { pathId: number; initialTab?: 'progress' | 'streak' | 'turns' | 'members' };
+  CreatePath: undefined;
+  Path: {
+    pathId: number;
+    /** Present only for a shared path opened through the group screen. */
+    live?: {
+      sehajPathId: string;
+      driving: boolean;
+      /** Present when driving: what `finishReading` needs to end the turn. */
+      sessionId?: string;
+      startAng?: number;
+      /** When the turn began, so the finish summary can report how long. */
+      startedAt?: string;
+      /** The scheduled booking end, for display context only. */
+      slotEndsAt?: string | null;
+    };
+  };
   Setting: undefined;
   DatabaseUpdate: undefined;
   About: undefined;
   Error: undefined;
+  /**
+   * The token is the entire payload of an invite link, and it arrives from
+   * outside the app — so this screen must assume nothing about being reached
+   * with a session, a loaded database, or a warm store.
+   */
+  JoinPath: { token: string };
+  GroupPath: { sehajPathId: string; pathId: number; pathName: string };
+  InviteMember: { sehajPathId: string; pathName?: string };
+  ChooseSlot: {
+    sehajPathId: string;
+    pathId: number;
+    initialStartsAt?: string;
+    initialDurationMinutes?: number;
+    slotId?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -65,6 +110,23 @@ const AnalyticsConsent = () => {
       allowCrashReporting();
     }
   }, [consent]);
+  return null;
+};
+
+const PushRegistration = () => {
+  const authToken = useAppSelector((state) => state.auth.token);
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    const start = async () => {
+      unsubscribe = await registerPushNotifications();
+    };
+    start().catch((error) => recordError(error, 'push: startup failed'));
+    const foreground = messaging().onMessage(displayPushMessage);
+    return () => {
+      unsubscribe?.();
+      foreground();
+    };
+  }, [authToken]);
   return null;
 };
 
@@ -119,7 +181,8 @@ const App = () => {
     let wasOnline = store.getState().network.isOnline;
 
     const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
-      const online = Boolean(state.isConnected && state.isInternetReachable);
+      // See `isOnlineFrom`: unknown reachability is not offline.
+      const online = isOnlineFrom(state);
       store.dispatch(setOnline(online));
       if (online) {
         retrySessionProfile();
@@ -186,6 +249,7 @@ const App = () => {
       {ready === true && (
         <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
           <AnalyticsConsent />
+          <PushRegistration />
           <SyncStatusNotice />
           <OfflineDbNotice />
           <SessionExpiredPopup />
@@ -193,7 +257,7 @@ const App = () => {
               prompt. Keep it app-wide so B can never continue editing A's
               active paths from the reader while the switch is unresolved. */}
           <SyncPopup mode="accountSwitch" />
-          <NavigationContainer>
+          <NavigationContainer linking={linking}>
             <Stack.Navigator
               initialRouteName={Routes.Splash}
               screenOptions={{
@@ -206,11 +270,20 @@ const App = () => {
               <Stack.Screen name={Routes.Splash} component={SplashScreen} />
               <Stack.Screen name={Routes.Home} component={HomeScreen} />
               <Stack.Screen name={Routes.Continue} component={Continue} />
+              <Stack.Screen name={Routes.CreatePath} component={CreatePath} />
               <Stack.Screen name={Routes.Path} component={PathScreen} />
               <Stack.Screen name={Routes.Setting} component={Settings} />
               <Stack.Screen name={Routes.DatabaseUpdate} component={DatabaseUpdate} />
               <Stack.Screen name={Routes.About} component={About} />
               <Stack.Screen name={Routes.Error} component={Error} />
+              <Stack.Screen name={Routes.JoinPath} component={JoinPath} />
+              <Stack.Screen name={Routes.GroupPath} component={GroupPath} />
+              <Stack.Screen name={Routes.InviteMember} component={InviteMember} />
+              <Stack.Screen
+                name={Routes.ChooseSlot}
+                component={ChooseSlot}
+                options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+              />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

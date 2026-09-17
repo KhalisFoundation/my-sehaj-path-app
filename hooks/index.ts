@@ -3,6 +3,8 @@ export { useSetting } from './useSetting';
 export { useNavigation } from './useNavigation';
 export { usePathNavigation } from './usePathNavigation';
 export { useScrollToSavedPath } from './useScrollToSavedPath';
+export { useLiveReading } from './useLiveReading';
+export { useReadingSession } from './useReadingSession';
 export type {
   PathData,
   DateData,

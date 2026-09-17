@@ -27,6 +27,7 @@ const ParagraphTextForPathComponent = ({
   onSave,
   verseId,
   vishraams,
+  vishraamsSource: vishraamsSourceOverride,
   onLayout,
   onTextLayout,
 }: ParagraphTextForPathProps) => {
@@ -37,7 +38,8 @@ const ParagraphTextForPathComponent = ({
   const selection = usePathSelection();
   const fontSize = useReaderFontSize();
   const isVishraam = useAppSelector((state) => state.settings.vishraam);
-  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const ownVishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const vishraamsSource = vishraamsSourceOverride ?? ownVishraamsSource;
 
   const isSelected = useIsSelected(
     verseId,

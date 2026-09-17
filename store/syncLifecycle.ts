@@ -2,7 +2,7 @@ import { isApiConfigured } from '@api/config';
 import { recordError } from '../utils/crashlytics';
 import { refreshPathsFromServer } from './applyServerResponse';
 import { store } from './index';
-import { outbox } from './instance';
+import { outbox, persistence } from './instance';
 import {
   markCatchUpSyncDone,
   markPathEdited,
@@ -63,6 +63,11 @@ const promoteDirtyScroll = (announce = false): boolean => {
     if (!meta?.onServer) {
       return; // a pending create already carries the latest scroll
     }
+    // A shared path is excluded from the `/sync` body, so promoting its scroll
+    // into an op would queue work nothing can ever acknowledge.
+    if (meta.shared) {
+      return;
+    }
     const op = state.sync.pathOps[pathId];
     if (!op || isPathOpBlocked(store, pathId, op.localUpdatedAt)) {
       store.dispatch(markPathEdited({ pathId, at: Date.now() }));
@@ -113,6 +118,11 @@ export const onForeground = async (activePathId?: number | null): Promise<void> 
     const pathToProtect =
       activePathId === undefined ? getActiveReaderPath() ?? undefined : activePathId ?? undefined;
     await refreshPathsFromServer(store, pathToProtect);
+    // Server responses update Redux synchronously, but persistence writes are
+    // queued. Flush the applied snapshot before the screen can be reloaded so
+    // the next launch starts from the latest server data rather than the old
+    // cached copy.
+    await persistence.flush();
   } catch (error) {
     recordError(error, 'syncLifecycle: foreground sync failed');
   } finally {

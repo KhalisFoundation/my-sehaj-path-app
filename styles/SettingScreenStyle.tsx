@@ -13,7 +13,9 @@ export const SettingScreenStyle = StyleSheet.create({
     backgroundColor: '#0D2346',
   },
   navText: {
-    color: '#fff',
+    color: UIConstants.NAV_TEXT_COLOR,
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    fontSize: UIConstants.NAV_TITLE_FONT_SIZE,
   },
   settingContainer: {
     marginTop: 15,
@@ -41,7 +43,7 @@ export const SettingScreenStyle = StyleSheet.create({
   },
   databaseUpdateText: {
     color: '#11336A',
-    fontFamily: font.Brandon_Grotesque_Regular,
+    fontFamily: font.Baloo_Paaji_2_Regular,
     fontSize: 20,
   },
   // Account deletion reuses the database row's shape so it sits flush with the
@@ -54,7 +56,7 @@ export const SettingScreenStyle = StyleSheet.create({
   },
   deleteAccountText: {
     color: '#B3261E',
-    fontFamily: font.Brandon_Grotesque_Regular,
+    fontFamily: font.Baloo_Paaji_2_Regular,
     fontSize: 20,
   },
 });

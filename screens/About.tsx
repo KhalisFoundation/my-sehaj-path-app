@@ -1,10 +1,9 @@
 import React, { useCallback } from 'react';
-import { Image, Linking, ScrollView, TouchableOpacity, View } from 'react-native';
+import { Image, Linking, ScrollView, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text } from '../components/AppText';
-import { NavContent } from '@components';
-import { LeftArrowIcon } from '@icons';
+import { BackButton } from '@components';
 import {
   AboutText,
   BANIDB_URL,
@@ -17,6 +16,7 @@ import { UIConstants } from '@constants/UIConstants';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { recordError, trackEvent } from '@utils';
+import { BaniDBImage, KhalisFoundationLogo } from '../assets/Images';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'About'>;
 
@@ -42,25 +42,21 @@ export const About = ({ navigation }: Props) => {
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <View style={styles.container}>
         <View style={styles.navContainer}>
-          <TouchableOpacity
+          <BackButton
             onPress={() => navigation.goBack()}
             style={styles.backButton}
-            accessibilityRole="button"
             accessibilityLabel={AboutText.BACK}
             accessibilityHint="Tap to go back"
+            color={UIConstants.NAV_TEXT_COLOR}
           >
-            <NavContent
-              navIcon={<LeftArrowIcon color={UIConstants.NAV_TEXT_COLOR} />}
-              onPress={() => navigation.goBack()}
-            />
             <Text style={styles.navText}>{AboutText.NAV_TITLE}</Text>
-          </TouchableOpacity>
+          </BackButton>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
           <Text style={styles.appName}>{AboutText.APP_NAME}</Text>
           <Image
-            source={require('../assets/Images/Khalis-Foundation-Logo.png')}
+            source={KhalisFoundationLogo}
             style={styles.khalisLogo}
             accessibilityRole="image"
             accessibilityLabel="Khalis Foundation"
@@ -94,7 +90,7 @@ export const About = ({ navigation }: Props) => {
           </Text>
 
           <Image
-            source={require('../assets/Images/BaniDB.png')}
+            source={BaniDBImage}
             style={styles.baniDbLogo}
             accessibilityRole="image"
             accessibilityLabel="BaniDB"
