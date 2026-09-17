@@ -40,8 +40,6 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const paths = useAppSelector(selectVisiblePaths);
   const syncMeta = useAppSelector((state) => state.sync.meta);
   const { handleDrawerNavigate } = useDrawerNavigation();
-  // Set by Continue on its way here. Cleared once read, so returning to Home
-  // later never replays a confirmation for something deleted minutes ago.
   const pathDeleted = route.params?.pathDeleted === true;
   useScreenAnalytics('HomeScreen', 'HomeScreen');
 

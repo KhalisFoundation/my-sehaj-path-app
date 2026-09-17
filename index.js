@@ -12,6 +12,10 @@ import { name as appName } from './app.json';
 
 messaging().setBackgroundMessageHandler(displayPushMessage);
 
+// Register at process startup so foreground delivery is not lost while React
+// is hydrating or remounting its authenticated tree.
+messaging().onMessage(displayPushMessage);
+
 const AppWithBoundary = () => (
   <ErrorBoundary>
     <App />

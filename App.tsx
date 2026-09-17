@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
-import messaging from '@react-native-firebase/messaging';
 import { Provider } from 'react-redux';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -41,7 +40,6 @@ import {
   allowCrashReporting,
   recordError,
   showErrorAlert,
-  displayPushMessage,
   registerPushNotifications,
 } from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
@@ -121,10 +119,8 @@ const PushRegistration = () => {
       unsubscribe = await registerPushNotifications(authToken);
     };
     start().catch((error) => recordError(error, 'push: startup failed'));
-    const foreground = messaging().onMessage(displayPushMessage);
     return () => {
       unsubscribe?.();
-      foreground();
     };
   }, [authToken]);
   return null;

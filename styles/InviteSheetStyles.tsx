@@ -75,6 +75,15 @@ export const InviteSheetStyles = StyleSheet.create({
     fontSize: 15,
     color: UIConstants.PRIMARY_COLOR,
   },
+  retry: {
+    width: '80%',
+    minWidth: 160,
+    borderRadius: 10,
+    paddingVertical: 13,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: UIConstants.PRIMARY_COLOR,
+  },
   sectionLabel: {
     fontFamily: font.Baloo_Paaji_2_Extra_Bold,
     fontSize: 14,

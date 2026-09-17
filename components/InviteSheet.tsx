@@ -8,6 +8,7 @@ import { Constants, ErrorConstants, UIConstants } from '@constants';
 import { showErrorAlert } from '../utils/Error';
 import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
 import { recordError } from '../utils/crashlytics';
+import { useAppSelector } from '../store/hooks';
 import { createInvite, enableSharing, listActiveInvites } from '../store/groupApi';
 import { inviteLinkFor } from '../navigation/linking';
 import { getStoredInvite, storeInviteLink } from '../store/inviteLink';
@@ -66,6 +67,8 @@ export const InviteSheet = ({
   initialExpiryHours = 168,
 }: Props) => {
   const insets = useSafeAreaInsets();
+  const isOnline = useAppSelector((state) => state.network.isOnline);
+  const isSignedIn = useAppSelector((state) => state.auth.status === 'signedIn');
   const [link, setLink] = useState<string | null>(null);
   const [linkExpiry, setLinkExpiry] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
@@ -104,6 +107,15 @@ export const InviteSheet = ({
       setInviteLoadFailed(false);
 
       try {
+        if (!isSignedIn) {
+          setProblem(Constants.INVITE_SIGN_IN_REQUIRED);
+          return;
+        }
+        if (!isOnline) {
+          setInviteLoadFailed(true);
+          setProblem(Constants.INVITE_GO_ONLINE_TO_SHARE);
+          return;
+        }
         const shared = await enableSharing(sehajPathId);
         if (cancelled) {
           return;
@@ -188,7 +200,7 @@ export const InviteSheet = ({
     // render of the parent, and depending on it would mint a fresh link each
     // time the path behind the sheet re-renders.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadRetryKey, visible, sehajPathId]);
+  }, [isOnline, isSignedIn, loadRetryKey, visible, sehajPathId]);
 
   const retryInviteLoad = useCallback(() => {
     setProblem(null);
@@ -198,6 +210,10 @@ export const InviteSheet = ({
 
   const createNewLink = useCallback(async () => {
     if (creating) {
+      return;
+    }
+    if (!isSignedIn) {
+      setProblem(Constants.INVITE_SIGN_IN_REQUIRED);
       return;
     }
     setCreating(true);
@@ -248,7 +264,7 @@ export const InviteSheet = ({
     } finally {
       setCreating(false);
     }
-  }, [creating, expiryHours, onCreated, sehajPathId]);
+  }, [creating, expiryHours, isSignedIn, onCreated, sehajPathId]);
 
   const retryCreate = useCallback(() => {
     setProblem(null);
@@ -297,6 +313,13 @@ export const InviteSheet = ({
   // there are several server-side links, showing their identical-looking dates
   // is not actionable; the newest one is enough to explain the state.
   const newestActiveInvite = activeInvites[0] ?? null;
+  const signInRequired = !isSignedIn;
+  let displayedProblem = problem;
+  if (!isOnline) {
+    displayedProblem = Constants.INVITE_GO_ONLINE_TO_SHARE;
+  } else if (problem === 'Sign in to read together.' && isSignedIn) {
+    displayedProblem = ErrorConstants.FAILED_TO_LOAD_INVITE_LINK;
+  }
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -307,12 +330,17 @@ export const InviteSheet = ({
         <Text style={styles.title}>{Constants.INVITE_MEMBER_TITLE}</Text>
         <Text style={styles.inviteDescription}>{Constants.INVITE_LINK_DIRECT_JOIN_HINT}</Text>
 
-        {problem !== null ? (
+        {signInRequired ? (
           <View style={styles.loadingState}>
-            <Text style={styles.problem}>{problem}</Text>
+            <Text style={styles.sectionLabel}>{Constants.INVITE_SIGN_IN_TITLE}</Text>
+            <Text style={styles.hint}>{Constants.INVITE_SIGN_IN_REQUIRED}</Text>
+          </View>
+        ) : displayedProblem !== null ? (
+          <View style={styles.loadingState}>
+            <Text style={styles.problem}>{displayedProblem}</Text>
             {inviteLoadFailed && (
               <TouchableOpacity
-                style={styles.share}
+                style={styles.retry}
                 onPress={retryInviteLoad}
                 accessibilityRole="button"
                 accessibilityLabel={Constants.RETRY}
@@ -322,7 +350,7 @@ export const InviteSheet = ({
             )}
             {createFailed && (
               <TouchableOpacity
-                style={styles.share}
+                style={styles.retry}
                 onPress={retryCreate}
                 accessibilityRole="button"
                 accessibilityLabel={Constants.RETRY}

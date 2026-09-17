@@ -140,7 +140,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     [members]
   );
   const membersForDisplay = useMemo(() => {
-    if (members.length > 0 || !isSignedIn) {
+    if (members.length > 0) {
       return members;
     }
     return [
@@ -154,7 +154,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         joinedAt: null,
       },
     ];
-  }, [authDisplayName, isSignedIn, members, pathId]);
+  }, [authDisplayName, members, pathId]);
   // A path's start date is its server path date. Reading days belong to the
   // streak calculation only: using the first shared reading day here made a
   // path created two days ago become "started 1 day ago" after refresh.
@@ -338,15 +338,16 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
   }, [invitableId, isSignedIn, sehajPathId, uiState.tabs]);
 
-  // Signed-out users may still see both protected tab controls, but must not
-  // remain on a protected tab if auth changes while Continue is open.
-  useEffect(() => {
-    if (!isSignedIn && (uiState.tabs === 'members' || uiState.tabs === 'turns')) {
-      setUiState((previous) => ({ ...previous, tabs: 'progress' }));
-    }
-  }, [isSignedIn, uiState.tabs]);
-
   const handleSharePath = useCallback(async () => {
+    if (!isSignedIn) {
+      if (invitableId !== null) {
+        setInviteAutoCreate(false);
+        setInviteOpen(true);
+      } else {
+        Alert.alert(Constants.INVITE_SIGN_IN_TITLE, Constants.INVITE_SIGN_IN_REQUIRED);
+      }
+      return;
+    }
     if (invitableId !== null) {
       setInviteAutoCreate(false);
       setInviteOpen(true);
@@ -374,10 +375,19 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       'Unable to share this path',
       'Please check your connection, let the path sync, and try again.'
     );
-  }, [invitableId, pathId]);
+  }, [invitableId, isSignedIn, pathId]);
 
   const handleCreateInvite = useCallback(
     async (autoCreate = true) => {
+      if (!isSignedIn) {
+        if (invitableId !== null) {
+          setInviteAutoCreate(false);
+          setInviteOpen(true);
+        } else {
+          Alert.alert(Constants.INVITE_SIGN_IN_TITLE, Constants.INVITE_SIGN_IN_REQUIRED);
+        }
+        return;
+      }
       if (invitableId === null) {
         try {
           await onForeground(null);
@@ -398,7 +408,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       setInviteAutoCreate(autoCreate);
       setInviteOpen(true);
     },
-    [invitableId, pathId]
+    [invitableId, isSignedIn, pathId]
   );
 
   const streak = useRef<number>(0);
@@ -1074,7 +1084,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const handleTabPress = useCallback(
     (tab: 'progress' | 'streak' | 'turns' | 'members') => {
-      if (!isSignedIn && (tab === 'turns' || tab === 'members')) {
+      if (!isSignedIn && tab === 'turns') {
         // Keep the short delay so a tab tap has settled before presenting the
         // native alert, avoiding a pressed-tab animation underneath it.
         if (loginPromptTimeoutRef.current !== null) {
@@ -1301,14 +1311,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   onLeave={sehajPathId !== null ? performLeavePath : undefined}
                   leaveRequiresAdminTransfer={isLastActiveAdmin}
                   onMakeAdmin={() => handleTabPress('members')}
-                  onDeleted={() =>
-                    // Home is already beneath Continue. Pop back to that
-                    // instance so repeated sessions do not stack duplicate
-                    // Home screens, while still passing the deletion notice.
-                    navigation.popTo(Routes.Home, {
-                      pathDeleted: true,
-                    })
-                  }
+                  onDeleted={() => navigation.popTo(Routes.Home, { pathDeleted: true })}
                   onDeletingChange={(deleting) => {
                     isDeletingRef.current = deleting;
                   }}
@@ -1645,7 +1648,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
             {/* Sits below the reading action, matching where the group belongs
                 in the hierarchy: the path first, the people around it second. */}
-            {isSignedIn && uiState.tabs === 'members' && (
+            {uiState.tabs === 'members' && (
               <MembersRow
                 members={membersForDisplay}
                 membersError={membersError}
@@ -1668,7 +1671,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                 onInviteExpiryChange={setInviteExpiryHours}
                 onCreateInvite={handleCreateInvite}
                 onLeave={sehajPathId !== null ? handleLeavePath : undefined}
-                canManageMembers={canManagePath}
+                canManageMembers={canManagePath || !isSignedIn}
                 showActions={invitableId !== null || sehajPathId === null}
                 onMakeAdmin={handleMakeAdmin}
                 onToggleAdmin={handleToggleAdmin}
@@ -1695,7 +1698,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           </View>
         </ScrollView>
       </ImageBackground>
-      {isSignedIn && invitableId !== null && (
+      {invitableId !== null && (
         <InviteSheet
           visible={inviteOpen}
           sehajPathId={invitableId}

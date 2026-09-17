@@ -95,7 +95,10 @@ const SyncStatusNoticeComponent = () => {
   // somebody who is simply adjusting the reader.
   const hasNoticeWorthyPendingWork = useAppSelector((state) =>
     Object.entries(state.sync.pathOps).some(
-      ([pathId, op]) => op.kind !== 'create' && !isSilentPathOp(Number(pathId), op.localUpdatedAt)
+      ([pathId, op]) =>
+        op.kind !== 'create' &&
+        op.kind !== 'delete' &&
+        !isSilentPathOp(Number(pathId), op.localUpdatedAt)
     )
   );
   /** A settings edit with no path work queued alongside it. */

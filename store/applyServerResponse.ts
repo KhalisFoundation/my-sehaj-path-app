@@ -494,7 +494,8 @@ const refreshes = new WeakMap<AppStore, ActiveRefresh>();
 
 const performRefreshPathsFromServer = async (
   store: AppStore,
-  activePathId?: number
+  activePathId?: number,
+  showStatus = true
 ): Promise<boolean> => {
   const state = store.getState();
   if (
@@ -573,7 +574,9 @@ const performRefreshPathsFromServer = async (
       // A foreground refresh has no caller that can show its false result. Put
       // the failure in sync state so the in-app status notice can tell the user
       // their cloud copy could not be loaded instead of showing an empty/stale UI.
-      store.dispatch(setSyncError('network'));
+      if (showStatus) {
+        store.dispatch(setSyncError('network'));
+      }
       return false;
     }
     if (!pathsUnchanged && pathsResult.data) {
@@ -720,12 +723,16 @@ const performRefreshPathsFromServer = async (
     }
     // A later successful pull clears any earlier refresh-only network notice.
     // (There may be no outbox operation to clear it for us.)
-    store.dispatch(setSyncError(null));
-    store.dispatch(setSyncStatus('idle'));
+    if (showStatus) {
+      store.dispatch(setSyncError(null));
+      store.dispatch(setSyncStatus('idle'));
+    }
     return true;
   } catch (error) {
     recordError(error, 'refresh: GET /paths failed');
-    store.dispatch(setSyncError('network'));
+    if (showStatus) {
+      store.dispatch(setSyncError('network'));
+    }
     return false;
   }
 };
@@ -736,7 +743,8 @@ const performRefreshPathsFromServer = async (
  */
 export const refreshPathsFromServer = (
   store: AppStore,
-  activePathId?: number
+  activePathId?: number,
+  showStatus = true
 ): Promise<boolean> => {
   const existing = refreshes.get(store);
   if (existing) {
@@ -747,9 +755,9 @@ export const refreshPathsFromServer = (
     // If Home becomes active before it finishes, joining that guarded request
     // would fetch the newer data but never apply it until the next app open.
     // Let it finish, then do exactly one fresh, unguarded refresh for Home.
-    return existing.request.then(() => refreshPathsFromServer(store, activePathId));
+    return existing.request.then(() => refreshPathsFromServer(store, activePathId, showStatus));
   }
-  const request = performRefreshPathsFromServer(store, activePathId).finally(() => {
+  const request = performRefreshPathsFromServer(store, activePathId, showStatus).finally(() => {
     if (refreshes.get(store)?.request === request) {
       refreshes.delete(store);
     }
@@ -757,12 +765,16 @@ export const refreshPathsFromServer = (
     // display flag: clearing it a moment early is invisible, while failing to
     // clear it leaves the status notice spinning for the rest of the session
     // with nothing to resolve it.
-    store.dispatch(setPulling(false));
+    if (showStatus) {
+      store.dispatch(setPulling(false));
+    }
   });
   refreshes.set(store, { request, activePathId });
   // Dispatched only after the entry is tracked. `dispatch` runs subscribers
   // synchronously, and one of them can call back into this function — before the
   // map was populated that produced a second, untracked request.
-  store.dispatch(setPulling(true));
+  if (showStatus) {
+    store.dispatch(setPulling(true));
+  }
   return request;
 };

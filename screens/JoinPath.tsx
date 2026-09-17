@@ -46,7 +46,7 @@ export const JoinPath = ({ route, navigation }: Props) => {
     async (pathName: string): Promise<boolean> => {
       const beforeIds = new Set(store.getState().paths.paths.map((path) => path.pathId));
       try {
-        await refreshPathsFromServer(store);
+        await refreshPathsFromServer(store, undefined, false);
       } catch (error) {
         showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
         return false;
