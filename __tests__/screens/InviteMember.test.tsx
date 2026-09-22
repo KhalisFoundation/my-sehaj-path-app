@@ -4,7 +4,6 @@ import { Provider } from 'react-redux';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { InviteMember } from '../../screens/InviteMember';
 import { store } from '../../store';
-import { Routes } from '@constants';
 import { enableSharing, createInvite, listMembers } from '../../store/groupApi';
 
 jest.mock('../../store/groupApi', () => ({

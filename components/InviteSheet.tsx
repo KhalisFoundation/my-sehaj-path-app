@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Share, TouchableOpacity, View } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -84,6 +84,23 @@ export const InviteSheet = ({
   // Start loading so opening the sheet never briefly shows the create state
   // before the active-link request has returned.
   const [loadingInvite, setLoadingInvite] = useState(true);
+
+  // Reset the visible state before the first frame of a newly opened sheet.
+  // A normal effect runs after that frame, which briefly exposed the previous
+  // empty/create state while the active-invite request was starting.
+  useLayoutEffect(() => {
+    if (visible) {
+      setLink(null);
+      setLinkExpiry(null);
+      setActiveInvites([]);
+      setLinkExpired(false);
+      setInviteLoadSucceeded(false);
+      setInviteLoadFailed(false);
+      setCreateFailed(false);
+      setProblem(null);
+      setLoadingInvite(true);
+    }
+  }, [sehajPathId, visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -314,6 +331,7 @@ export const InviteSheet = ({
   // is not actionable; the newest one is enough to explain the state.
   const newestActiveInvite = activeInvites[0] ?? null;
   const signInRequired = !isSignedIn;
+  const autoCreating = autoCreate && inviteLoadSucceeded && link === null && !createFailed;
   let displayedProblem = problem;
   if (!isOnline) {
     displayedProblem = Constants.INVITE_GO_ONLINE_TO_SHARE;
@@ -359,10 +377,12 @@ export const InviteSheet = ({
               </TouchableOpacity>
             )}
           </View>
-        ) : loadingInvite ? (
+        ) : loadingInvite || autoCreating || creating ? (
           <View style={styles.loadingState}>
             <ActivityIndicator color={UIConstants.PRIMARY_COLOR} />
-            <Text style={styles.loadingText}>{Constants.LOADING_INVITE_LINK}</Text>
+            <Text style={styles.loadingText}>
+              {autoCreating || creating ? Constants.CREATING : Constants.LOADING_INVITE_LINK}
+            </Text>
           </View>
         ) : link === null ? (
           <>

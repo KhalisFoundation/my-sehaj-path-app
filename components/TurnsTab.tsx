@@ -147,6 +147,15 @@ const monthLabel = (day: Date): string =>
 const selectedDayLabel = (day: Date): string =>
   day.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
 
+const currentTimeOffsetFor = (day: Date): number => {
+  const now = new Date();
+  if (!sameDay(day, now)) {
+    return Math.max(0, CALENDAR_WORKING_DAY_START_HOUR * CALENDAR_TIMELINE_HOUR_HEIGHT);
+  }
+  const startHour = now.getHours() + now.getMinutes() / MINUTES_PER_HOUR - CALENDAR_CONTEXT_HOURS;
+  return Math.max(0, startHour * CALENDAR_TIMELINE_HOUR_HEIGHT);
+};
+
 const timeLabel = (hour: number): string =>
   new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
@@ -183,9 +192,9 @@ export const TurnsTab = ({
   const [requestedScrollAt, setRequestedScrollAt] = useState<Date | null>(null);
   const { height: windowHeight } = useWindowDimensions();
   const scheduleViewportRef = useRef<ScrollView>(null);
+  const initialViewportAppliedRef = useRef(false);
 
   const load = useCallback(async () => {
-    setSlots(null);
     setLoadError(false);
     const { from, to } = planWindowFor(day);
     try {
@@ -204,6 +213,9 @@ export const TurnsTab = ({
   }, [day, sehajPathId]);
 
   useEffect(() => {
+    // A date change starts a new viewport; let the first content layout place
+    // it near the relevant time before the network response arrives.
+    initialViewportAppliedRef.current = false;
     load().catch(() => undefined);
   }, [load]);
 
@@ -347,6 +359,16 @@ export const TurnsTab = ({
           ]}
           nestedScrollEnabled
           showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => {
+            if (initialViewportAppliedRef.current) {
+              return;
+            }
+            initialViewportAppliedRef.current = true;
+            scheduleViewportRef.current?.scrollTo({
+              y: currentTimeOffsetFor(day),
+              animated: false,
+            });
+          }}
         >
           <View style={styles.schedule}>
             <View style={styles.timeColumn}>

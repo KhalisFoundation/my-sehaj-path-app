@@ -180,7 +180,9 @@ describe('deleting a path from the three-dot menu', () => {
 
     expect(labels(renderer)).toContain(Constants.OK);
     expect(
-      renderer.root.findAll((node) => node.props?.children === ErrorConstants.FAILED_TO_DELETE_SEHAJ_PATH)
+      renderer.root.findAll(
+        (node) => node.props?.children === ErrorConstants.FAILED_TO_DELETE_SEHAJ_PATH
+      )
     ).not.toHaveLength(0);
   });
 

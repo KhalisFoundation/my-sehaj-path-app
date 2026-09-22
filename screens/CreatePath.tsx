@@ -21,7 +21,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'CreatePath'>;
 export const CreatePath = ({ navigation }: Props) => {
   const paths = useAppSelector(selectVisiblePaths);
   const isSignedIn = useAppSelector((state) => state.auth.status === 'signedIn');
-  const defaultName = `Path #${getNextDefaultPathNumber(paths)}`;
+  // Freeze the suggested name for this creation attempt. `createPath` adds the
+  // new row to Redux before navigation replaces this screen; deriving the
+  // value directly from `paths` then immediately advanced the input from (for
+  // example) "Path #2" to "Path #3" while the new path was still being opened.
+  // The persisted path and the UI consequently appeared to disagree. A new
+  // CreatePath screen will calculate the next number on its own mount.
+  const [defaultName] = useState(() => `Path #${getNextDefaultPathNumber(paths)}`);
   const [name, setName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const creatingRef = useRef(false);

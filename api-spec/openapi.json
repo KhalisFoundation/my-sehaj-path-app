@@ -7149,6 +7149,11 @@
       "SehajPathInviteSummary": {
         "type": "object",
         "properties": {
+          "sehajPathId": {
+            "type": "string",
+            "description": "Internal group id used to open the exact path after joining.",
+            "format": "uuid"
+          },
           "memberCount": {
             "type": "integer",
             "description": "How many people are already reading it.",
@@ -7171,6 +7176,7 @@
           }
         },
         "required": [
+          "sehajPathId",
           "memberCount",
           "membership",
           "name"

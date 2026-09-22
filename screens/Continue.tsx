@@ -4,6 +4,7 @@ import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {
   ActivityIndicator,
   Alert,
+  LayoutAnimation,
   View,
   ScrollView,
   ImageBackground,
@@ -160,11 +161,15 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   // path created two days ago become "started 1 day ago" after refresh.
   const sharedStartDate = groupMeta?.startDate;
   const hasOtherMember = activeMembers.some((member) => !member.isMine);
-  const showTurnsTab = hasOtherMember;
   // Keep the shared UI available immediately from the persisted sync flag.
   // Membership is refreshed in the background, so waiting for that request
   // made Continue briefly look like a personal path on every launch.
   const isSharedPath = hasOtherMember || groupMetaShared === true;
+  // Turns is a group-only feature. Wait for the persisted/server-confirmed
+  // shared flag instead of optimistically rendering it while metadata is still
+  // unknown; otherwise a personal path flashes Turns and removes it again as
+  // the first sync completes.
+  const showTurnsTab = groupMetaShared === true;
 
   // A link makes a path shareable, not shared. Its owner is the first active
   // membership, so group turns and live-reading rules begin only once another
@@ -229,6 +234,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
 
     const nextMembers = result.data;
+    // Membership determines whether the Turns tab exists. Animate the
+    // resulting layout change instead of letting the tab appear abruptly
+    // after Continue has already rendered.
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setMembers(nextMembers);
     setMembersError(null);
     // The active member list is the immediate source of truth. Updating the
@@ -1249,7 +1258,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       return;
     }
 
-    navigation.replace(Routes.Home);
+    navigation.popTo(Routes.Home);
   }, [navigation, isFromPath]);
 
   const progressText = useMemo(

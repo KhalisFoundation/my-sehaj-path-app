@@ -173,14 +173,22 @@ const allocateFromServer = (store: AppStore, sp: SehajPath): void => {
  *
  * The row is marked `shared` from the moment it is created, which is what keeps
  * it out of the bulk `/sync` body — this device must never push a path it does
- * not own. `serverPathId` is filled with the SERVER's id rather than a minted
- * one: the value is never sent anywhere for a shared path, and inventing a
- * second identifier for a row that already has one only creates something else
- * to get out of step.
+ * not own. For an owner row, preserve the original client-generated `pathId`
+ * as `serverPathId`; for a joined row, the group id is the only stable identity
+ * available. Inventing a second identifier for an owner path is what previously
+ * caused the same path to be allocated twice after logout and invite login.
  */
-const allocateJoinedPath = (
+const allocateAccessiblePath = (
   store: AppStore,
-  row: { id: string; name: string; angNumber: number; verseId: number; progress: number }
+  row: {
+    id: string;
+    pathId?: string | null;
+    name: string;
+    angNumber: number;
+    verseId: number;
+    progress: number;
+    memberCount?: number;
+  }
 ): void => {
   const state = store.getState();
   const reserved = [
@@ -207,7 +215,11 @@ const allocateJoinedPath = (
     upsertMeta({
       pathId,
       meta: {
-        serverPathId: row.id,
+        // Owner rows expose the original client-generated sync id. Keep it so
+        // a logout/login through the owner's invite can be matched by the
+        // owner-scoped `/paths` response instead of allocating a second row.
+        // Joined rows have no pathId and continue to use the group id.
+        serverPathId: row.pathId ?? row.id,
         startDate: now,
         localUpdatedAt: now,
         serverUpdatedAt: now,
@@ -215,7 +227,87 @@ const allocateJoinedPath = (
       },
     })
   );
-  store.dispatch(setPathShared({ pathId, shared: true, groupId: row.id }));
+  store.dispatch(
+    setPathShared({
+      pathId,
+      shared: row.pathId != null ? (row.memberCount ?? 1) > 1 : true,
+      groupId: row.id,
+    })
+  );
+};
+
+/**
+ * Resolve one path immediately after an invite join.
+ *
+ * Invite joining is an authenticated group operation, not a personal-data
+ * sync operation.  In particular, a newly signed-in account may not have
+ * completed its `/sync` association yet.  Reusing the guarded owner refresh
+ * here therefore creates a race and reports a valid join as a missing path.
+ * The accessible-path endpoint is the authoritative source for this flow and
+ * is safe to call before the personal sync account is associated.
+ */
+export const ensureAccessiblePath = async (
+  store: AppStore,
+  sehajPathId: string
+): Promise<number | null> => {
+  const session = captureSyncSession(store.getState());
+  if (!session) {
+    return null;
+  }
+
+  const result = await sehajPathMembersControllerFindAccessible({
+    headers: syncSessionHeaders(session),
+  });
+  if (result.error || !result.data) {
+    return null;
+  }
+
+  const row = result.data.find((candidate) => candidate.id === sehajPathId);
+  if (!row) {
+    return null;
+  }
+
+  const current = store.getState();
+  const entries = Object.entries(current.sync.meta);
+  // Prefer the owner identity when it is available. If a stale member-style
+  // row already exists for the same group, choosing it first would preserve
+  // the duplicate instead of reconnecting the canonical owner row.
+  const existing =
+    (typeof row.pathId === 'string'
+      ? entries.find(([, meta]) => meta.serverPathId === row.pathId)
+      : undefined) ?? entries.find(([, meta]) => meta.groupId === sehajPathId);
+  const localId = existing ? Number(existing[0]) : null;
+
+  if (localId === null) {
+    allocateAccessiblePath(store, row);
+    const serverIdentity = row.pathId ?? row.id;
+    const allocated = Object.entries(store.getState().sync.meta).find(
+      ([, meta]) => meta.serverPathId === serverIdentity || meta.groupId === sehajPathId
+    );
+    return allocated ? Number(allocated[0]) : null;
+  }
+
+  // An owner can open their own invite after signing back in.  That does not
+  // make a personal path a group path; only an additional active member does.
+  store.dispatch(
+    setPathShared({
+      pathId: localId,
+      shared: row.memberCount > 1,
+      groupId: sehajPathId,
+    })
+  );
+  store.dispatch(
+    applyServerPathData({
+      pathId: localId,
+      pathPatch: {
+        pathName: row.name,
+        progress: row.progress,
+        saveData: { angNumber: row.angNumber, verseId: row.verseId },
+      },
+      datePatch: {},
+    })
+  );
+  return localId;
 };
 
 /**
@@ -615,7 +707,7 @@ const performRefreshPathsFromServer = async (
         if (!row.pathId) {
           const joinedId = findLocalIdByServerPathId(store.getState(), row.id);
           if (joinedId == null) {
-            allocateJoinedPath(store, row);
+            allocateAccessiblePath(store, row);
           } else {
             // Re-assert it on every refresh rather than only at creation.
             // `setPathShared` is also what drops work queued for a path that

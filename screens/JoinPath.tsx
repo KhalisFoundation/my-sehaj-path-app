@@ -11,18 +11,20 @@ import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
 import { showErrorAlert } from '../utils/Error';
 import type { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
-import { refreshPathsFromServer } from '../store/applyServerResponse';
+import { ensureAccessiblePath } from '../store/applyServerResponse';
 import { store } from '../store';
-import { selectVisiblePaths } from '../store/selectors';
+import { runConfirmedAccountSync } from '../store/confirmedSync';
+import { hasLocalData } from '../store/syncWork';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JoinPath'>;
 
 type Stage =
   | { name: 'loading' }
-  | { name: 'ready'; pathName: string; memberCount: number }
-  | { name: 'joining'; pathName: string; memberCount: number }
-  | { name: 'member'; pathName: string }
-  | { name: 'signed-out'; pathName?: string; memberCount?: number }
+  | { name: 'ready'; pathId: string; pathName: string; memberCount: number }
+  | { name: 'joining'; pathId: string; pathName: string; memberCount: number }
+  | { name: 'member'; pathId: string; pathName: string }
+  | { name: 'signed-out'; pathId?: string; pathName?: string; memberCount?: number }
+  | { name: 'sync-error'; message: string }
   | { name: 'dead'; message: string };
 
 /** Shows the invite details before a reader confirms their direct join. */
@@ -31,6 +33,8 @@ export const JoinPath = ({ route, navigation }: Props) => {
   useScreenAnalytics('JoinPath', 'JoinPath');
   const [stage, setStage] = useState<Stage>({ name: 'loading' });
   const authStatus = useAppSelector((state) => state.auth.status);
+  const signingIn = useAppSelector((state) => state.auth.signingIn);
+  const authEmail = useAppSelector((state) => state.auth.email);
 
   const goHome = useCallback(() => {
     navigation.reset({ index: 0, routes: [{ name: Routes.Home }] });
@@ -43,38 +47,50 @@ export const JoinPath = ({ route, navigation }: Props) => {
    * have no path id with which to render the progress tab.
    */
   const openJoinedPath = useCallback(
-    async (pathName: string): Promise<boolean> => {
-      const beforeIds = new Set(store.getState().paths.paths.map((path) => path.pathId));
+    async (sehajPathId: string): Promise<boolean> => {
       try {
-        await refreshPathsFromServer(store, undefined, false);
+        const localPathId = await ensureAccessiblePath(store, sehajPathId);
+        if (localPathId === null) {
+          showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
+          return false;
+        }
+        navigation.replace(Routes.Continue, { pathId: localPathId, initialTab: 'progress' });
+        return true;
       } catch (error) {
         showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
         return false;
       }
-
-      const state = store.getState();
-      const visible = selectVisiblePaths(state);
-      const sharedMatches = visible.filter(
-        (path) => path.pathName === pathName && state.sync.meta[path.pathId]?.shared === true
-      );
-      const path =
-        sharedMatches.find((candidate) => !beforeIds.has(candidate.pathId)) ?? sharedMatches[0];
-      if (!path) {
-        showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
-        return false;
-      }
-
-      navigation.replace(Routes.Continue, { pathId: path.pathId, initialTab: 'progress' });
-      return true;
     },
     [navigation]
   );
 
   const load = useCallback(async () => {
-    if (authStatus === 'unknown') {
+    if (authStatus === 'unknown' || signingIn) {
       return;
     }
     setStage({ name: 'loading' });
+
+    // Invite joining must not race the account association performed after SSO.
+    // If this device has unowned reading, automatically back it up to the
+    // signed-in account before resolving/joining the shared path. This is
+    // deliberately silent: the invite flow has already established the
+    // account context, and local progress is never merged into the group.
+    if (
+      authStatus === 'signedIn' &&
+      authEmail &&
+      store.getState().sync.account === null &&
+      hasLocalData(store)
+    ) {
+      const synced = await runConfirmedAccountSync(store, authEmail);
+      if (!synced) {
+        setStage({
+          name: 'sync-error',
+          message: ErrorConstants.FAILED_TO_SYNC,
+        });
+        return;
+      }
+    }
+
     const preview =
       authStatus === 'signedIn' ? await resolveInvite(token) : await resolveInvitePreview(token);
     if (!preview.ok) {
@@ -92,6 +108,7 @@ export const JoinPath = ({ route, navigation }: Props) => {
     if (authStatus !== 'signedIn') {
       setStage({
         name: 'signed-out',
+        pathId: preview.data.sehajPathId,
         pathName: preview.data.name,
         memberCount: preview.data.memberCount,
       });
@@ -99,16 +116,17 @@ export const JoinPath = ({ route, navigation }: Props) => {
     }
 
     if (preview.data.membership === 'ACTIVE') {
-      setStage({ name: 'member', pathName: preview.data.name });
+      setStage({ name: 'member', pathId: preview.data.sehajPathId, pathName: preview.data.name });
       return;
     }
 
     setStage({
       name: 'ready',
+      pathId: preview.data.sehajPathId,
       pathName: preview.data.name,
       memberCount: preview.data.memberCount,
     });
-  }, [authStatus, token]);
+  }, [authEmail, authStatus, signingIn, token]);
 
   useEffect(() => {
     load().catch(() => undefined);
@@ -121,23 +139,30 @@ export const JoinPath = ({ route, navigation }: Props) => {
     if (authStatus !== 'signedIn') {
       setStage({
         name: 'signed-out',
+        pathId: stage.pathId,
         pathName: stage.pathName,
         memberCount: stage.memberCount,
       });
       return;
     }
 
-    setStage({ name: 'joining', pathName: stage.pathName, memberCount: stage.memberCount });
+    setStage({
+      name: 'joining',
+      pathId: stage.pathId,
+      pathName: stage.pathName,
+      memberCount: stage.memberCount,
+    });
     trackSharedPathEvent('JOIN');
     const result = await joinInvite(token);
     if (result.ok) {
-      setStage({ name: 'member', pathName: stage.pathName });
-      await openJoinedPath(stage.pathName);
+      setStage({ name: 'member', pathId: stage.pathId, pathName: stage.pathName });
+      await openJoinedPath(stage.pathId);
       return;
     }
     if (result.kind === 'signed-out') {
       setStage({
         name: 'signed-out',
+        pathId: stage.pathId,
         pathName: stage.pathName,
         memberCount: stage.memberCount,
       });
@@ -200,10 +225,26 @@ export const JoinPath = ({ route, navigation }: Props) => {
         <Text style={styles.body}>{Constants.ALREADY_PATH_MEMBER}</Text>
         <TouchableOpacity
           style={styles.primary}
-          onPress={() => openJoinedPath(stage.pathName).catch(() => undefined)}
+          onPress={() => openJoinedPath(stage.pathId).catch(() => undefined)}
           accessibilityRole="button"
         >
           <Text style={styles.primaryText}>{Constants.OPEN_PATH}</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  if (stage.name === 'sync-error') {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.title}>Unable to sync your progress</Text>
+        <Text style={styles.body}>{stage.message}</Text>
+        <TouchableOpacity
+          style={styles.primary}
+          onPress={() => load().catch(() => undefined)}
+          accessibilityRole="button"
+        >
+          <Text style={styles.primaryText}>Retry</Text>
         </TouchableOpacity>
       </View>
     );
