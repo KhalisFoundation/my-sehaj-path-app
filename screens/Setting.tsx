@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { AppText as Text } from '../components/AppText';
 import { Alert, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
+import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
 import { LeftArrowIcon, RightChevronIcon } from '@icons';

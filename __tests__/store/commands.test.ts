@@ -26,10 +26,15 @@ import {
   renamePathCommand,
   savePathScrollPosition,
   savePathProgress,
+  deletePathCommand,
   undoPathCompletion,
 } from '../../store/commands';
 import { addServerPath, renamePath, setAll } from '../../store/slices/pathsSlice';
+import { dropMeta } from '../../store/slices/syncSlice';
+import { isSilentPathOp } from '../../store/syncWork';
+import { selectVisiblePaths } from '../../store/selectors';
 import { setLarivaar } from '../../store/slices/settingsSlice';
+import { setSignedIn, setSignedOut } from '../../store/slices/authSlice';
 import type { DateData, PathData } from '../../types';
 
 const pathWithId = (pathId: number): PathData => ({
@@ -337,6 +342,39 @@ describe('savePathProgress', () => {
   });
 });
 
+describe('announcing a save', () => {
+  it('keeps the background auto-save quiet', async () => {
+    // It fires constantly; announcing each one would make the notice furniture.
+    const id = await createPath();
+    expect(await savePathProgress(id!, 413, 5, 100, { silent: true })).toBe(true);
+
+    const op = store.getState().sync.pathOps[id!];
+    expect(isSilentPathOp(id!, op!.localUpdatedAt)).toBe(true);
+  });
+
+  it('announces a save the user actually asked for', async () => {
+    // The bug: `silent` meant BOTH "no error alert" and "no sync notice". The
+    // reader's leave checkpoint wanted only the first — it shows its own richer
+    // "leave anyway?" choice — so choosing "Save" on the way out saved and
+    // uploaded without ever telling the user it had.
+    const id = await createPath();
+    expect(await savePathProgress(id!, 413, 5, 100, { silent: true, silentSync: false })).toBe(
+      true
+    );
+
+    const op = store.getState().sync.pathOps[id!];
+    expect(isSilentPathOp(id!, op!.localUpdatedAt)).toBe(false);
+  });
+
+  it('still announces a plain save with no options at all', async () => {
+    const id = await createPath();
+    expect(await savePathProgress(id!, 413, 5, 100)).toBe(true);
+
+    const op = store.getState().sync.pathOps[id!];
+    expect(isSilentPathOp(id!, op!.localUpdatedAt)).toBe(false);
+  });
+});
+
 describe('savePathScrollPosition', () => {
   it('persists a scroll checkpoint without creating a new path operation', async () => {
     const id = await createPath();
@@ -453,6 +491,136 @@ describe('overlapping commands', () => {
     await hydrateStore(fresh);
     const path = fresh.getState().paths.paths.find((p) => p.pathId === id);
     expect(path?.saveData.angNumber).not.toBe(999); // the failed value did not replay
+  });
+});
+
+describe('deletePathCommand', () => {
+  beforeEach(() => {
+    store.dispatch(
+      setSignedIn({
+        token: 'test-token',
+        email: 'test@example.com',
+        firstname: null,
+        lastname: null,
+      })
+    );
+  });
+
+  it('hides the path immediately and queues the deletion for the server', async () => {
+    const id = await createPath();
+    expect(await deletePathCommand(id!)).toBe(true);
+
+    // Gone from every screen straight away — the user asked for it gone, and
+    // offline there is no confirmation coming.
+    expect(selectVisiblePaths(store.getState()).some((p) => p.pathId === id)).toBe(false);
+
+    // But still in the slice, because the outbox builds its request from that
+    // row. Dropping it here makes the coordinator treat the queued delete as
+    // stale and cancel it — the path vanishes on this device and survives on
+    // every other one.
+    expect(store.getState().paths.paths.some((p) => p.pathId === id)).toBe(true);
+    expect(store.getState().sync.pathOps[id!]?.kind).toBe('delete');
+    expect(store.getState().sync.meta[id!]?.deletedAt).toBeGreaterThan(0);
+  });
+
+  it('survives a reboot with the deletion still pending', async () => {
+    // The whole point of writing it durably: a delete taken offline must not be
+    // forgotten when the app restarts before it could sync.
+    const id = await createPath();
+    await deletePathCommand(id!);
+
+    const fresh = makeStore();
+    expect(await hydrateStore(fresh)).toBe(true);
+    expect(selectVisiblePaths(fresh.getState()).some((p) => p.pathId === id)).toBe(false);
+  });
+
+  it('returns false for a path that is not there', async () => {
+    expect(await deletePathCommand(9999)).toBe(false);
+  });
+
+  it('deleting twice does not queue a second request', async () => {
+    const id = await createPath();
+    await deletePathCommand(id!);
+    const firstOp = store.getState().sync.pathOps[id!];
+
+    await deletePathCommand(id!);
+
+    expect(store.getState().sync.pathOps[id!]?.kind).toBe('delete');
+    expect(store.getState().sync.pathOps[id!]?.localUpdatedAt).toBeGreaterThanOrEqual(
+      firstOp!.localUpdatedAt
+    );
+    expect(selectVisiblePaths(store.getState()).some((p) => p.pathId === id)).toBe(false);
+  });
+
+  it('reports failure only when the path is genuinely still there', async () => {
+    // The bug: `removePathLocal` took a bare number, so the rollback reducer —
+    // which finds the pathId inside an OBJECT payload — could not see which
+    // record to restore and silently did nothing. The path disappeared while
+    // the user was told the delete had failed, which is the worst pairing
+    // available: it invites a retry for something already gone.
+    const id = await createPath();
+    // A path with no sync meta takes the remove-outright branch.
+    store.dispatch(dropMeta(id!));
+    (AsyncStorage.multiSet as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    expect(await deletePathCommand(id!)).toBe(false);
+
+    // Reported failed, so it must still be there — on screen and in the slice.
+    expect(store.getState().paths.paths.some((p) => p.pathId === id)).toBe(true);
+    expect(selectVisiblePaths(store.getState()).some((p) => p.pathId === id)).toBe(true);
+  });
+
+  it('records why the write was refused, for a device we cannot reach', async () => {
+    const id = await createPath();
+    (AsyncStorage.multiSet as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    expect(await deletePathCommand(id!)).toBe(false);
+
+    // Found by context, not position: a real disk failure also logs
+    // "persistence: commit attempt N failed", and both reports are wanted.
+    const report = (recordError as jest.Mock).mock.calls.find(
+      (call) => call[1] === 'commands: deletePathCommand refused'
+    );
+    expect(report).toBeDefined();
+    // The alert tells the user it failed; these say what it failed against.
+    expect(report?.[2]).toMatchObject({
+      pathId: String(id),
+      pathExists: 'true',
+      hadSyncMeta: 'true',
+      pathsHydrated: 'true',
+      syncHydrated: 'true',
+    });
+  });
+
+  it('rolls the tombstone back when the write fails', async () => {
+    const id = await createPath();
+    (AsyncStorage.multiSet as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    expect(await deletePathCommand(id!)).toBe(false);
+
+    expect(selectVisiblePaths(store.getState()).some((p) => p.pathId === id)).toBe(true);
+    expect(store.getState().sync.meta[id!]?.deletedAt).toBeNull();
+    expect(store.getState().sync.pathOps[id!]?.kind).not.toBe('delete');
+  });
+
+  it('leaves other paths alone', async () => {
+    const keep = await createPath();
+    const drop = await createPath();
+    await deletePathCommand(drop!);
+
+    const visible = selectVisiblePaths(store.getState()).map((p) => p.pathId);
+    expect(visible).toContain(keep);
+    expect(visible).not.toContain(drop);
+  });
+
+  it('permanently removes a guest path because it has no account to sync', async () => {
+    store.dispatch(setSignedOut());
+    const id = await createPath();
+
+    expect(await deletePathCommand(id!)).toBe(true);
+    expect(store.getState().paths.paths.some((path) => path.pathId === id)).toBe(false);
+    expect(store.getState().sync.meta[id!]).toBeUndefined();
+    expect(store.getState().sync.pathOps[id!]).toBeUndefined();
   });
 });
 

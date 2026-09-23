@@ -20,6 +20,12 @@ export const ContinueScreenStyles = StyleSheet.create({
     gap: 15,
     alignItems: 'center',
   },
+  /** Back link on the left, the path's actions on the right. */
+  navRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   tabsContainer: {
     flexDirection: 'row',
     gap: UIConstants.RHYTHM,

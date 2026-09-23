@@ -94,7 +94,11 @@ const SimpleTextForPathComponent = ({
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
-            style={{ transform: [{ translateY: -(fontSize * 0.25) }] }}
+            style={{
+              transform: [
+                { translateY: Platform.OS === 'ios' ? -fontSize * 0.35 : fontSize * 0.3 },
+              ],
+            }}
           />
         )}
       </Text>

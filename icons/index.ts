@@ -21,3 +21,4 @@ export { GoToAngIcon } from './GoToAng.icon';
 export { LoginIcon } from './Login.icon';
 export { AllPathLogoIcon } from './AllPathLogo.icon';
 export { KhalisIcon } from './Khalis.icon';
+export { MoreOptionsIcon } from './MoreOptions.icon';
