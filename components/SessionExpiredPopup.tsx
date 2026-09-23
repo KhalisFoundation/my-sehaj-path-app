@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { Text, TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity, View } from 'react-native';
+import { AppText as Text } from './AppText';
 import { Constants } from '@constants';
 import { startLogin } from '@auth';
 import { trackEvent } from '@utils';

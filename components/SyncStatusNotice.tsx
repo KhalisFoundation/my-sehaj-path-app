@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, View } from 'react-native';
+import { AppText as Text } from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SyncStatusNoticeStyles as styles } from '@styles';
 import { OfflineCloudIcon, SyncedCheckIcon } from '../icons';

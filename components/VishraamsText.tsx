@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { AppText as Text } from './AppText';
 import { VishraamsTheme } from '@constants/VishraamsTheme';
 import type { Visraams } from '../types';
 import { Constants } from '@constants/constant';

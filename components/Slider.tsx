@@ -6,9 +6,9 @@ import {
   LayoutAnimation,
   StyleProp,
   ViewStyle,
-  Text,
   useWindowDimensions,
 } from 'react-native';
+import { AppText as Text } from './AppText';
 import { SliderStyles } from '@styles';
 
 interface Props {

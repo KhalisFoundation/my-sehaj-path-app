@@ -1,7 +1,8 @@
 import React, { useCallback, useRef, useState, useMemo } from 'react';
 import dayjs from 'dayjs';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
-import { View, ScrollView, ImageBackground, Text, Pressable, Image } from 'react-native';
+import { View, ScrollView, ImageBackground, Pressable, Image } from 'react-native';
+import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigationState } from '@react-navigation/native';

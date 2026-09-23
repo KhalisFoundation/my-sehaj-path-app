@@ -1,5 +1,6 @@
 import React from 'react';
-import { ImageBackground, Text, View } from 'react-native';
+import { ImageBackground, View } from 'react-native';
+import { AppText as Text } from './AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EDGES_ALL_SIDES } from '@constants';
 import { SafeAreaStyle, HydrationRetryStyles } from '@styles';

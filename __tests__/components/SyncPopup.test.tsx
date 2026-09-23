@@ -30,10 +30,13 @@ const mockState: {
     pendingSettingsUpdatedAt?: number | null;
   };
   network: { isOnline: boolean };
+  settings: { fontSize: { fontSize: string; number: number } };
 } = {
   auth: { status: 'signedIn', email: 'u@e.com', firstname: 'U' },
   paths: { paths: [], dates: [] },
   network: { isOnline: true },
+  // Present because every screen's text reads it through AppText.
+  settings: { fontSize: { fontSize: 'Small (Default)', number: 24 } },
   sync: {
     syncPopupAnswered: false,
     account: null,

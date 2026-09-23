@@ -2,6 +2,14 @@ import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
 import { DropdownSettingItem } from '../../components/Settings/DropdownSettingItem';
 import { SwitchSettingItem } from '../../components/Settings/SwitchSettingItem';
+import { AppText } from '../../components/AppText';
+
+// The dropdown's options now render through `AppText`, which reads the font
+// setting from the store — the whole point of the change being tested elsewhere.
+jest.mock('../../store/hooks', () => ({
+  useAppSelector: (selector: (state: unknown) => unknown) =>
+    selector({ settings: { fontSize: { fontSize: 'Small (Default)', number: 24 } } }),
+}));
 
 const mockTrackEvent = jest.fn();
 const mockRecordError = jest.fn();
@@ -35,6 +43,9 @@ jest.mock('@rneui/themed', () => {
     ReactForMock.createElement('ListItem', props, props.children);
   ListItem.Content = (props: { children?: React.ReactNode }) =>
     ReactForMock.createElement('ListItemContent', props, props.children);
+  // Left in place deliberately. If a future edit routes option labels back
+  // through this, the test below fails: `ListItem.Title` renders React Native's
+  // own Text, which no app setting reaches.
   ListItem.Title = (props: { children?: React.ReactNode }) =>
     ReactForMock.createElement('ListItemTitle', props, props.children);
 
@@ -170,6 +181,52 @@ describe('setting analytics', () => {
         result,
         'DropdownSettingItem: failed to change fontSize'
       );
+    }
+  });
+});
+
+describe('dropdown options follow the app font setting', () => {
+  const renderDropdown = async () => {
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <DropdownSettingItem<string>
+          settingKey="angsFormat"
+          label="Ang Numbering"
+          overlayTitle="Select Ang Numbering"
+          options={[
+            { value: 'punjabi', label: 'Punjabi' },
+            { value: 'english', label: 'English' },
+          ]}
+          value="punjabi"
+          onValueChange={jest.fn().mockResolvedValue(true)}
+          getDisplayValue={(value) => value}
+          isEqual={(a, b) => a === b}
+        />
+      );
+    });
+    return renderer;
+  };
+
+  it('renders the options through the app text primitive', async () => {
+    // The row that opens the list grew with the setting while the list itself
+    // stayed put, because this was the one text in the app that bypassed the
+    // typography table.
+    const renderer = await renderDropdown();
+    expect(renderer.root.findAllByType('ListItemTitle' as never)).toHaveLength(0);
+
+    const labels = renderer.root
+      .findAllByType(AppText)
+      .map((node) => node.props.children as string);
+    expect(labels).toEqual(expect.arrayContaining(['Punjabi', 'English']));
+  });
+
+  it('opts the options out of the device font setting, like the rest of the app', async () => {
+    // Otherwise the OS accessibility slider multiplies against the app's own
+    // setting here and nowhere else.
+    const renderer = await renderDropdown();
+    for (const node of renderer.root.findAllByType(AppText)) {
+      expect(node.props.allowFontScaling ?? false).toBe(false);
     }
   });
 });

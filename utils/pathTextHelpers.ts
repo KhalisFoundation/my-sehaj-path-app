@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { unstable_batchedUpdates } from 'react-native';
 import { SimpleTextForPathStyles } from '@styles';
+import { readerLineHeight } from '@constants/FontSize';
 import type { PathSelection } from '@components/PathSelectionContext';
 import type { Visraams } from '../types';
 import { trackEvent } from './analytics';
@@ -60,7 +61,7 @@ export const useTextStyle = (fontSize: number) => {
     () => ({
       ...SimpleTextForPathStyles.text,
       fontSize,
-      lineHeight: fontSize * 2.2,
+      lineHeight: readerLineHeight(fontSize),
     }),
     [fontSize]
   );

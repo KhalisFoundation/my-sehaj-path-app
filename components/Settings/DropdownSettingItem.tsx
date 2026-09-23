@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TouchableOpacity, View, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { ListItem, Overlay } from '@rneui/themed';
 import { NavContent, SimpleText } from '@components';
+import { AppText } from '../AppText';
 import { LeftArrowIcon, RightChevronIcon, CheckMarkIcon } from '@icons';
 import { recordError, trackEvent } from '@utils';
 import { DropdownSettingItemStyles } from '@styles/DropdownSettingItemStyles';
@@ -95,7 +96,10 @@ export const DropdownSettingItem = <T,>({
         accessibilityRole="button"
         accessibilityHint={`Tap to change ${label}`}
       >
-        <SimpleText simpleText={label} simpleTextStyle={textStyle} />
+        <SimpleText
+          simpleText={label}
+          simpleTextStyle={[textStyle, DropdownSettingItemStyles.label]}
+        />
         <View style={DropdownSettingItemStyles.valueContainer}>
           <SimpleText simpleText={getDisplayValue(selectedValue)} simpleTextStyle={textStyle} />
           <RightChevronIcon />
@@ -123,7 +127,14 @@ export const DropdownSettingItem = <T,>({
                 accessibilityState={{ selected: isEqual(selectedValue, option.value) }}
               >
                 <ListItem.Content style={overlayTextContainerStyle}>
-                  <ListItem.Title style={overlayTextStyle}>{option.label}</ListItem.Title>
+                  {/*
+                    `ListItem.Title` renders React Native's own Text, so it was
+                    the one place in the app whose size did not come from the
+                    typography table — the options in this list stayed put while
+                    the row that opened them grew. It also font-scaled with the
+                    OS setting, which every other text in the app opts out of.
+                  */}
+                  <AppText style={overlayTextStyle}>{option.label}</AppText>
                   {showCheckmark && isEqual(selectedValue, option.value) && <CheckMarkIcon />}
                 </ListItem.Content>
               </ListItem>

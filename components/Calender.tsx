@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Image } from 'react-native';
+import { View, TouchableOpacity, Image } from 'react-native';
+import { AppText as Text } from './AppText';
 import dayjs from 'dayjs';
 import { CalenderStyles } from '@styles';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';

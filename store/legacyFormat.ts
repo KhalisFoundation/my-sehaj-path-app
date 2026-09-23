@@ -1,3 +1,4 @@
+import { normalizeFontSize } from '../constants/FontSize';
 import type {
   AngsFormat,
   DateData,
@@ -324,7 +325,11 @@ export const parseLegacy = (raw: RawLegacy): ParseResult => {
     apply(parsed.value);
   };
 
-  readJson('fontSize', isFontSizeData, (value) => (settings.fontSize = value));
+  // Resolved onto the current scale rather than trusted as-is: the sizes moved
+  // when they were aligned to the shared scale, so a value saved by an older
+  // can name a size that no longer exists. Matching on the number keeps the text
+  // exactly the size the reader chose.
+  readJson('fontSize', isFontSizeData, (value) => (settings.fontSize = normalizeFontSize(value)));
   readJson('vishraamsSource', isVishraamsSource, (value) => (settings.vishraamsSource = value));
   readJson('angsFormat', isAngsFormat, (value) => (settings.angsFormat = value));
 
