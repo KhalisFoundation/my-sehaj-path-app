@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { View, TouchableOpacity, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { AppText as Text } from './AppText';
-import dayjs from 'dayjs';
+import { dayjs } from '../utils/dateTime';
 import { CalenderStyles } from '@styles';
 import { LeftArrowIcon, RightArrowIcon } from '@icons';
 import { CalenderDays } from '@constants';
@@ -15,7 +15,7 @@ interface Props {
   streak: React.MutableRefObject<number>;
   pathId: number;
   sharedPathId?: string;
-  onStreakUpdate?: (streakValue: number) => void;
+  onStreakUpdate?: (streakValue: number | null) => void;
 }
 
 export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props) => {
@@ -38,6 +38,7 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
   useFocusEffect(
     useCallback(() => {
       let active = true;
+      setSharedDates(null);
       loadSharedDates()
         .then((dates) => {
           if (active) {
@@ -73,10 +74,17 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
 
   const readingDateStrings = useMemo(() => {
     if (sharedPathId) {
-      return (sharedDates ?? []).map((date) => dayjs(date).format('D-MMMM-YYYY'));
+      // Use persisted reading days while the authoritative group streak is
+      // loading. Treating "not loaded" as an empty list made the UI flash 0.
+      if (sharedDates !== null) {
+        return sharedDates.map((date) => dayjs(date).format('D-MMMM-YYYY'));
+      }
     }
     return progressDates?.dates?.map((date: any) => date.date) ?? [];
   }, [progressDates, sharedDates, sharedPathId]);
+
+  const isStreakLoading =
+    Boolean(sharedPathId) && sharedDates === null && readingDateStrings.length === 0;
 
   const calculateStreak = useCallback((dates: string[]): number => {
     if (!dates || dates.length === 0) {
@@ -144,13 +152,14 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
   }, [daysArray]);
 
   useEffect(() => {
-    if (currentStreak !== undefined) {
-      streak.current = currentStreak;
-      if (onStreakUpdate) {
-        onStreakUpdate(currentStreak);
-      }
+    if (isStreakLoading) {
+      onStreakUpdate?.(null);
+      return;
     }
-  }, [currentStreak, streak, onStreakUpdate]);
+
+    streak.current = currentStreak;
+    onStreakUpdate?.(currentStreak);
+  }, [currentStreak, isStreakLoading, streak, onStreakUpdate]);
 
   const hasProgress = useCallback(
     (date: dayjs.Dayjs): boolean => {

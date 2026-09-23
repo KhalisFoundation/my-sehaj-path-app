@@ -129,6 +129,11 @@ export const MembersRowStyles = StyleSheet.create({
   inviteCreateSection: {
     gap: 10,
   },
+  inviteLoading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
+  },
   inviteHint: {
     color: UIConstants.MUTED_TEXT_COLOR,
     fontFamily: font.Baloo_Paaji_2_Regular,

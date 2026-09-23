@@ -57,6 +57,23 @@ describe('availabilityForSelectedTime', () => {
     }
   });
 
+  it('allows one continuous turn to finish after local midnight', () => {
+    const day = tomorrow();
+    const result = availabilityForSelectedTime({
+      startsAt: at(day, 23, 50),
+      durationMinutes: 15,
+      slots: [],
+      now: at(day, 20),
+    });
+
+    expect(result.available).toBe(true);
+    if (result.available) {
+      expect(result.slot.endsAt.getDate()).not.toBe(result.slot.startsAt.getDate());
+      expect(result.slot.endsAt.getHours()).toBe(0);
+      expect(result.slot.endsAt.getMinutes()).toBe(5);
+    }
+  });
+
   it('rejects an exact range that overlaps an existing turn', () => {
     const day = tomorrow();
     expect(

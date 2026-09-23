@@ -90,6 +90,7 @@ describe('useLiveReading', () => {
     expect(handle.sendPosition).toHaveBeenCalledWith({
       currentAng: 5,
       currentVerseId: 50,
+      firstVisibleVerseId: 50,
       scrollPosition: 120,
     });
   });
@@ -221,6 +222,29 @@ describe('sharing how the text is laid out', () => {
   it('sends the reader’s layout once the socket is open', async () => {
     await mount(baseProps({ sehajPathId: 'p1', driving: true }, { settings: layout }));
     expect(handle.sendSettings).toHaveBeenCalledWith(layout);
+  });
+
+  it('re-advertises the reader state so a reconnected follower can recover', async () => {
+    jest.useFakeTimers();
+    const tree = await mount(baseProps({ sehajPathId: 'p1', driving: true }, { settings: layout }));
+
+    await act(async () => {
+      listeners.onJoined(null);
+    });
+    handle.sendPosition.mockClear();
+    handle.sendSettings.mockClear();
+
+    act(() => {
+      jest.advanceTimersByTime(5_000);
+    });
+
+    expect(handle.sendPosition).toHaveBeenCalledWith(
+      expect.objectContaining({ currentAng: 5, currentVerseId: 50 })
+    );
+    expect(handle.sendSettings).toHaveBeenCalledWith(layout);
+
+    await act(async () => tree.unmount());
+    jest.useRealTimers();
   });
 
   it('sends nothing while following — the reader is the source', async () => {

@@ -1,6 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import dayjs from 'dayjs';
-import customParseFormat from 'dayjs/plugin/customParseFormat';
 import {
   ActivityIndicator,
   Alert,
@@ -30,7 +28,14 @@ import {
   SuggestedMembersSheet,
   TurnsTab,
 } from '@components';
-import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, PATH_DATA } from '@constants';
+import {
+  Constants,
+  EDGES_ALL_SIDES,
+  ErrorConstants,
+  Routes,
+  PATH_DATA,
+  UIConstants,
+} from '@constants';
 import { ContinueScreenStyles, SafeAreaStyle } from '@styles';
 import { PathData, useScreenAnalytics } from '@hooks';
 import { startLogin } from '@auth';
@@ -72,6 +77,13 @@ import { setPathShared } from '../store/slices/syncSlice';
 import { persistence } from '../store/instance';
 import { getStoredInviteState } from '../store/inviteLink';
 import { connectLive, type LiveHandle, type LivePosition } from '../store/liveSession';
+import {
+  addLocalDays,
+  asLocalDateTime as dayjs,
+  differenceInMinutes,
+  isAfter,
+  parseLegacyPathDate,
+} from '../utils/dateTime';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
@@ -300,7 +312,6 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }, [loadInviteStatus, loadMembers])
   );
 
-  dayjs.extend(customParseFormat);
   useScreenAnalytics('Continue', 'Continue');
   const [pathState, setPathState] = useState({
     pathData: {
@@ -323,7 +334,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const [uiState, setUiState] = useState({
     showPathRename: false,
     tabs: initialTab || 'progress',
-    streakValue: 0,
+    streakValue: null as number | null,
   });
   useEffect(() => {
     if (!showTurnsTab && uiState.tabs === 'turns') {
@@ -429,7 +440,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const previousRoute = useNavigationState((state) => state.routes[state.index - 1]?.name);
   const isFromPath = previousRoute === Routes.Path;
 
-  const handleStreakUpdate = useCallback((newStreakValue: number) => {
+  const handleStreakUpdate = useCallback((newStreakValue: number | null) => {
     setUiState((prev) => ({ ...prev, streakValue: newStreakValue }));
   }, []);
 
@@ -445,7 +456,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     if (serverStartDate) {
       startDate = dayjs(serverStartDate).startOf('day');
     } else if (path.startDate) {
-      startDate = dayjs(path.startDate, 'D-MMMM-YYYY').startOf('day');
+      startDate = parseLegacyPathDate(path.startDate).startOf('day');
     }
     if (!startDate.isValid()) {
       return {
@@ -744,7 +755,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setUpcomingTurnsLoading(true);
     const now = new Date();
     const from = now;
-    const to = new Date(now.getTime() + UPCOMING_TURN_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000);
+    const to = addLocalDays(now, UPCOMING_TURN_LOOKAHEAD_DAYS);
     const result = await loadPlan(sehajPathId, from, to);
     if (!result.ok) {
       setUpcomingTurn(null);
@@ -755,7 +766,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
     setScheduleSlots(result.data.slots);
     const next = result.data.slots
-      .filter((slot) => slot.status === 'SCHEDULED' && new Date(slot.startsAt) > now)
+      .filter((slot) => slot.status === 'SCHEDULED' && isAfter(slot.startsAt, now))
       .sort((left, right) => left.startsAt.localeCompare(right.startsAt))[0];
     setUpcomingTurn(next ?? null);
     setUpcomingTurnsLoading(false);
@@ -1130,7 +1141,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     leavePath(sehajPathId, mine.id)
       .then((result) => {
         if (result.ok) {
-          navigation.replace(Routes.Home);
+          // Home already exists below Continue in the normal flow. Replacing
+          // Continue would create another Home and retain the stale stack.
+          navigation.popTo(Routes.Home);
           return;
         }
         showErrorAlert(result.message);
@@ -1525,10 +1538,14 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   <>
                     <View style={ContinueScreenStyles.streakContainer}>
                       <View style={ContinueScreenStyles.streakValueContainer}>
-                        <SecondaryHeading
-                          text={uiState.streakValue.toString()}
-                          textStyles={ContinueScreenStyles.streakText}
-                        />
+                        {uiState.streakValue === null ? (
+                          <ActivityIndicator color={UIConstants.PRIMARY_COLOR} />
+                        ) : (
+                          <SecondaryHeading
+                            text={uiState.streakValue.toString()}
+                            textStyles={ContinueScreenStyles.streakText}
+                          />
+                        )}
                         <Image
                           source={require('@assets/Images/Streak.png')}
                           style={ContinueScreenStyles.streakIcon}
@@ -1608,10 +1625,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                     initialStartsAt: slot.startsAt,
                     initialDurationMinutes: Math.max(
                       15,
-                      Math.round(
-                        (new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) /
-                          60000
-                      )
+                      Math.round(differenceInMinutes(slot.endsAt, slot.startsAt))
                     ),
                   })
                 }
@@ -1707,7 +1721,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           </View>
         </ScrollView>
       </ImageBackground>
-      {invitableId !== null && (
+      {invitableId !== null && inviteOpen && (
         <InviteSheet
           visible={inviteOpen}
           sehajPathId={invitableId}

@@ -1,9 +1,10 @@
 import React from 'react';
 import { Provider } from 'react-redux';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
-import { TurnsTab, timelineFrameFor } from '../../components/TurnsTab';
+import { TurnsTab, timelineFrameFor, visibleSlotsForDay } from '../../components/TurnsTab';
 import { store } from '../../store';
 import { loadPlan } from '../../store/groupApi';
+import type { SehajPathSlot } from '../../api/generated/types.gen';
 
 jest.mock('../../store/groupApi', () => ({ loadPlan: jest.fn() }));
 
@@ -28,13 +29,17 @@ const at = (hour: number, offsetDays = 0) => {
   ).toISOString();
 };
 
-const slot = (overrides: Record<string, unknown> = {}) => ({
+const slot = (overrides: Partial<SehajPathSlot> = {}): SehajPathSlot => ({
   id: 'slot-1',
+  sehajPathId: 'path-1',
+  readerMemberId: 'member-1',
+  readerLabel: 'Inder Singh',
+  createdByMemberId: 'member-1',
   status: 'SCHEDULED',
   startsAt: at(7),
   endsAt: at(8),
-  readerLabel: 'Inder Singh',
   isMine: false,
+  assignedByOther: false,
   ...overrides,
 });
 
@@ -51,6 +56,38 @@ describe('TurnsTabs', () => {
     });
 
     expect(frame).toEqual({ top: 750, height: 125 });
+  });
+
+  it('clips an overnight booking for each calendar day without duplicating it', () => {
+    const today = new Date();
+    const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const overnight = slot({
+      startsAt: new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+        23,
+        50
+      ).toISOString(),
+      endsAt: new Date(
+        tomorrow.getFullYear(),
+        tomorrow.getMonth(),
+        tomorrow.getDate(),
+        0,
+        5
+      ).toISOString(),
+    });
+
+    const firstDay = visibleSlotsForDay([overnight], today);
+    const secondDay = visibleSlotsForDay([overnight], tomorrow);
+
+    expect(firstDay).toHaveLength(1);
+    expect(secondDay).toHaveLength(1);
+    expect(firstDay[0].id).toBe(overnight.id);
+    expect(secondDay[0].id).toBe(overnight.id);
+    expect(timelineFrameFor(firstDay[0]).height).toBeCloseTo((10 / 60) * 100);
+    expect(timelineFrameFor(secondDay[0]).top).toBe(0);
+    expect(timelineFrameFor(secondDay[0]).height).toBeCloseTo((5 / 60) * 100);
   });
 
   it('renders a booked turn in the selected day timeline', async () => {

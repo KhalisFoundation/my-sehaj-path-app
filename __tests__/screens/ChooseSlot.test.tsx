@@ -23,12 +23,16 @@ jest.mock('@react-native-community/datetimepicker', () => {
   const { Pressable, Text } = require('react-native');
   return {
     __esModule: true,
-    default: ({ value, onChange, accessibilityLabel }: any) => (
+    default: ({ value, onChange, accessibilityLabel, mode }: any) => (
       <Pressable
-        accessibilityLabel={accessibilityLabel || 'Native time picker'}
+        accessibilityLabel={accessibilityLabel || `Native ${mode} picker`}
         onPress={() => {
           const selected = new Date(value);
-          selected.setHours(7, 7, 0, 0);
+          if (mode === 'date') {
+            selected.setDate(selected.getDate() + 1);
+          } else {
+            selected.setHours(7, 7, 0, 0);
+          }
           onChange({ type: 'set' }, selected);
         }}
       >
@@ -55,6 +59,18 @@ const renderScreen = () =>
 const plan = (slots: unknown[] = []) =>
   loadPlanMock.mockResolvedValue({ ok: true, data: { stateVersion: 1, slots } } as never);
 
+const selectTomorrowAtSevenOhSeven = async (
+  findByLabelText: ReturnType<typeof renderScreen>['findByLabelText'],
+  findByText: ReturnType<typeof renderScreen>['findByText']
+) => {
+  fireEvent.press(await findByLabelText('Date picker'));
+  fireEvent.press(await findByLabelText('Native date picker'));
+  fireEvent.press(await findByText('OK'));
+  fireEvent.press(await findByLabelText('Start time picker'));
+  fireEvent.press(await findByLabelText('Native time picker'));
+  fireEvent.press(await findByText('OK'));
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   plan();
@@ -70,8 +86,7 @@ describe('ChooseSlot', () => {
   it('books the exact time selected by the user', async () => {
     bookSlotMock.mockResolvedValue({ ok: true, data: {} } as never);
     const { findByLabelText, findByText } = renderScreen();
-    fireEvent.press(await findByLabelText('Next day'));
-    fireEvent.press(await findByLabelText('Start time picker'));
+    await selectTomorrowAtSevenOhSeven(findByLabelText, findByText);
     fireEvent.press(await findByText('Add turn'));
 
     await waitFor(() => expect(bookSlotMock).toHaveBeenCalledTimes(1));
@@ -99,8 +114,7 @@ describe('ChooseSlot', () => {
     plan([{ id: 'all-day', status: 'SCHEDULED', startsAt: midnight, endsAt: nextMidnight }]);
 
     const { findByLabelText, findByText } = renderScreen();
-    fireEvent.press(await findByLabelText('Next day'));
-    fireEvent.press(await findByLabelText('Start time picker'));
+    await selectTomorrowAtSevenOhSeven(findByLabelText, findByText);
     expect(await findByText('This time overlaps another turn.')).toBeTruthy();
 
     fireEvent.press(await findByText('Add turn'));
@@ -125,9 +139,8 @@ describe('ChooseSlot', () => {
     ).toISOString();
     plan([{ id: 'next-turn', status: 'SCHEDULED', startsAt, endsAt }]);
 
-    const { findByLabelText, findByRole } = renderScreen();
-    fireEvent.press(await findByLabelText('Next day'));
-    fireEvent.press(await findByLabelText('Start time picker'));
+    const { findByLabelText, findByRole, findByText } = renderScreen();
+    await selectTomorrowAtSevenOhSeven(findByLabelText, findByText);
 
     expect(
       (await findByRole('button', { name: '15 mins' })).props.accessibilityState

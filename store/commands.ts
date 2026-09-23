@@ -1,5 +1,5 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import { ErrorConstants, MonthConstant, PATH_DATA } from '@constants';
+import { ErrorConstants, PATH_DATA } from '@constants';
 import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
@@ -24,6 +24,7 @@ import {
 import { markPathDeleted } from './slices/syncSlice';
 import type { SettingsState } from './slices/settingsSlice';
 import { showErrorAlert } from '@utils/Error';
+import { asLocalDateTime } from '@utils/dateTime';
 
 /**
  * Acknowledged operations.
@@ -38,10 +39,7 @@ import { showErrorAlert } from '@utils/Error';
  * code stay declarative.
  */
 
-const todayString = (): string => {
-  const date = new Date();
-  return `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
-};
+const todayString = (): string => asLocalDateTime().format('D-MMMM-YYYY');
 
 const progressFor = (angNumber: number): number => (angNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
 

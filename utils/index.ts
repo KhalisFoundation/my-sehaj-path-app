@@ -15,6 +15,7 @@ export { trackSharedPathEvent } from './sharedPathAnalytics';
 export { allowCrashReporting, recordError, testCrash } from './crashlytics';
 export { getOrCreatePathUuid } from './pathIdUtils';
 export { displayReadingAng } from './readingAng';
+export * from './dateTime';
 export { displayPushMessage, registerPushNotifications } from './pushNotifications';
 export {
   useIsSelected,

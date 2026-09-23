@@ -399,6 +399,36 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().sync.meta[1].shared).toBeUndefined();
   });
 
+  it('keeps the canonical group start date when allocating a joined path', async () => {
+    const store = signedInStore();
+    const canonicalStartDate = Date.UTC(2026, 0, 2);
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-9',
+          pathId: null,
+          name: 'Shared path',
+          angNumber: 25,
+          verseId: 100,
+          progress: 2,
+          startDate: canonicalStartDate,
+          sharing: 'PUBLIC',
+          relationship: 'MEMBER',
+          stateVersion: 1,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    const joinedMeta = Object.values(store.getState().sync.meta).find(
+      (meta) => meta.groupId === 'internal-9'
+    );
+    expect(joinedMeta?.startDate).toBe(canonicalStartDate);
+  });
+
   it('still refreshes when the shared lookup fails', async () => {
     const store = signedInStore();
     mockFindAll.mockResolvedValueOnce(
@@ -434,14 +464,35 @@ describe('refreshPathsFromServer', () => {
   it('does not apply server changes to the active reader path', async () => {
     const store = signedInStore();
     const uuid = addSyncedPath(store, 1); // local path 1: name 'Path #1', progress 1
+    const canonicalStartDate = Date.UTC(2025, 11, 24);
     mockFindAll.mockResolvedValueOnce(
       findAllOk([serverPath(uuid, { name: 'Changed on server', progress: 88 })])
     );
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Changed on server',
+          angNumber: 50,
+          verseId: 200,
+          progress: 88,
+          startDate: canonicalStartDate,
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 2,
+          memberCount: 2,
+        },
+      ],
+    });
 
     expect(await refreshPathsFromServer(store, 1)).toBe(true); // path 1 is the active reader
     const path = store.getState().paths.paths.find((p) => p.pathId === 1)!;
     expect(path.pathName).toBe('Path #1'); // untouched
     expect(path.progress).toBe(1);
+    // Safe metadata still refreshes, so the reader and followers calculate
+    // the same path age without moving the reader's live position.
+    expect(store.getState().sync.meta[1].startDate).toBe(canonicalStartDate);
   });
 
   it('skips (no network call) while a local path op is pending', async () => {

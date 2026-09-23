@@ -25,7 +25,7 @@ export const ContinueScreenStyles = StyleSheet.create({
     color: '#8A5A00',
   },
   backgroundImage: {
-    height: '100%',
+    flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,

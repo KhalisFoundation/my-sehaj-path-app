@@ -30,67 +30,60 @@ import type { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { notifyPlanRefresh } from '../store/planEvents';
+import {
+  addMinutes,
+  asLocalDateTime,
+  ceilToLocalMinute,
+  combineLocalDayAndTime,
+  formatCalendarDate,
+  formatTime,
+  isSameLocalDay,
+  isValidDateTime,
+  startOfLocalDay,
+} from '../utils/dateTime';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChooseSlot'>;
 
 const DURATIONS = [15, 30, 45, 60, 75, 90, 105, 120] as const;
-const DAY_LABEL_OPTIONS: Intl.DateTimeFormatOptions = {
-  weekday: 'short',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-};
-const timeLabel = (at: Date): string =>
-  at.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-
-const dayLabel = (day: Date): string => day.toLocaleDateString([], DAY_LABEL_OPTIONS);
-
 const nextSelectableMinute = (now = new Date()): Date => {
-  const leadMs = MINIMUM_BOOKING_LEAD_MINUTES * 60 * 1000;
-  const earliest = new Date(now.getTime() + leadMs);
-  earliest.setSeconds(0, 0);
-  if (earliest.getTime() < now.getTime() + leadMs) {
-    earliest.setMinutes(earliest.getMinutes() + 1);
-  }
-  return earliest;
+  const earliest = addMinutes(now, MINIMUM_BOOKING_LEAD_MINUTES);
+  return ceilToLocalMinute(earliest);
 };
 
 const initialSelection = (value?: string): { day: Date; time: Date } => {
   if (!value) {
     const time = nextSelectableMinute();
     return {
-      day: new Date(time.getFullYear(), time.getMonth(), time.getDate()),
+      day: startOfLocalDay(time),
       time,
     };
   }
-  const selected = new Date(value);
-  if (Number.isNaN(selected.getTime())) {
+  if (!isValidDateTime(value)) {
     const time = nextSelectableMinute();
     return {
-      day: new Date(time.getFullYear(), time.getMonth(), time.getDate()),
+      day: startOfLocalDay(time),
       time,
     };
   }
+  const selected = asLocalDateTime(value).toDate();
   return {
-    day: new Date(selected.getFullYear(), selected.getMonth(), selected.getDate()),
+    day: startOfLocalDay(selected),
     time: selected,
   };
 };
 
-const timeOnDay = (day: Date, time: Date): Date =>
-  new Date(
-    day.getFullYear(),
-    day.getMonth(),
-    day.getDate(),
-    time.getHours(),
-    time.getMinutes(),
-    0,
-    0
-  );
+const timeOnDay = (day: Date, time: Date): Date => combineLocalDayAndTime(day, time);
 
-const unavailableMessage = (
-  reason: 'past' | 'too-soon' | 'next-day' | 'overlap' | 'invalid-duration'
-) => {
+const selectedTimeRangeLabel = (startsAt: Date, endsAt: Date): string => {
+  if (isSameLocalDay(startsAt, endsAt)) {
+    return `${formatTime(startsAt)} – ${formatTime(endsAt)}`;
+  }
+  return `${formatCalendarDate(startsAt)}, ${formatTime(startsAt)} – ${formatCalendarDate(
+    endsAt
+  )}, ${formatTime(endsAt)}`;
+};
+
+const unavailableMessage = (reason: 'past' | 'too-soon' | 'overlap' | 'invalid-duration') => {
   switch (reason) {
     case 'past':
       return Constants.SELECTED_TIME_PAST;
@@ -99,8 +92,6 @@ const unavailableMessage = (
         '{minutes}',
         String(MINIMUM_BOOKING_LEAD_MINUTES)
       );
-    case 'next-day':
-      return Constants.SELECTED_TIME_NEXT_DAY;
     case 'overlap':
       return Constants.SELECTED_TIME_OVERLAP;
     default:
@@ -228,7 +219,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
 
   const chooseDate = useCallback((event: DateTimePickerEvent, selected?: Date) => {
     if (event.type === 'set' && selected) {
-      const nextDay = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate());
+      const nextDay = startOfLocalDay(selected);
       setDraftDay(nextDay);
       if (Platform.OS === 'android') {
         setDay(nextDay);
@@ -356,7 +347,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
             accessibilityLabel="Date picker"
           >
             <CalendarIcon width={24} height={24} />
-            <Text style={styles.fieldText}>{dayLabel(day)}</Text>
+            <Text style={styles.fieldText}>{formatCalendarDate(day)}</Text>
           </TouchableOpacity>
           {datePickerOpen && Platform.OS === 'android' ? (
             <DateTimePicker
@@ -411,7 +402,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
             accessibilityLabel="Start time picker"
           >
             <CalendarIcon width={24} height={24} />
-            <Text style={styles.fieldText}>{timeLabel(startsAt)}</Text>
+            <Text style={styles.fieldText}>{formatTime(startsAt)}</Text>
           </TouchableOpacity>
           {timePickerOpen && Platform.OS === 'android' ? (
             <DateTimePicker
@@ -462,9 +453,10 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
             <ActivityIndicator style={styles.loading} />
           ) : availability?.available ? (
             <Text style={styles.available}>
-              {`${Constants.SELECTED_TIME_AVAILABLE}: ${timeLabel(
-                availability.slot.startsAt
-              )} – ${timeLabel(availability.slot.endsAt)}`}
+              {`${Constants.SELECTED_TIME_AVAILABLE}: ${selectedTimeRangeLabel(
+                availability.slot.startsAt,
+                availability.slot.endsAt
+              )}`}
             </Text>
           ) : availability ? (
             <Text style={styles.unavailable}>{unavailableMessage(availability.reason)}</Text>

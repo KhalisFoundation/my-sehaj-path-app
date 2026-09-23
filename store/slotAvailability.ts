@@ -1,4 +1,15 @@
 import type { SehajPathSlot } from '@api/generated/types.gen';
+import {
+  addLocalDays,
+  addMinutes,
+  asLocalDateTime,
+  endOfLocalDayExclusive,
+  isAfter,
+  isBefore,
+  isSameOrBeforeDateTime,
+  MINUTE_MS,
+  startOfLocalDay,
+} from '../utils/dateTime';
 
 /** Calendar availability rules shared by slot booking and live reading. */
 
@@ -14,7 +25,7 @@ export type SelectedSlotAvailability =
   | { available: true; slot: OpenSlot }
   | {
       available: false;
-      reason: 'past' | 'too-soon' | 'next-day' | 'overlap' | 'invalid-duration';
+      reason: 'past' | 'too-soon' | 'overlap' | 'invalid-duration';
     };
 
 /** A spontaneous turn may only be booked when this much time remains before any scheduled turn. */
@@ -31,7 +42,6 @@ export const UPCOMING_TURN_LOOKAHEAD_DAYS = 30;
 /** A slot the exclusion constraint would still refuse. */
 const BLOCKING = new Set(['SCHEDULED', 'ACTIVE']);
 
-const MINUTE = 60 * 1000;
 /** Allows the current minute and small device/network clock drift. */
 export const SLOT_PAST_TOLERANCE_MINUTES = 2;
 
@@ -57,34 +67,31 @@ export const availabilityForSelectedTime = ({
     return { available: false, reason: 'invalid-duration' };
   }
 
-  if (startsAt.getTime() < now.getTime() - SLOT_PAST_TOLERANCE_MINUTES * MINUTE) {
+  if (isBefore(startsAt, addMinutes(now, -SLOT_PAST_TOLERANCE_MINUTES))) {
     return { available: false, reason: 'past' };
   }
 
   if (enforceLeadTime) {
-    const earliestStart =
-      now.getTime() + (MINIMUM_BOOKING_LEAD_MINUTES - BOOKING_LEAD_TOLERANCE_MINUTES) * MINUTE;
-    if (startsAt.getTime() < earliestStart) {
+    const earliestStart = addMinutes(
+      now,
+      MINIMUM_BOOKING_LEAD_MINUTES - BOOKING_LEAD_TOLERANCE_MINUTES
+    );
+    if (isBefore(startsAt, earliestStart)) {
       return { available: false, reason: 'too-soon' };
     }
   }
 
-  const endsAt = new Date(startsAt.getTime() + durationMinutes * MINUTE);
-  const selectedDayEnd = new Date(
-    startsAt.getFullYear(),
-    startsAt.getMonth(),
-    startsAt.getDate() + 1
-  );
-  if (endsAt.getTime() > selectedDayEnd.getTime()) {
-    return { available: false, reason: 'next-day' };
-  }
+  // A turn is one continuous interval, even when it crosses local midnight.
+  // The API stores absolute start/end timestamps, so no second booking is
+  // needed for the next calendar day.
+  const endsAt = addMinutes(startsAt, durationMinutes);
 
   const overlaps = slots.some(
     (slot) =>
       slot.id !== excludeSlotId &&
       BLOCKING.has(slot.status) &&
-      startsAt.getTime() < new Date(slot.endsAt).getTime() &&
-      endsAt.getTime() > new Date(slot.startsAt).getTime()
+      isBefore(startsAt, slot.endsAt) &&
+      isAfter(endsAt, slot.startsAt)
   );
 
   if (overlaps) {
@@ -99,24 +106,22 @@ export const availabilityForSelectedTime = ({
 
 /** The scheduled turn that owns this exact moment, if there is one. */
 export const turnAt = (slots: SehajPathSlot[], at = new Date()): SehajPathSlot | null => {
-  const atMs = at.getTime();
   return (
     slots.find(
       (slot) =>
         BLOCKING.has(slot.status) &&
-        new Date(slot.startsAt).getTime() <= atMs &&
-        new Date(slot.endsAt).getTime() > atMs
+        isSameOrBeforeDateTime(slot.startsAt, at) &&
+        isAfter(slot.endsAt, at)
     ) ?? null
   );
 };
 
 /** The earliest scheduled turn starting after this exact moment, regardless of its reader. */
 export const nextTurnAfter = (slots: SehajPathSlot[], at = new Date()): SehajPathSlot | null => {
-  const atMs = at.getTime();
   return (
     slots
-      .filter((slot) => BLOCKING.has(slot.status) && new Date(slot.startsAt).getTime() > atMs)
-      .sort((left, right) => left.startsAt.localeCompare(right.startsAt))[0] ?? null
+      .filter((slot) => BLOCKING.has(slot.status) && isAfter(slot.startsAt, at))
+      .sort((left, right) => asLocalDateTime(left.startsAt).diff(right.startsAt))[0] ?? null
   );
 };
 
@@ -124,16 +129,9 @@ export const nextTurnAfter = (slots: SehajPathSlot[], at = new Date()): SehajPat
 export const hasMinimumGapBeforeNextTurn = (slots: SehajPathSlot[], at = new Date()): boolean => {
   const next = nextTurnAfter(slots, at);
   return (
-    next === null ||
-    new Date(next.startsAt).getTime() - at.getTime() >= MINIMUM_TURN_GAP_MINUTES * MINUTE
+    next === null || asLocalDateTime(next.startsAt).diff(at) >= MINIMUM_TURN_GAP_MINUTES * MINUTE_MS
   );
 };
-
-const startOfDay = (day: Date): Date =>
-  new Date(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0);
-
-const endOfDay = (day: Date): Date =>
-  new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1, 0, 0, 0, 0);
 
 /**
  * The window `GET /plan` should be asked for to render one day.
@@ -144,6 +142,6 @@ const endOfDay = (day: Date): Date =>
  * exactly midnight-to-midnight would drop it and offer its time as free.
  */
 export const planWindowFor = (day: Date): { from: Date; to: Date } => ({
-  from: new Date(startOfDay(day).getTime() - 24 * 60 * MINUTE),
-  to: new Date(endOfDay(day).getTime() + 24 * 60 * MINUTE),
+  from: addLocalDays(startOfLocalDay(day), -1),
+  to: addLocalDays(endOfLocalDayExclusive(day), 1),
 });

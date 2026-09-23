@@ -3,7 +3,7 @@ import { UIConstants } from '@constants/UIConstants';
 
 export const HomeScreenStyles = StyleSheet.create({
   backgroundImage: {
-    height: '100%',
+    flex: 1,
   },
   container: {
     backgroundColor: UIConstants.SCREEN_OVERLAY,

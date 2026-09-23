@@ -5,7 +5,8 @@ import { Share } from 'react-native';
 import { Provider } from 'react-redux';
 import { render, fireEvent, waitFor, type RenderAPI } from '@testing-library/react-native';
 import { InviteSheet } from '../../components/InviteSheet';
-import { store } from '../../store';
+import { makeStore } from '../../store';
+import { setSignedIn } from '../../store/slices/authSlice';
 import { enableSharing, createInvite, listActiveInvites } from '../../store/groupApi';
 
 jest.mock('../../store/groupApi', () => ({
@@ -22,9 +23,18 @@ const setString = Clipboard.setString as jest.Mock;
 const onClose = jest.fn();
 const onShared = jest.fn();
 
-const renderSheet = (visible = true, autoCreate = false) =>
-  render(
-    <Provider store={store}>
+const renderSheet = (visible = true, autoCreate = false) => {
+  const testStore = makeStore();
+  testStore.dispatch(
+    setSignedIn({
+      token: 'test-token',
+      email: 'reader@example.com',
+      firstname: 'Test',
+      lastname: 'Reader',
+    })
+  );
+  return render(
+    <Provider store={testStore}>
       <InviteSheet
         visible={visible}
         sehajPathId="p1"
@@ -34,6 +44,7 @@ const renderSheet = (visible = true, autoCreate = false) =>
       />
     </Provider>
   );
+};
 
 const minted = (token = 'tok123') => {
   enableSharingMock.mockResolvedValue({ ok: true, data: { sharing: 'PUBLIC' } } as never);
@@ -48,7 +59,7 @@ beforeEach(async () => {
 });
 
 const createLink = async (findByText: RenderAPI['findByText']) => {
-  fireEvent.press(await findByText('Create new link'));
+  fireEvent.press(await findByText('Create link'));
   await findByText('Copy Link');
 };
 
@@ -103,7 +114,7 @@ describe('the invite sheet', () => {
     minted();
     const { findByLabelText, findByText } = renderSheet();
     await createLink(findByText);
-    fireEvent.press(await findByLabelText('Share invite link'));
+    fireEvent.press(await findByLabelText('Sharing options'));
 
     await waitFor(() =>
       expect(Share.share).toHaveBeenCalledWith({
@@ -118,7 +129,7 @@ describe('the invite sheet', () => {
 
     const { findByLabelText, findByText } = renderSheet();
     await createLink(findByText);
-    fireEvent.press(await findByLabelText('Share invite link'));
+    fireEvent.press(await findByLabelText('Sharing options'));
 
     await waitFor(() => expect(Share.share).toHaveBeenCalled());
     expect(await findByText('Copy Link')).toBeTruthy();
@@ -146,8 +157,8 @@ describe('the invite sheet', () => {
     } as never);
 
     const { findByText, queryByText } = renderSheet();
-    await findByText('Create new link');
-    fireEvent.press(await findByText('Create new link'));
+    await findByText('Create link');
+    fireEvent.press(await findByText('Create link'));
     expect(await findByText('No connection.')).toBeTruthy();
     expect(queryByText('Copy Link')).toBeNull();
   });
@@ -167,7 +178,7 @@ describe('the invite sheet', () => {
     expect(
       await findByText('This link has expired. Create a new one to share this path.')
     ).toBeTruthy();
-    expect(await findByText('Create new link')).toBeTruthy();
+    expect(await findByText('Create link')).toBeTruthy();
     expect(queryByText('Copy Link')).toBeNull();
   });
 
@@ -183,7 +194,7 @@ describe('the invite sheet', () => {
 
     expect(await findByText('Could not load active invite links.')).toBeTruthy();
     expect(createInviteMock).not.toHaveBeenCalled();
-    expect(queryByText('Create new link')).toBeNull();
+    expect(queryByText('Create link')).toBeNull();
     expect(queryByText('24 hours')).toBeNull();
   });
 

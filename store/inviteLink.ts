@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isSameOrBeforeDateTime } from '../utils/dateTime';
 
 type StoredInvite = { link: string; expiresAt: string | null };
 export type StoredInviteState = 'none' | 'active' | 'expired';
@@ -33,7 +34,7 @@ export const getStoredInviteLink = async (sehajPathId: string): Promise<string |
   const stored = await getStoredInvite(sehajPathId);
   if (
     stored === null ||
-    (stored.expiresAt !== null && new Date(stored.expiresAt).getTime() <= Date.now())
+    (stored.expiresAt !== null && isSameOrBeforeDateTime(stored.expiresAt, new Date()))
   ) {
     return null;
   }
@@ -51,7 +52,7 @@ export const getStoredInviteState = async (sehajPathId: string): Promise<StoredI
     if (!stored.link) {
       return 'none';
     }
-    return stored.expiresAt !== null && new Date(stored.expiresAt).getTime() <= Date.now()
+    return stored.expiresAt !== null && isSameOrBeforeDateTime(stored.expiresAt, new Date())
       ? 'expired'
       : 'active';
   } catch {

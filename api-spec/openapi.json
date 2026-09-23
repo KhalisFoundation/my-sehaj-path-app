@@ -4610,6 +4610,63 @@
         ]
       }
     },
+    "/roles/{email}": {
+      "get": {
+        "operationId": "RolesController_getRole",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "example": "tester@example.com",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The path param is not a valid email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the role for an email",
+        "tags": [
+          "roles"
+        ]
+      }
+    },
     "/reminders": {
       "get": {
         "operationId": "RemindersController_list",
@@ -4871,63 +4928,6 @@
         "summary": "Delete one reminder. Idempotent — 204 even when already gone.",
         "tags": [
           "reminders"
-        ]
-      }
-    },
-    "/roles/{email}": {
-      "get": {
-        "operationId": "RolesController_getRole",
-        "parameters": [
-          {
-            "name": "email",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "example": "tester@example.com",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RoleResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "The path param is not a valid email",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing, invalid or expired bearer token",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "security": [
-          {
-            "bearer": []
-          }
-        ],
-        "summary": "Get the role for an email",
-        "tags": [
-          "roles"
         ]
       }
     },
@@ -6792,6 +6792,10 @@
           "verseId": {
             "type": "integer"
           },
+          "startDate": {
+            "type": "integer",
+            "description": "Canonical date the path began (milliseconds since epoch). Every member\nuses this same value when calculating elapsed days and projections."
+          },
           "sharing": {
             "example": "PUBLIC",
             "enum": [
@@ -6842,6 +6846,7 @@
         "required": [
           "angNumber",
           "verseId",
+          "startDate",
           "sharing",
           "relationship",
           "stateVersion",
@@ -8160,6 +8165,11 @@
             "type": "string",
             "description": "When the budget resets (ISO).",
             "example": "2026-09-11T05:00:00.000Z"
+          },
+          "unlimited": {
+            "type": "boolean",
+            "description": "True when the caller is on the tester allow-list and is not metered (unlimited tokens).",
+            "example": false
           }
         },
         "required": [
@@ -8167,6 +8177,29 @@
           "limit",
           "remaining",
           "resetsAt"
+        ]
+      },
+      "RoleResponse": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "description": "`tester` when the email is on the tester allow-list, otherwise `user`.",
+            "example": "tester",
+            "enum": [
+              "tester",
+              "user"
+            ],
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "description": "The email that was looked up, lowercased.",
+            "example": "tester@example.com"
+          }
+        },
+        "required": [
+          "role",
+          "email"
         ]
       },
       "Reminder": {
@@ -8476,29 +8509,6 @@
         "required": [
           "time",
           "enabled"
-        ]
-      },
-      "RoleResponse": {
-        "type": "object",
-        "properties": {
-          "role": {
-            "description": "`tester` when the email is on the tester allow-list, otherwise `user`.",
-            "example": "tester",
-            "enum": [
-              "tester",
-              "user"
-            ],
-            "type": "string"
-          },
-          "email": {
-            "type": "string",
-            "description": "The email that was looked up, lowercased.",
-            "example": "tester@example.com"
-          }
-        },
-        "required": [
-          "role",
-          "email"
         ]
       },
       "ExploreLinkEntity": {

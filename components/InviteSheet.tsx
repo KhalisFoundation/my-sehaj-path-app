@@ -13,6 +13,7 @@ import { createInvite, enableSharing, listActiveInvites } from '../store/groupAp
 import { inviteLinkFor } from '../navigation/linking';
 import { getStoredInvite, storeInviteLink } from '../store/inviteLink';
 import type { SehajPathActiveInvite } from '@api/generated/types.gen';
+import { formatDateTime, isAfter } from '../utils/dateTime';
 
 const EXPIRY_OPTIONS: Array<{ label: string; hours: number | null }> = [
   { label: Constants.EXPIRY_24_HOURS, hours: 24 },
@@ -26,10 +27,7 @@ const formatExpiry = (expiresAt: string | null): string => {
     return Constants.NO_EXPIRY;
   }
 
-  const formatted = new Date(expiresAt).toLocaleString([], {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  });
+  const formatted = formatDateTime(expiresAt);
   return `${Constants.EXPIRES} ${formatted}`;
 };
 
@@ -81,6 +79,11 @@ export const InviteSheet = ({
   const [inviteLoadFailed, setInviteLoadFailed] = useState(false);
   const [loadRetryKey, setLoadRetryKey] = useState(0);
   const [createFailed, setCreateFailed] = useState(false);
+  // An auto-create request is a distinct transient state. Keep the expiry
+  // controls hidden from the first frame of the sheet until the request has
+  // either produced a link or failed; otherwise the create form can flash
+  // underneath the sheet animation while the active-link request is settling.
+  const [autoCreatePending, setAutoCreatePending] = useState(false);
   // Start loading so opening the sheet never briefly shows the create state
   // before the active-link request has returned.
   const [loadingInvite, setLoadingInvite] = useState(true);
@@ -99,8 +102,9 @@ export const InviteSheet = ({
       setCreateFailed(false);
       setProblem(null);
       setLoadingInvite(true);
+      setAutoCreatePending(autoCreate);
     }
-  }, [sehajPathId, visible]);
+  }, [autoCreate, sehajPathId, visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -112,6 +116,7 @@ export const InviteSheet = ({
       setInviteLoadFailed(false);
       setCreateFailed(false);
       setLoadingInvite(true);
+      setAutoCreatePending(false);
       return;
     }
     let cancelled = false;
@@ -161,15 +166,15 @@ export const InviteSheet = ({
             setLinkExpired(false);
             setInviteLoadSucceeded(false);
             setInviteLoadFailed(true);
+            setAutoCreatePending(false);
             return;
           }
-          const now = Date.now();
+          const now = new Date();
           const serverInvites = active.data.filter(
-            (invite) => invite.expiresAt === null || new Date(invite.expiresAt).getTime() > now
+            (invite) => invite.expiresAt === null || isAfter(invite.expiresAt, now)
           );
           const storedIsValid =
-            stored !== null &&
-            (stored.expiresAt === null || new Date(stored.expiresAt).getTime() > now);
+            stored !== null && (stored.expiresAt === null || isAfter(stored.expiresAt, now));
           const reusableInvite = serverInvites.find((invite) => invite.token !== null);
           setLinkExpired(stored !== null && !storedIsValid && reusableInvite === undefined);
           let nextLink: string | null = null;
@@ -185,6 +190,9 @@ export const InviteSheet = ({
           setActiveInvites(serverInvites);
           setInviteLoadSucceeded(true);
           setInviteLoadFailed(false);
+          if (nextLink !== null || !autoCreate) {
+            setAutoCreatePending(false);
+          }
         }
       } finally {
         if (!cancelled) {
@@ -208,6 +216,7 @@ export const InviteSheet = ({
       setLinkExpired(false);
       setInviteLoadSucceeded(false);
       setInviteLoadFailed(true);
+      setAutoCreatePending(false);
       setProblem(ErrorConstants.FAILED_TO_LOAD_INVITE_LINK);
     });
     return () => {
@@ -254,6 +263,7 @@ export const InviteSheet = ({
           ...current,
         ]);
         setCreateFailed(false);
+        setAutoCreatePending(false);
         // Let the parent update its invite action immediately. The sheet may
         // be closed before a follow-up active-invites request completes.
         onCreated?.();
@@ -271,6 +281,7 @@ export const InviteSheet = ({
         const message = invite.message || ErrorConstants.FAILED_TO_CREATE_INVITE;
         setProblem(message);
         setCreateFailed(true);
+        setAutoCreatePending(false);
         showErrorAlert(message);
       }
     } catch (error) {
@@ -278,6 +289,7 @@ export const InviteSheet = ({
       showErrorAlert(ErrorConstants.FAILED_TO_CREATE_INVITE);
       setProblem(ErrorConstants.FAILED_TO_CREATE_INVITE);
       setCreateFailed(true);
+      setAutoCreatePending(false);
     } finally {
       setCreating(false);
     }
@@ -331,7 +343,8 @@ export const InviteSheet = ({
   // is not actionable; the newest one is enough to explain the state.
   const newestActiveInvite = activeInvites[0] ?? null;
   const signInRequired = !isSignedIn;
-  const autoCreating = autoCreate && inviteLoadSucceeded && link === null && !createFailed;
+  const autoCreating =
+    (autoCreate || autoCreatePending) && inviteLoadSucceeded && link === null && !createFailed;
   let displayedProblem = problem;
   if (!isOnline) {
     displayedProblem = Constants.INVITE_GO_ONLINE_TO_SHARE;
@@ -377,7 +390,7 @@ export const InviteSheet = ({
               </TouchableOpacity>
             )}
           </View>
-        ) : loadingInvite || autoCreating || creating ? (
+        ) : loadingInvite || autoCreatePending || autoCreating || creating ? (
           <View style={styles.loadingState}>
             <ActivityIndicator color={UIConstants.PRIMARY_COLOR} />
             <Text style={styles.loadingText}>

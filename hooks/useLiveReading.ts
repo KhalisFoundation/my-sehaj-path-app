@@ -72,6 +72,14 @@ export interface LiveReadingOptions {
   };
 }
 
+/**
+ * Re-advertise transient live state often enough to repair a missed NOTIFY or
+ * a follower reconnecting onto another API replica. LISTEN/NOTIFY has no
+ * replay, so without this a stationary reader can leave that follower stale
+ * indefinitely after one dropped packet.
+ */
+const LIVE_STATE_HEARTBEAT_MS = 5_000;
+
 export const useLiveReading = ({
   live,
   pathAng,
@@ -191,14 +199,20 @@ export const useLiveReading = ({
           return;
         }
         setConnection('live');
-        // The server snapshot is authoritative for BOTH roles on entry. A new
-        // reader may have an old local mirror of this shared path; opening from
-        // that mirror makes them see a pankti another member never saved.
-        // Once this initial placement is complete, own socket echoes remain
-        // ignored below, so the active reader still controls their page.
+        // A follower has no local authority, so the server snapshot must place
+        // their reader immediately. A driver has already opened from the
+        // authoritative start/takeover response and restored that position
+        // before the socket handshake completes. Applying the same snapshot
+        // again here creates a second, visibly delayed recenter as the
+        // "Resuming saved progress" message fades away.
+        //
+        // Later positions are still ignored for drivers below; they alone
+        // control the page after joining.
         if (snapshot) {
           setReaderLabel(snapshot.readerLabel);
-          applyRef.current(snapshot);
+          if (!driving) {
+            applyRef.current(snapshot);
+          }
         }
       },
       onPosition: (position) => {
@@ -333,6 +347,21 @@ export const useLiveReading = ({
     }
     handle.current.sendSettings(settings);
   }, [driving, settings, connection]);
+
+  useEffect(() => {
+    if (!driving || connection !== 'live') {
+      return;
+    }
+
+    const heartbeat = setInterval(() => {
+      send();
+      if (handle.current && layoutRef.current) {
+        handle.current.sendSettings(layoutRef.current);
+      }
+    }, LIVE_STATE_HEARTBEAT_MS);
+
+    return () => clearInterval(heartbeat);
+  }, [connection, driving, send]);
 
   return { connection, readerLabel, reportNow: send };
 };

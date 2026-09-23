@@ -29,7 +29,7 @@ import {
   OfflineDbNotice,
   SessionExpiredPopup,
 } from '@components';
-import { ErrorConstants, Routes } from '@constants';
+import { ErrorConstants, Routes, UIConstants } from '@constants';
 import { linking } from './navigation/linking';
 import { initAuth, retrySessionProfile, useSSOLogin } from '@auth';
 import { readSyncPrefs } from './store/syncPrefs';
@@ -263,6 +263,10 @@ const App = () => {
                 headerShown: false,
                 animationDuration: 250,
                 gestureDirection: 'horizontal',
+                // Native-stack transitions can briefly expose the navigator
+                // beneath the outgoing screen. Keep that surface aligned with
+                // the app instead of showing the platform's black default.
+                contentStyle: { backgroundColor: UIConstants.SCREEN_BACKGROUND },
               }}
             >
               <Stack.Screen name={Routes.Splash} component={SplashScreen} />

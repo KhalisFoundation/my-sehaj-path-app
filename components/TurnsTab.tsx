@@ -27,6 +27,20 @@ import { initialOf, tintFor } from './MemberAvatars';
 import { RightChevronIcon, CalendarIcon, PlusIcon } from '@icons';
 import { subscribePlanRefresh } from '../store/planEvents';
 import { recordError } from '../utils/crashlytics';
+import {
+  addLocalDays,
+  asLocalDateTime,
+  combineLocalDayAndTime,
+  endOfLocalDayExclusive,
+  formatCalendarDate,
+  formatMonthYear,
+  formatTime,
+  isAfter,
+  isSameLocalDay,
+  minuteOfLocalDay,
+  startOfLocalDay,
+  startOfLocalWeek,
+} from '../utils/dateTime';
 
 interface Props {
   sehajPathId: string;
@@ -46,11 +60,12 @@ const MINUTES_PER_HOUR = 60;
 export const timelineFrameFor = (
   slot: Pick<SehajPathSlot, 'startsAt' | 'endsAt'>
 ): { top: number; height: number } => {
-  const start = new Date(slot.startsAt);
-  const end = new Date(slot.endsAt);
   const pixelsPerMinute = CALENDAR_TIMELINE_HOUR_HEIGHT / MINUTES_PER_HOUR;
-  const minuteOfDay = start.getHours() * MINUTES_PER_HOUR + start.getMinutes();
-  const durationMinutes = Math.max(1, (end.getTime() - start.getTime()) / (60 * 1000));
+  const minuteOfDay = minuteOfLocalDay(slot.startsAt);
+  const durationMinutes = Math.max(
+    1,
+    asLocalDateTime(slot.endsAt).diff(slot.startsAt, 'minute', true)
+  );
   return {
     top: minuteOfDay * pixelsPerMinute,
     height: durationMinutes * pixelsPerMinute,
@@ -74,8 +89,8 @@ export const timelineLanesFor = (slots: SehajPathSlot[]): Map<string, SlotLane> 
   let clusterEnd = 0;
 
   for (const slot of slots) {
-    const start = new Date(slot.startsAt).getTime();
-    const end = new Date(slot.endsAt).getTime();
+    const start = asLocalDateTime(slot.startsAt).valueOf();
+    const end = asLocalDateTime(slot.endsAt).valueOf();
     if (cluster.length > 0 && start >= clusterEnd) {
       clusters.push(cluster);
       cluster = [];
@@ -91,8 +106,8 @@ export const timelineLanesFor = (slots: SehajPathSlot[]): Map<string, SlotLane> 
   for (const overlappingSlots of clusters) {
     const laneEnds: number[] = [];
     for (const slot of overlappingSlots) {
-      const start = new Date(slot.startsAt).getTime();
-      const end = new Date(slot.endsAt).getTime();
+      const start = asLocalDateTime(slot.startsAt).valueOf();
+      const end = asLocalDateTime(slot.endsAt).valueOf();
       const lane = laneEnds.findIndex((laneEnd) => laneEnd <= start);
       const assignedLane = lane === -1 ? laneEnds.length : lane;
       laneEnds[assignedLane] = end;
@@ -121,58 +136,53 @@ const laneFrameFor = ({
   };
 };
 
-const startOfDay = (day: Date): Date => new Date(day.getFullYear(), day.getMonth(), day.getDate());
-
-const startOfWeek = (day: Date): Date => {
-  const first = startOfDay(day);
-  const mondayOffset = (first.getDay() + 6) % 7;
-  first.setDate(first.getDate() - mondayOffset);
-  return first;
-};
-
-const addDays = (day: Date, delta: number): Date => {
-  const next = new Date(day);
-  next.setDate(next.getDate() + delta);
-  return next;
-};
-
-const sameDay = (left: Date, right: Date): boolean =>
-  left.getFullYear() === right.getFullYear() &&
-  left.getMonth() === right.getMonth() &&
-  left.getDate() === right.getDate();
-
-const monthLabel = (day: Date): string =>
-  day.toLocaleDateString([], { month: 'long', year: 'numeric' });
-
-const selectedDayLabel = (day: Date): string =>
-  day.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-
 const currentTimeOffsetFor = (day: Date): number => {
   const now = new Date();
-  if (!sameDay(day, now)) {
+  if (!isSameLocalDay(day, now)) {
     return Math.max(0, CALENDAR_WORKING_DAY_START_HOUR * CALENDAR_TIMELINE_HOUR_HEIGHT);
   }
-  const startHour = now.getHours() + now.getMinutes() / MINUTES_PER_HOUR - CALENDAR_CONTEXT_HOURS;
+  const startHour = minuteOfLocalDay(now) / MINUTES_PER_HOUR - CALENDAR_CONTEXT_HOURS;
   return Math.max(0, startHour * CALENDAR_TIMELINE_HOUR_HEIGHT);
 };
 
 const timeLabel = (hour: number): string =>
-  new Date(2000, 0, 1, hour).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  asLocalDateTime('2000-01-01').hour(hour).format('h:mm A');
 
-const slotTimeLabel = (slot: SehajPathSlot): string => {
-  const format = (value: string) =>
-    new Date(value).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  return `${format(slot.startsAt)} - ${format(slot.endsAt)}`;
-};
+const slotTimeLabel = (slot: SehajPathSlot): string =>
+  `${formatTime(slot.startsAt)} - ${formatTime(slot.endsAt)}`;
 
-const onDay = (slot: SehajPathSlot, day: Date): boolean => sameDay(new Date(slot.startsAt), day);
+/**
+ * A booking remains one slot in the API. For a selected local calendar day we
+ * only render the portion of that interval that falls within that day. This
+ * makes an 11:50 PM–12:05 AM booking visible on both days without creating a
+ * second booking or changing the API contract.
+ */
+type VisibleSlot = SehajPathSlot & { sourceSlot: SehajPathSlot };
 
-const visibleSlots = (slots: SehajPathSlot[], day: Date): SehajPathSlot[] =>
-  slots
+export const visibleSlotsForDay = (slots: SehajPathSlot[], day: Date): VisibleSlot[] => {
+  const dayStart = startOfLocalDay(day);
+  const dayEnd = endOfLocalDayExclusive(day);
+
+  return slots
     .filter(
-      (slot) => ['SCHEDULED', 'ACTIVE', 'COMPLETED'].includes(slot.status) && onDay(slot, day)
+      (slot) =>
+        ['SCHEDULED', 'ACTIVE', 'COMPLETED'].includes(slot.status) &&
+        isAfter(slot.endsAt, dayStart) &&
+        isAfter(dayEnd, slot.startsAt)
     )
+    .map((slot) => {
+      const visibleStart = isAfter(slot.startsAt, dayStart) ? slot.startsAt : dayStart;
+      const visibleEnd = isAfter(dayEnd, slot.endsAt) ? slot.endsAt : dayEnd;
+      return {
+        ...slot,
+        startsAt: asLocalDateTime(visibleStart).toISOString(),
+        endsAt: asLocalDateTime(visibleEnd).toISOString(),
+        sourceSlot: slot,
+      };
+    })
+    .filter((slot) => asLocalDateTime(slot.endsAt).isAfter(asLocalDateTime(slot.startsAt)))
     .sort((left, right) => left.startsAt.localeCompare(right.startsAt));
+};
 
 export const TurnsTab = ({
   sehajPathId,
@@ -184,7 +194,7 @@ export const TurnsTab = ({
   members = [],
   avatarUriFor,
 }: Props) => {
-  const [day, setDay] = useState(() => startOfDay(new Date()));
+  const [day, setDay] = useState(() => startOfLocalDay(new Date()));
   const [slots, setSlots] = useState<SehajPathSlot[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
@@ -233,30 +243,33 @@ export const TurnsTab = ({
   );
 
   const week = useMemo(() => {
-    const first = startOfWeek(day);
-    return Array.from({ length: WEEKDAY_LABELS.length }, (_, index) => addDays(first, index));
+    const first = startOfLocalWeek(day);
+    return Array.from({ length: WEEKDAY_LABELS.length }, (_, index) => addLocalDays(first, index));
   }, [day]);
-  const booked = useMemo(() => visibleSlots(slots ?? [], day), [slots, day]);
+  const booked = useMemo(() => visibleSlotsForDay(slots ?? [], day), [slots, day]);
   const slotLanes = useMemo(() => timelineLanesFor(booked), [booked]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       const now = new Date();
       const active = booked.find((slot) => slot.status === 'ACTIVE');
-      const next = booked.find((slot) => new Date(slot.startsAt).getTime() >= now.getTime());
+      const next = booked.find((slot) => !isAfter(now, slot.startsAt));
       const requested =
-        requestedScrollAt !== null && sameDay(requestedScrollAt, day) ? requestedScrollAt : null;
-      const targetTime =
-        requested ?? (active ? new Date(active.startsAt) : next ? new Date(next.startsAt) : now);
-      const isToday = sameDay(day, now);
+        requestedScrollAt !== null && isSameLocalDay(requestedScrollAt, day)
+          ? requestedScrollAt
+          : null;
+      let targetTime = requested ?? now;
+      if (requested === null && active) {
+        targetTime = asLocalDateTime(active.startsAt).toDate();
+      } else if (requested === null && next) {
+        targetTime = asLocalDateTime(next.startsAt).toDate();
+      }
+      const isToday = isSameLocalDay(day, now);
       let startHour = CALENDAR_WORKING_DAY_START_HOUR;
       if (requested ?? active ?? next) {
-        startHour =
-          targetTime.getHours() +
-          targetTime.getMinutes() / MINUTES_PER_HOUR -
-          CALENDAR_CONTEXT_HOURS;
+        startHour = minuteOfLocalDay(targetTime) / MINUTES_PER_HOUR - CALENDAR_CONTEXT_HOURS;
       } else if (isToday || booked.length === 0) {
-        startHour = now.getHours() + now.getMinutes() / MINUTES_PER_HOUR - CALENDAR_CONTEXT_HOURS;
+        startHour = minuteOfLocalDay(now) / MINUTES_PER_HOUR - CALENDAR_CONTEXT_HOURS;
       }
       const offset = Math.max(0, startHour * CALENDAR_TIMELINE_HOUR_HEIGHT);
       scheduleViewportRef.current?.scrollTo({ y: offset, animated: false });
@@ -272,8 +285,12 @@ export const TurnsTab = ({
         0,
         Math.min(MINUTES_PER_HOUR * 24 - 1, Math.floor(timelineY / pixelsPerMinute))
       );
-      const selected = new Date(day);
-      selected.setHours(Math.floor(minutes / MINUTES_PER_HOUR), minutes % MINUTES_PER_HOUR, 0, 0);
+      const selected = combineLocalDayAndTime(
+        day,
+        asLocalDateTime(day)
+          .hour(Math.floor(minutes / MINUTES_PER_HOUR))
+          .minute(minutes % MINUTES_PER_HOUR)
+      );
       onBookSlot(selected);
     },
     [day, onBookSlot]
@@ -296,10 +313,10 @@ export const TurnsTab = ({
           onLayout={({ nativeEvent }) => setHeaderHeight(nativeEvent.layout.height)}
         >
           <View style={styles.monthRow}>
-            <Text style={styles.month}>{monthLabel(day)}</Text>
+            <Text style={styles.month}>{formatMonthYear(day)}</Text>
             <View style={styles.monthControls}>
               <TouchableOpacity
-                onPress={() => setDay((current) => addDays(current, -7))}
+                onPress={() => setDay((current) => addLocalDays(current, -7))}
                 style={styles.monthArrowButton}
                 hitSlop={10}
                 accessibilityRole="button"
@@ -310,7 +327,7 @@ export const TurnsTab = ({
                 </View>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => setDay((current) => addDays(current, 7))}
+                onPress={() => setDay((current) => addLocalDays(current, 7))}
                 style={styles.monthArrowButton}
                 hitSlop={10}
                 accessibilityRole="button"
@@ -330,18 +347,18 @@ export const TurnsTab = ({
           </View>
           <View style={styles.weekDates}>
             {week.map((date) => {
-              const selected = sameDay(date, day);
+              const selected = isSameLocalDay(date, day);
               return (
                 <Pressable
                   key={date.toISOString()}
-                  onPress={() => setDay(startOfDay(date))}
+                  onPress={() => setDay(startOfLocalDay(date))}
                   style={[styles.weekDateButton]}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                 >
                   <View style={[styles.weekDateCircle, selected && styles.weekDateCircleSelected]}>
                     <Text style={[styles.weekDate, selected && styles.weekDateSelected]}>
-                      {date.getDate()}
+                      {asLocalDateTime(date).date()}
                     </Text>
                   </View>
                 </Pressable>
@@ -349,7 +366,7 @@ export const TurnsTab = ({
             })}
           </View>
           <View style={styles.dayDivider} />
-          <Text style={styles.selectedDay}>{selectedDayLabel(day)}</Text>
+          <Text style={styles.selectedDay}>{formatCalendarDate(day)}</Text>
         </View>
         <ScrollView
           ref={scheduleViewportRef}
@@ -433,22 +450,22 @@ export const TurnsTab = ({
                 const cancellable =
                   (belongsToCurrentMember || canManageSlots) &&
                   slot.status === 'SCHEDULED' &&
-                  new Date(slot.startsAt).getTime() > Date.now() &&
+                  isAfter(slot.sourceSlot.startsAt, new Date()) &&
                   onCancelSlot !== undefined;
                 const openSlotMenu = () => {
                   if (!cancellable) {
                     return;
                   }
-                  Alert.alert('Turn options', slotTimeLabel(slot), [
+                  Alert.alert('Turn options', slotTimeLabel(slot.sourceSlot), [
                     { text: Constants.CANCEL, style: 'cancel' },
                     ...(onEditSlot
-                      ? [{ text: Constants.EDIT_TURN, onPress: () => onEditSlot(slot) }]
+                      ? [{ text: Constants.EDIT_TURN, onPress: () => onEditSlot(slot.sourceSlot) }]
                       : []),
                     {
                       text: 'Delete turn',
                       style: 'destructive',
                       onPress: async () => {
-                        await onCancelSlot(slot);
+                        await onCancelSlot(slot.sourceSlot);
                         await load();
                       },
                     },
@@ -456,7 +473,7 @@ export const TurnsTab = ({
                 };
                 return (
                   <Pressable
-                    key={slot.id}
+                    key={`${slot.id}:${day.toISOString()}`}
                     onPress={followable ? onFollow : undefined}
                     onLongPress={openSlotMenu}
                     delayLongPress={350}
@@ -492,7 +509,7 @@ export const TurnsTab = ({
                     ) : null}
                     <View style={[styles.slotDetails, compact && styles.compactSlotDetails]}>
                       <Text style={styles.slotTime} numberOfLines={1}>
-                        {slotTimeLabel(slot)}
+                        {slotTimeLabel(slot.sourceSlot)}
                       </Text>
                       {!compact && (
                         <Text style={styles.slotReader} numberOfLines={1}>

@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  ActivityIndicator,
   Dimensions,
   Image,
   Modal,
@@ -10,7 +11,7 @@ import {
 } from 'react-native';
 import { AppText as Text } from './AppText';
 import { MembersRowStyles as styles } from '@styles';
-import { Constants } from '@constants';
+import { Constants, UIConstants } from '@constants';
 import { initialOf, tintFor } from './MemberAvatars';
 import type { SehajPathMember } from '@api/generated/types.gen';
 
@@ -169,7 +170,11 @@ export const MembersRow = ({
                 <Text style={styles.primaryActionText}>Add members</Text>
               </TouchableOpacity>
             )}
-            {inviteStatus === 'none' || inviteStatus === 'expired' ? (
+            {inviteStatus === 'unknown' ? (
+              <View style={styles.inviteLoading} accessibilityLabel="Loading invite status">
+                <ActivityIndicator color={UIConstants.PRIMARY_COLOR} />
+              </View>
+            ) : inviteStatus === 'none' || inviteStatus === 'expired' ? (
               <View style={styles.inviteCreateSection}>
                 {inviteStatus === 'expired' && (
                   <Text style={styles.inviteExpired}>{Constants.INVITE_LINK_EXPIRED}</Text>

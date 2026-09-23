@@ -2,7 +2,8 @@ import React from 'react';
 import { ActivityIndicator, Modal, Pressable, TouchableOpacity, View } from 'react-native';
 import { AppText as Text } from './AppText';
 import { FinishReadingSheetStyles as styles } from '@styles';
-import { displayReadingAng } from '@utils';
+import { displayReadingAng } from '../utils/readingAng';
+import { asLocalDateTime, isValidDateTime } from '../utils/dateTime';
 
 interface Props {
   visible: boolean;
@@ -36,11 +37,10 @@ const durationLabel = (startedAt: string | null | undefined): string | null => {
   if (!startedAt) {
     return null;
   }
-  const started = new Date(startedAt).getTime();
-  if (Number.isNaN(started)) {
+  if (!isValidDateTime(startedAt)) {
     return null;
   }
-  const minutes = Math.max(1, Math.round((Date.now() - started) / 60000));
+  const minutes = Math.max(1, Math.round(asLocalDateTime().diff(startedAt, 'minute', true)));
   if (minutes < 60) {
     return `in ${minutes} min`;
   }

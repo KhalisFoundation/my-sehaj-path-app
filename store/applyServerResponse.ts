@@ -187,6 +187,7 @@ const allocateAccessiblePath = (
     angNumber: number;
     verseId: number;
     progress: number;
+    startDate: number;
     memberCount?: number;
   }
 ): void => {
@@ -220,7 +221,9 @@ const allocateAccessiblePath = (
         // owner-scoped `/paths` response instead of allocating a second row.
         // Joined rows have no pathId and continue to use the group id.
         serverPathId: row.pathId ?? row.id,
-        startDate: now,
+        // Keep the app compatible during a staggered rollout where an older
+        // API instance may not include this newly-added response field yet.
+        startDate: row.startDate ?? now,
         localUpdatedAt: now,
         serverUpdatedAt: now,
         onServer: true,
@@ -296,6 +299,17 @@ export const ensureAccessiblePath = async (
       groupId: sehajPathId,
     })
   );
+  if (Number.isFinite(row.startDate)) {
+    store.dispatch(
+      upsertMeta({
+        pathId: localId,
+        meta: {
+          serverPathId: row.pathId ?? row.id,
+          startDate: row.startDate,
+        },
+      })
+    );
+  }
   store.dispatch(
     applyServerPathData({
       pathId: localId,
@@ -714,6 +728,14 @@ const performRefreshPathsFromServer = async (
             // can never be pushed, so skipping it here left a joined row
             // retrying a `PATCH` for ever.
             store.dispatch(setPathShared({ pathId: joinedId, shared: true, groupId: row.id }));
+            if (Number.isFinite(row.startDate)) {
+              store.dispatch(
+                upsertMeta({
+                  pathId: joinedId,
+                  meta: { serverPathId: row.id, startDate: row.startDate },
+                })
+              );
+            }
             // And take the group's position from the same response.
             //
             // A joined path is a VIEW of a row this device does not own: it
@@ -756,6 +778,19 @@ const performRefreshPathsFromServer = async (
             groupId: row.id,
           })
         );
+        // This metadata is safe to refresh even while the path is open in the
+        // reader. The owner-scoped path body is deliberately skipped for an
+        // active reader so its live position cannot jump, but skipping the
+        // canonical start date made that device show "0 days ago" while other
+        // members correctly showed the real age.
+        if (Number.isFinite(row.startDate)) {
+          store.dispatch(
+            upsertMeta({
+              pathId: localId,
+              meta: { serverPathId: row.pathId, startDate: row.startDate },
+            })
+          );
+        }
       }
 
       // Joined paths are represented locally even though they are absent from
