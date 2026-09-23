@@ -22,6 +22,17 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>net.khalis.sehajpath</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>khalissehajpath</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
@@ -61,6 +72,10 @@
 		<string>BalooPaaji2-SemiBold.ttf</string>
 		<string>Recoleta-RegularDEMO.otf</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>
@@ -82,16 +97,5 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>net.khalis.sehajpath</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>khalissehajpath</string>
-			</array>
-		</dict>
-	</array>
 </dict>
 </plist>

@@ -4,6 +4,7 @@ import { View, TouchableOpacity, ImageBackground } from 'react-native';
 import { AppText as Text } from './AppText';
 import { PathNextAngStyles } from '@styles/PathNextAngStyles';
 import { Constants } from '@constants';
+import { AngImage } from '../assets/Images';
 
 interface Props {
   pathAng: number;
@@ -16,10 +17,7 @@ export const PathNextAng = ({ pathAng, handleRightArrow }: Props) => {
       <View style={PathNextAngStyles.nextAngContainer}>
         <View style={PathNextAngStyles.container}>
           <LeftLineIcon />
-          <ImageBackground
-            source={require('../assets/Images/Ang.png')}
-            style={PathNextAngStyles.imgBg}
-          >
+          <ImageBackground source={AngImage} style={PathNextAngStyles.imgBg}>
             <Text style={PathNextAngStyles.angText}>{pathAng}</Text>
           </ImageBackground>
           <RightLineIcon />

@@ -2,6 +2,7 @@
           xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission
         android:name="com.google.android.gms.permission.AD_ID"
         tools:node="remove" />
@@ -49,6 +50,22 @@
             <category android:name="android.intent.category.BROWSABLE" />
             <data android:scheme="khalissehajpath" android:host="login" />
             <data android:scheme="khalissehajpath" android:host="logout" />
+            <!-- Invite links on the custom scheme. Needs no server-side
+                 verification, so it works on a device the moment the app is
+                 installed — which is what a demo needs. -->
+            <data android:scheme="khalissehajpath" android:host="invite" />
+        </intent-filter>
+        <!-- The https invite link people actually paste into a chat.
+             `autoVerify` makes Android open the app instead of the browser, but
+             ONLY once https://users.khalis.net/.well-known/assetlinks.json serves
+             this app's package name and signing fingerprint. Until that file
+             exists the link opens the website, and the custom scheme above is
+             the working path. -->
+        <intent-filter android:autoVerify="true">
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" android:host="users.khalis.net" android:pathPrefix="/invite" />
         </intent-filter>
       </activity>
     </application>

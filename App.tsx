@@ -7,9 +7,14 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import {
+  ChooseSlot,
+  JoinPath,
+  GroupPath,
+  InviteMember,
   SplashScreen,
   HomeScreen,
   Continue,
+  CreatePath,
   PathScreen,
   Settings,
   DatabaseUpdate,
@@ -24,11 +29,19 @@ import {
   OfflineDbNotice,
   SessionExpiredPopup,
 } from '@components';
-import { ErrorConstants, Routes } from '@constants';
+import { ErrorConstants, Routes, UIConstants } from '@constants';
+import { linking } from './navigation/linking';
 import { initAuth, retrySessionProfile, useSSOLogin } from '@auth';
 import { readSyncPrefs } from './store/syncPrefs';
 import { hydrateSignInPopup } from './store/slices/syncSlice';
-import { allowTracking, allowCrashReporting, recordError, showErrorAlert } from '@utils';
+import { isOnlineFrom } from './store/slices/networkSlice';
+import {
+  allowTracking,
+  allowCrashReporting,
+  recordError,
+  showErrorAlert,
+  registerPushNotifications,
+} from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
 import { useAppSelector } from './store/hooks';
@@ -40,13 +53,43 @@ import { provisionDatabase } from './db';
 
 export type RootStackParamList = {
   Splash: undefined;
-  Home: undefined;
-  Continue: { pathId: number; initialTab?: string };
-  Path: { pathId: number };
+  Home: { pathDeleted?: boolean } | undefined;
+  Continue: { pathId: number; initialTab?: 'progress' | 'streak' | 'turns' | 'members' };
+  CreatePath: undefined;
+  Path: {
+    pathId: number;
+    /** Present only for a shared path opened through the group screen. */
+    live?: {
+      sehajPathId: string;
+      driving: boolean;
+      /** Present when driving: what `finishReading` needs to end the turn. */
+      sessionId?: string;
+      startAng?: number;
+      /** When the turn began, so the finish summary can report how long. */
+      startedAt?: string;
+      /** The scheduled booking end, for display context only. */
+      slotEndsAt?: string | null;
+    };
+  };
   Setting: undefined;
   DatabaseUpdate: undefined;
   About: undefined;
   Error: undefined;
+  /**
+   * The token is the entire payload of an invite link, and it arrives from
+   * outside the app — so this screen must assume nothing about being reached
+   * with a session, a loaded database, or a warm store.
+   */
+  JoinPath: { token: string };
+  GroupPath: { sehajPathId: string; pathId: number; pathName: string };
+  InviteMember: { sehajPathId: string; pathName?: string };
+  ChooseSlot: {
+    sehajPathId: string;
+    pathId: number;
+    initialStartsAt?: string;
+    initialDurationMinutes?: number;
+    slotId?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,7 +111,29 @@ const AnalyticsConsent = () => {
   return null;
 };
 
+const PushRegistration = () => {
+  const authToken = useAppSelector((state) => state.auth.token);
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    const start = async () => {
+      unsubscribe = await registerPushNotifications(authToken);
+    };
+    start().catch((error) => recordError(error, 'push: startup failed'));
+    return () => {
+      unsubscribe?.();
+    };
+  }, [authToken]);
+  return null;
+};
+
 const App = () => {
+  // Push registration is rendered as a child below. Configure the generated
+  // client before that child can mount: React runs child effects before the
+  // parent effect that used to configure this, which let a cold-start token
+  // registration go out with no API base URL or bearer-token getter.
+  configureApiClient();
+  setTokenGetter(() => Promise.resolve(store.getState().auth.token));
+
   // null = hydrating, false = failed (fail-closed), true = ready
   const [ready, setReady] = useState<boolean | null>(null);
 
@@ -105,11 +170,6 @@ const App = () => {
   useEffect(() => {
     hydrate();
 
-    // Point the generated API client at the configured base URL and have it
-    // attach the current SSO token (held in the auth slice) on every request.
-    configureApiClient();
-    setTokenGetter(() => Promise.resolve(store.getState().auth.token));
-
     // Resolve auth: consume a cold-start login callback, else hydrate the
     // stored token (serialized so they can't race).
     initAuth().catch((error) => recordError(error, 'auth: initAuth failed'));
@@ -119,7 +179,8 @@ const App = () => {
     let wasOnline = store.getState().network.isOnline;
 
     const unsubscribeNetInfo = NetInfo.addEventListener((state) => {
-      const online = Boolean(state.isConnected && state.isInternetReachable);
+      // See `isOnlineFrom`: unknown reachability is not offline.
+      const online = isOnlineFrom(state);
       store.dispatch(setOnline(online));
       if (online) {
         retrySessionProfile();
@@ -186,6 +247,7 @@ const App = () => {
       {ready === true && (
         <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
           <AnalyticsConsent />
+          <PushRegistration />
           <SyncStatusNotice />
           <OfflineDbNotice />
           <SessionExpiredPopup />
@@ -193,7 +255,7 @@ const App = () => {
               prompt. Keep it app-wide so B can never continue editing A's
               active paths from the reader while the switch is unresolved. */}
           <SyncPopup mode="accountSwitch" />
-          <NavigationContainer>
+          <NavigationContainer linking={linking}>
             <Stack.Navigator
               initialRouteName={Routes.Splash}
               screenOptions={{
@@ -201,16 +263,29 @@ const App = () => {
                 headerShown: false,
                 animationDuration: 250,
                 gestureDirection: 'horizontal',
+                // Native-stack transitions can briefly expose the navigator
+                // beneath the outgoing screen. Keep that surface aligned with
+                // the app instead of showing the platform's black default.
+                contentStyle: { backgroundColor: UIConstants.SCREEN_BACKGROUND },
               }}
             >
               <Stack.Screen name={Routes.Splash} component={SplashScreen} />
               <Stack.Screen name={Routes.Home} component={HomeScreen} />
               <Stack.Screen name={Routes.Continue} component={Continue} />
+              <Stack.Screen name={Routes.CreatePath} component={CreatePath} />
               <Stack.Screen name={Routes.Path} component={PathScreen} />
               <Stack.Screen name={Routes.Setting} component={Settings} />
               <Stack.Screen name={Routes.DatabaseUpdate} component={DatabaseUpdate} />
               <Stack.Screen name={Routes.About} component={About} />
               <Stack.Screen name={Routes.Error} component={Error} />
+              <Stack.Screen name={Routes.JoinPath} component={JoinPath} />
+              <Stack.Screen name={Routes.GroupPath} component={GroupPath} />
+              <Stack.Screen name={Routes.InviteMember} component={InviteMember} />
+              <Stack.Screen
+                name={Routes.ChooseSlot}
+                component={ChooseSlot}
+                options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+              />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

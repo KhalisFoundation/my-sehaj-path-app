@@ -25,6 +25,8 @@ const SimpleTextForPathComponent = ({
   onSave,
   verseId,
   vishraams,
+  vishraamEnabled,
+  vishraamsSource: vishraamsSourceOverride,
   onLayout,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
@@ -32,8 +34,10 @@ const SimpleTextForPathComponent = ({
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
   const fontSize = useReaderFontSize();
-  const isVishraam = useAppSelector((state) => state.settings.vishraam);
-  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const ownVishraam = useAppSelector((state) => state.settings.vishraam);
+  const isVishraam = vishraamEnabled ?? ownVishraam;
+  const ownVishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const vishraamsSource = vishraamsSourceOverride ?? ownVishraamsSource;
 
   const isSelected = useIsSelected(
     verseId,
@@ -94,7 +98,11 @@ const SimpleTextForPathComponent = ({
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
-            style={{ transform: [{ translateY: -(fontSize * 0.25) }] }}
+            style={{
+              transform: [
+                { translateY: Platform.OS === 'ios' ? -fontSize * 0.35 : fontSize * 0.3 },
+              ],
+            }}
           />
         )}
       </Text>

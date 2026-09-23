@@ -23,7 +23,13 @@ import { legacyToMs } from './syncDateUtils';
 import { buildSyncRequest, checkSyncRequestSize } from './syncRequest';
 import { captureSyncSession, isCurrentSyncSession, syncSessionHeaders } from './syncSession';
 
-let inFlight = false;
+/**
+ * A login can trigger the same account association from more than one lifecycle
+ * edge. Share that work with the later caller: returning a bare `false` made
+ * the UI briefly report a failed restore while the first request was succeeding.
+ */
+let inFlight: Promise<boolean> | null = null;
+let inFlightEmail: string | null = null;
 
 /** True only when the active account has a change that has not reached its cloud. */
 export const hasUnsentAccountData = (store: AppStore): boolean => {
@@ -507,10 +513,7 @@ const backfillMissingMeta = (store: AppStore): void => {
  * Returns true only when the account is (or already was) associated. On any
  * failure the dataset and account association are left unchanged.
  */
-export async function runConfirmedAccountSync(store: AppStore, email: string): Promise<boolean> {
-  if (inFlight) {
-    return false;
-  }
+async function runConfirmedAccountSyncOnce(store: AppStore, email: string): Promise<boolean> {
   const state = store.getState();
   if (
     !isApiConfigured() || // no server configured in this build
@@ -530,11 +533,6 @@ export async function runConfirmedAccountSync(store: AppStore, email: string): P
     return true; // C: already associated — resume; nothing to send
   }
 
-  // Arm the single-flight guard BEFORE the first await. The account-switch
-  // branch below awaits a durable clear, so arming it later would let a second
-  // caller (drawer Sync now, a lifecycle trigger) slip past this guard and clear
-  // or upload the same account concurrently.
-  inFlight = true;
   // Set once the old account's data has been durably cleared. Everything after
   // that point can still fail (flush, network, a session change), and a bare
   // failure would leave the reader looking at an empty app: the old account is
@@ -684,7 +682,6 @@ export async function runConfirmedAccountSync(store: AppStore, email: string): P
     recordError(error, 'confirmedSync: /sync failed');
     return false;
   } finally {
-    inFlight = false;
     // An account switch that cleared the old data but never completed must put
     // that data back, so a transient failure can never present an empty app.
     // The old account's cloud copy is untouched either way.
@@ -699,4 +696,23 @@ export async function runConfirmedAccountSync(store: AppStore, email: string): P
       }
     }
   }
+}
+
+export function runConfirmedAccountSync(store: AppStore, email: string): Promise<boolean> {
+  if (inFlight !== null) {
+    // Never share work across accounts: its result belongs to the session that
+    // started it. A different account will retry after the active session ends.
+    return inFlightEmail === email ? inFlight : Promise.resolve(false);
+  }
+
+  const operation = runConfirmedAccountSyncOnce(store, email);
+  const shared = operation.finally(() => {
+    if (inFlight === shared) {
+      inFlight = null;
+      inFlightEmail = null;
+    }
+  });
+  inFlight = shared;
+  inFlightEmail = email;
+  return shared;
 }

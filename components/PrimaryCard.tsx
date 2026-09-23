@@ -1,18 +1,28 @@
 import React from 'react';
 import { View, TouchableOpacity } from 'react-native';
 import { AppText as Text } from './AppText';
+import { MemberAvatars, type AvatarMember } from './MemberAvatars';
 import Svg, { Circle, Path, LinearGradient, Stop, Defs } from 'react-native-svg';
 import { PathProgressCardStyles } from '@styles';
 import { Constants, UIConstants } from '@constants';
+import { displayReadingAng } from '@utils';
 
 interface Prop {
   sehajPathName: string;
   angNumber: number;
   progress: number;
   onPress: () => void;
+  /**
+   * Everyone reading this path, when it is shared.
+   *
+   * Omitted — or a single entry — on a personal path, where `MemberAvatars`
+   * draws nothing: a stack of one is not a group.
+   */
+  members?: AvatarMember[];
 }
 
-export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Prop) => {
+export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress, members }: Prop) => {
+  const displayedAngNumber = displayReadingAng(angNumber);
   progress = progress >= 100 ? UIConstants.PROGRESS_CIRCLE_MAX_PROGRESS : progress;
   const size = UIConstants.PROGRESS_CIRCLE_SIZE;
   const strokeWidth = UIConstants.PROGRESS_CIRCLE_STROKE_WIDTH;
@@ -51,14 +61,14 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Pro
     <TouchableOpacity
       style={PathProgressCardStyles.container}
       onPress={onPress}
-      accessibilityLabel={`${sehajPathName}, Ang ${angNumber}, ${progress}% complete`}
+      accessibilityLabel={`${sehajPathName}, Ang ${displayedAngNumber}, ${progress}% complete`}
       accessibilityRole="button"
       accessibilityHint="Tap to continue this Sehaj Path"
     >
       <View style={PathProgressCardStyles.textContainer}>
         <Text style={PathProgressCardStyles.sehajText}>{sehajPathName}</Text>
         <Text style={PathProgressCardStyles.angText}>
-          {Constants.ANG} <Text style={PathProgressCardStyles.angNumber}>{angNumber}</Text>
+          {Constants.ANG} <Text style={PathProgressCardStyles.angNumber}>{displayedAngNumber}</Text>
         </Text>
       </View>
       <View
@@ -109,6 +119,7 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress }: Pro
           />
         </Svg>
       </View>
+      <MemberAvatars members={members ?? []} />
     </TouchableOpacity>
   );
 };

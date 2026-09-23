@@ -1,10 +1,15 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import { ErrorConstants, MonthConstant, PATH_DATA } from '@constants';
+import { ErrorConstants, PATH_DATA } from '@constants';
 import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
 import type { DateData, PathData } from '../types';
-import { restoreDurableState, rollbackDurableMutation, store } from './index';
+import {
+  removePathAndSyncState,
+  restoreDurableState,
+  rollbackDurableMutation,
+  store,
+} from './index';
 import { persistence } from './instance';
 import { getQuarantinedPathIds } from './persistence';
 import {
@@ -16,8 +21,10 @@ import {
   setScrollPosition,
   updatePath,
 } from './slices/pathsSlice';
+import { markPathDeleted } from './slices/syncSlice';
 import type { SettingsState } from './slices/settingsSlice';
 import { showErrorAlert } from '@utils/Error';
+import { asLocalDateTime } from '@utils/dateTime';
 
 /**
  * Acknowledged operations.
@@ -32,10 +39,7 @@ import { showErrorAlert } from '@utils/Error';
  * code stay declarative.
  */
 
-const todayString = (): string => {
-  const date = new Date();
-  return `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
-};
+const todayString = (): string => asLocalDateTime().format('D-MMMM-YYYY');
 
 const progressFor = (angNumber: number): number => (angNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
 
@@ -197,20 +201,21 @@ const runPathMutation = (pathId: number, build: () => UnknownAction): Promise<bo
  * cannot both read the same `getNextPathId` and mint duplicate ids (which the
  * next boot's hydration would then reject).
  */
-export const createPath = (): Promise<number | null> =>
+export const createPath = (requestedName?: string): Promise<number | null> =>
   runExclusive(async () => {
     const { paths, dates } = store.getState().paths;
     const reservedIds = [...dates.map((date) => date.pathid), ...getQuarantinedPathIds(store)];
     const pathId = getNextPathId(paths, reservedIds);
     const defaultPathNumber = getNextDefaultPathNumber(paths);
 
+    const pathName = requestedName?.trim() || `Path #${defaultPathNumber}`;
     const path: PathData = {
       pathId,
       progress: 1,
       saveData: { angNumber: 0, verseId: 0 },
       startDate: todayString(),
       completionDate: '',
-      pathName: `Path #${defaultPathNumber}`,
+      pathName,
     };
     const date: DateData = { pathid: pathId, dates: [], scrollPosition: 0 };
 
@@ -230,7 +235,17 @@ export const savePathProgress = async (
   angNumber: number,
   verseId: number,
   scrollPosition: number,
-  options: { silent?: boolean } = {}
+  options: {
+    /** Suppress the failure alert. */
+    silent?: boolean;
+    /**
+     * Keep the sync itself quiet too. Defaults to `silent`, which is right for
+     * the background auto-save but NOT for a save the user explicitly asked
+     * for: those two were one flag, so choosing "Save" on the way out of the
+     * reader saved and uploaded without ever saying so.
+     */
+    silentSync?: boolean;
+  } = {}
 ): Promise<boolean> => {
   const completed = isPathCompleted(angNumber, verseId);
   const todayDate = todayString();
@@ -268,7 +283,7 @@ export const savePathProgress = async (
         completionDate,
         todayDate,
         scrollPosition,
-        silentSync: options.silent === true,
+        silentSync: options.silentSync ?? options.silent === true,
       })
     );
   });
@@ -306,6 +321,62 @@ export const renamePathCommand = async (pathId: number, name: string): Promise<b
     showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
   }
   return saved;
+};
+
+/**
+ * Deletes a path.
+ *
+ * A guest delete is permanent: without an account, there is nowhere to keep a
+ * cloud deletion. Signed-in paths are tombstoned only until the outbox has sent
+ * the delete. The outbox needs the row to build its request, then removes the
+ * local copy after the server acknowledges it.
+ *
+ * A marked path is still in `paths`, so screens must read through
+ * `selectVisiblePaths` rather than the raw slice, or a deleted path keeps
+ * showing until the server confirms — which offline means indefinitely.
+ */
+export const deletePathCommand = async (pathId: number): Promise<boolean> => {
+  // Captured inside the lock, so the report describes the state the delete
+  // actually ran against rather than whatever it drifted to afterwards.
+  let attempted: Record<string, string> = {};
+  const deleted = await runExclusive(async () => {
+    const state = store.getState();
+    const meta = state.sync.meta[pathId];
+    const exists = state.paths.paths.some((path) => path.pathId === pathId);
+    attempted = {
+      pathId: String(pathId),
+      pathExists: String(exists),
+      hadSyncMeta: String(!!meta),
+      onServer: String(meta?.onServer ?? false),
+      pendingOp: meta ? String(state.sync.pathOps[pathId]?.kind ?? 'none') : 'none',
+      authStatus: state.auth.status,
+      pathsHydrated: String(state.paths.hydrated),
+      syncHydrated: String(state.sync.hydrated),
+      recoveryNeeded: String(state.sync.recoveryNeeded),
+    };
+    if (!exists) {
+      return false;
+    }
+    // A signed-out device has no account to tell about the deletion, so remove
+    // its content AND any local sync intent together.
+    if (state.auth.status !== 'signedIn' || !meta) {
+      return dispatchDurable(removePathAndSyncState({ pathId }));
+    }
+    return dispatchDurable(markPathDeleted({ pathId, at: Date.now() }));
+  });
+
+  if (!deleted) {
+    // Keep the command UI-free. The caller owns the failure dialog; this report
+    // still records the state in which the durable write was refused.
+    recordError(
+      new Error('Path delete was not saved'),
+      'commands: deletePathCommand refused',
+      attempted
+    );
+    return false;
+  }
+  trackEvent('PathDeleted', 'deleted', 'path deleted');
+  return true;
 };
 
 export const undoPathCompletion = async (

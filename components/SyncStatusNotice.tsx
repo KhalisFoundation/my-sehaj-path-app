@@ -90,14 +90,16 @@ const SyncStatusNoticeComponent = () => {
       Object.keys(state.sync.pathOps).length + (state.sync.pendingSettingsUpdatedAt == null ? 0 : 1)
   );
   // Creating a path is automatically durable and its upload is routine. It
-  // should not announce itself; later reading progress and settings changes
-  // remain worth reporting during the post-login catch-up.
-  const hasNoticeWorthyPendingWork = useAppSelector(
-    (state) =>
-      state.sync.pendingSettingsUpdatedAt != null ||
-      Object.entries(state.sync.pathOps).some(
-        ([pathId, op]) => op.kind !== 'create' && !isSilentPathOp(Number(pathId), op.localUpdatedAt)
-      )
+  // should not announce itself. Settings sync is also deliberately silent:
+  // changing a preference still reaches the server, but it should not interrupt
+  // somebody who is simply adjusting the reader.
+  const hasNoticeWorthyPendingWork = useAppSelector((state) =>
+    Object.entries(state.sync.pathOps).some(
+      ([pathId, op]) =>
+        op.kind !== 'create' &&
+        op.kind !== 'delete' &&
+        !isSilentPathOp(Number(pathId), op.localUpdatedAt)
+    )
   );
   /** A settings edit with no path work queued alongside it. */
   const settingsOnly = useAppSelector(
@@ -112,6 +114,13 @@ const SyncStatusNoticeComponent = () => {
   // Signing in counts as busy: it is the 1-2s the user waits right after login,
   // before an account exists and therefore before any sync can begin.
   const busy = status === 'flushing' || pulling || catchUpSyncRunning || signingIn;
+  /**
+   * Opening the app performs an automatic account catch-up (and signing in is
+   * part of that same startup transaction).  It must stay invisible: routine
+   * startup work is not an action the user asked to track.  Errors still go
+   * through the normal error branch below so a failed startup is never hidden.
+   */
+  const automaticStartupSync = catchUpSyncRunning || signingIn;
   const [phase, setPhase] = useState<Phase>('hidden');
   // Show an offline notice once when connectivity drops. It must not become
   // permanent furniture while somebody deliberately reads offline.
@@ -204,7 +213,8 @@ const SyncStatusNoticeComponent = () => {
       // reporting and says so via `confirmNextSync`; trust that instead of
       // re-deriving it here from the fact that work is merely happening.
       meaningful.current =
-        hasNoticeWorthyPendingWork || confirmNextSync || showedError.current || signingIn;
+        !automaticStartupSync &&
+        (hasNoticeWorthyPendingWork || confirmNextSync || showedError.current);
       // Only a settings-ONLY run is described as settings. Anything touching
       // paths is "progress", since that is the bigger of the two.
       kind.current = signingIn ? 'signIn' : settingsOnly ? 'settings' : 'progress';
@@ -244,6 +254,7 @@ const SyncStatusNoticeComponent = () => {
     settingsOnly,
     signingIn,
     hasNoticeWorthyPendingWork,
+    automaticStartupSync,
     pendingCount,
   ]);
 

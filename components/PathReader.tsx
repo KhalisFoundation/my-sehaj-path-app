@@ -16,8 +16,52 @@ import type { Verse, PathContent } from '@hooks';
 
 interface PathReaderProps {
   pathContent: PathContent;
+  /**
+   * False while following somebody else's reading.
+   *
+   * A follower is not driving the page — the reader is — so a finger drag would
+   * fight every incoming position and leave them somewhere the group is not.
+   * The scripture stays fully visible; only the ability to move it is taken
+   * away, because moving it means nothing here.
+   */
+  scrollEnabled?: boolean;
+  /**
+   * False while following somebody else's reading.
+   *
+   * The "next ang" button at the foot of the page is a third way to turn it,
+   * after the top bar and the drawer. A follower turning the page moves off the
+   * reading they are watching, and the next position from the reader snaps them
+   * back — so it is removed rather than left to lose that argument.
+   */
+  canChangeAng?: boolean;
+  /**
+   * The reader's text layout, while following one.
+   *
+   * Applied on top of this device's own settings rather than written to them:
+   * a follower's preferences are theirs, and following somebody for ten minutes
+   * must not silently change what they see everywhere afterwards. Absent
+   * fields fall through to their own.
+   *
+   * Font size is deliberately not here — it is an accessibility setting, and
+   * somebody who needs large text needs it whoever is reading.
+   */
+  layoutOverride?: {
+    larivaar?: boolean;
+    paragraphMode?: boolean;
+    vishraam?: boolean;
+    vishraamsSource?: string;
+    /**
+     * An INDEX into the typography table, not a pixel size. Resolved here
+     * through the same table this device uses for its own size, so the reader's
+     * "large" is this device's large rather than a number that means something
+     * different on a different screen.
+     */
+    fontSizeIndex?: number;
+  };
   scrollRef: React.RefObject<ScrollView | null>;
   scrollOffset: React.RefObject<number>;
+  /** First rendered verse at the top of the viewport, used for hand-off save. */
+  firstVisibleVerseId: React.MutableRefObject<number>;
   isAngNavigation: boolean;
   debouncedScrollSave: () => void;
   handleRightArrow: (pageNo: number) => void;
@@ -52,8 +96,12 @@ type ParagraphShabadRender = {
 
 const PathReaderComponent = ({
   pathContent,
+  scrollEnabled = true,
+  canChangeAng = true,
+  layoutOverride,
   scrollRef,
   scrollOffset,
+  firstVisibleVerseId,
   isAngNavigation,
   debouncedScrollSave,
   handleRightArrow,
@@ -80,9 +128,18 @@ const PathReaderComponent = ({
     setIsSaved,
     setFound,
   } = usePathSelection();
-  const isLarivaar = useAppSelector((state) => state.settings.larivaar);
-  const isParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
-  const isVishraam = useAppSelector((state) => state.settings.vishraam);
+  const ownLarivaar = useAppSelector((state) => state.settings.larivaar);
+  const ownParagraphMode = useAppSelector((state) => state.settings.paragraphMode);
+  const ownVishraam = useAppSelector((state) => state.settings.vishraam);
+
+  const isLarivaar = layoutOverride?.larivaar ?? ownLarivaar;
+  const isParagraphMode = layoutOverride?.paragraphMode ?? ownParagraphMode;
+  const isVishraam = layoutOverride?.vishraam ?? ownVishraam;
+  const ownVishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const vishraamsSource = layoutOverride?.vishraamsSource ?? ownVishraamsSource;
+  // Comes from `ReaderFontSizeOverride`, which the screen supplies while
+  // following: the verse components read the same hook, so the size is imposed
+  // in one place rather than passed down and missed by one of them.
   const fontSize = useReaderFontSize();
 
   const {
@@ -92,6 +149,7 @@ const PathReaderComponent = ({
     createParagraphVerseTextLayoutHandler,
     createShabadLayoutHandler,
     findCenterVerseId,
+    findFirstVisibleVerseId,
     handleViewportLayout,
     requestRecenter,
   } = usePathReaderCentering({
@@ -111,11 +169,29 @@ const PathReaderComponent = ({
       const scrollY = e.nativeEvent.contentOffset.y;
       scrollOffset.current = scrollY;
 
+      // The live follower opens by centering the reader's reported verse. This
+      // must be kept current while the reader moves, not only at drag/momentum
+      // end; otherwise the socket can keep reporting the old saved pankti and
+      // a newly joined follower correctly centres the wrong line.
+      findCenterVerseId(scrollY);
+      const firstVisible = findFirstVisibleVerseId(scrollY);
+      if (firstVisible !== null) {
+        firstVisibleVerseId.current = firstVisible;
+      }
+
       if (!isAngNavigation && !isRestoringScroll.current) {
         debouncedScrollSave();
       }
     },
-    [isAngNavigation, debouncedScrollSave, isRestoringScroll, scrollOffset]
+    [
+      isAngNavigation,
+      debouncedScrollSave,
+      findCenterVerseId,
+      findFirstVisibleVerseId,
+      firstVisibleVerseId,
+      isRestoringScroll,
+      scrollOffset,
+    ]
   );
 
   const createSelectionHandler = useCallback(
@@ -285,6 +361,8 @@ const PathReaderComponent = ({
                       index={globalIndex}
                       verseId={verseId}
                       vishraams={vishraam}
+                      vishraamEnabled={isVishraam}
+                      vishraamsSource={vishraamsSource}
                     />
                   );
                 }
@@ -314,6 +392,8 @@ const PathReaderComponent = ({
           index={index + 1}
           verseId={path.verseId}
           vishraams={vishraam}
+          vishraamEnabled={isVishraam}
+          vishraamsSource={vishraamsSource}
           renderWordSegments={larivaarRenderData?.wordSegments}
         />
       );
@@ -324,6 +404,7 @@ const PathReaderComponent = ({
     pathContent?.page,
     isLarivaar,
     isVishraam,
+    vishraamsSource,
     createSelectionHandler,
     createSaveHandler,
     createLayoutHandler,
@@ -339,6 +420,7 @@ const PathReaderComponent = ({
     <ScrollView
       contentContainerStyle={PathReaderStyles.pathContentContainer}
       ref={scrollRef}
+      scrollEnabled={scrollEnabled}
       nestedScrollEnabled={false}
       keyboardShouldPersistTaps="handled"
       onScroll={handleScroll}
@@ -351,6 +433,10 @@ const PathReaderComponent = ({
       }}
       onScrollEndDrag={() => {
         findCenterVerseId(scrollOffset.current);
+        const firstVisible = findFirstVisibleVerseId(scrollOffset.current);
+        if (firstVisible !== null) {
+          firstVisibleVerseId.current = firstVisible;
+        }
         onScrollEndDrag?.(scrollOffset.current);
       }}
       onMomentumScrollEnd={() => {
@@ -360,6 +446,10 @@ const PathReaderComponent = ({
           return;
         }
         findCenterVerseId(scrollOffset.current);
+        const firstVisible = findFirstVisibleVerseId(scrollOffset.current);
+        if (firstVisible !== null) {
+          firstVisibleVerseId.current = firstVisible;
+        }
         onScrollEndDrag?.(scrollOffset.current);
       }}
       scrollEventThrottle={16}
@@ -371,7 +461,7 @@ const PathReaderComponent = ({
       onContentSizeChange={onContentSizeChange}
     >
       {pageContent}
-      {pathContent?.source?.pageNo < PATH_DATA.LAST_ANG_NUMBER && !isNavigating && (
+      {canChangeAng && pathContent?.source?.pageNo < PATH_DATA.LAST_ANG_NUMBER && !isNavigating && (
         <PathNextAng pathAng={pathContent?.source?.pageNo} handleRightArrow={handleAngChange} />
       )}
     </ScrollView>

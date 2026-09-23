@@ -36,7 +36,7 @@ export const AboutScreenStyles = StyleSheet.create({
     gap: UIConstants.RHYTHM,
   },
   appName: {
-    color: UIConstants.BRAND_TEXT_COLOR,
+    color: UIConstants.PRIMARY_COLOR,
     fontFamily: font.Baloo_Paaji_2_Medium,
     fontSize: UIConstants.TITLE_FONT_SIZE,
   },
@@ -57,7 +57,7 @@ export const AboutScreenStyles = StyleSheet.create({
     lineHeight: UIConstants.BODY_LINE_HEIGHT,
   },
   link: {
-    color: UIConstants.BRAND_TEXT_COLOR,
+    color: UIConstants.PRIMARY_COLOR,
     fontFamily: font.Baloo_Paaji_2_Regular,
     fontSize: UIConstants.BODY_FONT_SIZE,
     lineHeight: UIConstants.BODY_LINE_HEIGHT,
@@ -69,7 +69,7 @@ export const AboutScreenStyles = StyleSheet.create({
     resizeMode: 'contain',
   },
   blessing: {
-    color: UIConstants.BRAND_TEXT_COLOR,
+    color: UIConstants.PRIMARY_COLOR,
     fontFamily: font.Baloo_Paaji_2_Medium,
     fontSize: UIConstants.SUBTITLE_FONT_SIZE,
   },

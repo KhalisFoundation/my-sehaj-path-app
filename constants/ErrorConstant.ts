@@ -14,6 +14,7 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_SAVE_PATH_PROGRESS: 'Failed to save your path progress. Please try again.',
   FAILED_TO_LOAD_PATH_PROGRESS: 'Failed to load your path progress.',
   FAILED_TO_RENAME_PATH: 'Failed to rename the path. Please try again.',
+  FAILED_TO_DELETE_SEHAJ_PATH: 'Failed to delete the path. Please try again.',
   FAILED_TO_DELETE_ACCOUNT:
     'Your account could not be deleted. Nothing has changed \u2014 please try again.',
   ACCOUNT_DELETED_NOT_CLEARED:
@@ -41,4 +42,16 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_SAVE_VISHRAAM_SOURCE: 'Failed to save vishraam source',
   FAILED_TO_SAVE_VISHRAAM_STYLE: 'Failed to save vishraam style',
   FAILED_TO_SAVE_ANALYTICS: 'Failed to save analytics',
+  FAILED_TO_LOAD_TURNS: 'Unable to load the reading schedule. Please try again.',
+  FAILED_TO_LOAD_INVITE_LINK: 'Unable to load the invite link. Please try again.',
+  FAILED_TO_OPEN_SHARED_PATH: 'Unable to open this shared path. Please try again.',
+  FAILED_TO_LOAD_SUGGESTED_MEMBERS: 'Unable to load suggested members. Please try again.',
+  FAILED_TO_LOAD_MEMBERS: 'Unable to load members. Please try again.',
+  FAILED_TO_ADD_MEMBER: 'Unable to add this member. Please try again.',
+  FAILED_TO_UPDATE_MEMBER_ROLE: 'Unable to update this member. Please try again.',
+  FAILED_TO_REMOVE_MEMBER: 'Unable to remove this member. Please try again.',
+  FAILED_TO_LEAVE_PATH: 'Unable to leave this path. Please try again.',
+  FAILED_TO_BOOK_TURN: 'Unable to book the turn. Please try again.',
+  FAILED_TO_CREATE_INVITE: 'Unable to create link. Please try again later.',
+  FAILED_TO_SHARE_PATH: 'Unable to share this path. Please try again later.',
 };

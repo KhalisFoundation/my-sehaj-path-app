@@ -248,6 +248,26 @@ describe('switchAccountData', () => {
 });
 
 describe('runConfirmedAccountSync', () => {
+  it('shares an in-progress association for the same account', async () => {
+    const store = setup([]);
+    let resolveSync!: (value: ReturnType<typeof syncOk>) => void;
+    mockSync.mockReturnValueOnce(
+      new Promise<ReturnType<typeof syncOk>>((resolve) => {
+        resolveSync = resolve;
+      })
+    );
+
+    const first = runConfirmedAccountSync(store, 'u@e.com');
+    const second = runConfirmedAccountSync(store, 'u@e.com');
+
+    expect(second).toBe(first);
+    resolveSync(syncOk([]));
+
+    await expect(first).resolves.toBe(true);
+    await expect(second).resolves.toBe(true);
+    expect(mockSync).toHaveBeenCalledTimes(1);
+  });
+
   it('case A: claims local paths, marks them on-server, and associates the account', async () => {
     const store = setup([makePath(1, 'Morning')]);
     // The server echoes the claim (first sync creates them, returns the set).
