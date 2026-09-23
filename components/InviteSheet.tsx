@@ -434,16 +434,11 @@ export const InviteSheet = ({
             </View>
             <Text style={styles.createLinkMessage}>{Constants.CREATE_LINK_HINT}</Text>
             <TouchableOpacity
-              style={[styles.share, creating && styles.disabled]}
+              style={styles.share}
               onPress={createNewLink}
-              disabled={creating}
               accessibilityRole="button"
             >
-              {creating ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Text style={styles.shareText}>{Constants.CREATE_LINK}</Text>
-              )}
+              <Text style={styles.shareText}>{Constants.CREATE_LINK}</Text>
             </TouchableOpacity>
           </>
         ) : (
