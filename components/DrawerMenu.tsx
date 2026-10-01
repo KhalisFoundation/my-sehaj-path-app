@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -229,7 +229,7 @@ const DrawerMenuComponent = ({
     }
   };
 
-  const restoreFromCloud = async () => {
+  const restoreFromCloud = useCallback(async () => {
     if (!userEmail || manualSyncInFlight.current) {
       return;
     }
@@ -248,7 +248,7 @@ const DrawerMenuComponent = ({
       manualSyncInFlight.current = false;
       setIsManualSyncing(false);
     }
-  };
+  }, [userEmail]);
 
   const handleSyncPress = () => {
     if (!recoveryNeeded) {
@@ -270,21 +270,21 @@ const DrawerMenuComponent = ({
     setSyncRecoveryPrompt('recovery');
   };
 
-  const keepLocalData = () => {
+  const keepLocalData = useCallback(() => {
     setSyncRecoveryPrompt(null);
     onClose();
     store.dispatch(setRecoveryRestoreStatus('paused'));
-  };
+  }, [onClose]);
 
-  const openRestoreConfirmation = () => setSyncRecoveryPrompt('restore');
+  const openRestoreConfirmation = useCallback(() => setSyncRecoveryPrompt('restore'), []);
 
-  const cancelSyncRecoveryPrompt = () => setSyncRecoveryPrompt(null);
+  const cancelSyncRecoveryPrompt = useCallback(() => setSyncRecoveryPrompt(null), []);
 
-  const confirmRestoreFromCloud = () => {
+  const confirmRestoreFromCloud = useCallback(() => {
     setSyncRecoveryPrompt(null);
     onClose();
     restoreFromCloud();
-  };
+  }, [onClose, restoreFromCloud]);
 
   useEffect(() => {
     if (!isVisible) {

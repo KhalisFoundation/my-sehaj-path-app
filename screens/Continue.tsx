@@ -376,6 +376,17 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       return;
     }
 
+    // A new personal path is not a group yet, so the admin-only active-invite
+    // endpoint legitimately answers 404 until sharing is enabled. That is a
+    // normal "no link exists" state, not a loading/error state; leave the
+    // Members tab showing the Create invite link controls.
+    if (active.kind === 'refused' && active.status === 404) {
+      setInviteStatus(
+        storedState === 'active' ? 'active' : storedState === 'expired' ? 'expired' : 'none'
+      );
+      return;
+    }
+
     // A failed background status request is not proof that the invite state
     // changed. In particular, a newly-created path can briefly have a usable
     // group id while its first invite-status request is still settling. Do
