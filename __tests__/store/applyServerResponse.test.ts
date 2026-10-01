@@ -4,11 +4,12 @@ import {
   sehajPathSettingsControllerGet,
   sehajPathsControllerFindAll,
 } from '@api/generated/sdk.gen';
-import { makeStore } from '../../store';
+import { makeStore, removePathAndSyncState } from '../../store';
 import {
   applyServerPath,
   applySyncResult,
   captureSyncSnapshot,
+  ensureAccessiblePath,
   reconcileDeletions,
   refreshPathsFromServer,
 } from '../../store/applyServerResponse';
@@ -21,6 +22,7 @@ import {
   clearSettingsIfUnchanged,
   hydrateEmptySync,
   markSettingsDirty,
+  setPathShared,
   setAccount,
 } from '../../store/slices/syncSlice';
 import { clearCurrentToken } from '../../auth/tokenUtils';
@@ -232,6 +234,17 @@ describe('applySyncResult', () => {
 
     expect(store.getState().paths.paths[0].pathName).toBe('B'); // newer local edit preserved
     expect(store.getState().sync.pathOps[1]).toBeDefined(); // its op stays queued
+  });
+
+  it('does not reallocate a path deleted while an older bulk sync was in flight', () => {
+    const { store, uuid } = syncedStore();
+    const snapshot = captureSyncSnapshot(store.getState());
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+
+    applySyncResult(store, result({ paths: [serverPath(uuid)] }), snapshot);
+
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.meta[1]).toBeUndefined();
   });
 
   it('removes a server-deleted path that is not locally dirtier', () => {
@@ -458,6 +471,32 @@ describe('refreshPathsFromServer', () => {
 
     expect(await refreshPathsFromServer(store)).toBe(true);
     expect(store.getState().paths.paths.find((p) => p.pathId === 1)).toBeUndefined();
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
+  it('removes an owner shared path when accessible no longer returns its group', async () => {
+    const store = signedInStore();
+    const groupId = addSyncedPath(store, 1);
+    store.dispatch(setPathShared({ pathId: 1, shared: true, groupId }));
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockResolvedValueOnce({ data: [] });
+
+    expect(await refreshPathsFromServer(store)).toBe(true);
+    expect(store.getState().paths.paths.find((p) => p.pathId === 1)).toBeUndefined();
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
+  it('still removes an owner shared path when the extra accessible lookup fails', async () => {
+    const store = signedInStore();
+    addSyncedPath(store, 1);
+    // Owner rows have two different identities: the client path UUID and the
+    // server group's primary key. A joined view is the only case where these
+    // values are intentionally equal.
+    store.dispatch(setPathShared({ pathId: 1, shared: true, groupId: 'group-1' }));
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockRejectedValueOnce(new Error('temporary network failure'));
+
+    expect(await refreshPathsFromServer(store)).toBe(true);
     expect(store.getState().sync.meta[1]).toBeUndefined();
   });
 
@@ -746,6 +785,95 @@ describe('refreshPathsFromServer', () => {
     await refresh;
     expect(store.getState().paths.paths.find((path) => path.pathId === 1)).toBeDefined();
     expect(store.getState().sync.meta[1].serverPathId).toBe(uuid);
+  });
+
+  it('does not reallocate a path deleted while an older listing was in flight', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolvePaths: (value: ReturnType<typeof findAllOk>) => void = () => undefined;
+    mockFindAll.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePaths = resolve;
+        })
+    );
+
+    const refresh = refreshPathsFromServer(store);
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+    resolvePaths(findAllOk([serverPath(uuid)])); // response began before DELETE committed
+
+    await refresh;
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
+  it('does not reallocate a deleted invite-only owner from a stale accessible response', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolveAccessible: (value: { data: unknown[] }) => void = () => undefined;
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAccessible = resolve;
+        })
+    );
+
+    const refresh = refreshPathsFromServer(store);
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+    resolveAccessible({
+      data: [
+        {
+          id: 'group-1',
+          pathId: uuid,
+          name: 'Deleted path',
+          angNumber: 0,
+          verseId: 0,
+          progress: 0,
+          startDate: Date.UTC(2026, 0, 1),
+          memberCount: 1,
+        },
+      ],
+    });
+
+    await refresh;
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
+  it("does not reallocate a deleted path from Continue's stale accessibility check", async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolveAccessible: (value: { data: Array<Record<string, unknown>> }) => void = () =>
+      undefined;
+    mockAccessible.mockImplementationOnce(
+      () =>
+        new Promise<{ data: Array<Record<string, unknown>> }>((resolve) => {
+          resolveAccessible = resolve;
+        })
+    );
+
+    // This is the persisted-v3/link-only shape: Continue has the group route
+    // id but the local record has not yet stored its groupId.
+    const ensured = ensureAccessiblePath(store, 'group-1', 1);
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+    resolveAccessible({
+      data: [
+        {
+          id: 'group-1',
+          pathId: uuid,
+          name: 'Deleted path',
+          angNumber: 0,
+          verseId: 0,
+          progress: 0,
+          startDate: Date.UTC(2026, 0, 1),
+          memberCount: 1,
+        },
+      ],
+    });
+
+    await expect(ensured).resolves.toBeNull();
+    expect(store.getState().paths.paths).toHaveLength(0);
   });
 
   it('does not apply old settings after a newer local setting was acknowledged', async () => {

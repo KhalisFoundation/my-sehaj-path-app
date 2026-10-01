@@ -1,9 +1,9 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { Alert, ImageBackground, ScrollView, TouchableOpacity, View } from 'react-native';
+import { ImageBackground, ScrollView, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text, AppTextInput } from '../components/AppText';
-import { BackButton } from '@components';
+import { BackButton, SignInRequiredDialog } from '@components';
 import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, UIConstants } from '@constants';
 import { CreatePathStyles as styles, SafeAreaStyle } from '@styles';
 import { createPath } from '../store/commands';
@@ -30,6 +30,7 @@ export const CreatePath = ({ navigation }: Props) => {
   const [defaultName] = useState(() => `Path #${getNextDefaultPathNumber(paths)}`);
   const [name, setName] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [signInPromptVisible, setSignInPromptVisible] = useState(false);
   const creatingRef = useRef(false);
 
   const createAndOpen = useCallback(
@@ -63,25 +64,18 @@ export const CreatePath = ({ navigation }: Props) => {
   const handleContinue = useCallback(() => createAndOpen(), [createAndOpen]);
   const handleAddMember = useCallback(() => {
     if (!isSignedIn) {
-      Alert.alert(
-        Constants.CREATE_PATH_ADD_MEMBER_LOGIN_TITLE,
-        Constants.CREATE_PATH_ADD_MEMBER_LOGIN_MESSAGE,
-        [
-          { text: Constants.CANCEL, style: 'cancel' },
-          {
-            text: Constants.LOGIN,
-            onPress: () => {
-              startLogin().catch((error: unknown) => {
-                recordError(error, 'CreatePath: login from add-member prompt failed');
-              });
-            },
-          },
-        ]
-      );
+      setSignInPromptVisible(true);
       return;
     }
     createAndOpen('members').catch(() => undefined);
   }, [createAndOpen, isSignedIn]);
+
+  const handleSignIn = useCallback(() => {
+    setSignInPromptVisible(false);
+    startLogin().catch((error: unknown) => {
+      recordError(error, 'CreatePath: login from add-member prompt failed');
+    });
+  }, []);
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
@@ -142,6 +136,13 @@ export const CreatePath = ({ navigation }: Props) => {
           </ScrollView>
         </View>
       </ImageBackground>
+      <SignInRequiredDialog
+        visible={signInPromptVisible}
+        onClose={() => setSignInPromptVisible(false)}
+        onSignIn={handleSignIn}
+        title={Constants.CREATE_PATH_ADD_MEMBER_LOGIN_TITLE}
+        message={Constants.CREATE_PATH_ADD_MEMBER_LOGIN_MESSAGE}
+      />
     </SafeAreaView>
   );
 };

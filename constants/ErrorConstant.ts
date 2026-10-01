@@ -52,6 +52,8 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_REMOVE_MEMBER: 'Unable to remove this member. Please try again.',
   FAILED_TO_LEAVE_PATH: 'Unable to leave this path. Please try again.',
   FAILED_TO_BOOK_TURN: 'Unable to book the turn. Please try again.',
+  FAILED_TO_DELETE_TURN: 'Unable to delete the turn. Please try again.',
+  FAILED_TO_START_LOGIN: 'Unable to start sign in. Please try again.',
   FAILED_TO_CREATE_INVITE: 'Unable to create link. Please try again later.',
   FAILED_TO_SHARE_PATH: 'Unable to share this path. Please try again later.',
 };

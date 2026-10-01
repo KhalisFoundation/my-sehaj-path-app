@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { Provider } from 'react-redux';
@@ -41,6 +41,7 @@ import {
   recordError,
   showErrorAlert,
   registerPushNotifications,
+  subscribePushTap,
 } from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
@@ -50,11 +51,18 @@ import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syn
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
 import { provisionDatabase } from './db';
+import { notifyPlanRefresh } from './store/planEvents';
+import { pushNavigationRef } from './navigation/pushTapRouter';
 
 export type RootStackParamList = {
   Splash: undefined;
-  Home: { pathDeleted?: boolean } | undefined;
-  Continue: { pathId: number; initialTab?: 'progress' | 'streak' | 'turns' | 'members' };
+  Home: { pathDeleted?: boolean; pathMembershipEnded?: boolean } | undefined;
+  Continue: {
+    pathId: number;
+    /** Keeps a stale Continue route identifiable after its local card is pruned. */
+    sehajPathId?: string;
+    initialTab?: 'progress' | 'streak' | 'turns' | 'members';
+  };
   CreatePath: undefined;
   Path: {
     pathId: number;
@@ -126,6 +134,76 @@ const PushRegistration = () => {
   return null;
 };
 
+/**
+ * Opens the exact shared path named by a push notification. The event bridge
+ * retains presses received before hydration; returning false keeps an event in
+ * that bridge until the matching group metadata reaches this device.
+ */
+const PushTapRouter = ({
+  navigationReady,
+  activeRouteName,
+}: {
+  navigationReady: boolean;
+  activeRouteName: string | undefined;
+}) => {
+  const syncMeta = useAppSelector((state) => state.sync.meta);
+  const groupIds = useMemo(
+    () =>
+      Object.entries(syncMeta)
+        .filter(([, meta]) => typeof meta.groupId === 'string' && meta.groupId.length > 0)
+        .map(([pathId, meta]) => [meta.groupId as string, Number(pathId)] as const),
+    [syncMeta]
+  );
+
+  useEffect(
+    () =>
+      subscribePushTap((event) => {
+        if (
+          (event.type !== 'sehaj-path-turn-updated' && event.type !== 'sehaj-path-turn-reminder') ||
+          !event.pathId
+        ) {
+          return false;
+        }
+        const match = groupIds.find(([groupId]) => groupId === event.pathId);
+        // On a cold launch Splash owns a delayed transition to Home. Navigating
+        // to Continue before that transition finishes makes Splash immediately
+        // replace the notification destination with Home. Keep the event in
+        // the bridge until navigation has moved beyond Splash.
+        if (
+          !match ||
+          !navigationReady ||
+          !pushNavigationRef.isReady() ||
+          activeRouteName === undefined ||
+          activeRouteName === Routes.Splash
+        ) {
+          return false;
+        }
+
+        const [, pathId] = match;
+        // Refresh an already-visible Turns tab before deciding whether the
+        // notification also needs to navigate. A newly opened tab fetches its
+        // own plan on mount.
+        notifyPlanRefresh(event.pathId);
+        const current = pushNavigationRef.getCurrentRoute();
+        if (
+          current?.name !== Routes.Continue ||
+          current.params?.pathId !== pathId ||
+          current.params?.initialTab !== 'turns'
+        ) {
+          pushNavigationRef.navigate(Routes.Continue, {
+            pathId,
+            sehajPathId: event.pathId,
+            initialTab: 'turns',
+          });
+        }
+        return true;
+      }),
+    [activeRouteName, groupIds, navigationReady]
+  );
+
+  return null;
+};
+
 const App = () => {
   // Push registration is rendered as a child below. Configure the generated
   // client before that child can mount: React runs child effects before the
@@ -136,6 +214,12 @@ const App = () => {
 
   // null = hydrating, false = failed (fail-closed), true = ready
   const [ready, setReady] = useState<boolean | null>(null);
+  const [navigationReady, setNavigationReady] = useState(false);
+  const [activeRouteName, setActiveRouteName] = useState<string | undefined>(undefined);
+
+  const updateActiveRouteName = useCallback(() => {
+    setActiveRouteName(pushNavigationRef.getCurrentRoute()?.name);
+  }, []);
 
   // Handle the SSO login return deep link (khalissehajpath://login?token=…).
   // Registered once; independent of the store-hydration gate above.
@@ -248,6 +332,7 @@ const App = () => {
         <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
           <AnalyticsConsent />
           <PushRegistration />
+          <PushTapRouter navigationReady={navigationReady} activeRouteName={activeRouteName} />
           <SyncStatusNotice />
           <OfflineDbNotice />
           <SessionExpiredPopup />
@@ -255,7 +340,15 @@ const App = () => {
               prompt. Keep it app-wide so B can never continue editing A's
               active paths from the reader while the switch is unresolved. */}
           <SyncPopup mode="accountSwitch" />
-          <NavigationContainer linking={linking}>
+          <NavigationContainer
+            ref={pushNavigationRef}
+            linking={linking}
+            onReady={() => {
+              setNavigationReady(true);
+              updateActiveRouteName();
+            }}
+            onStateChange={updateActiveRouteName}
+          >
             <Stack.Navigator
               initialRouteName={Routes.Splash}
               screenOptions={{

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   connectLive,
   type LiveHandle,
+  type LiveMembershipEnded,
+  type LivePathDeleted,
   type LivePosition,
   type LiveReaderTakeoverCompleted,
   type LiveReaderTakeoverStarted,
@@ -46,7 +48,11 @@ export interface LiveReadingOptions {
   /** Mark the line the group has read to. Called for readers and followers. */
   onSaved?: (saved: SharedSavedPosition) => void;
   /** The turn ended. Only followers are told — the reader ended it themselves. */
-  onReadingEnded?: (ended: { readerLabel: string; endAng: number }) => void;
+  onReadingEnded?: (ended: {
+    readerLabel: string;
+    endAng: number;
+    endReason?: 'DISCONNECTED';
+  }) => void;
   /** The reader disconnected but may return during the server grace period. */
   onReaderLeft?: () => void;
   /** The original reader resumed the same session during grace. */
@@ -54,6 +60,10 @@ export interface LiveReadingOptions {
   onTakeoverCompleted?: (takeover: LiveReaderTakeoverCompleted) => void;
   onTakeoverStarted?: (takeover: LiveReaderTakeoverStarted) => void;
   onTakeoverCancelled?: (takeover: { takeoverId: string }) => void;
+  /** The server deleted this shared path and is closing its live room. */
+  onPathDeleted?: (deleted: LivePathDeleted) => void;
+  /** The current user was removed from the group while reading. */
+  onMembershipEnded?: (event: LiveMembershipEnded) => void;
   /** The reader's text layout, for a follower to match. */
   onSettings?: (settings: {
     larivaar?: boolean;
@@ -94,6 +104,8 @@ export const useLiveReading = ({
   onTakeoverCompleted,
   onTakeoverStarted,
   onTakeoverCancelled,
+  onPathDeleted,
+  onMembershipEnded,
   onSettings,
   settings,
 }: LiveReadingOptions) => {
@@ -145,6 +157,16 @@ export const useLiveReading = ({
     takeoverCancelledRef.current = onTakeoverCancelled;
   }, [onTakeoverCancelled]);
 
+  const pathDeletedRef = useRef(onPathDeleted);
+  useEffect(() => {
+    pathDeletedRef.current = onPathDeleted;
+  }, [onPathDeleted]);
+
+  const membershipEndedRef = useRef(onMembershipEnded);
+  useEffect(() => {
+    membershipEndedRef.current = onMembershipEnded;
+  }, [onMembershipEnded]);
+
   /** The latest layout, readable from inside the connect callback. */
   const layoutRef = useRef(settings);
   layoutRef.current = settings;
@@ -165,7 +187,12 @@ export const useLiveReading = ({
    * lost: followers see nothing until the reader happens to move, which on a
    * long ang can be minutes.
    */
-  const positionRef = useRef({ pathAng, centerVerseId, scrollOffset, firstVisibleVerseId });
+  const positionRef = useRef({
+    pathAng,
+    centerVerseId,
+    scrollOffset,
+    firstVisibleVerseId,
+  });
   positionRef.current = { pathAng, centerVerseId, scrollOffset, firstVisibleVerseId };
 
   const send = useCallback(() => {
@@ -271,6 +298,16 @@ export const useLiveReading = ({
       onTakeoverCancelled: (takeover) => {
         if (!cancelled) {
           takeoverCancelledRef.current?.(takeover);
+        }
+      },
+      onPathDeleted: (deleted) => {
+        if (!cancelled) {
+          pathDeletedRef.current?.(deleted);
+        }
+      },
+      onMembershipEnded: (event) => {
+        if (!cancelled) {
+          membershipEndedRef.current?.(event);
         }
       },
       onSettings: (incoming) => {

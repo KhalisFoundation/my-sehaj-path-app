@@ -16,7 +16,12 @@ export { allowCrashReporting, recordError, testCrash } from './crashlytics';
 export { getOrCreatePathUuid } from './pathIdUtils';
 export { displayReadingAng } from './readingAng';
 export * from './dateTime';
-export { displayPushMessage, registerPushNotifications } from './pushNotifications';
+export {
+  displayPushMessage,
+  registerPushNotifications,
+  registerPushNotificationTapHandlers,
+  subscribePushTap,
+} from './pushNotifications';
 export {
   useIsSelected,
   useAccessibilityLabel,

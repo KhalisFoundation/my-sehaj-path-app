@@ -251,12 +251,20 @@ const allocateAccessiblePath = (
  */
 export const ensureAccessiblePath = async (
   store: AppStore,
-  sehajPathId: string
+  sehajPathId: string,
+  knownLocalPathId?: number
 ): Promise<number | null> => {
-  const session = captureSyncSession(store.getState());
+  const stateAtStart = store.getState();
+  const session = captureSyncSession(stateAtStart);
   if (!session) {
     return null;
   }
+  // Continue calls this as a focused-screen refresh. Preserve the row that
+  // represented this group when the request began, so a DELETE that completes
+  // before its response cannot be undone by `allocateAccessiblePath` below.
+  const localIdAtStart =
+    knownLocalPathId ??
+    Object.entries(stateAtStart.sync.meta).find(([, meta]) => meta.groupId === sehajPathId)?.[0];
 
   const result = await sehajPathMembersControllerFindAccessible({
     headers: syncSessionHeaders(session),
@@ -268,6 +276,17 @@ export const ensureAccessiblePath = async (
   const row = result.data.find((candidate) => candidate.id === sehajPathId);
   if (!row) {
     return null;
+  }
+
+  if (localIdAtStart !== undefined) {
+    const pathIdAtStart = Number(localIdAtStart);
+    const afterDelete = store.getState();
+    if (
+      afterDelete.sync.meta[pathIdAtStart] === undefined &&
+      !afterDelete.paths.paths.some((path) => path.pathId === pathIdAtStart)
+    ) {
+      return null;
+    }
   }
 
   const current = store.getState();
@@ -436,9 +455,12 @@ export const reconcileDeletions = (
     // A joined path is owned by somebody else, so it is ABSENT from the
     // owner-scoped listing this set is built from — its absence says nothing
     // about whether it still exists. Deleting on that basis would remove the
-    // path from every member's device the moment they synced. Losing access is
-    // reported separately, by `accessible` no longer returning it.
-    if (meta.shared) {
+    // path from every member's device the moment they synced. An owner's
+    // shared row DOES appear in this listing, so its absence is authoritative
+    // and should be reconciled even if the additional accessible lookup fails.
+    const isJoinedView =
+      meta.shared === true && meta.groupId !== undefined && meta.serverPathId === meta.groupId;
+    if (isJoinedView) {
       continue;
     }
     if (expectedMeta) {
@@ -477,6 +499,8 @@ export interface SyncSnapshot {
   scroll: Map<number, number>;
   /** The `pendingSettingsUpdatedAt` that was sent, or null. */
   settingsRev: number | null;
+  /** Server identities that were present when this bulk request began. */
+  pathIds: Map<number, string>;
 }
 
 export interface ApplySyncOptions {
@@ -494,6 +518,9 @@ export const captureSyncSnapshot = (state: RootState): SyncSnapshot => ({
   ),
   scroll: new Map(Object.entries(state.sync.scrollDirty).map(([key, ts]) => [Number(key), ts])),
   settingsRev: state.sync.pendingSettingsUpdatedAt,
+  pathIds: new Map(
+    Object.entries(state.sync.meta).map(([key, meta]) => [Number(key), meta.serverPathId])
+  ),
 });
 
 /**
@@ -515,6 +542,18 @@ export const applySyncResult = (
   const activePathId = getActiveReaderPath();
   result.paths.forEach((sp) => {
     const pathId = findLocalIdByServerPathId(store.getState(), sp.pathId);
+    // A `/sync` response can have been issued before a direct DELETE finished.
+    // The delete removes local metadata, which would otherwise make the old
+    // live row look unknown and allocate it again here.
+    const removedDuringRequest = [...snapshot.pathIds.entries()].some(
+      ([localId, serverPathId]) =>
+        serverPathId === sp.pathId &&
+        store.getState().sync.meta[localId] === undefined &&
+        !store.getState().paths.paths.some((path) => path.pathId === localId)
+    );
+    if (pathId == null && removedDuringRequest) {
+      return;
+    }
     // A bulk conflict response contains the account's entire list, including
     // clean paths unrelated to the conflicting edit. Never replace data under
     // the open reader: applying its ang/verse/scroll makes the screen jump.
@@ -631,6 +670,24 @@ const performRefreshPathsFromServer = async (
       },
     ])
   );
+  // A response may have started before a local delete completed. Once that
+  // delete removes the row and its metadata, applying the old response as an
+  // "unknown" server path would allocate the just-deleted card again. Keep the
+  // identities present at request start so those stale rows can be discarded.
+  const wasRemovedSinceRefreshStarted = (serverPathId: string): boolean => {
+    const expected = [...expectedMeta.entries()].find(
+      ([, meta]) => meta.serverPathId === serverPathId
+    );
+    if (!expected) {
+      return false;
+    }
+    const [pathId] = expected;
+    const current = store.getState();
+    return (
+      current.sync.meta[pathId] === undefined &&
+      !current.paths.paths.some((path) => path.pathId === pathId)
+    );
+  };
 
   try {
     const [pathsResult, settingsResult, accessibleResult] = await Promise.all([
@@ -687,6 +744,9 @@ const performRefreshPathsFromServer = async (
     }
     if (!pathsUnchanged && pathsResult.data) {
       pathsResult.data.forEach((sp) => {
+        if (wasRemovedSinceRefreshStarted(sp.pathId)) {
+          return;
+        }
         // Leave the path open in the reader completely untouched — don't apply the
         // server's name/progress/readDates under an active reader. It reconciles on
         // the next safe refresh once the reader exits.
@@ -716,6 +776,13 @@ const performRefreshPathsFromServer = async (
       // the very meta this match needs.
       const afterPaths = store.getState();
       for (const row of accessibleResult.data) {
+        // The accessible response is fetched alongside `/paths`. It can carry
+        // the same pre-delete group row, including an invite-only owner path
+        // whose UI still looks personal. Do not allocate that stale row after
+        // the delete has removed its local identity.
+        if (wasRemovedSinceRefreshStarted(row.pathId ?? row.id)) {
+          continue;
+        }
         // `pathId: null` means this device does not own the path — it joined
         // it. Those have no local row until one is made here.
         if (!row.pathId) {
@@ -793,20 +860,30 @@ const performRefreshPathsFromServer = async (
         }
       }
 
-      // Joined paths are represented locally even though they are absent from
-      // the owner-scoped paths response. Once membership is removed (or the
-      // group is deleted), accessible no longer returns their group id; remove
-      // the local view so Home cannot resurrect it as an empty personal path.
+      // The accessible response is authoritative for every shared path on this
+      // device, including the owner's copy. The owner-scoped `/paths` list is
+      // intentionally not enough here because `reconcileDeletions` skips shared
+      // rows: a joined member is absent from that list by design, while a
+      // deleted group owner must also disappear from the local shared copy.
+      // Once membership is removed or the group is deleted, accessible no
+      // longer returns the group id; remove either local representation so Home
+      // cannot resurrect a deleted shared path after a restart.
       const accessibleGroupIds = new Set(accessibleResult.data.map((row) => row.id));
       const refreshed = store.getState();
       for (const [key, meta] of Object.entries(refreshed.sync.meta)) {
         const localId = Number(key);
-        const isJoinedView =
-          meta.shared === true && meta.groupId !== undefined && meta.serverPathId === meta.groupId;
+        // `shared` controls this app's current UI, not whether the local row
+        // belongs to a server group. For example, an owner can temporarily be
+        // shown the personal UI while a membership update is settling, but the
+        // persisted `groupId` still identifies the canonical group. If an
+        // admin deletes that group, it is absent from accessible and must be
+        // removed from the owner's device too — never left behind as a
+        // misleading personal path.
+        const { groupId } = meta;
         if (
-          isJoinedView &&
-          meta.groupId !== undefined &&
-          !accessibleGroupIds.has(meta.groupId) &&
+          typeof groupId === 'string' &&
+          groupId.length > 0 &&
+          !accessibleGroupIds.has(groupId) &&
           localId !== activePathId
         ) {
           store.dispatch(removePathAndSyncState({ pathId: localId }));

@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Share, TouchableOpacity, View } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText as Text } from './AppText';
 import { InviteSheetStyles as styles } from '@styles';
 import { Constants, ErrorConstants, UIConstants } from '@constants';
-import { showErrorAlert } from '../utils/Error';
 import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
 import { recordError } from '../utils/crashlytics';
 import { useAppSelector } from '../store/hooks';
@@ -39,6 +38,7 @@ interface Props {
   onShared?: () => void;
   /** Called after the server accepts a newly created invite link. */
   onCreated?: () => void;
+  onSignIn?: () => void | Promise<void>;
   autoCreate?: boolean;
   initialExpiryHours?: number | null;
 }
@@ -61,6 +61,7 @@ export const InviteSheet = ({
   onClose,
   onShared,
   onCreated,
+  onSignIn,
   autoCreate = false,
   initialExpiryHours = 168,
 }: Props) => {
@@ -84,6 +85,12 @@ export const InviteSheet = ({
   // either produced a link or failed; otherwise the create form can flash
   // underneath the sheet animation while the active-link request is settling.
   const [autoCreatePending, setAutoCreatePending] = useState(false);
+  const [signInBusy, setSignInBusy] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
+  // State updates after a press handler returns. This ref closes that small
+  // gap, so two quick taps cannot present two native share sheets at once.
+  const sharingRef = useRef(false);
   // Start loading so opening the sheet never briefly shows the create state
   // before the active-link request has returned.
   const [loadingInvite, setLoadingInvite] = useState(true);
@@ -177,16 +184,13 @@ export const InviteSheet = ({
             stored !== null && (stored.expiresAt === null || isAfter(stored.expiresAt, now));
           const reusableInvite = serverInvites.find((invite) => invite.token !== null);
           setLinkExpired(stored !== null && !storedIsValid && reusableInvite === undefined);
-          let nextLink: string | null = null;
-          if (reusableInvite?.token) {
-            nextLink = inviteLinkFor(reusableInvite.token);
-          } else if (storedIsValid && stored !== null) {
-            nextLink = stored.link;
-          }
+          // The server is authoritative for revocation. A locally cached URL
+          // only knows its expiry time, so displaying it after a successful
+          // empty active-invites response would let an admin copy a revoked
+          // link. Show Create link instead.
+          const nextLink = reusableInvite?.token ? inviteLinkFor(reusableInvite.token) : null;
           setLink(nextLink);
-          setLinkExpiry(
-            reusableInvite?.expiresAt ?? (storedIsValid ? stored?.expiresAt : null) ?? null
-          );
+          setLinkExpiry(reusableInvite?.expiresAt ?? null);
           setActiveInvites(serverInvites);
           setInviteLoadSucceeded(true);
           setInviteLoadFailed(false);
@@ -282,11 +286,9 @@ export const InviteSheet = ({
         setProblem(message);
         setCreateFailed(true);
         setAutoCreatePending(false);
-        showErrorAlert(message);
       }
     } catch (error) {
       recordError(error, 'InviteSheet: failed to create or store invite link');
-      showErrorAlert(ErrorConstants.FAILED_TO_CREATE_INVITE);
       setProblem(ErrorConstants.FAILED_TO_CREATE_INVITE);
       setCreateFailed(true);
       setAutoCreatePending(false);
@@ -299,6 +301,22 @@ export const InviteSheet = ({
     setProblem(null);
     createNewLink().catch(() => undefined);
   }, [createNewLink]);
+
+  const handleSignIn = useCallback(async () => {
+    if (!onSignIn || signInBusy) {
+      return;
+    }
+    setSignInBusy(true);
+    setSignInError(null);
+    try {
+      await onSignIn();
+    } catch (error: unknown) {
+      recordError(error, 'InviteSheet: sign in failed');
+      setSignInError('Could not start sign in. Please try again.');
+    } finally {
+      setSignInBusy(false);
+    }
+  }, [onSignIn, signInBusy]);
 
   useEffect(() => {
     if (
@@ -326,14 +344,19 @@ export const InviteSheet = ({
   }, [link]);
 
   const share = useCallback(async () => {
-    if (!link) {
+    if (!link || sharingRef.current) {
       return;
     }
-    trackSharedPathEvent('INVITE_SHARE');
+    sharingRef.current = true;
+    setSharing(true);
     try {
+      trackSharedPathEvent('INVITE_SHARE');
       await Share.share({ message: link });
     } catch {
       // Dismissing the sheet rejects on some platforms. Nothing went wrong.
+    } finally {
+      sharingRef.current = false;
+      setSharing(false);
     }
   }, [link]);
 
@@ -365,6 +388,27 @@ export const InviteSheet = ({
           <View style={styles.loadingState}>
             <Text style={styles.sectionLabel}>{Constants.INVITE_SIGN_IN_TITLE}</Text>
             <Text style={styles.hint}>{Constants.INVITE_SIGN_IN_REQUIRED}</Text>
+            {signInError ? <Text style={styles.problem}>{signInError}</Text> : null}
+            {onSignIn ? (
+              <TouchableOpacity
+                style={[styles.share, signInBusy && styles.disabled]}
+                onPress={() => {
+                  handleSignIn().catch(() => undefined);
+                }}
+                disabled={signInBusy}
+                accessibilityRole="button"
+                accessibilityLabel={Constants.LOGIN}
+              >
+                {signInBusy ? (
+                  <View style={styles.busyLabel}>
+                    <ActivityIndicator color="white" />
+                    <Text style={styles.shareText}>{Constants.SIGNING_IN}</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.shareText}>{Constants.LOGIN}</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
           </View>
         ) : displayedProblem !== null ? (
           <View style={styles.loadingState}>
@@ -462,12 +506,21 @@ export const InviteSheet = ({
             <Text style={styles.expiryText}>{formatExpiry(linkExpiry)}</Text>
 
             <TouchableOpacity
-              style={styles.share}
+              style={[styles.share, sharing && styles.disabled]}
               onPress={share}
+              disabled={sharing}
               accessibilityRole="button"
               accessibilityLabel={Constants.SHARING_OPTIONS}
+              accessibilityState={{ disabled: sharing }}
             >
-              <Text style={styles.shareText}>{Constants.SHARING_OPTIONS}</Text>
+              {sharing ? (
+                <View style={styles.busyLabel}>
+                  <ActivityIndicator color={UIConstants.PRIMARY_COLOR} />
+                  <Text style={styles.shareText}>Sharing…</Text>
+                </View>
+              ) : (
+                <Text style={styles.shareText}>{Constants.SHARING_OPTIONS}</Text>
+              )}
             </TouchableOpacity>
           </>
         )}

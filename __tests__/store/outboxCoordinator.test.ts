@@ -13,7 +13,12 @@ import { addPath, renamePath, setScrollPosition } from '../../store/slices/paths
 import { setSignedIn } from '../../store/slices/authSlice';
 import { setOnline } from '../../store/slices/networkSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
-import { hydrateEmptySync, markPathDeleted, setAccount } from '../../store/slices/syncSlice';
+import {
+  hydrateEmptySync,
+  markPathDeleted,
+  setAccount,
+  setPathShared,
+} from '../../store/slices/syncSlice';
 import { clearCurrentToken } from '../../auth/tokenUtils';
 import { recordError } from '../../utils/crashlytics';
 import type { DateData, PathData } from '../../types';
@@ -715,7 +720,53 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
-  it('treats a DELETE 404 as already-gone (success)', async () => {
+  it('uses the canonical group id for a shared-path delete', async () => {
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(
+      setPathShared({
+        pathId: 1,
+        shared: true,
+        groupId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));
+
+    await coordinator.flushNow();
+
+    expect(mockRemove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: { pathId: '11111111-1111-4111-8111-111111111111' },
+        headers: expect.objectContaining({ 'x-sehaj-path-identity': 'canonical' }),
+      })
+    );
+    coordinator.stop();
+  });
+
+  it('keeps using the canonical id when a group has only its owner left', async () => {
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(
+      setPathShared({
+        pathId: 1,
+        shared: false,
+        groupId: '22222222-2222-4222-8222-222222222222',
+      })
+    );
+    store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));
+
+    await coordinator.flushNow();
+
+    expect(mockRemove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: { pathId: '22222222-2222-4222-8222-222222222222' },
+        headers: expect.objectContaining({ 'x-sehaj-path-identity': 'canonical' }),
+      })
+    );
+    coordinator.stop();
+  });
+
+  it('keeps a delete tombstone when DELETE returns 404', async () => {
     const { store, coordinator } = setup();
     await seedSyncedPath(store, coordinator);
     store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));
@@ -723,8 +774,13 @@ describe('outboxCoordinator', () => {
 
     await coordinator.flushNow();
 
-    expect(store.getState().paths.paths.find((p) => p.pathId === 1)).toBeUndefined();
-    expect(store.getState().sync.meta[1]).toBeUndefined();
+    // The API's DELETE is idempotent and would return 204 for an already
+    // tombstoned row. A 404 is an identity/access mismatch, not proof that the
+    // live server row disappeared; retain the tombstone so Home cannot revive
+    // the card from the next GET response.
+    expect(store.getState().paths.paths.find((p) => p.pathId === 1)).toBeDefined();
+    expect(store.getState().sync.meta[1]?.deletedAt).not.toBeNull();
+    expect(store.getState().sync.pathOps[1]?.kind).toBe('delete');
     coordinator.stop();
   });
 });

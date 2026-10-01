@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import {
   ActivityIndicator,
   Alert,
-  LayoutAnimation,
+  RefreshControl,
   View,
   ScrollView,
   ImageBackground,
@@ -27,6 +27,7 @@ import {
   InviteSheet,
   SuggestedMembersSheet,
   TurnsTab,
+  SignInRequiredDialog,
 } from '@components';
 import {
   Constants,
@@ -45,8 +46,10 @@ import {
   showErrorAlert,
   trackEvent,
   trackSharedPathEvent,
+  subscribePushTap,
 } from '@utils';
-import { store } from '../store';
+import { removePathAndSyncState, store } from '../store';
+import { ensureAccessiblePath } from '../store/applyServerResponse';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectVisiblePaths } from '../store/selectors';
 import { canInvite, isPersonalPath, isTurnStillLive } from '../store/groupPaths';
@@ -61,6 +64,7 @@ import {
   startReading,
   takeoverReading,
   leavePath,
+  deleteSharedPath,
   makeMemberAdmin,
   setMemberAdmin,
   removeMember,
@@ -74,6 +78,7 @@ import { RootStackParamList } from '../App';
 import { ContinueScreenBackground } from '../assets/Images';
 import { onForeground } from '../store/syncLifecycle';
 import { setPathShared } from '../store/slices/syncSlice';
+import { notifyPlanRefresh } from '../store/planEvents';
 import { persistence } from '../store/instance';
 import { getStoredInviteState } from '../store/inviteLink';
 import { connectLive, type LiveHandle, type LivePosition } from '../store/liveSession';
@@ -97,7 +102,7 @@ const formatLiveReaderTime = (reader: {
   ].join(' - ');
 
 export const Continue = ({ route, navigation }: ContinueProps) => {
-  const { pathId, initialTab } = route.params;
+  const { pathId, initialTab, sehajPathId: routeSehajPathId } = route.params;
 
   /**
    * Group data is loaded only when a path can be represented on the server.
@@ -130,7 +135,25 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
    * `sehajPathId` — it IS shared, so there are turns to schedule and a live
    * reading to join.
    */
-  const invitableId = canInvite(groupMeta) ? groupMeta.groupId : null;
+  // Joining from an invite already gives us the canonical group id. Prefer
+  // persisted metadata once it exists, but do not wait for it before loading
+  // this path's current members, turn plan and reader session on first focus.
+  // A route group id is useful before metadata has been restored (for example
+  // after accepting an invite), but it must not overrule persisted knowledge
+  // that this local path is personal. Personal paths can have a group id only
+  // because they are shareable, before a second member joins.
+  const hasExplicitGroupRoute =
+    typeof routeSehajPathId === 'string' &&
+    routeSehajPathId.length > 0 &&
+    groupMetaShared !== false;
+  const invitableId = canInvite(groupMeta) ? groupMeta.groupId : routeSehajPathId ?? null;
+  // Metadata is intentionally removed with a stale path card. Retain the
+  // route's group id so Continue can still ask the server why a just-opened
+  // card vanished instead of falling back to a generic load failure.
+  const lastKnownGroupIdRef = useRef<string | null>(routeSehajPathId ?? null);
+  if (invitableId !== null) {
+    lastKnownGroupIdRef.current = invitableId;
+  }
 
   const [members, setMembers] = useState<SehajPathMember[]>([]);
   const [membersError, setMembersError] = useState<string | null>(null);
@@ -141,17 +164,25 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     'unknown'
   );
   const [inviteExpiryHours, setInviteExpiryHours] = useState<number | null>(168);
+  const [signInPrompt, setSignInPrompt] = useState<{
+    title: string;
+    message: string;
+  } | null>(null);
+  const [signInBusy, setSignInBusy] = useState(false);
+  const [signInError, setSignInError] = useState<string | null>(null);
   // Several focus/sync effects can refresh members at the same time. Keep
   // only the newest response; an older 404 must not replace a newer local
   // member list with the generic error state.
   const membersLoadVersionRef = useRef(0);
   const inviteStatusLoadVersionRef = useRef(0);
   const loginPromptTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const unavailablePathHandledRef = useRef(false);
 
   const activeMembers = useMemo(
     () => members.filter((member) => member.status === 'ACTIVE'),
     [members]
   );
+
   const membersForDisplay = useMemo(() => {
     if (members.length > 0) {
       return members;
@@ -176,12 +207,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   // Keep the shared UI available immediately from the persisted sync flag.
   // Membership is refreshed in the background, so waiting for that request
   // made Continue briefly look like a personal path on every launch.
-  const isSharedPath = hasOtherMember || groupMetaShared === true;
+  const isSharedPath = hasOtherMember || groupMetaShared === true || hasExplicitGroupRoute;
   // Turns is a group-only feature. Wait for the persisted/server-confirmed
   // shared flag instead of optimistically rendering it while metadata is still
   // unknown; otherwise a personal path flashes Turns and removes it again as
   // the first sync completes.
-  const showTurnsTab = groupMetaShared === true;
+  const showTurnsTab = groupMetaShared === true || hasExplicitGroupRoute;
 
   // A link makes a path shareable, not shared. Its owner is the first active
   // membership, so group turns and live-reading rules begin only once another
@@ -213,7 +244,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const loadMembers = useCallback(async () => {
     const requestVersion = ++membersLoadVersionRef.current;
-    if (!invitableId || groupMetaShared === false) {
+    if (!invitableId || (groupMetaShared === false && !hasExplicitGroupRoute)) {
       // The path has not reached the server yet, so there is no membership
       // endpoint to ask. A personal path may still have a server id (and an
       // invite can be created for it), but it is not PUBLIC and therefore the
@@ -231,6 +262,40 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     // member, but it IS the thing an admin has to act on, and the only place
     // that is visible is here.
     if (!result.ok) {
+      // The Home cache can still contain a shared path for a moment after its
+      // admin deleted it. The API keeps the legacy 404 status but supplies an
+      // exact reason code, so this screen can remove the stale copy without
+      // confusing deletion with a member being removed.
+      if (
+        result.kind === 'refused' &&
+        result.status === 410 &&
+        result.code === 'PATH_DELETED' &&
+        groupMetaShared === true
+      ) {
+        setMembers([]);
+        setMembersError(null);
+        if (!unavailablePathHandledRef.current) {
+          unavailablePathHandledRef.current = true;
+          dispatch(removePathAndSyncState({ pathId }));
+          navigation.popTo(Routes.Home, { pathDeleted: true });
+        }
+        return;
+      }
+      if (
+        result.kind === 'refused' &&
+        result.status === 404 &&
+        result.code === 'PATH_MEMBERSHIP_ENDED' &&
+        groupMetaShared === true
+      ) {
+        setMembers([]);
+        setMembersError(null);
+        if (!unavailablePathHandledRef.current) {
+          unavailablePathHandledRef.current = true;
+          dispatch(removePathAndSyncState({ pathId }));
+          navigation.popTo(Routes.Home, { pathMembershipEnded: true });
+        }
+        return;
+      }
       // During the first render the sync metadata may not yet have learned
       // that this is a personal path. Treat that expected 404 exactly like
       // the explicit `shared === false` branch above. Real shared paths keep
@@ -246,10 +311,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
 
     const nextMembers = result.data;
-    // Membership determines whether the Turns tab exists. Animate the
-    // resulting layout change instead of letting the tab appear abruptly
-    // after Continue has already rendered.
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // Do not schedule a global LayoutAnimation here. Opening the invite sheet
+    // refreshes members while React Native is mounting a separate Modal
+    // surface. On iOS Fabric, that race can try to animate an already removed
+    // component and abort the app ("query unregistered component"). The tab
+    // updates immediately instead, which is safe for both the modal and the
+    // native share sheet.
     setMembers(nextMembers);
     setMembersError(null);
     // The active member list is the immediate source of truth. Updating the
@@ -269,7 +336,15 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     // a rapid app close/reopen. This is intentionally a flush of the existing
     // persistence coordinator, not a second cache or storage key.
     await persistence.flush();
-  }, [dispatch, groupMetaGroupId, groupMetaShared, invitableId, pathId]);
+  }, [
+    dispatch,
+    groupMetaGroupId,
+    groupMetaShared,
+    hasExplicitGroupRoute,
+    invitableId,
+    navigation,
+    pathId,
+  ]);
 
   const loadInviteStatus = useCallback(async () => {
     const requestVersion = ++inviteStatusLoadVersionRef.current;
@@ -286,16 +361,37 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     if (requestVersion !== inviteStatusLoadVersionRef.current) {
       return;
     }
-    if (active.ok && active.data.length > 0) {
-      setInviteStatus('active');
-    } else {
-      setInviteStatus(storedState === 'expired' ? 'expired' : 'none');
+    if (active.ok) {
+      // A link saved by this admin is still a known active link even when the
+      // server has not returned a recoverable token. Previously this branch
+      // ignored `storedState === 'active'`, so reopening any path could offer
+      // "Create link" despite the link the admin had just copied.
+      let nextInviteStatus: 'active' | 'expired' | 'none' = 'none';
+      if (active.data.length > 0 || storedState === 'active') {
+        nextInviteStatus = 'active';
+      } else if (storedState === 'expired') {
+        nextInviteStatus = 'expired';
+      }
+      setInviteStatus(nextInviteStatus);
+      return;
     }
+
+    // A failed background status request is not proof that the invite state
+    // changed. In particular, a newly-created path can briefly have a usable
+    // group id while its first invite-status request is still settling. Do
+    // not replace an already-visible Create/Share action with a spinner the
+    // user did not ask for. Opening that action still performs the
+    // authoritative server check in InviteSheet.
+    setInviteStatus((current) =>
+      storedState === 'active' ? 'active' : current === 'unknown' ? 'unknown' : current
+    );
   }, [invitableId]);
 
   useEffect(() => {
     loadMembers().catch(() => undefined);
-    loadInviteStatus().catch(() => setInviteStatus('unknown'));
+    loadInviteStatus().catch(() => {
+      // Keep a concrete state visible when a background refresh fails.
+    });
   }, [loadInviteStatus, loadMembers]);
 
   /**
@@ -308,7 +404,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   useFocusEffect(
     useCallback(() => {
       loadMembers().catch(() => undefined);
-      loadInviteStatus().catch(() => setInviteStatus('unknown'));
+      loadInviteStatus().catch(() => {
+        // Keep a concrete state visible when a background refresh fails.
+      });
     }, [loadInviteStatus, loadMembers])
   );
 
@@ -336,6 +434,18 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     tabs: initialTab || 'progress',
     streakValue: null as number | null,
   });
+  // A notification can navigate to an already-mounted Continue route with a
+  // new `initialTab`. Apply that request once per changed route param; using a
+  // plain effect on `uiState.tabs` would otherwise force users back to the
+  // original tab every time they switched tabs themselves.
+  const lastRequestedInitialTabRef = useRef(initialTab);
+  useEffect(() => {
+    if (!initialTab || lastRequestedInitialTabRef.current === initialTab) {
+      return;
+    }
+    lastRequestedInitialTabRef.current = initialTab;
+    setUiState((previous) => ({ ...previous, tabs: initialTab }));
+  }, [initialTab]);
   useEffect(() => {
     if (!showTurnsTab && uiState.tabs === 'turns') {
       setUiState((previous) => ({ ...previous, tabs: 'progress' }));
@@ -360,12 +470,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const handleSharePath = useCallback(async () => {
     if (!isSignedIn) {
-      if (invitableId !== null) {
-        setInviteAutoCreate(false);
-        setInviteOpen(true);
-      } else {
-        Alert.alert(Constants.INVITE_SIGN_IN_TITLE, Constants.INVITE_SIGN_IN_REQUIRED);
-      }
+      setSignInPrompt({
+        title: Constants.INVITE_SIGN_IN_TITLE,
+        message: Constants.INVITE_SIGN_IN_REQUIRED,
+      });
       return;
     }
     if (invitableId !== null) {
@@ -400,12 +508,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const handleCreateInvite = useCallback(
     async (autoCreate = true) => {
       if (!isSignedIn) {
-        if (invitableId !== null) {
-          setInviteAutoCreate(false);
-          setInviteOpen(true);
-        } else {
-          Alert.alert(Constants.INVITE_SIGN_IN_TITLE, Constants.INVITE_SIGN_IN_REQUIRED);
-        }
+        setSignInPrompt({
+          title: Constants.INVITE_SIGN_IN_TITLE,
+          message: Constants.INVITE_SIGN_IN_REQUIRED,
+        });
         return;
       }
       if (invitableId === null) {
@@ -486,6 +592,11 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       if (isDeletingRef.current) {
         return;
       }
+      // The companion effect below resolves this stale group route to either
+      // "path deleted" or "no longer a member" using its canonical id.
+      if (lastKnownGroupIdRef.current !== null) {
+        return;
+      }
       showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PATH_DATA, () => navigation.goBack(), 'Retry');
       return;
     }
@@ -524,15 +635,75 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     });
   }, [calculatePathCompletion, matchedPath, navigation, sharedStartDate]);
 
-  // Render the persisted cache immediately, then refresh shared data in the
-  // background. The selector/update effect applies the server response when
-  // it arrives, so the screen never needs to block on network latency.
+  // Render the persisted cache immediately. Opening a path is a read-only
+  // navigation and must not start a foreground account sync (which briefly
+  // shows the global “Syncing your progress…” notice). Use the pull-to-refresh
+  // gesture below when the user explicitly wants fresh server data.
   useFocusEffect(updateTheData);
+
+  /**
+   * The cached path card makes Continue open immediately, but a shared path's
+   * position, name and member count belong to the server. Refresh this one
+   * group record whenever Continue gains focus so a change made by another
+   * member is visible without requiring pull-to-refresh. This deliberately
+   * avoids `onForeground`: it is not an account-wide sync and must not show
+   * the global “Loading your progress” notice.
+   *
+   * `loadMembers` below remains responsible for translating deletion/removal
+   * error codes into the correct user message. An inaccessible row simply
+   * returns null here, leaving that exact-code check intact.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      const groupId = invitableId ?? routeSehajPathId;
+      if (!groupId) {
+        return undefined;
+      }
+      let cancelled = false;
+      // Pass the route's local id as well as the group id. Older/link-only
+      // metadata can lack `groupId`; without this identity a response that
+      // began before deletion could allocate the path again after it vanished.
+      ensureAccessiblePath(store, groupId, pathId)
+        .then(() => {
+          // The Redux update re-runs `updateTheData` above with the fresh
+          // record. Nothing needs to be manually scrolled or re-centred.
+          if (cancelled) {
+            return;
+          }
+        })
+        .catch((error: unknown) => {
+          if (!cancelled) {
+            recordError(error, 'Continue: path-scoped refresh failed');
+          }
+        });
+      return () => {
+        cancelled = true;
+      };
+    }, [invitableId, pathId, routeSehajPathId])
+  );
+
   useEffect(() => {
-    onForeground(null)
-      .then(() => loadMembers())
+    if (matchedPath || isDeletingRef.current || lastKnownGroupIdRef.current === null) {
+      return;
+    }
+    let cancelled = false;
+    const groupId = lastKnownGroupIdRef.current;
+    listMembers(groupId)
+      .then((result) => {
+        if (cancelled || result.ok || result.kind !== 'refused') {
+          return;
+        }
+        if (result.code === 'PATH_DELETED') {
+          navigation.popTo(Routes.Home, { pathDeleted: true });
+        } else if (result.code === 'PATH_MEMBERSHIP_ENDED') {
+          navigation.popTo(Routes.Home, { pathMembershipEnded: true });
+        }
+      })
       .catch(() => undefined);
-  }, [loadMembers]);
+    return () => {
+      cancelled = true;
+    };
+  }, [matchedPath, navigation]);
 
   // Member metadata arrives after the local path row. Recalculate once it is
   // available so elapsed days and the projected average match every account.
@@ -565,6 +736,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const [activeOwnTurn, setActiveOwnTurn] = useState<SehajPathSlot | null>(null);
   const [scheduleSlots, setScheduleSlots] = useState<SehajPathSlot[]>([]);
   const [upcomingTurnsLoading, setUpcomingTurnsLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [previewLines, setPreviewLines] = useState<string[]>([]);
   /** The live socket is the source of truth for the preview's current position. */
   const [livePreviewPosition, setLivePreviewPosition] = useState<LivePosition | null>(null);
@@ -722,6 +894,18 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           setReadAlongAvailable(false);
         }
       },
+      onPathDeleted: () => {
+        if (!cancelled) {
+          dispatch(removePathAndSyncState({ pathId }));
+          navigation.popTo(Routes.Home, { pathDeleted: true });
+        }
+      },
+      onMembershipEnded: () => {
+        if (!cancelled) {
+          dispatch(removePathAndSyncState({ pathId }));
+          navigation.popTo(Routes.Home, { pathMembershipEnded: true });
+        }
+      },
       onEnded: () => {
         // Keep the REST-backed card during a transient network drop. The
         // existing focus poll will remove it only when the server confirms the
@@ -742,7 +926,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       previewLiveRef.current?.close();
       previewLiveRef.current = null;
     };
-  }, [liveReader?.sessionId, sehajPathId, uiState.tabs]);
+  }, [dispatch, liveReader?.sessionId, navigation, pathId, sehajPathId, uiState.tabs]);
 
   const loadUpcomingTurn = useCallback(async () => {
     if (sehajPathId === null || !isSharedPath) {
@@ -771,6 +955,67 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setUpcomingTurn(next ?? null);
     setUpcomingTurnsLoading(false);
   }, [isSharedPath, sehajPathId]);
+
+  /**
+   * Refresh all server-backed data owned by Continue. Notification taps can
+   * return to an already-mounted screen, so a pull must refresh the turn plan
+   * as well as the surrounding path/member metadata. TurnsTab listens to the
+   * same plan event and reloads its calendar data without leaving this screen.
+   */
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) {
+      return;
+    }
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        onForeground(null),
+        loadMembers(),
+        loadInviteStatus(),
+        loadUpcomingTurn(),
+      ]);
+      if (sehajPathId !== null) {
+        notifyPlanRefresh(sehajPathId);
+      }
+      updateTheData();
+    } catch (error) {
+      recordError(error, 'Continue: pull-to-refresh failed');
+    } finally {
+      setRefreshing(false);
+    }
+  }, [loadInviteStatus, loadMembers, loadUpcomingTurn, refreshing, sehajPathId, updateTheData]);
+
+  // A notification can bring the user back to an already-mounted Continue
+  // screen. Refresh the tapped path immediately instead of waiting for a
+  // second navigation or a manual pull-to-refresh. Events for other paths are
+  // left queued by the bridge until their Continue screen is opened.
+  useFocusEffect(
+    useCallback(
+      () =>
+        subscribePushTap((event) => {
+          const matchesPath =
+            event.pathId === undefined ||
+            event.pathId === String(pathId) ||
+            (sehajPathId !== null && event.pathId === sehajPathId);
+          if (!matchesPath) {
+            return false;
+          }
+          if (
+            event.type === 'sehaj-path-turn-updated' ||
+            event.type === 'sehaj-path-turn-reminder'
+          ) {
+            setUiState((previous) =>
+              previous.tabs === 'turns' ? previous : { ...previous, tabs: 'turns' }
+            );
+          }
+          handleRefresh().catch((error) => {
+            recordError(error, 'Continue: notification tap refresh failed');
+          });
+          return true;
+        }),
+      [handleRefresh, pathId, sehajPathId]
+    )
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -1079,18 +1324,39 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   ]);
 
   const handleLoginRequired = useCallback(() => {
-    Alert.alert(Constants.LOGIN_REQUIRED_TITLE, Constants.LOGIN_REQUIRED_MESSAGE, [
-      { text: Constants.CANCEL, style: 'cancel' },
-      {
-        text: Constants.LOGIN,
-        onPress: () => {
-          startLogin().catch((error: unknown) => {
-            recordError(error, 'Continue: login from protected tab failed');
-          });
-        },
-      },
-    ]);
+    setSignInPrompt({
+      title: Constants.LOGIN_REQUIRED_TITLE,
+      message: Constants.LOGIN_REQUIRED_MESSAGE,
+    });
   }, []);
+
+  const handleSignIn = useCallback(async () => {
+    if (signInBusy) {
+      return;
+    }
+    setSignInPrompt(null);
+    setSignInError(null);
+    setSignInBusy(true);
+    try {
+      const started = await startLogin({ suppressErrors: true });
+      if (!started) {
+        setSignInError('Could not start sign in. Please try again.');
+        setSignInPrompt({
+          title: 'Sign in failed',
+          message: 'Could not start sign in. Please try again.',
+        });
+      }
+    } catch (error: unknown) {
+      recordError(error, 'Continue: login from protected action failed');
+      setSignInError('Could not start sign in. Please try again.');
+      setSignInPrompt({
+        title: 'Sign in failed',
+        message: 'Could not start sign in. Please try again.',
+      });
+    } finally {
+      setSignInBusy(false);
+    }
+  }, [signInBusy]);
 
   useEffect(
     () => () => {
@@ -1118,8 +1384,19 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       }
       trackEvent('TabSwitch', 'click', `switch to ${tab} tab`);
       setUiState((prev) => ({ ...prev, tabs: tab }));
+
+      // Continue stays mounted while its inner tabs change. Re-check the
+      // membership endpoint here because it carries the precise reason when
+      // a path was deleted or this member was removed elsewhere. `loadMembers`
+      // routes those exact responses back to Home; without this call they
+      // would only be noticed on a screen focus or a manual pull-to-refresh.
+      if (sehajPathId !== null) {
+        loadMembers().catch((error: unknown) => {
+          recordError(error, 'Continue: membership refresh after tab switch failed');
+        });
+      }
     },
-    [handleLoginRequired, isSignedIn]
+    [handleLoginRequired, isSignedIn, loadMembers, sehajPathId]
   );
 
   const handlePathRenamePress = useCallback(() => {
@@ -1141,6 +1418,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     leavePath(sehajPathId, mine.id)
       .then((result) => {
         if (result.ok) {
+          // Leaving is a membership change, not a group deletion. Remove only
+          // this device's local view after the server confirms the leave; the
+          // remaining members keep their cached path and can continue using it.
+          dispatch(removePathAndSyncState({ pathId }));
           // Home already exists below Continue in the normal flow. Replacing
           // Continue would create another Home and retain the stale stack.
           navigation.popTo(Routes.Home);
@@ -1152,7 +1433,27 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         recordError(error, 'Continue: leave path failed');
         showErrorAlert(ErrorConstants.FAILED_TO_LEAVE_PATH);
       });
-  }, [activeMembers, navigation, sehajPathId]);
+  }, [activeMembers, dispatch, navigation, pathId, sehajPathId]);
+
+  const deletePathForEveryone = useCallback(async (): Promise<boolean> => {
+    if (sehajPathId === null) {
+      return false;
+    }
+    const result = await deleteSharedPath(sehajPathId);
+    if (!result.ok) {
+      recordError(new Error(result.message), 'Continue: shared path delete failed', {
+        pathId: String(pathId),
+        sehajPathId,
+        kind: result.kind,
+      });
+      return false;
+    }
+    // The server has committed the group tombstone. Drop this device's cached
+    // copy now; connected members receive `path-deleted` and offline members
+    // drop it on their next authoritative sync.
+    dispatch(removePathAndSyncState({ pathId }));
+    return true;
+  }, [dispatch, pathId, sehajPathId]);
 
   const handleLeavePath = useCallback(() => {
     if (sehajPathId === null) {
@@ -1247,6 +1548,27 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             removeMember(sehajPathId, member.id)
               .then((result) => {
                 if (result.ok) {
+                  const remainingMembers = members.filter((entry) => entry.id !== member.id);
+                  const returnedToPersonal =
+                    remainingMembers.length === 1 && remainingMembers[0]?.isMine === true;
+
+                  // The server converts a path with only its owner remaining
+                  // back to PERSONAL and revokes its old invite links. Do not
+                  // immediately request the group-only members endpoint: it
+                  // correctly answers 404 for a personal path, but that used
+                  // to leave the admin staring at a misleading retry error.
+                  if (returnedToPersonal) {
+                    membersLoadVersionRef.current += 1;
+                    inviteStatusLoadVersionRef.current += 1;
+                    setMembers([]);
+                    setMembersError(null);
+                    setInviteStatus('none');
+                    dispatch(setPathShared({ pathId, shared: false }));
+                    return;
+                  }
+
+                  setMembers(remainingMembers);
+                  setMembersError(null);
                   loadMembers().catch((error: unknown) => {
                     recordError(error, 'Continue: failed to refresh members after removal');
                   });
@@ -1262,7 +1584,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         },
       ]);
     },
-    [loadMembers, sehajPathId]
+    [dispatch, loadMembers, members, pathId, sehajPathId]
   );
 
   const handleBackPress = useCallback(() => {
@@ -1313,6 +1635,16 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         <ScrollView
           contentContainerStyle={ContinueScreenStyles.scrollContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                handleRefresh().catch(() => undefined);
+              }}
+              tintColor={UIConstants.PRIMARY_COLOR}
+              colors={[UIConstants.PRIMARY_COLOR]}
+            />
+          }
         >
           <View style={ContinueScreenStyles.container}>
             <View style={ContinueScreenStyles.navRow}>
@@ -1330,6 +1662,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                 <PathOptionsMenu
                   pathId={pathId}
                   pathName={pathState.pathName || pathState.pathData?.pathName || ''}
+                  canDelete={canManagePath}
+                  onDelete={sehajPathId !== null ? deletePathForEveryone : undefined}
                   onLeave={sehajPathId !== null ? performLeavePath : undefined}
                   leaveRequiresAdminTransfer={isLastActiveAdmin}
                   onMakeAdmin={() => handleTabPress('members')}
@@ -1614,7 +1948,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   trackSharedPathEvent('TURN_DELETE');
                   const result = await cancelSlot(sehajPathId, slot.id);
                   if (!result.ok) {
-                    showErrorAlert(result.message);
+                    throw new Error(result.message);
                   }
                 }}
                 onEditSlot={(slot) =>
@@ -1741,6 +2075,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             setInviteStatus('active');
             loadMembers().catch(() => undefined);
           }}
+          onSignIn={handleSignIn}
           autoCreate={inviteAutoCreate}
           initialExpiryHours={inviteExpiryHours}
         />
@@ -1754,6 +2089,20 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           onAdded={loadMembers}
         />
       )}
+      <SignInRequiredDialog
+        visible={signInPrompt !== null}
+        onClose={() => {
+          if (!signInBusy) {
+            setSignInPrompt(null);
+            setSignInError(null);
+          }
+        }}
+        onSignIn={handleSignIn}
+        loading={signInBusy}
+        error={signInError}
+        title={signInPrompt?.title}
+        message={signInPrompt?.message}
+      />
       {uiState.showPathRename && canManagePath && (
         <PathRename
           pathId={pathId}

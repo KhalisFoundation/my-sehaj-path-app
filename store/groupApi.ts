@@ -28,6 +28,7 @@ import type {
 import { SEHAJ_API_BASE_URL } from '../api/config';
 import { client } from '../api/generated/client.gen';
 import { store } from './index';
+import { isoToLegacy, legacyToIso } from './syncDateUtils';
 import { captureSyncSession, syncSessionHeaders } from './syncSession';
 import { recordError } from '../utils/crashlytics';
 
@@ -53,7 +54,7 @@ export type GroupResult<T> =
    * own wording, which is written for the reader — "Somebody else has this
    * reading time" rather than a status code.
    */
-  | { ok: false; kind: 'refused'; status: number; message: string }
+  | { ok: false; kind: 'refused'; status: number; message: string; code?: string }
   /** Never reached the server, or the session is gone. Retrying may work. */
   | { ok: false; kind: 'unreachable' | 'signed-out'; message: string };
 
@@ -117,6 +118,11 @@ const messageFrom = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
+const codeFrom = (error: unknown): string | undefined => {
+  const code = (error as { code?: unknown } | null)?.code;
+  return typeof code === 'string' ? code : undefined;
+};
+
 /**
  * Run one call with the current session attached.
  *
@@ -130,7 +136,8 @@ const call = async <T>(
     data?: T;
     error?: unknown;
     response?: { status: number };
-  }>
+  }>,
+  allowEmptySuccess = false
 ): Promise<GroupResult<T>> => {
   const session = captureSyncSession(store.getState());
   if (!session) {
@@ -141,7 +148,7 @@ const call = async <T>(
     const result = await run(syncSessionHeaders(session));
     const status = 'response' in result ? result.response?.status ?? 0 : 0;
 
-    if (result.error !== undefined || result.data === undefined) {
+    if (result.error !== undefined || (!allowEmptySuccess && result.data === undefined)) {
       // A 401 is not "the server refused this action" — the session itself is
       // over, and every screen wants to react to that differently from a 409.
       if (status === 401) {
@@ -163,10 +170,11 @@ const call = async <T>(
         kind: 'refused',
         status,
         message: messageFrom(result.error, fallback),
+        code: codeFrom(result.error),
       };
     }
 
-    return { ok: true, data: result.data };
+    return { ok: true, data: result.data as T };
   } catch (error) {
     // The generated client throws only for transport failures; a refusal comes
     // back as `error`. So anything landing here never reached the server.
@@ -191,12 +199,24 @@ const personalDatesForGroup = (sehajPathId: string): string[] => {
     return [];
   }
   const pathId = Number(meta[0]);
-  return (
+  const dates =
     store
       .getState()
       .paths.dates.find((entry) => entry.pathid === pathId)
-      ?.dates.map((date) => date.date) ?? []
-  );
+      ?.dates.map((date) => date.date) ?? [];
+
+  // `enableSharing` deliberately remains compatible with the v3 API contract
+  // and accepts legacy D-MMMM-YYYY dates. Local data can now contain ISO dates
+  // after the Day.js migration, however. Normalize only at this API boundary
+  // so either persisted representation can turn a personal path back into a
+  // group after its last member leaves.
+  return dates.flatMap((date) => {
+    if (legacyToIso(date) !== null) {
+      return [date];
+    }
+    const legacyDate = isoToLegacy(date);
+    return legacyDate === null ? [] : [legacyDate];
+  });
 };
 
 export const enableSharing = (sehajPathId: string) =>
@@ -293,7 +313,12 @@ export const joinInvite = (token: string): Promise<GroupResult<SehajPathMember>>
 
 export const listMembers = (sehajPathId: string): Promise<GroupResult<SehajPathMember[]>> =>
   call('Could not load the members.', (headers) =>
-    sehajPathMembersControllerListMembers({ path: { sehajPathId }, headers })
+    sehajPathMembersControllerListMembers({
+      path: { sehajPathId },
+      // The generated contract models this feature header as required. Keep it
+      // explicit here even though all authenticated group calls receive it.
+      headers: { ...headers, 'x-sehaj-path-error-codes': '1' },
+    })
   );
 
 /** Remove the signed-in member from a shared path. */
@@ -306,6 +331,25 @@ export const leavePath = (
       path: { sehajPathId, memberId },
       headers,
     })
+  );
+
+/** Permanently delete a shared path for every member. Admins only. */
+export const deleteSharedPath = (sehajPathId: string): Promise<GroupResult<void>> =>
+  call(
+    'Could not delete this shared path.',
+    (headers) =>
+      client.delete({
+        url: '/sehaj-path/paths/{sehajPathId}',
+        path: { sehajPathId },
+        headers: {
+          ...headers,
+          // This route receives the server-owned group UUID. Tell the API to
+          // resolve the canonical row before the legacy per-owner pathId, as
+          // those UUID namespaces can collide on older data.
+          'x-sehaj-path-identity': 'canonical',
+        },
+      }),
+    true
   );
 
 export const makeMemberAdmin = (

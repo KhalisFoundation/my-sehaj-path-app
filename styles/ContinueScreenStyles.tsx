@@ -30,6 +30,17 @@ export const ContinueScreenStyles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
   },
+  accountSyncLoading: {
+    alignItems: 'center',
+    gap: UIConstants.RHYTHM,
+    paddingVertical: UIConstants.PADDING,
+  },
+  accountSyncLoadingText: {
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    fontSize: UIConstants.BODY_FONT_SIZE,
+    color: UIConstants.PRIMARY_COLOR,
+    textAlign: 'center',
+  },
   container: {
     backgroundColor: UIConstants.SCREEN_OVERLAY,
     height: '100%',

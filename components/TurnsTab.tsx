@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -11,7 +10,8 @@ import {
   type GestureResponderEvent,
 } from 'react-native';
 import { AppText as Text } from './AppText';
-import { TurnsTabStyles as styles } from '@styles';
+import { Dialog } from './Dialog';
+import { DialogStyles as dialogStyles, TurnsTabStyles as styles } from '@styles';
 import {
   CALENDAR_CONTEXT_HOURS,
   CALENDAR_TIMELINE_HOUR_HEIGHT,
@@ -200,6 +200,9 @@ export const TurnsTab = ({
   const [headerHeight, setHeaderHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(0);
   const [requestedScrollAt, setRequestedScrollAt] = useState<Date | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<SehajPathSlot | null>(null);
+  const [deletingSlotId, setDeletingSlotId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { height: windowHeight } = useWindowDimensions();
   const scheduleViewportRef = useRef<ScrollView>(null);
   const initialViewportAppliedRef = useRef(false);
@@ -304,6 +307,48 @@ export const TurnsTab = ({
     headerHeight > 0 && footerHeight > 0
       ? Math.max(0, windowHeight - headerHeight - footerHeight - UIConstants.PADDING * 23)
       : 0;
+
+  const closeSlotMenu = useCallback(() => {
+    if (deletingSlotId === null) {
+      setDeleteError(null);
+      setSelectedSlot(null);
+    }
+  }, [deletingSlotId]);
+  const handleEditSelectedSlot = useCallback(() => {
+    if (selectedSlot && onEditSlot) {
+      onEditSlot(selectedSlot);
+    }
+    setSelectedSlot(null);
+  }, [onEditSlot, selectedSlot]);
+  const handleDeleteSelectedSlot = useCallback(async () => {
+    if (!selectedSlot || !onCancelSlot || deletingSlotId !== null) {
+      return;
+    }
+    const slotToDelete = selectedSlot;
+    setDeleteError(null);
+    setDeletingSlotId(slotToDelete.id);
+    try {
+      await onCancelSlot(slotToDelete);
+      await load();
+      setSelectedSlot(null);
+    } catch (error) {
+      recordError(error, 'TurnsTab: failed to delete turn');
+      setDeleteError(
+        error instanceof Error && error.message.length > 0
+          ? error.message
+          : ErrorConstants.FAILED_TO_DELETE_TURN
+      );
+    } finally {
+      setDeletingSlotId(null);
+    }
+  }, [deletingSlotId, load, onCancelSlot, selectedSlot]);
+
+  const retryDeleteSelectedSlot = useCallback(() => {
+    setDeleteError(null);
+    handleDeleteSelectedSlot().catch((error: unknown) => {
+      recordError(error, 'TurnsTab: retry delete turn failed');
+    });
+  }, [handleDeleteSelectedSlot]);
 
   return (
     <>
@@ -456,20 +501,7 @@ export const TurnsTab = ({
                   if (!cancellable) {
                     return;
                   }
-                  Alert.alert('Turn options', slotTimeLabel(slot.sourceSlot), [
-                    { text: Constants.CANCEL, style: 'cancel' },
-                    ...(onEditSlot
-                      ? [{ text: Constants.EDIT_TURN, onPress: () => onEditSlot(slot.sourceSlot) }]
-                      : []),
-                    {
-                      text: 'Delete turn',
-                      style: 'destructive',
-                      onPress: async () => {
-                        await onCancelSlot(slot.sourceSlot);
-                        await load();
-                      },
-                    },
-                  ]);
+                  setSelectedSlot(slot.sourceSlot);
                 };
                 return (
                   <Pressable
@@ -533,6 +565,79 @@ export const TurnsTab = ({
           <Text style={styles.addTurnText}>{Constants.ADD_TURN}</Text>
         </TouchableOpacity>
       </View>
+      <Dialog visible={selectedSlot !== null} onRequestClose={closeSlotMenu}>
+        {deleteError !== null ? (
+          <>
+            <Text style={dialogStyles.title}>{Constants.DELETE_TURN_FAILED_TITLE}</Text>
+            <Text style={dialogStyles.message}>{deleteError}</Text>
+            <View style={dialogStyles.actions}>
+              <TouchableOpacity
+                style={dialogStyles.secondaryButton}
+                onPress={closeSlotMenu}
+                accessibilityRole="button"
+                accessibilityLabel={Constants.CANCEL}
+              >
+                <Text style={dialogStyles.secondaryText}>{Constants.CANCEL}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={dialogStyles.primaryButton}
+                onPress={retryDeleteSelectedSlot}
+                accessibilityRole="button"
+                accessibilityLabel={Constants.RETRY}
+              >
+                <Text style={dialogStyles.primaryText}>{Constants.RETRY}</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={dialogStyles.title}>{Constants.TURN_OPTIONS}</Text>
+            {selectedSlot ? (
+              <Text style={dialogStyles.message}>{slotTimeLabel(selectedSlot)}</Text>
+            ) : null}
+            <View style={dialogStyles.actions}>
+              <TouchableOpacity
+                style={dialogStyles.secondaryButton}
+                onPress={closeSlotMenu}
+                disabled={deletingSlotId !== null}
+                accessibilityRole="button"
+                accessibilityLabel={Constants.CANCEL}
+              >
+                <Text style={dialogStyles.secondaryText}>{Constants.CANCEL}</Text>
+              </TouchableOpacity>
+              {onEditSlot ? (
+                <TouchableOpacity
+                  style={dialogStyles.primaryButton}
+                  onPress={handleEditSelectedSlot}
+                  disabled={deletingSlotId !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={Constants.EDIT_TURN}
+                >
+                  <Text style={dialogStyles.primaryText}>{Constants.EDIT_TURN}</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+            <View style={dialogStyles.links}>
+              <TouchableOpacity
+                style={dialogStyles.linkButton}
+                onPress={handleDeleteSelectedSlot}
+                disabled={deletingSlotId !== null}
+                accessibilityRole="button"
+                accessibilityLabel={Constants.DELETE_TURN}
+              >
+                {deletingSlotId !== null ? (
+                  <View style={dialogStyles.busyLabel}>
+                    <ActivityIndicator color="#B03A2E" size="small" />
+                    <Text style={dialogStyles.destructiveLinkText}>{Constants.DELETING_TURN}</Text>
+                  </View>
+                ) : (
+                  <Text style={dialogStyles.destructiveLinkText}>{Constants.DELETE_TURN}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </Dialog>
     </>
   );
 };

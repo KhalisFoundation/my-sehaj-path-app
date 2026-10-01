@@ -288,10 +288,23 @@ export const syncSlice = createSlice({
       if (!meta) {
         return;
       }
+      // Once this device has durably queued a delete, incidental writes that
+      // arrive while the screen is closing must not resurrect the path. A
+      // delayed progress/rename action used to clear `deletedAt`, replace the
+      // DELETE with an update, and make the card reappear immediately after the
+      // "Path has been deleted" message.
+      //
+      // This does not prevent conflict-based revival of a tombstone learned
+      // from another device: that state has no local DELETE operation, so a
+      // genuinely newer local edit can still be reconciled by `/sync`.
+      if (state.pathOps[pathId]?.kind === 'delete') {
+        return;
+      }
       const ts = advance(at, meta.localUpdatedAt);
       meta.localUpdatedAt = ts;
-      meta.deletedAt = null; // an edit revives a tombstoned path
-      // create when not yet on the server, otherwise update (covers revive too).
+      meta.deletedAt = null;
+      // Create when not yet on the server, otherwise update. This also covers
+      // revival of a remote tombstone, which has no locally queued delete.
       state.pathOps[pathId] = { kind: meta.onServer ? 'update' : 'create', localUpdatedAt: ts };
     },
     markPathDeleted: (state, action: PayloadAction<{ pathId: number; at: number }>) => {

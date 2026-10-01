@@ -4,6 +4,8 @@ import { DialogStyles as styles } from '@styles';
 
 interface DialogProps {
   visible: boolean;
+  /** Render inside an already-present modal (for example the drawer). */
+  nativeModal?: boolean;
   /** Android back / swipe-to-dismiss handler. */
   onRequestClose?: () => void;
   /**
@@ -23,18 +25,36 @@ interface DialogProps {
  * to show inside. Shared inner styles live in `DialogStyles` (title, message,
  * actions, buttons) for callers that want the default treatment.
  */
-const DialogComponent = ({ visible, onRequestClose, onShow, children }: DialogProps) => (
-  <Modal
-    visible={visible}
-    transparent
-    animationType="fade"
-    onRequestClose={onRequestClose}
-    onShow={onShow}
-  >
-    <View style={styles.backdrop}>
+const DialogComponent = ({
+  visible,
+  nativeModal = true,
+  onRequestClose,
+  onShow,
+  children,
+}: DialogProps) => {
+  if (!visible) {
+    return null;
+  }
+
+  const content = (
+    <View
+      style={[styles.backdrop, !nativeModal && styles.inlineBackdrop]}
+      accessibilityViewIsModal
+      importantForAccessibility="yes"
+    >
       <View style={styles.card}>{children}</View>
     </View>
-  </Modal>
-);
+  );
+
+  if (!nativeModal) {
+    return content;
+  }
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onRequestClose} onShow={onShow}>
+      {content}
+    </Modal>
+  );
+};
 
 export const Dialog = React.memo(DialogComponent);

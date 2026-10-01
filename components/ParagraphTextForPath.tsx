@@ -25,6 +25,7 @@ const ParagraphTextForPathComponent = ({
   onSelection,
   index,
   onSave,
+  selectionEnabled = true,
   verseId,
   vishraams,
   vishraamEnabled,
@@ -65,6 +66,9 @@ const ParagraphTextForPathComponent = ({
   );
 
   const triggerLongPress = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     didLongPress.current = true;
     baseLongPressHandler();
   };
@@ -77,6 +81,9 @@ const ParagraphTextForPathComponent = ({
   };
 
   const handlePressIn = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     clearLongPressTimer();
     // Text does not expose delayLongPress. Its native default is 500 ms; use a
     // controlled shorter delay and cancel on movement so paragraph selection is
@@ -95,6 +102,9 @@ const ParagraphTextForPathComponent = ({
   };
 
   const handlePress = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     if (didLongPress.current) {
       didLongPress.current = false;
       return;
@@ -135,11 +145,13 @@ const ParagraphTextForPathComponent = ({
     <Text
       onPress={handlePress}
       accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      onPressIn={handlePressIn}
+      accessibilityRole={selectionEnabled ? 'button' : 'text'}
+      onPressIn={selectionEnabled ? handlePressIn : undefined}
       onPressOut={handlePressOut}
-      accessibilityHint="Tap to select, long press to save this line"
-      disabled={selection.isSaved || selection.found}
+      accessibilityHint={
+        selectionEnabled ? 'Tap to select, long press to save this line' : undefined
+      }
+      disabled={!selectionEnabled || selection.isSaved || selection.found}
       suppressHighlighting={true}
       style={textStyle}
       allowFontScaling={false}

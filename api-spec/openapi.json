@@ -2058,6 +2058,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "x-sehaj-path-error-codes",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -2086,6 +2094,16 @@
           },
           "404": {
             "description": "No such path, or you are not a member of it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Path was deleted",
             "content": {
               "application/json": {
                 "schema": {
@@ -2387,7 +2405,7 @@
             "bearer": []
           }
         ],
-        "summary": "Remove a member, or leave the path yourself.\n\nA member may always remove themselves; removing anybody else requires an\nadmin. The last admin cannot leave while other members remain — somebody\nhas to be able to approve, remove and plan.\n\nSets `REMOVED` rather than deleting the row: slots and sessions reference\nthe membership, and history should stay readable after somebody leaves. A\nturn they were mid-way through is ended, and future reading times they held\nare handed back to the group as open slots.",
+        "summary": "Remove a member, or leave the path yourself.\n\nA member may always remove themselves; removing anybody else requires an\nadmin. The last admin cannot leave while other members remain — somebody\nhas to be able to approve, remove and plan.\n\nA voluntary exit is marked `LEFT`; an admin removing someone is marked\n`REMOVED`. Neither case deletes the row, because slots and sessions\nreference the membership and history should stay readable. A turn they\nwere mid-way through is ended, and future reading times they held are\nhanded back to the group as open slots.",
         "tags": [
           "sehaj-path"
         ]
@@ -4133,6 +4151,16 @@
           },
           "401": {
             "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Only an active admin can delete a shared path",
             "content": {
               "application/json": {
                 "schema": {
@@ -6987,6 +7015,7 @@
             "example": "ACTIVE",
             "enum": [
               "ACTIVE",
+              "LEFT",
               "REMOVED"
             ],
             "type": "string"
@@ -7170,6 +7199,7 @@
             "enum": [
               "NONE",
               "ACTIVE",
+              "LEFT",
               "REMOVED"
             ],
             "type": "string"
@@ -8066,6 +8096,18 @@
             ],
             "type": "string"
           },
+          "sehajPathId": {
+            "type": "string",
+            "description": "Optional shared Sehaj Path identity for an in-app destination.\n\nThis is deliberately notification metadata rather than a new route: older\napp builds ignore unknown FCM data, while newer builds can open the exact\nshared path whose turn changed.",
+            "format": "uuid"
+          },
+          "notificationType": {
+            "type": "string",
+            "description": "A machine-readable event name consumed by newer app builds.",
+            "minLength": 1,
+            "maxLength": 80,
+            "example": "sehaj-path-turn-updated"
+          },
           "baniId": {
             "type": "string",
             "description": "The bani to open. Required in practice by `route: reader` — the app drops\na reader route whose id is not a positive integer.",
@@ -8682,6 +8724,22 @@
         "required": [
           "version",
           "themes"
+        ]
+      },
+      "SettingValueWithClock": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "object",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "value",
+          "updatedAt"
         ]
       },
       "UserSettingsSnapshot": {

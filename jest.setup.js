@@ -25,3 +25,46 @@ jest.mock('@react-native-community/netinfo', () => {
     },
   };
 });
+
+// Push libraries are native at runtime. Keep their contract available to every
+// unit test so importing a screen does not require an installed device module.
+jest.mock('@react-native-firebase/messaging', () => {
+  const messaging = () => ({
+    onMessage: jest.fn(() => jest.fn()),
+    onNotificationOpenedApp: jest.fn(() => jest.fn()),
+    getInitialNotification: jest.fn().mockResolvedValue(null),
+    getToken: jest.fn().mockResolvedValue('test-token'),
+    requestPermission: jest.fn().mockResolvedValue(1),
+  });
+  messaging.setBackgroundMessageHandler = jest.fn();
+  return { __esModule: true, default: messaging };
+});
+
+jest.mock('@notifee/react-native', () => ({
+  __esModule: true,
+  default: {
+    createChannel: jest.fn().mockResolvedValue('general'),
+    displayNotification: jest.fn().mockResolvedValue('notification-id'),
+    requestPermission: jest.fn().mockResolvedValue({ authorizationStatus: 1 }),
+    getNotificationSettings: jest.fn().mockResolvedValue({ authorizationStatus: 1 }),
+    onForegroundEvent: jest.fn(() => jest.fn()),
+    getInitialNotification: jest.fn().mockResolvedValue(null),
+  },
+  AndroidImportance: { HIGH: 4 },
+  AuthorizationStatus: { AUTHORIZED: 1, PROVISIONAL: 2 },
+  EventType: { PRESS: 1, ACTION_PRESS: 2 },
+}));
+
+jest.mock('@react-native-firebase/crashlytics', () => {
+  const instance = {};
+  return {
+    getCrashlytics: jest.fn(() => instance),
+    log: jest.fn(),
+    recordError: jest.fn(),
+    setAttribute: jest.fn(),
+    setAttributes: jest.fn(),
+    setUserId: jest.fn(),
+    setCrashlyticsCollectionEnabled: jest.fn().mockResolvedValue(undefined),
+    crash: jest.fn(),
+  };
+});

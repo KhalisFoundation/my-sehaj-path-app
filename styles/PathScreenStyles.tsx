@@ -86,4 +86,7 @@ export const PathScreenStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  readerLeftButton: {
+    paddingVertical: 7,
+  },
 });

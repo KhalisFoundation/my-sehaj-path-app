@@ -303,6 +303,39 @@ describe('the end of a turn', () => {
   });
 });
 
+describe('path lifecycle events', () => {
+  it('reports deletion only for the path this socket joined', async () => {
+    const onPathDeleted = jest.fn();
+    const { socket } = await start({ onPathDeleted });
+
+    socket.fire('path-deleted', { sehajPathId: 'other-path' });
+    expect(onPathDeleted).not.toHaveBeenCalled();
+
+    socket.fire('path-deleted', { sehajPathId: 'p1' });
+    expect(onPathDeleted).toHaveBeenCalledWith({ sehajPathId: 'p1' });
+  });
+
+  it('does not report deletion after the socket is closed', async () => {
+    const onPathDeleted = jest.fn();
+    const { socket, handle } = await start({ onPathDeleted });
+    handle.close();
+
+    socket.fire('path-deleted', { sehajPathId: 'p1' });
+    expect(onPathDeleted).not.toHaveBeenCalled();
+  });
+
+  it('reports membership ending only for the path this socket joined', async () => {
+    const onMembershipEnded = jest.fn();
+    const { socket } = await start({ onMembershipEnded });
+
+    socket.fire('membership-ended', { sehajPathId: 'other-path' });
+    expect(onMembershipEnded).not.toHaveBeenCalled();
+
+    socket.fire('membership-ended', { sehajPathId: 'p1' });
+    expect(onMembershipEnded).toHaveBeenCalledWith({ sehajPathId: 'p1' });
+  });
+});
+
 describe('how the reader has the text laid out', () => {
   it('reaches followers so they read the same shape of text', async () => {
     const onSettings = jest.fn();

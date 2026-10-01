@@ -13,6 +13,10 @@ interface Props {
   pathName: string;
   /** Called once the path is gone, so the screen showing it can leave. */
   onDeleted: () => void;
+  /** Only a personal-path owner or a shared-path admin may delete the path. */
+  canDelete?: boolean;
+  /** Shared paths delete immediately on the server; personal paths use the outbox. */
+  onDelete?: () => Promise<boolean>;
   /**
    * Called with `true` the moment a delete starts, and `false` if it fails.
    *
@@ -48,6 +52,8 @@ export const PathOptionsMenu = ({
   pathId,
   pathName,
   onDeleted,
+  canDelete = true,
+  onDelete,
   onDeletingChange,
   onLeave,
   leaveRequiresAdminTransfer = false,
@@ -94,7 +100,7 @@ export const PathOptionsMenu = ({
     onDeletingChange?.(true);
     let deleted = false;
     try {
-      deleted = await deletePathCommand(pathId);
+      deleted = await (onDelete?.() ?? deletePathCommand(pathId));
     } catch (error) {
       // A command should normally return false for a handled failure. Keep this
       // boundary for a genuinely unexpected exception so the menu can recover.
@@ -110,7 +116,7 @@ export const PathOptionsMenu = ({
     // failure must still be reported.
     onDeletingChange?.(false);
     setView('error');
-  }, [isDeleting, pathId, onDeleted, onDeletingChange]);
+  }, [isDeleting, onDelete, pathId, onDeleted, onDeletingChange]);
 
   return (
     <>
@@ -143,20 +149,22 @@ export const PathOptionsMenu = ({
                 bubble the tap to the backdrop and dismiss this popover before
                 its selected action receives it. */}
             <View style={[styles.menu, anchor]}>
-              <TouchableOpacity
-                onPress={() => {
-                  // The intent, recorded before the confirmation. Paired with
-                  // `PathDeleted` it shows how many people back out here.
-                  trackEvent('PathOptions', 'click', 'delete pressed');
-                  setView('confirm');
-                }}
-                style={styles.menuItem}
-                accessibilityLabel={Constants.DELETE_SEHAJ_PATH}
-                accessibilityRole="button"
-                accessibilityHint="Tap to delete this Sehaj Path"
-              >
-                <Text style={styles.destructiveItemText}>{Constants.DELETE_SEHAJ_PATH}</Text>
-              </TouchableOpacity>
+              {canDelete && (
+                <TouchableOpacity
+                  onPress={() => {
+                    // The intent, recorded before the confirmation. Paired with
+                    // `PathDeleted` it shows how many people back out here.
+                    trackEvent('PathOptions', 'click', 'delete pressed');
+                    setView('confirm');
+                  }}
+                  style={styles.menuItem}
+                  accessibilityLabel={Constants.DELETE_SEHAJ_PATH}
+                  accessibilityRole="button"
+                  accessibilityHint="Tap to delete this Sehaj Path for everyone"
+                >
+                  <Text style={styles.destructiveItemText}>{Constants.DELETE_SEHAJ_PATH}</Text>
+                </TouchableOpacity>
+              )}
               {onLeave && (
                 <TouchableOpacity
                   onPress={() => {

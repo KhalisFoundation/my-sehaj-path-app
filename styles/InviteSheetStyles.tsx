@@ -133,6 +133,11 @@ export const InviteSheetStyles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
+  busyLabel: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   hint: {
     fontFamily: font.Baloo_Paaji_2_Regular,
     fontSize: 12,

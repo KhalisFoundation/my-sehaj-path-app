@@ -23,6 +23,7 @@ const SimpleTextForPathComponent = ({
   onSelection,
   index,
   onSave,
+  selectionEnabled = true,
   verseId,
   vishraams,
   vishraamEnabled,
@@ -59,6 +60,9 @@ const SimpleTextForPathComponent = ({
   );
 
   const handleLongPress = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     if (isLongPressingRef.current) {
       return;
     }
@@ -74,12 +78,14 @@ const SimpleTextForPathComponent = ({
       onPress={handlePress}
       style={containerStyle}
       accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      onLongPress={handleLongPress}
+      accessibilityRole={selectionEnabled ? 'button' : 'text'}
+      onLongPress={selectionEnabled ? handleLongPress : undefined}
       delayLongPress={Platform.OS === 'ios' ? 350 : 500}
       pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
-      accessibilityHint="Tap to select, long press to save this line"
-      disabled={selection.isSaved || selection.found}
+      accessibilityHint={
+        selectionEnabled ? 'Tap to select, long press to save this line' : undefined
+      }
+      disabled={!selectionEnabled || selection.isSaved || selection.found}
       onLayout={onLayout}
     >
       <Text suppressHighlighting={true} style={textStyle} allowFontScaling={false}>

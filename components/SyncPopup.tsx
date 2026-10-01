@@ -258,11 +258,14 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
         // Succeeded: this device is connected, so the dialog may speak again if
         // it ever legitimately needs to.
         silentAssociationPending.current = null;
-        // Pull once more before releasing the busy state. Home's focus effect
-        // does NOT re-fire when the user was already standing on Home as they
-        // signed in, so nothing else would fetch what another device synced
-        // while this one was signed out — the list would sit stale until the
-        // screen happened to be re-focused.
+        // `/sync` already applied the account snapshot. Automatic association
+        // must stay silent and must not immediately issue a second foreground
+        // refresh when the user opens a path; an explicit Sync/refresh action
+        // remains the place for that extra pull.
+        if (silent) {
+          setBusy(null);
+          return;
+        }
         setLoadingProgress(true);
         try {
           await onForeground();
@@ -501,13 +504,12 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     }
   };
 
-  // A silent restore in flight is the account's reading arriving, which is worth
-  // saying out loud: on a device cleared by logout there is nothing on screen
-  // yet, so an unexplained wait looks like an empty app. The prompted
-  // association is excluded — its own button already shows a spinner, and a
-  // modal on top of that would be the same news twice.
+  // Automatic association/restore is deliberately silent. It can continue in
+  // the background while the user opens a path, but it must not cover the path
+  // with a modal loading notice. An explicit account-switch flow still owns its
+  // loading dialog below.
   const restoring = associating && silentAssociationPending.current !== null;
-  if (loadingProgress || restoring) {
+  if (mode === 'accountSwitch' && (loadingProgress || restoring)) {
     return (
       <Dialog visible onRequestClose={ignoreRequestClose}>
         <View style={styles.loadingState} accessibilityLabel={Constants.LOADING_PROGRESS}>

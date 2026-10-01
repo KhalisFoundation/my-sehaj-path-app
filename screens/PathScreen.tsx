@@ -27,7 +27,7 @@ import {
 } from '@hooks';
 import { fontSizeIndexOf } from '@constants/FontSize';
 import { ReaderFontSizeOverride } from '../hooks/useReaderFontSize';
-import { store } from '../store';
+import { removePathAndSyncState, store } from '../store';
 import { saveGroupPankti } from '../store/groupPaths';
 import { useAppSelector } from '../store/hooks';
 import { useReaderFontSize } from '../hooks/useReaderFontSize';
@@ -309,6 +309,13 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     currentVerseId: number;
     scrollPosition?: number;
   } | null>(null);
+  /**
+   * A verse gives us a safe first placement while an Ang is rendering. Once
+   * that content has laid out, this applies the reader's exact offset within
+   * the verse. Keeping it separate prevents the delayed verse-centre request
+   * from overwriting the live position a follower just received.
+   */
+  const pendingRemoteScrollPosition = useRef<number | null>(null);
   const readerLayoutRef = useRef<{
     larivaar?: boolean;
     paragraphMode?: boolean;
@@ -323,6 +330,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     vishraamsSource?: string;
     fontSizeIndex?: number;
   } | null>(null);
+  const [remoteReplayKey, setRemoteReplayKey] = useState(0);
   const latestSaved = useRef<{
     angNumber: number;
     verseId: number;
@@ -718,6 +726,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         jumpToAng(currentAng);
         setScrollToVerseId(position.currentVerseId);
         setScrollToVerseRequestKey((key) => key + 1);
+        pendingRemoteScrollPosition.current =
+          typeof position.scrollPosition === 'number' ? position.scrollPosition : null;
         fetchFromBaniDB(currentAng).catch((error) => {
           recordError(error, 'PathScreen: failed to apply remote ang');
         });
@@ -728,6 +738,8 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         placedFromRemote.current = true;
         setScrollToVerseId(position.currentVerseId);
         setScrollToVerseRequestKey((key) => key + 1);
+        pendingRemoteScrollPosition.current =
+          typeof position.scrollPosition === 'number' ? position.scrollPosition : null;
       } else if (typeof position.scrollPosition === 'number') {
         // Same ang, so this is the reader scrolling within the page. Follow the
         // offset directly: the verse only changes when the reader crosses a
@@ -761,7 +773,36 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     const pending = pendingRemotePosition.current;
     pendingRemotePosition.current = null;
     applyRemotePosition(pending);
-  }, [isFollowing, readerLayout, applyRemotePosition]);
+  }, [isFollowing, readerLayout, remoteReplayKey, applyRemotePosition]);
+
+  useEffect(() => {
+    const remoteAng = latestRemote.current?.currentAng;
+    if (
+      !isFollowing ||
+      pendingRemoteScrollPosition.current === null ||
+      !pathContent ||
+      (remoteAng !== undefined && displayReadingAng(pathContent.source.pageNo) !== remoteAng)
+    ) {
+      return;
+    }
+
+    const remoteScrollPosition = pendingRemoteScrollPosition.current;
+    // PathReader first resolves the requested verse during its layout effect.
+    // Applying the reader's offset on the next frame makes that exact live
+    // position the final command, rather than leaving the follower centered on
+    // an older/saved panktee.
+    const frame = requestAnimationFrame(() => {
+      if (pendingRemoteScrollPosition.current !== remoteScrollPosition) {
+        return;
+      }
+      pendingRemoteScrollPosition.current = null;
+      scrollOffset.current = remoteScrollPosition;
+      scrollRef.current?.scrollTo({ y: remoteScrollPosition, animated: false });
+      isRestoringScroll.current = false;
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [isFollowing, pathContent, scrollToVerseRequestKey]);
 
   /**
    * Mark the line the group has read to.
@@ -868,6 +909,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     },
     onScroll: debouncedScrollSave,
     onTakeoverSave: saveTakeoverPankti,
+    onPathDeleted: () => {
+      store.dispatch(removePathAndSyncState({ pathId: route.params.pathId }));
+      navigation.popTo(Routes.Home, { pathDeleted: true });
+    },
+    onMembershipEnded: () => {
+      store.dispatch(removePathAndSyncState({ pathId: route.params.pathId }));
+      navigation.popTo(Routes.Home, { pathMembershipEnded: true });
+    },
     onError: showErrorAlert,
   });
 
@@ -968,6 +1017,16 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
               if (matchedPathDate.current) {
                 matchedPathDate.current.scrollPosition = saved.scrollPosition;
               }
+            }
+
+            // The socket may have supplied the reader's snapshot before this
+            // device finished loading its own saved checkpoint. Reapply it now:
+            // otherwise this local async load silently wins and the follower
+            // jumps back to their saved panktee on the reader's first movement.
+            if (followingRef.current && latestRemote.current) {
+              pendingRemotePosition.current = latestRemote.current;
+              placedFromRemote.current = false;
+              setRemoteReplayKey((key) => key + 1);
             }
           }
         }
@@ -1257,6 +1316,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
               onContentSizeChange={handleReaderContentSizeChange}
               scrollEnabled={canDrivePage}
               canChangeAng={canDrivePage}
+              canSave={!isFollowing}
               layoutOverride={isFollowing ? readerLayout ?? undefined : undefined}
             />
           </PathSelectionProvider>

@@ -34,6 +34,8 @@ interface PathReaderProps {
    * back — so it is removed rather than left to lose that argument.
    */
   canChangeAng?: boolean;
+  /** False while following: no verse long-press or save interaction. */
+  canSave?: boolean;
   /**
    * The reader's text layout, while following one.
    *
@@ -98,6 +100,7 @@ const PathReaderComponent = ({
   pathContent,
   scrollEnabled = true,
   canChangeAng = true,
+  canSave = true,
   layoutOverride,
   scrollRef,
   scrollOffset,
@@ -357,6 +360,7 @@ const PathReaderComponent = ({
                       renderWordSegments={renderWordSegments}
                       onSelection={createSelectionHandler(globalIndex - 1, verseId)}
                       onSave={createSaveHandler(verseId)}
+                      selectionEnabled={canSave}
                       onLayout={createParagraphVerseLayoutHandler(verseId, shabadIndex)}
                       index={globalIndex}
                       verseId={verseId}
@@ -388,6 +392,7 @@ const PathReaderComponent = ({
           gurbaniLine={gurbaniLine}
           onSelection={createSelectionHandler(index, path.verseId)}
           onSave={createSaveHandler(path.verseId)}
+          selectionEnabled={canSave}
           onLayout={createLayoutHandler(path.verseId)}
           index={index + 1}
           verseId={path.verseId}
@@ -407,6 +412,7 @@ const PathReaderComponent = ({
     vishraamsSource,
     createSelectionHandler,
     createSaveHandler,
+    canSave,
     createLayoutHandler,
     createParagraphVerseLayoutHandler,
     createParagraphVerseTextLayoutHandler,

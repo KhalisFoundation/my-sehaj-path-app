@@ -37,6 +37,10 @@ interface Props {
   onScroll: () => void;
   /** Save the old reader's first visible panktee during a takeover. */
   onTakeoverSave?: (verseId: number, scrollPosition: number) => void;
+  /** The server deleted the shared path while this reader was connected. */
+  onPathDeleted?: () => void;
+  /** The current user was removed from the shared path while connected. */
+  onMembershipEnded?: () => void;
   onError: (message: string) => void;
 }
 
@@ -58,6 +62,8 @@ export const useReadingSession = ({
   onFinishComplete,
   onScroll,
   onTakeoverSave,
+  onPathDeleted,
+  onMembershipEnded,
   onError,
 }: Props) => {
   const isFollowing = live !== undefined && !live.driving;
@@ -74,7 +80,15 @@ export const useReadingSession = ({
   const [takeoverSeconds, setTakeoverSeconds] = useState<number | null>(null);
 
   const onReadingEnded = useCallback(
-    (ended: { readerLabel: string; endAng: number }) => {
+    (ended: { readerLabel: string; endAng: number; endReason?: 'DISCONNECTED' }) => {
+      if (ended.endReason === 'DISCONNECTED') {
+        setEndedBy(null);
+        setEndedAt(null);
+        setEndedNoticeOpen(false);
+        setReaderRejoined(false);
+        setReaderLeftNoticeOpen(true);
+        return;
+      }
       setReaderLeftNoticeOpen(false);
       setReaderRejoined(false);
       setEndedBy(ended.readerLabel);
@@ -183,6 +197,8 @@ export const useReadingSession = ({
     onTakeoverCompleted,
     onTakeoverStarted,
     onTakeoverCancelled,
+    onPathDeleted,
+    onMembershipEnded,
     onSettings: onReaderLayout,
     settings: ownLayout,
   });

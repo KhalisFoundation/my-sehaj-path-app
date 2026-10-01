@@ -182,6 +182,22 @@ describe('the invite sheet', () => {
     expect(queryByText('Copy Link')).toBeNull();
   });
 
+  it('does not offer a cached link after the server says it was revoked', async () => {
+    await AsyncStorage.setItem(
+      'sehaj-path-invite:p1',
+      JSON.stringify({
+        link: 'http://localhost:3500/invite/revoked',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      })
+    );
+    minted();
+
+    const { findByText, queryByText } = renderSheet();
+
+    expect(await findByText('Create link')).toBeTruthy();
+    expect(queryByText('Copy Link')).toBeNull();
+  });
+
   it('does not show create-link controls when active invites cannot be loaded', async () => {
     enableSharingMock.mockResolvedValue({ ok: true, data: { sharing: 'PUBLIC' } } as never);
     listActiveInvitesMock.mockResolvedValue({

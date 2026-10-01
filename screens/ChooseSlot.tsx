@@ -108,6 +108,11 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
     () => initialSelection(route.params.initialStartsAt),
     [route.params.initialStartsAt]
   );
+  const originalStartsAt = useMemo(
+    () => timeOnDay(initial.day, initial.time),
+    [initial.day, initial.time]
+  );
+  const originalDurationMinutes = route.params.initialDurationMinutes ?? 15;
   useScreenAnalytics('ChooseSlot', 'ChooseSlot');
   const [day, setDay] = useState(initial.day);
   const [time, setTime] = useState(initial.time);
@@ -240,8 +245,16 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
     setTimePickerOpen(true);
   }, [time]);
 
+  const hasChanges = useMemo(
+    () =>
+      !isEditing ||
+      startsAt.getTime() !== originalStartsAt.getTime() ||
+      minutes !== originalDurationMinutes,
+    [isEditing, minutes, originalDurationMinutes, originalStartsAt, startsAt]
+  );
+
   const book = useCallback(async () => {
-    if (!availability?.available || booking) {
+    if (!availability?.available || booking || (isEditing && !hasChanges)) {
       return;
     }
     setBooking(true);
@@ -275,9 +288,9 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
     } finally {
       setBooking(false);
     }
-  }, [availability, booking, editingSlotId, isEditing, load, navigation, sehajPathId]);
+  }, [availability, booking, editingSlotId, hasChanges, isEditing, load, navigation, sehajPathId]);
 
-  const addDisabled = availability?.available !== true || booking;
+  const addDisabled = availability?.available !== true || booking || (isEditing && !hasChanges);
   let actionLabel = isEditing ? Constants.SAVE_TURN_CHANGES : Constants.ADD_TURN;
   if (booking) {
     actionLabel = isEditing ? Constants.EDITING : Constants.BOOKING;

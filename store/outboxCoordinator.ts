@@ -279,14 +279,27 @@ export const createOutboxCoordinator = (
 
     try {
       if (op.kind === 'delete') {
+        // A PUBLIC path may temporarily have only its owner left. Continue
+        // renders that state without a second member, but the server row is
+        // still a group and must be addressed by its canonical groupId.
+        const hasCanonicalPathId = Boolean(local.meta.groupId);
+        const deletePathId = hasCanonicalPathId ? local.meta.groupId! : serverPathId;
         const res = await sehajPathsControllerRemove({
-          path: { pathId: serverPathId },
-          headers: syncSessionHeaders(session),
+          path: { pathId: deletePathId },
+          headers: {
+            ...syncSessionHeaders(session),
+            // A shared path is addressed by the server-owned group UUID, not
+            // by this device's legacy sync UUID. Opt into canonical-first
+            // DELETE resolution so a coincidentally matching personal path
+            // cannot be deleted instead. Older builds omit this header and
+            // keep their legacy pathId behaviour.
+            ...(hasCanonicalPathId ? { 'x-sehaj-path-identity': 'canonical' } : {}),
+          },
         });
         if (!ownsCurrentSession(session)) {
           return 'stale';
         }
-        if (res.error && res.response?.status !== 404) {
+        if (res.error) {
           const outcome = classify(res.response?.status);
           if (outcome === 'permanent') {
             recordError(
@@ -297,7 +310,11 @@ export const createOutboxCoordinator = (
           }
           return outcome;
         }
-        // 2xx or 404 means the path is gone on the server; remove it locally.
+        // DELETE is idempotent on the API: both the first successful delete and
+        // a retry after a lost response return 204. A 404 therefore means this
+        // local UUID did not identify the server row; treating it as success
+        // hid the card briefly, then the next GET downloaded the still-live
+        // path again.
         store.dispatch(removePathAndSyncState({ pathId }));
         return 'acked';
       }

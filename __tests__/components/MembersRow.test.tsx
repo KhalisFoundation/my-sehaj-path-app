@@ -6,13 +6,15 @@ import { store } from '../../store';
 import type { SehajPathMember } from '@api/generated/types.gen';
 
 const onAdd = jest.fn();
+const onCreateInvite = jest.fn();
 
 const member = (over: Partial<SehajPathMember> = {}) =>
   ({
     id: 'm1',
     displayLabel: 'Inder Singh',
-    role: 'MEMBER',
+    role: 'ADMIN',
     status: 'ACTIVE',
+    isMine: true,
     ...over,
   } as SehajPathMember);
 
@@ -22,7 +24,14 @@ const renderRow = (
 ) =>
   render(
     <Provider store={store}>
-      <MembersRow members={members} avatarUriFor={avatarUriFor} onAdd={onAdd} />
+      <MembersRow
+        members={members}
+        avatarUriFor={avatarUriFor}
+        onAdd={onAdd}
+        inviteStatus="none"
+        onCreateInvite={onCreateInvite}
+        canManageMembers
+      />
     </Provider>
   );
 
@@ -35,8 +44,8 @@ describe('the members row', () => {
       member({ id: 'm2', displayLabel: 'Gurbaj Singh' }),
     ]);
 
-    expect(getByText('Inder Singh')).toBeTruthy();
-    expect(getByText('Gurbaj Singh')).toBeTruthy();
+    expect(getByText(/Inder Singh/)).toBeTruthy();
+    expect(getByText(/Gurbaj Singh/)).toBeTruthy();
   });
 
   it('falls back to an initial when there is no picture', () => {
@@ -64,15 +73,15 @@ describe('the members row', () => {
     expect(queryByText('I')).toBeNull();
   });
 
-  it('opens the invite sheet from the plus', () => {
-    const { getByLabelText } = renderRow([member()]);
-    fireEvent.press(getByLabelText('Invite a member'));
-    expect(onAdd).toHaveBeenCalled();
+  it('offers an admin a way to create an invite link', () => {
+    const { getByText } = renderRow([member()]);
+    fireEvent.press(getByText('Create link'));
+    expect(onCreateInvite).toHaveBeenCalledWith(true);
   });
 
   it('still offers the plus when nobody has joined yet', () => {
     // The empty state is exactly when inviting matters most.
-    const { getByLabelText } = renderRow([]);
-    expect(getByLabelText('Invite a member')).toBeTruthy();
+    const { getByText } = renderRow([]);
+    expect(getByText('Create link')).toBeTruthy();
   });
 });

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Constants } from '@constants';
 import { DialogStyles, PathScreenStyles } from '@styles';
+import { AppText as Text } from './AppText';
 import { Dialog } from './Dialog';
 import { FinishReadingSheet } from './FinishReadingSheet';
 
@@ -69,12 +70,11 @@ export const PathLiveStatus = ({
         <Dialog visible={readerLeftNoticeOpen} onRequestClose={onDismissReaderLeft}>
           <Text style={DialogStyles.title}>Reader has left</Text>
           <Text style={DialogStyles.message}>
-            {liveReaderLabel ?? 'The reader'} has disconnected. Their reading is paused while we
-            wait for them to reconnect. We will resume automatically if they return.
+            {liveReaderLabel ?? 'The reader'} has left the reading.
           </Text>
           <View style={DialogStyles.actions}>
             <Pressable
-              style={DialogStyles.primaryButton}
+              style={[DialogStyles.primaryButton, DialogStyles.compactPrimaryButton]}
               onPress={onLeaveAfterReading}
               accessibilityRole="button"
             >

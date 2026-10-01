@@ -54,7 +54,16 @@ export const JoinPath = ({ route, navigation }: Props) => {
           showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
           return false;
         }
-        navigation.replace(Routes.Continue, { pathId: localPathId, initialTab: 'progress' });
+        // Keep the canonical group id on the route as well as in Redux. The
+        // latter is normally written by `ensureAccessiblePath`, but Continue
+        // must be able to fetch members/current-session on its very first
+        // focused render even if persistence or a Redux update is still
+        // settling after the join.
+        navigation.replace(Routes.Continue, {
+          pathId: localPathId,
+          sehajPathId,
+          initialTab: 'progress',
+        });
         return true;
       } catch (error) {
         showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);

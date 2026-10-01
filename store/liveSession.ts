@@ -66,6 +66,8 @@ export interface LiveReadingEnded {
   readerLabel: string;
   endAng: number;
   endVerseId: number;
+  /** Optional so the app remains compatible with an API deployed before it. */
+  endReason?: 'DISCONNECTED';
 }
 
 /** The reader's socket dropped, but the server is holding their turn during grace. */
@@ -93,6 +95,15 @@ export interface LiveReaderTakeoverCompleted {
   currentVerseId: number;
   scrollPosition: number;
   sequence: number;
+}
+
+export interface LivePathDeleted {
+  sehajPathId: string;
+}
+
+/** The current user was removed from, or left, this shared path. */
+export interface LiveMembershipEnded {
+  sehajPathId: string;
 }
 
 /**
@@ -137,6 +148,10 @@ export interface LiveOptions {
   onTakeoverStarted?: (takeover: LiveReaderTakeoverStarted) => void;
   onTakeoverCancelled?: (takeover: { takeoverId: string }) => void;
   onTakeoverCompleted?: (takeover: LiveReaderTakeoverCompleted) => void;
+  /** The server tombstoned this path and is closing the room. */
+  onPathDeleted?: (deleted: LivePathDeleted) => void;
+  /** The current user no longer belongs to this path and is being disconnected. */
+  onMembershipEnded?: (event: LiveMembershipEnded) => void;
   /** The reader changed how the text is laid out. Followers only. */
   onSettings?: (settings: LiveReadingSettings) => void;
   onEnded: (reason: LiveEnd) => void;
@@ -209,6 +224,8 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
     onTakeoverStarted,
     onTakeoverCancelled,
     onTakeoverCompleted,
+    onPathDeleted,
+    onMembershipEnded,
     onSettings,
     onEnded,
   } = options;
@@ -364,6 +381,18 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
   socket.on('reader-takeover-completed', (event: LiveReaderTakeoverCompleted) => {
     if (typeof event?.takeoverId === 'string' && typeof event?.sessionId === 'string') {
       onTakeoverCompleted?.(event);
+    }
+  });
+
+  socket.on('path-deleted', (event: LivePathDeleted) => {
+    if (!closed && event?.sehajPathId === sehajPathId) {
+      onPathDeleted?.(event);
+    }
+  });
+
+  socket.on('membership-ended', (event: LiveMembershipEnded) => {
+    if (!closed && event?.sehajPathId === sehajPathId) {
+      onMembershipEnded?.(event);
     }
   });
 

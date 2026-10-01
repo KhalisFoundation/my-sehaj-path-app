@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { View, ImageBackground, ScrollView, BackHandler, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -41,6 +41,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const syncMeta = useAppSelector((state) => state.sync.meta);
   const { handleDrawerNavigate } = useDrawerNavigation();
   const pathDeleted = route.params?.pathDeleted === true;
+  const pathMembershipEnded = route.params?.pathMembershipEnded === true;
   useScreenAnalytics('HomeScreen', 'HomeScreen');
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
@@ -91,14 +92,25 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
             }
             const result = await listMembers(groupId);
             if (!result.ok) {
-              // 403/404 both mean this account cannot access this group any
-              // more (the API may hide a missing path as 404). Do not remove
-              // it for 401, offline, or 5xx failures: those can recover and
-              // are not proof that the path was removed.
-              const accessWasRemoved =
-                result.kind === 'refused' && (result.status === 403 || result.status === 404);
+              // A status alone is not enough to remove user data. Newer builds
+              // opt into these exact server codes; any other 4xx/5xx response
+              // remains visible and may recover on the next refresh.
+              const pathWasDeleted =
+                result.kind === 'refused' &&
+                result.status === 410 &&
+                result.code === 'PATH_DELETED';
+              const membershipEnded =
+                result.kind === 'refused' &&
+                result.status === 404 &&
+                result.code === 'PATH_MEMBERSHIP_ENDED';
+              const accessWasRemoved = pathWasDeleted || membershipEnded;
               if (accessWasRemoved && !cancelled) {
                 dispatch(removePathAndSyncState({ pathId: path.pathId }));
+                if (pathWasDeleted) {
+                  navigation.setParams({ pathDeleted: true });
+                } else if (membershipEnded) {
+                  navigation.setParams({ pathMembershipEnded: true });
+                }
               }
               return [path.pathId, []] as const;
             }
@@ -127,7 +139,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
       return () => {
         cancelled = true;
       };
-    }, [dispatch, paths, syncMeta])
+    }, [dispatch, navigation, paths, syncMeta])
   );
 
   // Home is the safe place to pull another device's progress. The lifecycle
@@ -161,11 +173,20 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           progress={path.progress}
           members={membersByPathId[path.pathId]}
           onPress={() => {
-            navigation.push(Routes.Continue, { pathId: path.pathId });
+            // A server group id is also created for a personal path when its
+            // owner enables invitations. That makes it *shareable*, not
+            // shared. Passing that id to Continue made a same-named personal
+            // path look like a group path and exposed the Turns tab.
+            const meta = syncMeta[path.pathId];
+            const sehajPathId = meta?.shared === true ? meta.groupId : undefined;
+            navigation.push(
+              Routes.Continue,
+              sehajPathId ? { pathId: path.pathId, sehajPathId } : { pathId: path.pathId }
+            );
           }}
         />
       )),
-    [pathInProgress, membersByPathId, navigation]
+    [pathInProgress, membersByPathId, navigation, syncMeta]
   );
 
   const pathCompletedCards = useMemo(
@@ -225,6 +246,14 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
             icon={<SyncedCheckIcon />}
             style={HomeScreenStyles.deletedNotice}
             onHidden={() => navigation.setParams({ pathDeleted: undefined })}
+          />
+        ) : null}
+        {pathMembershipEnded ? (
+          <Message
+            message={Constants.PATH_MEMBERSHIP_ENDED}
+            icon={<SyncedCheckIcon />}
+            style={HomeScreenStyles.deletedNotice}
+            onHidden={() => navigation.setParams({ pathMembershipEnded: undefined })}
           />
         ) : null}
         <DrawerMenu
