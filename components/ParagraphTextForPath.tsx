@@ -14,6 +14,7 @@ import { useAppSelector } from '../store/hooks';
 import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { usePathSelection } from './PathSelectionContext';
 import { VishraamsText } from './VishraamsText';
+import { AndroidParagraphSaveIcon } from './AndroidParagraphSaveIcon';
 
 type ParagraphTextForPathProps = PathTextProps & {
   onTextLayout?: (event: any) => void;
@@ -175,14 +176,16 @@ const ParagraphTextForPathComponent = ({
 
       {isSelected && (
         <Text allowFontScaling={false}>
-          <SaveIcon
-            color={UIConstants.SAVE_ICON_COLOR}
-            width={fontSize * 1.2}
-            height={fontSize * 1.2}
-            style={{
-              transform: [{ translateY: Platform.OS === 'ios' ? -fontSize * 0.3 : fontSize * 0.3 }],
-            }}
-          />
+          {Platform.OS === 'android' ? (
+            <AndroidParagraphSaveIcon size={fontSize * 1.2} />
+          ) : (
+            <SaveIcon
+              color={UIConstants.SAVE_ICON_COLOR}
+              width={fontSize * 1.2}
+              height={fontSize * 1.2}
+              style={{ transform: [{ translateY: -fontSize * 0.3 }] }}
+            />
+          )}
         </Text>
       )}
     </Text>
