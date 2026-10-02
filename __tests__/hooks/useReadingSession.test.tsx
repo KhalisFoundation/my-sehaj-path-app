@@ -12,7 +12,10 @@ jest.mock('../../store/groupApi', () => ({
   checkpointReading: jest.fn().mockResolvedValue({ ok: true }),
   finishReading: jest.fn(),
 }));
-jest.mock('../../utils/sharedPathAnalytics', () => ({ trackSharedPathEvent: jest.fn() }));
+jest.mock('../../utils/sharedPathAnalytics', () => ({
+  trackSharedPathEvent: jest.fn(),
+  trackSharedPathOutcome: jest.fn(),
+}));
 
 const useLiveReadingMock = useLiveReading as jest.MockedFunction<typeof useLiveReading>;
 type SessionValue = ReturnType<typeof useReadingSession>;

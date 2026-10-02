@@ -616,7 +616,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
         <Text style={styles.title}>{Constants.SWITCHED_ACCOUNT_TITLE}</Text>
         <Text style={styles.message}>
           <Text style={styles.strong}>{switchedFrom}</Text>
-          {`'s progress is saved on this device and comes back when you sign in as that account.`}
+          {`'s progress is saved on this device and comes back when you login as that account.`}
         </Text>
         <View style={styles.actions}>
           <TouchableOpacity
@@ -688,7 +688,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
           message: (
             <>
               Progress for {who} is on this device, but we could not confirm it is backed up. Please
-              sign in as that account first.
+              login as that account first.
             </>
           ),
         };
@@ -718,7 +718,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       return {
         title: Constants.SWITCHING_ACCOUNT_TITLE,
         message: (
-          <>Progress for {who} stays on this device and returns when you sign in as that account.</>
+          <>Progress for {who} stays on this device and returns when you login as that account.</>
         ),
       };
     };

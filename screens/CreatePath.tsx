@@ -3,7 +3,7 @@ import { ImageBackground, ScrollView, TouchableOpacity, View } from 'react-nativ
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text, AppTextInput } from '../components/AppText';
-import { BackButton, SignInRequiredDialog } from '@components';
+import { BackButton, LoginRequiredDialog } from '@components';
 import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, UIConstants } from '@constants';
 import { CreatePathStyles as styles, SafeAreaStyle } from '@styles';
 import { createPath } from '../store/commands';
@@ -136,10 +136,10 @@ export const CreatePath = ({ navigation }: Props) => {
           </ScrollView>
         </View>
       </ImageBackground>
-      <SignInRequiredDialog
+      <LoginRequiredDialog
         visible={signInPromptVisible}
         onClose={() => setSignInPromptVisible(false)}
-        onSignIn={handleSignIn}
+        onLogin={handleSignIn}
         title={Constants.CREATE_PATH_ADD_MEMBER_LOGIN_TITLE}
         message={Constants.CREATE_PATH_ADD_MEMBER_LOGIN_MESSAGE}
       />

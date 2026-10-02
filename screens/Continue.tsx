@@ -27,7 +27,7 @@ import {
   InviteSheet,
   SuggestedMembersSheet,
   TurnsTab,
-  SignInRequiredDialog,
+  LoginRequiredDialog,
 } from '@components';
 import {
   Constants,
@@ -45,7 +45,7 @@ import {
   recordError,
   showErrorAlert,
   trackEvent,
-  trackSharedPathEvent,
+  trackSharedPathOutcome,
   subscribePushTap,
 } from '@utils';
 import { removePathAndSyncState, store } from '../store';
@@ -68,6 +68,7 @@ import {
   makeMemberAdmin,
   setMemberAdmin,
   removeMember,
+  reportUnexpectedGroupRefusal,
 } from '../store/groupApi';
 import { turnAt, UPCOMING_TURN_LOOKAHEAD_DAYS } from '../store/slotAvailability';
 import type { SehajPathMember, SehajPathSlot } from '@api/generated/types.gen';
@@ -482,8 +483,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const handleSharePath = useCallback(async () => {
     if (!isSignedIn) {
       setSignInPrompt({
-        title: Constants.INVITE_SIGN_IN_TITLE,
-        message: Constants.INVITE_SIGN_IN_REQUIRED,
+        title: Constants.INVITE_LOGIN_TITLE,
+        message: Constants.INVITE_LOGIN_REQUIRED,
       });
       return;
     }
@@ -520,8 +521,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     async (autoCreate = true) => {
       if (!isSignedIn) {
         setSignInPrompt({
-          title: Constants.INVITE_SIGN_IN_TITLE,
-          message: Constants.INVITE_SIGN_IN_REQUIRED,
+          title: Constants.INVITE_LOGIN_TITLE,
+          message: Constants.INVITE_LOGIN_REQUIRED,
         });
         return;
       }
@@ -554,6 +555,11 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const matchedPath = useAppSelector((state) =>
     selectVisiblePaths(state).find((path: PathData) => path.pathId === pathId)
   );
+  // The name is already present in the Redux path record. Reading it directly
+  // avoids briefly rendering the previous value while the derived pathState
+  // catches up after a refresh from another device.
+  const displayedPathName =
+    matchedPath?.pathName || pathState.pathName || pathState.pathData?.pathName || '';
   const previousRoute = useNavigationState((state) => state.routes[state.index - 1]?.name);
   const isFromPath = previousRoute === Routes.Path;
 
@@ -1129,6 +1135,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
    */
   const handleContinue = useCallback(async () => {
     if (!sehajPathId) {
+      trackEvent('Reading', 'click', 'start personal reading');
       navigation.push('Path', { pathId });
       return;
     }
@@ -1154,12 +1161,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
 
     if (readAlongAvailable) {
-      trackSharedPathEvent(activeOwnTurn === null ? 'READ_ALONG' : 'TAKEOVER');
       // A booked member explicitly requesting Continue gets the server-side
       // hand-off. Members without an active slot receive a quick refusal and
       // continue as followers through the existing path below.
       const takeover = await takeoverReading(sehajPathId);
       if (takeover.ok) {
+        trackSharedPathOutcome('TAKEOVER', 'success');
         setJoining(false);
         navigation.push('Path', {
           pathId,
@@ -1174,12 +1181,14 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         });
         return;
       }
+      reportUnexpectedGroupRefusal('takeover reading', takeover, [404, 409]);
       // The live card may have become stale while the takeover request was in
       // flight. Re-read only on this failure path: if the old reader finished,
       // the caller should start a normal (possibly unscheduled) session rather
       // than entering a follower view of a session that no longer exists.
       const latest = await currentSession(sehajPathId);
       if (latest.ok && latest.data && isTurnStillLive(latest.data)) {
+        trackSharedPathOutcome('READ_ALONG', 'success');
         setJoining(false);
         navigation.push('Path', {
           pathId,
@@ -1197,6 +1206,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       const started = await startReading(sehajPathId);
       setJoining(false);
       if (started.ok) {
+        trackSharedPathOutcome('READING_START', 'success');
         navigation.push('Path', {
           pathId,
           live: {
@@ -1210,6 +1220,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         });
         return;
       }
+      reportUnexpectedGroupRefusal('start reading', started, [409]);
       Alert.alert(Constants.READER_START_ERROR_TITLE, started.message);
       setReadAlongAvailable(false);
       return;
@@ -1220,6 +1231,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     // otherwise ask the server to start a normal session. The server leaves
     // slotId null when no booked slot belongs to this member.
     const current = await currentSession(sehajPathId);
+    reportUnexpectedGroupRefusal('current reading session', current, [404, 409]);
 
     const turn = current.ok ? current.data : null;
 
@@ -1250,6 +1262,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       if (!driving) {
         const takeover = await takeoverReading(sehajPathId);
         if (takeover.ok) {
+          trackSharedPathOutcome('TAKEOVER', 'success');
           setJoining(false);
           navigation.push('Path', {
             pathId,
@@ -1264,12 +1277,14 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           });
           return;
         }
+        reportUnexpectedGroupRefusal('takeover reading', takeover, [404, 409]);
       }
       // A live session is already the authoritative destination. If it is
       // another member's session, enter as a follower; do not send the user
       // back to Turns and make them press Read Along again. If it is this
       // member's session, enter as the reader and resume it.
       setJoining(false);
+      trackSharedPathOutcome(driving ? 'READING_RESUME' : 'READ_ALONG', 'success');
       navigation.push('Path', {
         pathId,
         live: {
@@ -1288,6 +1303,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setJoining(false);
 
     if (started.ok) {
+      trackSharedPathOutcome('READING_START', 'success');
       navigation.push('Path', {
         pathId,
         live: {
@@ -1301,6 +1317,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       });
       return;
     }
+    reportUnexpectedGroupRefusal('start reading', started, [409]);
 
     // A live session may have appeared between the current-session request and
     // start. Re-read it once and enter as a follower instead of treating the
@@ -1323,16 +1340,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
 
     Alert.alert(Constants.READER_START_ERROR_TITLE, started.message);
-  }, [
-    navigation,
-    pathId,
-    sehajPathId,
-    joining,
-    members,
-    readAlongAvailable,
-    activeOwnTurn,
-    ownLiveSession,
-  ]);
+  }, [navigation, pathId, sehajPathId, joining, members, readAlongAvailable, ownLiveSession]);
 
   const handleLoginRequired = useCallback(() => {
     setSignInPrompt({
@@ -1351,18 +1359,18 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     try {
       const started = await startLogin({ suppressErrors: true });
       if (!started) {
-        setSignInError('Could not start sign in. Please try again.');
+        setSignInError('Could not start login. Please try again.');
         setSignInPrompt({
-          title: 'Sign in failed',
-          message: 'Could not start sign in. Please try again.',
+          title: 'Login failed',
+          message: 'Could not start login. Please try again.',
         });
       }
     } catch (error: unknown) {
       recordError(error, 'Continue: login from protected action failed');
-      setSignInError('Could not start sign in. Please try again.');
+      setSignInError('Could not start login. Please try again.');
       setSignInPrompt({
-        title: 'Sign in failed',
-        message: 'Could not start sign in. Please try again.',
+        title: 'Login failed',
+        message: 'Could not start login. Please try again.',
       });
     } finally {
       setSignInBusy(false);
@@ -1425,10 +1433,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     if (!mine) {
       return;
     }
-    trackSharedPathEvent('MEMBER_LEAVE');
     leavePath(sehajPathId, mine.id)
       .then((result) => {
         if (result.ok) {
+          trackSharedPathOutcome('MEMBER_LEAVE', 'success');
           // Leaving is a membership change, not a group deletion. Remove only
           // this device's local view after the server confirms the leave; the
           // remaining members keep their cached path and can continue using it.
@@ -1438,6 +1446,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           navigation.popTo(Routes.Home);
           return;
         }
+        reportUnexpectedGroupRefusal('leave path', result, [404]);
         showErrorAlert(result.message);
       })
       .catch((error: unknown) => {
@@ -1452,6 +1461,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     }
     const result = await deleteSharedPath(sehajPathId);
     if (!result.ok) {
+      reportUnexpectedGroupRefusal('delete shared path', result, [404]);
       recordError(new Error(result.message), 'Continue: shared path delete failed', {
         pathId: String(pathId),
         sehajPathId,
@@ -1459,6 +1469,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       });
       return false;
     }
+    trackSharedPathOutcome('DELETE_SHARED_PATH', 'success');
     // The server has committed the group tombstone. Drop this device's cached
     // copy now; connected members receive `path-deleted` and offline members
     // drop it on their next authoritative sync.
@@ -1499,12 +1510,13 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       if (sehajPathId === null) {
         return;
       }
-      trackSharedPathEvent('MEMBER_MAKE_ADMIN');
       try {
         const result = await makeMemberAdmin(sehajPathId, member.id);
         if (result.ok) {
+          trackSharedPathOutcome('MEMBER_MAKE_ADMIN', 'success');
           await loadMembers();
         } else {
+          reportUnexpectedGroupRefusal('make member admin', result, [404]);
           showErrorAlert(result.message);
         }
       } catch (error: unknown) {
@@ -1520,10 +1532,13 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       if (sehajPathId === null) {
         return;
       }
-      trackSharedPathEvent(member.role === 'ADMIN' ? 'MEMBER_REMOVE_ADMIN' : 'MEMBER_MAKE_ADMIN');
       try {
         const result = await setMemberAdmin(sehajPathId, member.id, member.role !== 'ADMIN');
         if (result.ok) {
+          trackSharedPathOutcome(
+            member.role === 'ADMIN' ? 'MEMBER_REMOVE_ADMIN' : 'MEMBER_MAKE_ADMIN',
+            'success'
+          );
           // The role endpoint returns the changed membership. Use it straight
           // away so the Admin label and available actions do not wait for a
           // second members-list request to complete.
@@ -1534,6 +1549,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             recordError(error, 'Continue: refresh members after role update failed');
           });
         } else {
+          reportUnexpectedGroupRefusal('update member role', result, [404]);
           showErrorAlert(result.message);
         }
       } catch (error: unknown) {
@@ -1555,10 +1571,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           text: 'Remove member',
           style: 'destructive',
           onPress: () => {
-            trackSharedPathEvent('MEMBER_REMOVE');
             removeMember(sehajPathId, member.id)
               .then((result) => {
                 if (result.ok) {
+                  trackSharedPathOutcome('MEMBER_REMOVE', 'success');
                   const remainingMembers = members.filter((entry) => entry.id !== member.id);
                   const returnedToPersonal =
                     remainingMembers.length === 1 && remainingMembers[0]?.isMine === true;
@@ -1585,6 +1601,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   });
                   return;
                 }
+                reportUnexpectedGroupRefusal('remove member', result, [404]);
                 showErrorAlert(result.message);
               })
               .catch((error: unknown) => {
@@ -1672,7 +1689,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               {matchedPath && canManagePath ? (
                 <PathOptionsMenu
                   pathId={pathId}
-                  pathName={pathState.pathName || pathState.pathData?.pathName || ''}
+                  pathName={displayedPathName}
                   canDelete={canManagePath}
                   onDelete={sehajPathId !== null ? deletePathForEveryone : undefined}
                   onLeave={sehajPathId !== null ? performLeavePath : undefined}
@@ -1775,14 +1792,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   style={ContinueScreenStyles.sehajHeadingContainer}
                   onPress={handlePathRenamePress}
                   onLongPress={handlePathRenamePress}
-                  accessibilityLabel={`Path name: ${
-                    pathState.pathName || pathState.pathData?.pathName
-                  }`}
+                  accessibilityLabel={`Path name: ${displayedPathName}`}
                   accessibilityRole="button"
                   accessibilityHint={canManagePath ? 'Tap to rename this path' : undefined}
                 >
                   <SecondaryHeading
-                    text={pathState.pathName || pathState.pathData?.pathName || ''}
+                    text={displayedPathName}
                     textStyles={ContinueScreenStyles.sehajHeading}
                   />
                 </Pressable>
@@ -1952,15 +1967,15 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   })
                 }
                 onFollow={() => {
-                  trackSharedPathEvent('READ_ALONG');
+                  trackSharedPathOutcome('READ_ALONG', 'success');
                   navigation.push('Path', { pathId, live: { sehajPathId, driving: false } });
                 }}
                 onCancelSlot={async (slot) => {
-                  trackSharedPathEvent('TURN_DELETE');
                   const result = await cancelSlot(sehajPathId, slot.id);
                   if (!result.ok) {
                     throw new Error(result.message);
                   }
+                  trackSharedPathOutcome('TURN_DELETE', 'success');
                 }}
                 onEditSlot={(slot) =>
                   navigation.navigate(Routes.ChooseSlot, {
@@ -2057,9 +2072,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                 <Text style={ContinueScreenStyles.memberSummaryText}>
                   This Sehaj Path is being done by{' '}
                   <Text style={ContinueScreenStyles.memberSummaryCount}>
-                    {activeMembers.length} people
+                    {`${activeMembers.length}\u00A0people.`}
                   </Text>
-                  .
                 </Text>
               </Pressable>
             )}
@@ -2100,7 +2114,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           onAdded={loadMembers}
         />
       )}
-      <SignInRequiredDialog
+      <LoginRequiredDialog
         visible={signInPrompt !== null}
         onClose={() => {
           if (!signInBusy) {
@@ -2108,7 +2122,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             setSignInError(null);
           }
         }}
-        onSignIn={handleSignIn}
+        onLogin={handleSignIn}
         loading={signInBusy}
         error={signInError}
         title={signInPrompt?.title}

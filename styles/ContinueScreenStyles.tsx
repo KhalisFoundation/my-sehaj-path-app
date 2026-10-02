@@ -206,7 +206,8 @@ export const ContinueScreenStyles = StyleSheet.create({
   memberSummaryText: {
     color: '#111111',
     fontFamily: font.Baloo_Paaji_2_Regular,
-    fontSize: UIConstants.BODY_FONT_SIZE,
+    fontSize: 16,
+    lineHeight: 22,
     textAlign: 'center',
   },
   memberSummaryCount: {

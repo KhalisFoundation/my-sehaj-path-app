@@ -44,7 +44,7 @@ export async function startLogin({
       new Error('login-pending flag could not be saved'),
       'auth: startLogin aborted (secure storage)'
     );
-    reportFailure('Could not start sign in. Please try again.');
+    reportFailure('Could not start login. Please try again.');
     return false;
   }
 
@@ -61,7 +61,7 @@ export async function startLogin({
             new Error('login callback was not consumed'),
             'auth: startLogin callback rejected'
           );
-          reportFailure('Could not complete sign in. Please try again.');
+          reportFailure('Could not complete login. Please try again.');
           return false;
         }
         return true;
@@ -86,7 +86,7 @@ export async function startLogin({
     // Even the system-browser fallback failed to open.
     await clearLoginPending();
     recordError(error, 'auth: startLogin failed to open the login URL');
-    reportFailure('Could not open the sign-in page. Please try again.');
+    reportFailure('Could not open the login page. Please try again.');
     return false;
   }
 }

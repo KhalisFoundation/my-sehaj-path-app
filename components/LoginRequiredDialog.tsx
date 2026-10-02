@@ -5,37 +5,38 @@ import { Dialog } from './Dialog';
 import { Constants } from '@constants';
 import { DialogStyles as styles } from '@styles';
 
-interface SignInRequiredDialogProps {
+interface LoginRequiredDialogProps {
   visible: boolean;
   onClose: () => void;
-  onSignIn: () => void;
+  onLogin: () => void;
   loading?: boolean;
   error?: string | null;
   title?: string;
   message?: string;
 }
 
-/**
- * The shared sign-in prompt for actions that require an account.
- * Keeping this separate from the native Alert gives the prompt the same
- * typography, spacing, and sign-in action on iOS and Android.
- */
-export const SignInRequiredDialog = ({
+/** Shared login prompt for actions that require an account. */
+export const LoginRequiredDialog = ({
   visible,
   onClose,
-  onSignIn,
+  onLogin,
   loading = false,
   error = null,
-  title = Constants.INVITE_SIGN_IN_TITLE,
-  message = Constants.INVITE_SIGN_IN_REQUIRED,
-}: SignInRequiredDialogProps) => (
-  <Dialog visible={visible} onRequestClose={onClose}>
-    <Text style={styles.title}>{title}</Text>
-    <Text style={styles.message}>{message}</Text>
+  title = Constants.INVITE_LOGIN_TITLE,
+  message = Constants.INVITE_LOGIN_REQUIRED,
+}: LoginRequiredDialogProps) => (
+  <Dialog
+    visible={visible}
+    onRequestClose={onClose}
+    backdropStyle={styles.compactBackdrop}
+    cardStyle={styles.compactCard}
+  >
+    <Text style={[styles.title, styles.compactTitle]}>{title}</Text>
+    <Text style={[styles.message, styles.compactMessage]}>{message}</Text>
     {error ? <Text style={styles.error}>{error}</Text> : null}
-    <View style={styles.actions}>
+    <View style={[styles.actions, styles.compactActions]}>
       <TouchableOpacity
-        style={styles.secondaryButton}
+        style={[styles.secondaryButton, styles.compactSecondaryButton]}
         onPress={onClose}
         accessibilityRole="button"
         accessibilityLabel={Constants.CANCEL}
@@ -43,8 +44,8 @@ export const SignInRequiredDialog = ({
         <Text style={styles.secondaryText}>{Constants.CANCEL}</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        style={styles.primaryButton}
-        onPress={onSignIn}
+        style={[styles.primaryButton, styles.compactActionButton]}
+        onPress={onLogin}
         disabled={loading}
         accessibilityRole="button"
         accessibilityLabel={Constants.LOGIN}
@@ -52,7 +53,7 @@ export const SignInRequiredDialog = ({
         {loading ? (
           <View style={styles.busyLabel}>
             <ActivityIndicator color="#FFFFFF" size="small" />
-            <Text style={styles.primaryText}>{Constants.SIGNING_IN}</Text>
+            <Text style={styles.primaryText}>{Constants.LOGGING_IN}</Text>
           </View>
         ) : (
           <Text style={styles.primaryText}>{Constants.LOGIN}</Text>

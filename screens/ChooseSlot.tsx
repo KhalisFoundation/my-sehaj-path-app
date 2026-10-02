@@ -16,14 +16,14 @@ import { AppText as Text } from '../components/AppText';
 import { ChooseSlotStyles as styles } from '@styles';
 import { Constants, ErrorConstants, UIConstants } from '@constants';
 import { CalendarIcon } from '@icons';
-import { bookSlot, loadPlan, updateSlot } from '../store/groupApi';
+import { bookSlot, loadPlan, reportUnexpectedGroupRefusal, updateSlot } from '../store/groupApi';
 import {
   availabilityForSelectedTime,
   MINIMUM_BOOKING_LEAD_MINUTES,
   planWindowFor,
 } from '../store/slotAvailability';
 import { showErrorAlert } from '../utils/Error';
-import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
+import { trackSharedPathOutcome } from '../utils/sharedPathAnalytics';
 import { recordError } from '../utils/crashlytics';
 import type { SehajPathSlot } from '@api/generated/types.gen';
 import type { RootStackParamList } from '../App';
@@ -258,7 +258,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
       return;
     }
     setBooking(true);
-    trackSharedPathEvent('TURN_ADD');
+    const analyticsEvent = isEditing ? 'TURN_EDIT' : 'TURN_ADD';
     try {
       let result;
       if (isEditing) {
@@ -273,12 +273,14 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
       }
 
       if (result.ok) {
+        trackSharedPathOutcome(analyticsEvent, 'success');
         notifyPlanRefresh(sehajPathId, availability.slot.startsAt);
         navigation.goBack();
         return;
       }
 
       showErrorAlert(result.message || ErrorConstants.FAILED_TO_BOOK_TURN);
+      reportUnexpectedGroupRefusal('turn mutation', result, [400, 409]);
       // The database is the final authority if another member books this range
       // while the sheet is open. Refresh so the exact selection becomes disabled.
       await load();

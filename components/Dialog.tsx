@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View } from 'react-native';
+import { Modal, View, type StyleProp, type ViewStyle } from 'react-native';
 import { DialogStyles as styles } from '@styles';
 
 interface DialogProps {
@@ -14,6 +14,9 @@ interface DialogProps {
    * screen, and `visible` alone cannot tell you that happened.
    */
   onShow?: () => void;
+  /** Optional layout overrides for dialogs with a more compact presentation. */
+  backdropStyle?: StyleProp<ViewStyle>;
+  cardStyle?: StyleProp<ViewStyle>;
   /** The dialog's content — title, message, buttons, or anything else. */
   children: React.ReactNode;
 }
@@ -30,6 +33,8 @@ const DialogComponent = ({
   nativeModal = true,
   onRequestClose,
   onShow,
+  backdropStyle,
+  cardStyle,
   children,
 }: DialogProps) => {
   if (!visible) {
@@ -38,11 +43,11 @@ const DialogComponent = ({
 
   const content = (
     <View
-      style={[styles.backdrop, !nativeModal && styles.inlineBackdrop]}
+      style={[styles.backdrop, !nativeModal && styles.inlineBackdrop, backdropStyle]}
       accessibilityViewIsModal
       importantForAccessibility="yes"
     >
-      <View style={styles.card}>{children}</View>
+      <View style={[styles.card, cardStyle]}>{children}</View>
     </View>
   );
 

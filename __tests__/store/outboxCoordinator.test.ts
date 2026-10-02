@@ -51,6 +51,7 @@ const mockUpdate = sehajPathsControllerUpdate as jest.Mock;
 const mockRemove = sehajPathsControllerRemove as jest.Mock;
 const mockSettings = sehajPathSettingsControllerUpsert as jest.Mock;
 const mockSync = sehajPathSyncControllerSync as jest.Mock;
+const mockRecordError = recordError as unknown as jest.Mock;
 
 /** A full SehajPath so create/update responses feed the applier (fromServerPath). */
 const serverSehaj = (over: Partial<SehajPath> = {}): SehajPath => ({
@@ -597,6 +598,34 @@ describe('outboxCoordinator', () => {
     expect(store.getState().sync.pathOps[1]).toBeDefined();
     expect(store.getState().sync.lastError).toBe('network');
     expect(coordinator.getStatus().backoffStep).toBe(1);
+    coordinator.stop();
+  });
+
+  it('reports one Crashlytics event after three consecutive failures with the reason', async () => {
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    mockCreate.mockRejectedValue(new Error('server unavailable'));
+
+    await coordinator.flushNow();
+    await coordinator.flushNow();
+    await coordinator.flushNow();
+    await coordinator.flushNow();
+
+    const reports = mockRecordError.mock.calls.filter(
+      (call: unknown[]) => call[1] === 'outbox: three consecutive sync failures'
+    );
+    expect(reports).toHaveLength(1);
+    expect(reports[0][0]).toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('path create transport: server unavailable'),
+      })
+    );
+    expect(reports[0][2]).toMatchObject({
+      sync_failure_count: '3',
+      sync_failure_outcome: 'network',
+      sync_failure_reason: 'path create transport: server unavailable',
+      sync_pending_path_ops: '1',
+    });
     coordinator.stop();
   });
 

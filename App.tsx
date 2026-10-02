@@ -42,6 +42,8 @@ import {
   showErrorAlert,
   registerPushNotifications,
   subscribePushTap,
+  flushPendingPushTaps,
+  trackEvent,
 } from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
@@ -139,13 +141,7 @@ const PushRegistration = () => {
  * retains presses received before hydration; returning false keeps an event in
  * that bridge until the matching group metadata reaches this device.
  */
-const PushTapRouter = ({
-  navigationReady,
-  activeRouteName,
-}: {
-  navigationReady: boolean;
-  activeRouteName: string | undefined;
-}) => {
+const PushTapRouter = ({ navigationReady }: { navigationReady: boolean }) => {
   const syncMeta = useAppSelector((state) => state.sync.meta);
   const groupIds = useMemo(
     () =>
@@ -173,8 +169,8 @@ const PushTapRouter = ({
           !match ||
           !navigationReady ||
           !pushNavigationRef.isReady() ||
-          activeRouteName === undefined ||
-          activeRouteName === Routes.Splash
+          pushNavigationRef.getCurrentRoute()?.name === undefined ||
+          pushNavigationRef.getCurrentRoute()?.name === Routes.Splash
         ) {
           return false;
         }
@@ -184,6 +180,7 @@ const PushTapRouter = ({
         // notification also needs to navigate. A newly opened tab fetches its
         // own plan on mount.
         notifyPlanRefresh(event.pathId);
+        trackEvent('Notification', 'open', event.type ?? 'turn notification');
         const current = pushNavigationRef.getCurrentRoute();
         if (
           current?.name !== Routes.Continue ||
@@ -198,7 +195,7 @@ const PushTapRouter = ({
         }
         return true;
       }),
-    [activeRouteName, groupIds, navigationReady]
+    [groupIds, navigationReady]
   );
 
   return null;
@@ -215,11 +212,6 @@ const App = () => {
   // null = hydrating, false = failed (fail-closed), true = ready
   const [ready, setReady] = useState<boolean | null>(null);
   const [navigationReady, setNavigationReady] = useState(false);
-  const [activeRouteName, setActiveRouteName] = useState<string | undefined>(undefined);
-
-  const updateActiveRouteName = useCallback(() => {
-    setActiveRouteName(pushNavigationRef.getCurrentRoute()?.name);
-  }, []);
 
   // Handle the SSO login return deep link (khalissehajpath://login?token=…).
   // Registered once; independent of the store-hydration gate above.
@@ -332,7 +324,7 @@ const App = () => {
         <SafeAreaProvider style={SafeAreaStyle.safeAreaView}>
           <AnalyticsConsent />
           <PushRegistration />
-          <PushTapRouter navigationReady={navigationReady} activeRouteName={activeRouteName} />
+          <PushTapRouter navigationReady={navigationReady} />
           <SyncStatusNotice />
           <OfflineDbNotice />
           <SessionExpiredPopup />
@@ -345,9 +337,11 @@ const App = () => {
             linking={linking}
             onReady={() => {
               setNavigationReady(true);
-              updateActiveRouteName();
+              // The initial route is Splash, so the router intentionally keeps
+              // a cold-start tap queued. Flush again after later transitions.
+              flushPendingPushTaps();
             }}
-            onStateChange={updateActiveRouteName}
+            onStateChange={flushPendingPushTaps}
           >
             <Stack.Navigator
               initialRouteName={Routes.Splash}

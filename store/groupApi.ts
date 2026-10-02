@@ -4,10 +4,13 @@ import {
   sehajPathInvitesControllerResolve,
   sehajPathMembersControllerEnableSharing,
   sehajPathInvitesControllerJoin,
+  sehajPathMembersControllerAddMember,
   sehajPathMembersControllerListMembers,
+  sehajPathMembersControllerRename,
   sehajPathMembersControllerRemove,
   sehajPathMembersControllerSetRole,
   sehajPathMembersControllerSharedReadingDays,
+  sehajPathMembersControllerSuggestedMembers,
   sehajPathSessionsControllerCurrent,
   sehajPathSessionsControllerCheckpoint,
   sehajPathSessionsControllerFinish,
@@ -17,6 +20,7 @@ import {
   sehajPathSlotsControllerCancel,
   sehajPathSlotsControllerFindPlan,
   sehajPathSlotsControllerUpdate,
+  sehajPathsControllerRemove,
 } from '@api/generated/sdk.gen';
 import type {
   SehajPathActiveInvite,
@@ -26,7 +30,6 @@ import type {
   SehajPathInviteSummary,
 } from '@api/generated/types.gen';
 import { SEHAJ_API_BASE_URL } from '../api/config';
-import { client } from '../api/generated/client.gen';
 import { store } from './index';
 import { isoToLegacy, legacyToIso } from './syncDateUtils';
 import { captureSyncSession, syncSessionHeaders } from './syncSession';
@@ -61,7 +64,7 @@ export type GroupResult<T> =
 const SIGNED_OUT: GroupResult<never> = {
   ok: false,
   kind: 'signed-out',
-  message: 'Sign in to read together.',
+  message: 'Login to read together.',
 };
 
 const GROUP_ERROR_DEDUPLICATION_MS = 60_000;
@@ -91,12 +94,36 @@ const reportUnexpectedGroupFailure = (
   });
 };
 
+/**
+ * Report handled 4xx responses only when they are not an expected user-facing
+ * state. Transport and 5xx failures are already reported by `call`; expected
+ * conflicts/expired resources should remain normal product outcomes.
+ */
+export const reportUnexpectedGroupRefusal = <T>(
+  operation: string,
+  result: GroupResult<T>,
+  expectedStatuses: number[] = []
+): void => {
+  if (
+    result.ok ||
+    result.kind !== 'refused' ||
+    result.status >= 500 ||
+    expectedStatuses.includes(result.status)
+  ) {
+    return;
+  }
+  recordError(new Error(result.message), `sehaj path: ${operation} refused`, {
+    group_failure_kind: 'refused',
+    group_http_status: String(result.status),
+  });
+};
+
 /** A person the current admin has already shared another path with. */
 export interface SuggestedMember {
   userId: string;
   displayLabel: string;
   hasAvatar: boolean;
-  avatarUpdatedAt: string | null;
+  avatarUpdatedAt?: string | null;
 }
 
 /**
@@ -228,6 +255,19 @@ export const enableSharing = (sehajPathId: string) =>
     })
   );
 
+/** Rename a shared path through its canonical group id. */
+export const renameSharedPath = (
+  sehajPathId: string,
+  name: string
+): Promise<GroupResult<{ name: string; stateVersion: number }>> =>
+  call('Could not rename this shared path.', (headers) =>
+    sehajPathMembersControllerRename({
+      path: { sehajPathId },
+      body: { name: name.trim() },
+      headers,
+    })
+  );
+
 /**
  * Mint an invite link.
  *
@@ -338,9 +378,8 @@ export const deleteSharedPath = (sehajPathId: string): Promise<GroupResult<void>
   call(
     'Could not delete this shared path.',
     (headers) =>
-      client.delete({
-        url: '/sehaj-path/paths/{sehajPathId}',
-        path: { sehajPathId },
+      sehajPathsControllerRemove({
+        path: { pathId: sehajPathId },
         headers: {
           ...headers,
           // This route receives the server-owned group UUID. Tell the API to
@@ -402,8 +441,7 @@ export const listSharedReadingDays = (
 /** Previous collaborators, scoped to the current admin and this target path. */
 export const listSuggestedMembers = (): Promise<GroupResult<SuggestedMember[]>> =>
   call('Could not load people you have read with.', (headers) =>
-    client.get<SuggestedMember[]>({
-      url: '/sehaj-path/suggested-members',
+    sehajPathMembersControllerSuggestedMembers({
       headers,
     })
   );
@@ -414,8 +452,8 @@ export const addMember = (
   userId: string
 ): Promise<GroupResult<SehajPathMember>> =>
   call('Could not add this member.', (headers) =>
-    client.post<{ response: SehajPathMember }>({
-      url: `/sehaj-path/paths/${sehajPathId}/members`,
+    sehajPathMembersControllerAddMember({
+      path: { sehajPathId },
       body: { userId },
       headers,
     })

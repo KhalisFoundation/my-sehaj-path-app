@@ -3,12 +3,18 @@ import { ActivityIndicator, ScrollView, Share, TouchableOpacity, View } from 're
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText as Text } from '../components/AppText';
 import { InviteMemberStyles as styles } from '@styles';
-import { createInvite, enableSharing, listMembers } from '../store/groupApi';
+import {
+  createInvite,
+  enableSharing,
+  listMembers,
+  reportUnexpectedGroupRefusal,
+} from '../store/groupApi';
 import { inviteLinkFor } from '../navigation/linking';
 import { storeInviteLink } from '../store/inviteLink';
 import type { SehajPathMember } from '@api/generated/types.gen';
 import type { RootStackParamList } from '../App';
-import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
+import { trackSharedPathOutcome } from '../utils/sharedPathAnalytics';
+import { recordError } from '../utils/crashlytics';
 import { useScreenAnalytics } from '@hooks';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InviteMember'>;
@@ -55,12 +61,11 @@ export const InviteMember = ({ route }: Props) => {
     }
     setMinting(true);
     setProblem(null);
-    trackSharedPathEvent('INVITE_CREATE');
-
     // Idempotent server-side, so this is safe on a path that is already shared
     // — which is every time after the first invite.
     const shared = await enableSharing(sehajPathId);
     if (!shared.ok) {
+      reportUnexpectedGroupRefusal('enable sharing', shared, [400, 409]);
       setMinting(false);
       setProblem(shared.message);
       return;
@@ -70,13 +75,21 @@ export const InviteMember = ({ route }: Props) => {
     setMinting(false);
 
     if (!invite.ok) {
+      reportUnexpectedGroupRefusal('create invite', invite, [400, 409]);
       setProblem(invite.message);
       return;
     }
 
     const nextLink = inviteLinkFor(invite.data.token);
-    await storeInviteLink(sehajPathId, nextLink, invite.data.expiresAt);
+    try {
+      await storeInviteLink(sehajPathId, nextLink, invite.data.expiresAt);
+    } catch (error) {
+      recordError(error, 'InviteMember: failed to store invite link');
+      setProblem('Unable to save the invite link. Please try again.');
+      return;
+    }
     setLink(nextLink);
+    trackSharedPathOutcome('INVITE_CREATE', 'success');
     // Sharing may have just created the owner's own membership row.
     load().catch(() => undefined);
   }, [sehajPathId, minting, load]);
@@ -85,11 +98,11 @@ export const InviteMember = ({ route }: Props) => {
     if (!link) {
       return;
     }
-    trackSharedPathEvent('INVITE_SHARE');
     try {
       // The platform's own sheet rather than a Copy button: the next step is
       // always "send this to someone", and this is the one gesture that does it.
       await Share.share({ message: link });
+      trackSharedPathOutcome('INVITE_SHARE', 'success');
     } catch {
       // Dismissing the sheet throws on some platforms. Nothing went wrong.
     }

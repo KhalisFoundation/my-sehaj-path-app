@@ -5,12 +5,18 @@ import { AppText as Text } from '../components/AppText';
 import { MemberAvatars } from '../components/MemberAvatars';
 import { GroupPathStyles as styles } from '@styles';
 import { Routes } from '@constants';
-import { currentSession, listMembers, startReading } from '../store/groupApi';
+import {
+  currentSession,
+  listMembers,
+  reportUnexpectedGroupRefusal,
+  startReading,
+} from '../store/groupApi';
 import { connectLive, type LiveHandle, type LivePosition } from '../store/liveSession';
 import type { SehajPathMember, SehajPathSession } from '@api/generated/types.gen';
 import type { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
-import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
+import { trackSharedPathOutcome } from '../utils/sharedPathAnalytics';
+import { recordError } from '../utils/crashlytics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'GroupPath'>;
 
@@ -56,7 +62,7 @@ export const GroupPath = ({ route, navigation }: Props) => {
   }, [sehajPathId]);
 
   useEffect(() => {
-    load().catch(() => undefined);
+    load().catch((error: unknown) => recordError(error, 'GroupPath: failed to load group state'));
   }, [load]);
 
   /**
@@ -101,7 +107,7 @@ export const GroupPath = ({ route, navigation }: Props) => {
         }
         live.current = handle;
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => recordError(error, 'GroupPath: live connection failed'));
 
     return () => {
       cancelled = true;
@@ -121,6 +127,7 @@ export const GroupPath = ({ route, navigation }: Props) => {
     setStarting(false);
 
     if (result.ok) {
+      trackSharedPathOutcome('READING_START', 'success');
       setSession(result.data);
       navigation.navigate(Routes.Path, {
         pathId,
@@ -136,6 +143,7 @@ export const GroupPath = ({ route, navigation }: Props) => {
       return;
     }
 
+    reportUnexpectedGroupRefusal('start reading', result, [409]);
     // 409 means somebody else holds the turn. Not an error — refresh so the
     // screen shows who, and offer to follow instead.
     setProblem(result.message);
@@ -200,7 +208,7 @@ export const GroupPath = ({ route, navigation }: Props) => {
             <TouchableOpacity
               style={styles.primary}
               onPress={() => {
-                trackSharedPathEvent('READ_ALONG');
+                trackSharedPathOutcome('READ_ALONG', 'success');
                 navigation.navigate(Routes.Path, {
                   pathId,
                   live: { sehajPathId, driving: false },
@@ -208,7 +216,7 @@ export const GroupPath = ({ route, navigation }: Props) => {
               }}
               accessibilityRole="button"
             >
-              <Text style={styles.primaryText}>Follow along</Text>
+              <Text style={styles.primaryText}>Read along</Text>
             </TouchableOpacity>
           </View>
         ) : (

@@ -6,7 +6,7 @@ import type { RootStackParamList } from '../App';
 import { checkpointReading, finishReading } from '../store/groupApi';
 import type { LivePosition, LiveReaderTakeoverStarted } from '../store/liveSession';
 import { useLiveReading } from './useLiveReading';
-import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
+import { trackSharedPathOutcome } from '../utils/sharedPathAnalytics';
 import { recordError } from '../utils/crashlytics';
 
 type LivePath = RootStackParamList['Path']['live'];
@@ -224,7 +224,6 @@ export const useReadingSession = ({
       return;
     }
     setFinishing(true);
-    trackSharedPathEvent('FINISH');
     const result = await finishReading(live.sehajPathId, live.sessionId, {
       expectedStartAng: live.startAng,
       endAng: pathAng,
@@ -233,6 +232,7 @@ export const useReadingSession = ({
       scrollPosition: Math.max(0, Math.round(scrollOffset.current)),
     });
     if (result.ok) {
+      trackSharedPathOutcome('FINISH', 'success');
       turnEnded.current = true;
       setFinishing(false);
       setFinishOpen(false);

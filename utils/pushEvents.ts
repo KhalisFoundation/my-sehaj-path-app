@@ -20,6 +20,7 @@ const pendingEvents: PushTapEvent[] = [];
 const recentlyEmitted = new Map<string, number>();
 const DEDUPE_WINDOW_MS = 2000;
 const MAX_PENDING_EVENTS = 20;
+let flushingPendingEvents = false;
 
 const eventKey = (event: PushTapEvent): string => {
   const contentKey = [
@@ -89,4 +90,44 @@ export const subscribePushTap = (listener: PushTapListener): (() => void) => {
   return () => {
     listeners.delete(listener);
   };
+};
+
+/**
+ * Re-attempts notification taps that arrived before navigation was ready.
+ *
+ * A cold start can move from Splash to Home without mounting a new screen, so
+ * replaying only when a screen subscribes is not sufficient for the app-wide
+ * navigation listener. Callers should invoke this after a navigation state
+ * transition; unmatched events remain buffered.
+ */
+export const flushPendingPushTaps = (): void => {
+  // A listener can navigate synchronously, which invokes NavigationContainer's
+  // onStateChange while this function is still delivering the event. Prevent a
+  // nested flush from delivering the same tap twice.
+  if (flushingPendingEvents || pendingEvents.length === 0) {
+    return;
+  }
+  flushingPendingEvents = true;
+  try {
+    const queued = pendingEvents.splice(0, pendingEvents.length);
+    const remaining: PushTapEvent[] = [];
+    queued.forEach((event) => {
+      let consumed = false;
+      try {
+        consumed = deliver(event);
+      } catch {
+        // Keep the event queued if a listener fails during a retry.
+      }
+      if (!consumed) {
+        remaining.push(event);
+      }
+    });
+    // Preserve events emitted while flushing, then retain the unmatched taps.
+    pendingEvents.push(...remaining);
+    if (pendingEvents.length > MAX_PENDING_EVENTS) {
+      pendingEvents.splice(0, pendingEvents.length - MAX_PENDING_EVENTS);
+    }
+  } finally {
+    flushingPendingEvents = false;
+  }
 };

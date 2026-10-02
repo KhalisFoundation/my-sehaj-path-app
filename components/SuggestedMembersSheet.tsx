@@ -14,7 +14,7 @@ import { addMember, listSuggestedMembers, type SuggestedMember } from '../store/
 import { initialOf, tintFor } from './MemberAvatars';
 import { Constants, ErrorConstants, UIConstants } from '@constants';
 import { getStoredInviteLink } from '../store/inviteLink';
-import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
+import { trackSharedPathOutcome } from '../utils/sharedPathAnalytics';
 import { showErrorAlert } from '../utils/Error';
 import { recordError } from '../utils/crashlytics';
 
@@ -90,10 +90,10 @@ export const SuggestedMembersSheet = ({
         return;
       }
       setBusyUserId(member.userId);
-      trackSharedPathEvent('MEMBER_ADD');
       try {
         const result = await addMember(sehajPathId, member.userId);
         if (result.ok) {
+          trackSharedPathOutcome('MEMBER_ADD', 'success');
           setAddedUserIds((ids) => new Set(ids).add(member.userId));
           await onAdded?.();
         } else {
@@ -145,8 +145,8 @@ export const SuggestedMembersSheet = ({
                 <TouchableOpacity
                   style={InviteSheetStyles.copy}
                   onPress={() => {
-                    trackSharedPathEvent('INVITE_COPY');
                     Clipboard.setString(link);
+                    trackSharedPathOutcome('INVITE_COPY', 'success');
                     setCopied(true);
                   }}
                   accessibilityRole="button"

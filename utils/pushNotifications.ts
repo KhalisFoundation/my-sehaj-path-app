@@ -7,7 +7,12 @@ import notifee, {
 } from '@notifee/react-native';
 import { pushControllerRegister } from '@api/generated/sdk.gen';
 import { recordError } from './crashlytics';
-import { emitPushTap, subscribePushTap, type PushTapEvent } from './pushEvents';
+import {
+  emitPushTap,
+  flushPendingPushTaps,
+  subscribePushTap,
+  type PushTapEvent,
+} from './pushEvents';
 
 const CHANNEL_ID = 'general';
 
@@ -122,7 +127,7 @@ export const registerPushNotificationTapHandlers = (): void => {
   }
 };
 
-export { subscribePushTap };
+export { flushPendingPushTaps, subscribePushTap };
 
 export const displayPushMessage = async (
   message: FirebaseMessagingTypes.RemoteMessage
@@ -144,6 +149,7 @@ export const displayPushMessage = async (
       }
       return {
         channelId: CHANNEL_ID,
+        smallIcon: 'ic_stat_sehaj',
         sound: 'default' as const,
         pressAction: { id: 'default' },
       };

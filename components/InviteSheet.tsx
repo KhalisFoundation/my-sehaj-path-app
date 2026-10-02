@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText as Text } from './AppText';
 import { InviteSheetStyles as styles } from '@styles';
 import { Constants, ErrorConstants, UIConstants } from '@constants';
-import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
+import { trackSharedPathEvent, trackSharedPathOutcome } from '../utils/sharedPathAnalytics';
 import { recordError } from '../utils/crashlytics';
 import { useAppSelector } from '../store/hooks';
 import { createInvite, enableSharing, listActiveInvites } from '../store/groupApi';
@@ -137,7 +137,7 @@ export const InviteSheet = ({
 
       try {
         if (!isSignedIn) {
-          setProblem(Constants.INVITE_SIGN_IN_REQUIRED);
+          setProblem(Constants.INVITE_LOGIN_REQUIRED);
           return;
         }
         if (!isOnline) {
@@ -232,70 +232,80 @@ export const InviteSheet = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOnline, isSignedIn, loadRetryKey, visible, sehajPathId]);
 
+  useEffect(() => {
+    if (visible) {
+      trackSharedPathEvent('INVITE_SHEET_OPEN');
+    }
+  }, [visible]);
+
   const retryInviteLoad = useCallback(() => {
     setProblem(null);
     setInviteLoadFailed(false);
     setLoadRetryKey((value) => value + 1);
   }, []);
 
-  const createNewLink = useCallback(async () => {
-    if (creating) {
-      return;
-    }
-    if (!isSignedIn) {
-      setProblem(Constants.INVITE_SIGN_IN_REQUIRED);
-      return;
-    }
-    setCreating(true);
-    setProblem(null);
-    setCreateFailed(false);
-    trackSharedPathEvent('INVITE_CREATE');
-    try {
-      const invite = await createInvite(sehajPathId, expiryHours);
-      if (invite.ok) {
-        const nextLink = inviteLinkFor(invite.data.token);
-        await storeInviteLink(sehajPathId, nextLink, invite.data.expiresAt);
-        setLink(nextLink);
-        setLinkExpiry(invite.data.expiresAt);
-        setActiveInvites((current) => [
-          {
-            id: invite.data.id,
-            token: invite.data.token,
-            expiresAt: invite.data.expiresAt,
-            createdAt: invite.data.createdAt,
-          },
-          ...current,
-        ]);
-        setCreateFailed(false);
-        setAutoCreatePending(false);
-        // Let the parent update its invite action immediately. The sheet may
-        // be closed before a follow-up active-invites request completes.
-        onCreated?.();
-      } else {
-        // Transport and 5xx failures are recorded centrally by groupApi. A
-        // handled 4xx here still matters because it blocked an explicit admin
-        // action, so record it once at this UI boundary without duplicating the
-        // transport/server report.
-        if (invite.kind === 'refused' && invite.status < 500) {
-          recordError(new Error(invite.message), 'InviteSheet: create invite refused', {
-            group_failure_kind: 'refused',
-            group_http_status: String(invite.status),
-          });
+  const createNewLink = useCallback(
+    async (source: 'manual' | 'automatic' = 'manual') => {
+      if (creating) {
+        return;
+      }
+      if (!isSignedIn) {
+        setProblem(Constants.INVITE_LOGIN_REQUIRED);
+        return;
+      }
+      setCreating(true);
+      setProblem(null);
+      setCreateFailed(false);
+      const analyticsEvent = source === 'automatic' ? 'INVITE_AUTO_CREATE' : 'INVITE_CREATE';
+      try {
+        const invite = await createInvite(sehajPathId, expiryHours);
+        if (invite.ok) {
+          const nextLink = inviteLinkFor(invite.data.token);
+          await storeInviteLink(sehajPathId, nextLink, invite.data.expiresAt);
+          setLink(nextLink);
+          setLinkExpiry(invite.data.expiresAt);
+          setActiveInvites((current) => [
+            {
+              id: invite.data.id,
+              token: invite.data.token,
+              expiresAt: invite.data.expiresAt,
+              createdAt: invite.data.createdAt,
+            },
+            ...current,
+          ]);
+          setCreateFailed(false);
+          setAutoCreatePending(false);
+          trackSharedPathOutcome(analyticsEvent, 'success');
+          // Let the parent update its invite action immediately. The sheet may
+          // be closed before a follow-up active-invites request completes.
+          onCreated?.();
+        } else {
+          // Transport and 5xx failures are recorded centrally by groupApi. A
+          // handled 4xx here still matters because it blocked an explicit admin
+          // action, so record it once at this UI boundary without duplicating the
+          // transport/server report.
+          if (invite.kind === 'refused' && invite.status < 500) {
+            recordError(new Error(invite.message), 'InviteSheet: create invite refused', {
+              group_failure_kind: 'refused',
+              group_http_status: String(invite.status),
+            });
+          }
+          const message = invite.message || ErrorConstants.FAILED_TO_CREATE_INVITE;
+          setProblem(message);
+          setCreateFailed(true);
+          setAutoCreatePending(false);
         }
-        const message = invite.message || ErrorConstants.FAILED_TO_CREATE_INVITE;
-        setProblem(message);
+      } catch (error) {
+        recordError(error, 'InviteSheet: failed to create or store invite link');
+        setProblem(ErrorConstants.FAILED_TO_CREATE_INVITE);
         setCreateFailed(true);
         setAutoCreatePending(false);
+      } finally {
+        setCreating(false);
       }
-    } catch (error) {
-      recordError(error, 'InviteSheet: failed to create or store invite link');
-      setProblem(ErrorConstants.FAILED_TO_CREATE_INVITE);
-      setCreateFailed(true);
-      setAutoCreatePending(false);
-    } finally {
-      setCreating(false);
-    }
-  }, [creating, expiryHours, isSignedIn, onCreated, sehajPathId]);
+    },
+    [creating, expiryHours, isSignedIn, onCreated, sehajPathId]
+  );
 
   const retryCreate = useCallback(() => {
     setProblem(null);
@@ -312,7 +322,7 @@ export const InviteSheet = ({
       await onSignIn();
     } catch (error: unknown) {
       recordError(error, 'InviteSheet: sign in failed');
-      setSignInError('Could not start sign in. Please try again.');
+      setSignInError('Could not start login. Please try again.');
     } finally {
       setSignInBusy(false);
     }
@@ -327,7 +337,7 @@ export const InviteSheet = ({
       link === null &&
       !creating
     ) {
-      createNewLink().catch(() => undefined);
+      createNewLink('automatic').catch(() => undefined);
     }
   }, [autoCreate, createNewLink, creating, inviteLoadSucceeded, link, loadingInvite, visible]);
 
@@ -335,8 +345,8 @@ export const InviteSheet = ({
     if (!link) {
       return;
     }
-    trackSharedPathEvent('INVITE_COPY');
     Clipboard.setString(link);
+    trackSharedPathOutcome('INVITE_COPY', 'success');
     // Confirmed in place rather than with a toast: the reader is looking at the
     // button they just pressed, and a copy with no acknowledgement gets pressed
     // again and again.
@@ -350,10 +360,11 @@ export const InviteSheet = ({
     sharingRef.current = true;
     setSharing(true);
     try {
-      trackSharedPathEvent('INVITE_SHARE');
       await Share.share({ message: link });
+      trackSharedPathOutcome('INVITE_SHARE', 'success');
     } catch {
       // Dismissing the sheet rejects on some platforms. Nothing went wrong.
+      trackSharedPathOutcome('INVITE_SHARE', 'cancelled');
     } finally {
       sharingRef.current = false;
       setSharing(false);
@@ -371,7 +382,7 @@ export const InviteSheet = ({
   let displayedProblem = problem;
   if (!isOnline) {
     displayedProblem = Constants.INVITE_GO_ONLINE_TO_SHARE;
-  } else if (problem === 'Sign in to read together.' && isSignedIn) {
+  } else if (problem === 'Login to read together.' && isSignedIn) {
     displayedProblem = ErrorConstants.FAILED_TO_LOAD_INVITE_LINK;
   }
 
@@ -386,8 +397,8 @@ export const InviteSheet = ({
 
         {signInRequired ? (
           <View style={styles.loadingState}>
-            <Text style={styles.sectionLabel}>{Constants.INVITE_SIGN_IN_TITLE}</Text>
-            <Text style={styles.hint}>{Constants.INVITE_SIGN_IN_REQUIRED}</Text>
+            <Text style={styles.sectionLabel}>{Constants.INVITE_LOGIN_TITLE}</Text>
+            <Text style={styles.hint}>{Constants.INVITE_LOGIN_REQUIRED}</Text>
             {signInError ? <Text style={styles.problem}>{signInError}</Text> : null}
             {onSignIn ? (
               <TouchableOpacity
@@ -402,7 +413,7 @@ export const InviteSheet = ({
                 {signInBusy ? (
                   <View style={styles.busyLabel}>
                     <ActivityIndicator color="white" />
-                    <Text style={styles.shareText}>{Constants.SIGNING_IN}</Text>
+                    <Text style={styles.shareText}>{Constants.LOGGING_IN}</Text>
                   </View>
                 ) : (
                   <Text style={styles.shareText}>{Constants.LOGIN}</Text>
@@ -479,7 +490,7 @@ export const InviteSheet = ({
             <Text style={styles.createLinkMessage}>{Constants.CREATE_LINK_HINT}</Text>
             <TouchableOpacity
               style={styles.share}
-              onPress={createNewLink}
+              onPress={() => createNewLink()}
               accessibilityRole="button"
             >
               <Text style={styles.shareText}>{Constants.CREATE_LINK}</Text>

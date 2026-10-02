@@ -4,10 +4,16 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText as Text } from '../components/AppText';
 import { JoinPathStyles as styles } from '@styles';
 import { Constants, ErrorConstants, Routes } from '@constants';
-import { joinInvite, resolveInvite, resolveInvitePreview } from '../store/groupApi';
+import {
+  joinInvite,
+  reportUnexpectedGroupRefusal,
+  resolveInvite,
+  resolveInvitePreview,
+} from '../store/groupApi';
 import { startLogin } from '@auth';
 import { useAppSelector } from '../store/hooks';
-import { trackSharedPathEvent } from '../utils/sharedPathAnalytics';
+import { trackSharedPathOutcome } from '../utils/sharedPathAnalytics';
+import { recordError } from '../utils/crashlytics';
 import { showErrorAlert } from '../utils/Error';
 import type { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
@@ -66,6 +72,7 @@ export const JoinPath = ({ route, navigation }: Props) => {
         });
         return true;
       } catch (error) {
+        recordError(error, 'JoinPath: failed to open joined path');
         showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
         return false;
       }
@@ -161,13 +168,16 @@ export const JoinPath = ({ route, navigation }: Props) => {
       pathName: stage.pathName,
       memberCount: stage.memberCount,
     });
-    trackSharedPathEvent('JOIN');
     const result = await joinInvite(token);
     if (result.ok) {
       setStage({ name: 'member', pathId: stage.pathId, pathName: stage.pathName });
-      await openJoinedPath(stage.pathId);
+      const opened = await openJoinedPath(stage.pathId);
+      if (opened) {
+        trackSharedPathOutcome('JOIN', 'success');
+      }
       return;
     }
+    reportUnexpectedGroupRefusal('join invite', result, [404, 410]);
     if (result.kind === 'signed-out') {
       setStage({
         name: 'signed-out',
@@ -188,6 +198,7 @@ export const JoinPath = ({ route, navigation }: Props) => {
       // keyed to that state, so it will refresh this invite with authenticated
       // membership and show Join Now exactly once.
     } catch (error) {
+      recordError(error, 'JoinPath: login failed');
       showErrorAlert(ErrorConstants.FAILED_TO_OPEN_SHARED_PATH);
     }
   }, []);
@@ -211,13 +222,13 @@ export const JoinPath = ({ route, navigation }: Props) => {
         <Text style={styles.eyebrow}>{Constants.INVITE_ACCEPT_EYEBROW}</Text>
         {stage.pathName !== undefined && <Text style={styles.title}>{stage.pathName}</Text>}
         {inviteDetails !== null && <Text style={styles.body}>{inviteDetails}</Text>}
-        <Text style={styles.title}>Sign in to join</Text>
+        <Text style={styles.title}>Login to join</Text>
         <Text style={styles.body}>
           Reading together needs an account, so the group knows who is reading. Your invite stays
           valid.
         </Text>
         <TouchableOpacity style={styles.primary} onPress={signIn} accessibilityRole="button">
-          <Text style={styles.primaryText}>Sign in</Text>
+          <Text style={styles.primaryText}>Login</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondary} onPress={goHome} accessibilityRole="button">
           <Text style={styles.secondaryText}>Not now</Text>

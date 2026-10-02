@@ -385,6 +385,92 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().sync.meta[1].shared).toBe(true);
   });
 
+  it('keeps the canonical shared rename after an owner-scoped response returns stale data', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    store.dispatch(setPathShared({ pathId: 1, shared: true, groupId: 'internal-1' }));
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid, { name: 'Old shared name' })]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'New shared name',
+          angNumber: 50,
+          verseId: 200,
+          progress: 3.5,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 2,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    expect(store.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
+      'New shared name'
+    );
+  });
+
+  it('does not let an older path-scoped accessibility response revert a newer rename', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolveOldAccessible: (value: { data: unknown[] }) => void = () => undefined;
+    mockAccessible
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOldAccessible = resolve;
+          })
+      )
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'internal-1',
+            pathId: uuid,
+            name: 'New shared name',
+            angNumber: 50,
+            verseId: 200,
+            progress: 3.5,
+            startDate: Date.UTC(2026, 0, 1),
+            sharing: 'PUBLIC',
+            relationship: 'OWNER',
+            stateVersion: 2,
+            memberCount: 2,
+          },
+        ],
+      });
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid, { name: 'Old shared name' })]));
+
+    const oldRequest = ensureAccessiblePath(store, 'internal-1', 1);
+    await refreshPathsFromServer(store);
+    resolveOldAccessible({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Old shared name',
+          angNumber: 50,
+          verseId: 200,
+          progress: 3.5,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 1,
+          memberCount: 2,
+        },
+      ],
+    });
+    await oldRequest;
+
+    expect(store.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
+      'New shared name'
+    );
+  });
+
   it('keeps a link-only path personal until somebody else joins', async () => {
     const store = signedInStore();
     const uuid = addSyncedPath(store, 1);

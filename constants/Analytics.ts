@@ -4,7 +4,9 @@
  * event name that splits the same action into separate Firebase reports.
  */
 export const SharedPathAnalytics = {
+  INVITE_SHEET_OPEN: { category: 'SharedPathInvite', label: 'open invite sheet' },
   INVITE_CREATE: { category: 'SharedPathInvite', label: 'create new link' },
+  INVITE_AUTO_CREATE: { category: 'SharedPathInvite', label: 'auto create link' },
   INVITE_COPY: { category: 'SharedPathInvite', label: 'copy link' },
   INVITE_SHARE: { category: 'SharedPathInvite', label: 'share link' },
   JOIN: { category: 'SharedPathJoin', label: 'join path' },
@@ -14,10 +16,15 @@ export const SharedPathAnalytics = {
   MEMBER_REMOVE_ADMIN: { category: 'SharedPathMember', label: 'remove admin' },
   MEMBER_LEAVE: { category: 'SharedPathMember', label: 'leave path' },
   TURN_ADD: { category: 'SharedPathTurn', label: 'add turn' },
+  TURN_EDIT: { category: 'SharedPathTurn', label: 'edit turn' },
   TURN_DELETE: { category: 'SharedPathTurn', label: 'delete turn' },
+  READING_START: { category: 'SharedPathReading', label: 'start reading' },
+  READING_RESUME: { category: 'SharedPathReading', label: 'resume reading' },
   READ_ALONG: { category: 'SharedPathReading', label: 'read along' },
   TAKEOVER: { category: 'SharedPathReading', label: 'take over reading' },
   FINISH: { category: 'SharedPathReading', label: 'finish reading' },
+  DELETE_SHARED_PATH: { category: 'SharedPathPath', label: 'delete shared path' },
+  NOTIFICATION_OPEN: { category: 'Notification', label: 'open turn notification' },
 } as const;
 
 export type SharedPathAnalyticsEvent = keyof typeof SharedPathAnalytics;

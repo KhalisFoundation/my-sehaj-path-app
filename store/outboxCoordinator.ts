@@ -50,6 +50,10 @@ import {
 
 const DEFAULT_DEBOUNCE_MS = 5000;
 const DEFAULT_BACKOFF_MS = __DEV__ ? [2000, 2000, 2000] : [5000, 30000, 120000];
+const CONSECUTIVE_FAILURE_REPORT_THRESHOLD = 3;
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
 
 export interface OutboxCoordinator {
   start: () => void;
@@ -123,6 +127,9 @@ export const createOutboxCoordinator = (
   let draining = false;
   let activeDrain: Promise<void> | null = null;
   let backoffStep = 0;
+  let consecutiveSyncFailures = 0;
+  let consecutiveFailureReported = false;
+  let lastFailureReason: string | null = null;
   /**
    * A transport failure owns retry timing. While true, store updates such as
    * `setSyncError` must not also schedule the ordinary five-second debounce —
@@ -143,6 +150,34 @@ export const createOutboxCoordinator = (
   let unsubscribe: (() => void) | null = null;
 
   const state = (): RootState => store.getState();
+
+  const resetSyncFailureStreak = () => {
+    consecutiveSyncFailures = 0;
+    consecutiveFailureReported = false;
+    lastFailureReason = null;
+  };
+
+  const noteFailure = (outcome: 'network' | 'permanent', fallbackReason: string) => {
+    consecutiveSyncFailures += 1;
+    const reason = lastFailureReason ?? fallbackReason;
+    if (
+      consecutiveSyncFailures >= CONSECUTIVE_FAILURE_REPORT_THRESHOLD &&
+      !consecutiveFailureReported
+    ) {
+      consecutiveFailureReported = true;
+      recordError(
+        new Error(`Sync failed ${consecutiveSyncFailures} consecutive times: ${reason}`),
+        'outbox: three consecutive sync failures',
+        {
+          sync_failure_count: String(consecutiveSyncFailures),
+          sync_failure_outcome: outcome,
+          sync_failure_reason: reason.slice(0, 1000),
+          sync_pending_path_ops: String(Object.keys(state().sync.pathOps).length),
+          sync_pending_settings: String(state().sync.pendingSettingsUpdatedAt !== null),
+        }
+      );
+    }
+  };
 
   const canDrain = (): boolean => {
     const s = state();
@@ -300,12 +335,18 @@ export const createOutboxCoordinator = (
           return 'stale';
         }
         if (res.error) {
-          const outcome = classify(res.response?.status);
+          const status = res.response?.status;
+          lastFailureReason = `path delete HTTP ${status ?? 'no response'}`;
+          const outcome = classify(status);
           if (outcome === 'permanent') {
             recordError(
               new Error(`Path delete rejected (HTTP ${res.response?.status})`),
               'outbox: delete permanently rejected',
-              { pathId: String(pathId), status: String(res.response?.status) }
+              {
+                pathId: String(pathId),
+                status: String(res.response?.status),
+                sync_failure_reason: lastFailureReason.slice(0, 1000),
+              }
             );
           }
           return outcome;
@@ -328,6 +369,7 @@ export const createOutboxCoordinator = (
           return 'stale';
         }
         if (res.error) {
+          lastFailureReason = `path create HTTP ${res.response?.status ?? 'no response'}`;
           return classify(res.response?.status);
         }
         if (res.status === 200) {
@@ -359,8 +401,10 @@ export const createOutboxCoordinator = (
       if (res.error) {
         // 409 (another device advanced it) or 404 (deleted on server) → reconcile.
         if (res.response?.status === 409 || res.response?.status === 404) {
+          lastFailureReason = `path update HTTP ${res.response.status}`;
           return 'conflict';
         }
+        lastFailureReason = `path update HTTP ${res.response?.status ?? 'no response'}`;
         return classify(res.response?.status);
       }
       return applyWriteResponse(() => {
@@ -373,7 +417,10 @@ export const createOutboxCoordinator = (
       // Only a genuine transport failure reaches here now — the response
       // appliers above handle their own errors, so an accepted write is never
       // reported as unreachable.
-      recordError(error, `outbox: ${op.kind} failed`);
+      lastFailureReason = `path ${op.kind} transport: ${errorMessage(error)}`;
+      recordError(error, `outbox: ${op.kind} failed`, {
+        sync_failure_reason: lastFailureReason.slice(0, 1000),
+      });
       return ownsCurrentSession(session) ? 'network' : 'stale';
     }
   };
@@ -406,11 +453,13 @@ export const createOutboxCoordinator = (
         return 'stale';
       }
       if (res.error) {
+        lastFailureReason = `settings HTTP ${res.response?.status ?? 'no response'}`;
         const outcome = classify(res.response?.status);
         if (outcome === 'permanent') {
           recordError(
             new Error(`settings rejected (HTTP ${res.response?.status})`),
-            'outbox: settings permanently rejected'
+            'outbox: settings permanently rejected',
+            { sync_failure_reason: lastFailureReason.slice(0, 1000) }
           );
           blockSettings(store, rev); // keep the local value, stop retrying it
         }
@@ -422,7 +471,10 @@ export const createOutboxCoordinator = (
       store.dispatch(clearSettingsIfUnchanged(rev));
       return 'acked';
     } catch (error) {
-      recordError(error, 'outbox: settings upsert failed');
+      lastFailureReason = `settings transport: ${errorMessage(error)}`;
+      recordError(error, 'outbox: settings upsert failed', {
+        sync_failure_reason: lastFailureReason.slice(0, 1000),
+      });
       return ownsCurrentSession(session) ? 'network' : 'stale';
     }
   };
@@ -452,9 +504,11 @@ export const createOutboxCoordinator = (
     // discovering it as a 413 on every retry.
     const size = checkSyncRequestSize(body);
     if (!size.ok) {
+      lastFailureReason = `bulk sync body too large (${size.paths} paths, ${size.bytes} bytes)`;
       recordError(
         new Error(`sync body too large: ${size.paths} paths, ${size.bytes} bytes`),
-        'outbox: sync body exceeds server limits'
+        'outbox: sync body exceeds server limits',
+        { sync_failure_reason: lastFailureReason.slice(0, 1000) }
       );
       blockSyncBody(store, fingerprint);
       return 'permanent';
@@ -473,6 +527,7 @@ export const createOutboxCoordinator = (
       }
       if (res.error) {
         const status = res.response?.status;
+        lastFailureReason = `bulk sync HTTP ${status ?? 'no response'}`;
         // `/sync` IS the reconciliation, so a 409 from it cannot escalate to
         // another `/sync` — that recurses against an actively-writing second
         // device. Back off and retry with fresher state instead.
@@ -483,7 +538,8 @@ export const createOutboxCoordinator = (
         if (outcome === 'permanent') {
           recordError(
             new Error(`sync rejected (HTTP ${status})`),
-            'outbox: bulk sync permanently rejected'
+            'outbox: bulk sync permanently rejected',
+            { sync_failure_reason: lastFailureReason.slice(0, 1000) }
           );
           blockSyncBody(store, fingerprint);
         }
@@ -492,7 +548,10 @@ export const createOutboxCoordinator = (
       applySyncResult(store, res.data, snapshot);
       return 'acked';
     } catch (error) {
-      recordError(error, 'outbox: sync reconcile failed');
+      lastFailureReason = `bulk sync transport: ${errorMessage(error)}`;
+      recordError(error, 'outbox: sync reconcile failed', {
+        sync_failure_reason: lastFailureReason.slice(0, 1000),
+      });
       return ownsCurrentSession(session) ? 'network' : 'stale';
     }
   };
@@ -503,6 +562,7 @@ export const createOutboxCoordinator = (
       return;
     }
     draining = true;
+    lastFailureReason = null;
     store.dispatch(setSyncStatus('flushing'));
 
     let outcome: Outcome = 'acked';
@@ -512,6 +572,7 @@ export const createOutboxCoordinator = (
       const ops = { ...state().sync.pathOps };
       for (const [key, op] of Object.entries(ops)) {
         if (!state().network.isOnline) {
+          lastFailureReason = 'device offline';
           outcome = 'network';
           break;
         }
@@ -535,6 +596,9 @@ export const createOutboxCoordinator = (
         // A conflict short-circuits: one bulk /sync reconciles the whole snapshot.
         if (result !== 'acked') {
           outcome = result;
+          if (result === 'network') {
+            lastFailureReason ??= `path ${op.kind} ${result}`;
+          }
           if (result === 'conflict') {
             conflictSource = { pathId, localUpdatedAt: op.localUpdatedAt };
           }
@@ -558,6 +622,9 @@ export const createOutboxCoordinator = (
         const settingsResult = await processSettings(session);
         if (settingsResult !== 'acked') {
           outcome = settingsResult;
+          if (settingsResult === 'network' || settingsResult === 'permanent') {
+            lastFailureReason ??= `settings ${settingsResult}`;
+          }
         }
       }
     } catch (error) {
@@ -567,7 +634,10 @@ export const createOutboxCoordinator = (
       // and no way back, even though the write itself may have succeeded.
       // Treating it as a transient failure keeps the state machine closed: the
       // status resolves, the work stays queued, and the backoff retries it.
-      recordError(error, 'outbox: drain failed unexpectedly');
+      lastFailureReason = `drain: ${errorMessage(error)}`;
+      recordError(error, 'outbox: drain failed unexpectedly', {
+        sync_failure_reason: lastFailureReason.slice(0, 1000),
+      });
       outcome = 'network';
     } finally {
       draining = false;
@@ -590,6 +660,7 @@ export const createOutboxCoordinator = (
         );
       }
       store.dispatch(setSyncStatus('idle'));
+      resetSyncFailureStreak();
       return;
     }
     if (outcome === 'stale') {
@@ -597,14 +668,17 @@ export const createOutboxCoordinator = (
       // Leave the old outbox untouched and let the current account decide its own
       // sync flow; no response from the previous account is allowed to apply.
       store.dispatch(setSyncStatus('idle'));
+      resetSyncFailureStreak();
       return;
     }
     if (outcome === 'network') {
+      noteFailure('network', 'network or server failure');
       scheduleBackoff();
       store.dispatch(setSyncError('network')); // also sets status = 'error'
       return;
     }
     if (outcome === 'permanent') {
+      noteFailure('permanent', 'server rejected the sync');
       // The server will reject this identically every time. Flag it, keep the
       // change on the device, and do NOT back off — retrying cannot help. The
       // next local edit to that path clears the block and re-queues it.
@@ -617,6 +691,7 @@ export const createOutboxCoordinator = (
     // outcome === 'acked' (a conflict was already resolved via reconcileViaSync).
     backoffStep = 0;
     retryScheduledOrPaused = false;
+    resetSyncFailureStreak();
     store.dispatch(setSyncError(null));
     store.dispatch(setSyncStatus('idle'));
     if (hasPendingWork()) {
@@ -659,6 +734,7 @@ export const createOutboxCoordinator = (
       }
       started = true;
       backoffStep = 0;
+      resetSyncFailureStreak();
       retryScheduledOrPaused = false;
       unsubscribe = store.subscribe(onChange);
       if (hasPendingWork()) {
@@ -674,6 +750,7 @@ export const createOutboxCoordinator = (
         backoffTimer = null;
       }
       retryScheduledOrPaused = false;
+      resetSyncFailureStreak();
       unsubscribe?.();
       unsubscribe = null;
     },

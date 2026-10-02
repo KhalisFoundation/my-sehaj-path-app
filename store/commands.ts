@@ -25,6 +25,8 @@ import { markPathDeleted } from './slices/syncSlice';
 import type { SettingsState } from './slices/settingsSlice';
 import { showErrorAlert } from '@utils/Error';
 import { asLocalDateTime } from '@utils/dateTime';
+import { groupIdOf, isGroupPath } from './groupPaths';
+import { renameSharedPath } from './groupApi';
 
 /**
  * Acknowledged operations.
@@ -316,7 +318,29 @@ export const savePathScrollPosition = (pathId: number, scrollPosition: number): 
 export const renamePathCommand = async (pathId: number, name: string): Promise<boolean> => {
   // A rename still uses the ordinary outbox/API flow, but it is housekeeping,
   // not reading progress, so it should not show a sync notice.
-  const saved = await runPathMutation(pathId, () => renamePath({ pathId, name, silentSync: true }));
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
+    return false;
+  }
+  const saved = await runExclusive(async () => {
+    const state = store.getState();
+    if (!state.paths.paths.some((path) => path.pathId === pathId)) {
+      return false;
+    }
+
+    // Shared paths are server-owned. The sync middleware deliberately ignores
+    // their rename action, so a local-only update made the admin see the new
+    // name while every member kept the old one.
+    if (isGroupPath(state, pathId)) {
+      const groupId = groupIdOf(state, pathId);
+      if (!groupId || !(await renameSharedPath(groupId, normalizedName)).ok) {
+        return false;
+      }
+    }
+
+    return dispatchDurable(renamePath({ pathId, name: normalizedName, silentSync: true }));
+  });
   if (!saved) {
     showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
   }

@@ -40,6 +40,32 @@ export interface SentOp {
   operation: 'create' | 'update';
 }
 
+// Continue performs a path-scoped accessibility check in parallel with the
+// account refresh. Keep the newest canonical group version per store so an
+// older request that finishes later cannot put a stale shared name back into
+// Redux. This is runtime-only; an in-flight request cannot survive a restart.
+const accessibleStateVersions = new WeakMap<AppStore, Map<string, number>>();
+
+const acceptAccessibleVersion = (
+  store: AppStore,
+  groupId: string,
+  stateVersion: number
+): boolean => {
+  if (!Number.isFinite(stateVersion)) {
+    return true;
+  }
+  const versions = accessibleStateVersions.get(store) ?? new Map<string, number>();
+  const known = versions.get(groupId);
+  if (known !== undefined && stateVersion < known) {
+    return false;
+  }
+  if (known === undefined || stateVersion > known) {
+    versions.set(groupId, stateVersion);
+    accessibleStateVersions.set(store, versions);
+  }
+  return true;
+};
+
 const findLocalIdByServerPathId = (state: RootState, serverPathId: string): number | null => {
   for (const [key, meta] of Object.entries(state.sync.meta)) {
     if (meta.serverPathId === serverPathId) {
@@ -287,6 +313,14 @@ export const ensureAccessiblePath = async (
     ) {
       return null;
     }
+  }
+
+  if (!acceptAccessibleVersion(store, row.id, row.stateVersion)) {
+    const current = store.getState();
+    const existing = Object.entries(current.sync.meta).find(
+      ([, meta]) => meta.groupId === sehajPathId || meta.serverPathId === row.pathId
+    );
+    return existing ? Number(existing[0]) : null;
   }
 
   const current = store.getState();
@@ -637,6 +671,35 @@ interface ActiveRefresh {
 
 const refreshes = new WeakMap<AppStore, ActiveRefresh>();
 
+interface RefreshFailureState {
+  consecutive: number;
+  reported: boolean;
+}
+
+const refreshFailureStates = new WeakMap<AppStore, RefreshFailureState>();
+
+const noteRefreshFailure = (store: AppStore, reason: string): void => {
+  const current = refreshFailureStates.get(store) ?? { consecutive: 0, reported: false };
+  current.consecutive += 1;
+  if (current.consecutive >= 3 && !current.reported) {
+    current.reported = true;
+    recordError(
+      new Error(`Sync pull failed ${current.consecutive} consecutive times: ${reason}`),
+      'refresh: three consecutive sync failures',
+      {
+        sync_failure_count: String(current.consecutive),
+        sync_failure_kind: 'pull',
+        sync_failure_reason: reason.slice(0, 1000),
+      }
+    );
+  }
+  refreshFailureStates.set(store, current);
+};
+
+const resetRefreshFailure = (store: AppStore): void => {
+  refreshFailureStates.delete(store);
+};
+
 const performRefreshPathsFromServer = async (
   store: AppStore,
   activePathId?: number,
@@ -718,6 +781,7 @@ const performRefreshPathsFromServer = async (
     const pathsUnauthorized = pathsResult.error && pathsResult.response?.status === 401;
     const settingsUnauthorized = settingsResult.error && settingsResult.response?.status === 401;
     if (pathsUnauthorized || settingsUnauthorized) {
+      resetRefreshFailure(store);
       await signOutAfterUnauthorized(
         store,
         session.token,
@@ -734,6 +798,16 @@ const performRefreshPathsFromServer = async (
       (!pathsUnchanged && !pathsResult.data) ||
       (settingsResult.error && !settingsMissing)
     ) {
+      const reasons = [
+        pathsResult.error && !pathsUnchanged
+          ? `GET /paths HTTP ${pathsResult.response?.status ?? 'no response'}`
+          : null,
+        !pathsUnchanged && !pathsResult.data ? 'GET /paths returned no data' : null,
+        settingsResult.error && !settingsMissing
+          ? `GET /settings HTTP ${settingsResult.response?.status ?? 'no response'}`
+          : null,
+      ].filter((reason): reason is string => reason !== null);
+      noteRefreshFailure(store, reasons.join('; ') || 'authoritative refresh failed');
       // A foreground refresh has no caller that can show its false result. Put
       // the failure in sync state so the in-app status notice can tell the user
       // their cloud copy could not be loaded instead of showing an empty/stale UI.
@@ -747,10 +821,19 @@ const performRefreshPathsFromServer = async (
         if (wasRemovedSinceRefreshStarted(sp.pathId)) {
           return;
         }
-        // Leave the path open in the reader completely untouched — don't apply the
-        // server's name/progress/readDates under an active reader. It reconciles on
-        // the next safe refresh once the reader exits.
         const localId = findLocalIdByServerPathId(store.getState(), sp.pathId);
+        // A shared path is server-owned by its canonical group row. The
+        // owner-scoped `/paths` response can be stale while the accessible
+        // response is already current (especially when a rename happens on
+        // another device), so never apply its name/progress/readDates to a
+        // path that is already known to be shared. The accessible response
+        // below is the authoritative shared-path body.
+        if (localId != null && store.getState().sync.meta[localId]?.shared) {
+          return;
+        }
+        // Leave a personal path open in the reader completely untouched —
+        // don't apply the server's name/progress/readDates under an active
+        // reader. It reconciles on the next safe refresh once the reader exits.
         if (localId != null && localId === activePathId) {
           return;
         }
@@ -781,6 +864,9 @@ const performRefreshPathsFromServer = async (
         // whose UI still looks personal. Do not allocate that stale row after
         // the delete has removed its local identity.
         if (wasRemovedSinceRefreshStarted(row.pathId ?? row.id)) {
+          continue;
+        }
+        if (!acceptAccessibleVersion(store, row.id, row.stateVersion)) {
           continue;
         }
         // `pathId: null` means this device does not own the path — it joined
@@ -845,6 +931,22 @@ const performRefreshPathsFromServer = async (
             groupId: row.id,
           })
         );
+        // The owner-scoped `/paths` request and the canonical accessible-path
+        // request run in parallel. A rename can therefore be visible in the
+        // canonical response while `/paths` still returns the previous name.
+        // Apply the canonical name last for an actively shared path so a
+        // refresh cannot briefly show the new name and then revert to stale
+        // owner-scoped data. Do not do this for invite-only personal paths:
+        // their local rename is still local-first until another member joins.
+        if (localId !== activePathId && row.memberCount > 1 && typeof row.name === 'string') {
+          store.dispatch(
+            applyServerPathData({
+              pathId: localId,
+              pathPatch: { pathName: row.name },
+              datePatch: {},
+            })
+          );
+        }
         // This metadata is safe to refresh even while the path is open in the
         // reader. The owner-scoped path body is deliberately skipped for an
         // active reader so its live position cannot jump, but skipping the
@@ -931,9 +1033,16 @@ const performRefreshPathsFromServer = async (
       store.dispatch(setSyncError(null));
       store.dispatch(setSyncStatus('idle'));
     }
+    resetRefreshFailure(store);
     return true;
   } catch (error) {
-    recordError(error, 'refresh: GET /paths failed');
+    const reason = `GET /paths transport: ${
+      error instanceof Error ? error.message : String(error)
+    }`;
+    recordError(error, 'refresh: GET /paths failed', {
+      sync_failure_reason: reason.slice(0, 1000),
+    });
+    noteRefreshFailure(store, reason);
     if (showStatus) {
       store.dispatch(setSyncError('network'));
     }

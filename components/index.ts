@@ -32,7 +32,7 @@ export { SyncPopup } from './SyncPopup';
 export { SyncStatusNotice } from './SyncStatusNotice';
 export { OfflineDbNotice } from './OfflineDbNotice';
 export { SignInPopup } from './SignInPopup';
-export { SignInRequiredDialog } from './SignInRequiredDialog';
+export { LoginRequiredDialog } from './LoginRequiredDialog';
 export { SyncUnavailablePopup } from './SyncUnavailablePopup';
 export { SessionExpiredPopup } from './SessionExpiredPopup';
 export { PathSelectionProvider, usePathSelection } from './PathSelectionContext';

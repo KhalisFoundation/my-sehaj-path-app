@@ -1877,6 +1877,92 @@
         ]
       }
     },
+    "/sehaj-path/paths/{sehajPathId}/name": {
+      "patch": {
+        "operationId": "SehajPathMembersController_rename",
+        "parameters": [
+          {
+            "name": "sehajPathId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameSehajPathDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Shared path renamed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameSehajPathResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, invalid or expired bearer token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Admins only",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Path not found, or the caller is not a member",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rename a shared path. Active admins only; the name is group-owned.",
+        "tags": [
+          "sehaj-path"
+        ]
+      }
+    },
     "/sehaj-path/paths/{sehajPathId}/group": {
       "get": {
         "operationId": "SehajPathMembersController_findGroup",
@@ -4130,6 +4216,15 @@
             "name": "pathId",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-sehaj-path-identity",
+            "required": false,
+            "in": "header",
+            "description": "Use canonical to resolve a shared-path UUID before the legacy per-owner path id.",
             "schema": {
               "type": "string"
             }
@@ -6897,6 +6992,34 @@
             }
           }
         }
+      },
+      "RenameSehajPathDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "RenameSehajPathResponseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Morning Path"
+          },
+          "stateVersion": {
+            "type": "number",
+            "example": 3
+          }
+        },
+        "required": [
+          "name",
+          "stateVersion"
+        ]
       },
       "SehajPathGroup": {
         "type": "object",
