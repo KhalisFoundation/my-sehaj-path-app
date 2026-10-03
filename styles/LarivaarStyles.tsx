@@ -10,7 +10,7 @@ export const LarivaarStyles = StyleSheet.create({
   },
   fontSizeText: {
     fontSize: 20,
-    fontFamily: font.Brandon_Grotesque_Regular,
+    fontFamily: font.Baloo_Paaji_2_Regular,
     color: '#11336A',
   },
 });

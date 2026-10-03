@@ -34,7 +34,10 @@ jest.mock('../../store/hooks', () => ({
 
 jest.mock('../../hooks', () => ({ useScreenAnalytics: jest.fn() }));
 jest.mock('../../utils', () => ({ recordError: jest.fn(), trackEvent: jest.fn() }));
-jest.mock('../../components', () => ({ NavContent: () => null }));
+jest.mock('../../components', () => ({
+  NavContent: () => null,
+  BackButton: ({ children }: { children?: React.ReactNode }) => children ?? null,
+}));
 jest.mock('../../icons', () => ({ LeftArrowIcon: () => null }));
 
 const textContent = (renderer: ReactTestRenderer.ReactTestRenderer): string[] =>

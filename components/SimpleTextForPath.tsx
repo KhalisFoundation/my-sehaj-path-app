@@ -23,8 +23,11 @@ const SimpleTextForPathComponent = ({
   onSelection,
   index,
   onSave,
+  selectionEnabled = true,
   verseId,
   vishraams,
+  vishraamEnabled,
+  vishraamsSource: vishraamsSourceOverride,
   onLayout,
 }: PathTextProps) => {
   const isLongPressingRef = useRef<boolean>(false);
@@ -32,8 +35,10 @@ const SimpleTextForPathComponent = ({
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
   const fontSize = useReaderFontSize();
-  const isVishraam = useAppSelector((state) => state.settings.vishraam);
-  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const ownVishraam = useAppSelector((state) => state.settings.vishraam);
+  const isVishraam = vishraamEnabled ?? ownVishraam;
+  const ownVishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const vishraamsSource = vishraamsSourceOverride ?? ownVishraamsSource;
 
   const isSelected = useIsSelected(
     verseId,
@@ -55,6 +60,9 @@ const SimpleTextForPathComponent = ({
   );
 
   const handleLongPress = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     if (isLongPressingRef.current) {
       return;
     }
@@ -70,12 +78,14 @@ const SimpleTextForPathComponent = ({
       onPress={handlePress}
       style={containerStyle}
       accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      onLongPress={handleLongPress}
+      accessibilityRole={selectionEnabled ? 'button' : 'text'}
+      onLongPress={selectionEnabled ? handleLongPress : undefined}
       delayLongPress={Platform.OS === 'ios' ? 350 : 500}
       pressRetentionOffset={{ top: 20, bottom: 20, left: 20, right: 20 }}
-      accessibilityHint="Tap to select, long press to save this line"
-      disabled={selection.isSaved || selection.found}
+      accessibilityHint={
+        selectionEnabled ? 'Tap to select, long press to save this line' : undefined
+      }
+      disabled={!selectionEnabled || selection.isSaved || selection.found}
       onLayout={onLayout}
     >
       <Text suppressHighlighting={true} style={textStyle} allowFontScaling={false}>
@@ -94,7 +104,11 @@ const SimpleTextForPathComponent = ({
             color={UIConstants.SAVE_ICON_COLOR}
             width={fontSize * 1.2}
             height={fontSize * 1.2}
-            style={{ transform: [{ translateY: -(fontSize * 0.25) }] }}
+            style={{
+              transform: [
+                { translateY: Platform.OS === 'ios' ? -fontSize * 0.35 : fontSize * 0.3 },
+              ],
+            }}
           />
         )}
       </Text>

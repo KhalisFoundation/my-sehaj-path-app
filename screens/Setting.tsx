@@ -1,9 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { AppText as Text } from '../components/AppText';
 import { Alert, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
+import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { NavContent, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
-import { LeftArrowIcon, RightChevronIcon } from '@icons';
+import { BackButton, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
+import { RightChevronIcon } from '@icons';
 import {
   SettingScreenStyle,
   SafeAreaStyle,
@@ -16,6 +16,7 @@ import { RootStackParamList } from '../App';
 import { useScreenAnalytics, useSetting } from '@hooks';
 import { deleteAccount } from '@auth';
 import { showDeleteAccountConfirmAlert, showErrorAlert } from '@utils';
+import { UIConstants } from '@constants';
 import { useAppSelector } from '../store/hooks';
 import {
   Constants,
@@ -158,19 +159,15 @@ export const Settings = ({ navigation }: SettingProps) => {
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <View style={SettingScreenStyle.container}>
         <View style={SettingScreenStyle.navContainer}>
-          <TouchableOpacity
+          <BackButton
             onPress={() => navigation.goBack()}
             style={SettingScreenStyle.backButton}
             accessibilityLabel="Back"
-            accessibilityRole="button"
             accessibilityHint="Tap to go back"
+            color={UIConstants.NAV_TEXT_COLOR}
           >
-            <NavContent
-              navIcon={<LeftArrowIcon color="#fff" />}
-              onPress={() => navigation.goBack()}
-            />
-            <NavContent text={Constants.SETTINGS} contentStyle={SettingScreenStyle.navText} />
-          </TouchableOpacity>
+            <Text style={SettingScreenStyle.navText}>{Constants.SETTINGS}</Text>
+          </BackButton>
         </View>
         {/*
           Scrollable, not a plain View. The list already overflows a small screen

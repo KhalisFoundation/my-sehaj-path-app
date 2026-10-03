@@ -13,7 +13,12 @@ import { addPath, renamePath, setScrollPosition } from '../../store/slices/paths
 import { setSignedIn } from '../../store/slices/authSlice';
 import { setOnline } from '../../store/slices/networkSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
-import { hydrateEmptySync, markPathDeleted, setAccount } from '../../store/slices/syncSlice';
+import {
+  hydrateEmptySync,
+  markPathDeleted,
+  setAccount,
+  setPathShared,
+} from '../../store/slices/syncSlice';
 import { clearCurrentToken } from '../../auth/tokenUtils';
 import { recordError } from '../../utils/crashlytics';
 import type { DateData, PathData } from '../../types';
@@ -46,6 +51,7 @@ const mockUpdate = sehajPathsControllerUpdate as jest.Mock;
 const mockRemove = sehajPathsControllerRemove as jest.Mock;
 const mockSettings = sehajPathSettingsControllerUpsert as jest.Mock;
 const mockSync = sehajPathSyncControllerSync as jest.Mock;
+const mockRecordError = recordError as unknown as jest.Mock;
 
 /** A full SehajPath so create/update responses feed the applier (fromServerPath). */
 const serverSehaj = (over: Partial<SehajPath> = {}): SehajPath => ({
@@ -308,6 +314,69 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
+  /**
+   * The server refuses to revive a tombstone on create, because the create body
+   * carries no `updatedAt` to weigh against the deletion time. It answers 409
+   * and the decision moves to `/sync`, which has both timestamps.
+   *
+   * These two cover the whole route end to end, and they are the pair that must
+   * not collapse into one another: the same 409 has to be able to end in either
+   * outcome, decided by the server rather than by which request went out.
+   */
+  it('a CREATE 409 fires one /sync, which revives the path when the local edit is newer', async () => {
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const uuid = store.getState().sync.meta[1].serverPathId;
+
+    // Deleted on another device; this one edited afterwards, so /sync revives it.
+    mockCreate.mockResolvedValueOnce(fail(409));
+    mockSync.mockResolvedValueOnce(
+      ok(200, {
+        paths: [serverSehaj({ pathId: uuid, name: 'Revived', updatedAt: 300_000 })],
+        deletedPathIds: [],
+        settings: null,
+        syncedAt: 999,
+      })
+    );
+
+    await coordinator.flushNow();
+
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(store.getState().paths.paths).toHaveLength(1);
+    expect(store.getState().paths.paths[0].pathName).toBe('Revived');
+    expect(store.getState().sync.meta[1].deletedAt).toBeFalsy(); // not tombstoned
+    expect(store.getState().sync.pathOps[1]).toBeUndefined(); // reconciled, not parked
+    expect(store.getState().sync.lastError).toBeNull();
+    coordinator.stop();
+  });
+
+  it('a CREATE 409 fires one /sync, which removes the stale copy when the deletion wins', async () => {
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const uuid = store.getState().sync.meta[1].serverPathId;
+
+    // The other device deleted it and this one never edited after that, so the
+    // server sends it back as deleted and this copy goes. Without the create
+    // refusing, this path would instead have been resurrected on every device.
+    mockCreate.mockResolvedValueOnce(fail(409));
+    mockSync.mockResolvedValueOnce(
+      ok(200, {
+        paths: [],
+        deletedPathIds: [uuid],
+        settings: null,
+        syncedAt: 999,
+      })
+    );
+
+    await coordinator.flushNow();
+
+    expect(mockSync).toHaveBeenCalledTimes(1);
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.pathOps[1]).toBeUndefined();
+    expect(store.getState().sync.lastError).toBeNull();
+    coordinator.stop();
+  });
+
   it('parks the conflicting op when the reconciling /sync is permanently rejected', async () => {
     // Regression: PATCH 409 → /sync 400 used to leave the op sendable, so the
     // next drain repeated PATCH → 409 → blocked /sync forever, and the path
@@ -532,6 +601,34 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
+  it('reports one Crashlytics event after three consecutive failures with the reason', async () => {
+    const { store, coordinator } = setup();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    mockCreate.mockRejectedValue(new Error('server unavailable'));
+
+    await coordinator.flushNow();
+    await coordinator.flushNow();
+    await coordinator.flushNow();
+    await coordinator.flushNow();
+
+    const reports = mockRecordError.mock.calls.filter(
+      (call: unknown[]) => call[1] === 'outbox: three consecutive sync failures'
+    );
+    expect(reports).toHaveLength(1);
+    expect(reports[0][0]).toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('path create transport: server unavailable'),
+      })
+    );
+    expect(reports[0][2]).toMatchObject({
+      sync_failure_count: '3',
+      sync_failure_outcome: 'network',
+      sync_failure_reason: 'path create transport: server unavailable',
+      sync_pending_path_ops: '1',
+    });
+    coordinator.stop();
+  });
+
   it('makes exactly three automatic retries after a network failure, then pauses', async () => {
     jest.useFakeTimers();
     try {
@@ -639,7 +736,7 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
-  it('DELETEs a tombstoned path, then removes the row and meta', async () => {
+  it('DELETEs a tombstoned path, then removes its local copy', async () => {
     const { store, coordinator } = setup();
     await seedSyncedPath(store, coordinator); // path 1 now on server
     store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));
@@ -652,7 +749,53 @@ describe('outboxCoordinator', () => {
     coordinator.stop();
   });
 
-  it('treats a DELETE 404 as already-gone (success)', async () => {
+  it('uses the canonical group id for a shared-path delete', async () => {
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(
+      setPathShared({
+        pathId: 1,
+        shared: true,
+        groupId: '11111111-1111-4111-8111-111111111111',
+      })
+    );
+    store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));
+
+    await coordinator.flushNow();
+
+    expect(mockRemove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: { pathId: '11111111-1111-4111-8111-111111111111' },
+        headers: expect.objectContaining({ 'x-sehaj-path-identity': 'canonical' }),
+      })
+    );
+    coordinator.stop();
+  });
+
+  it('keeps using the canonical id when a group has only its owner left', async () => {
+    const { store, coordinator } = setup();
+    await seedSyncedPath(store, coordinator);
+    store.dispatch(
+      setPathShared({
+        pathId: 1,
+        shared: false,
+        groupId: '22222222-2222-4222-8222-222222222222',
+      })
+    );
+    store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));
+
+    await coordinator.flushNow();
+
+    expect(mockRemove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: { pathId: '22222222-2222-4222-8222-222222222222' },
+        headers: expect.objectContaining({ 'x-sehaj-path-identity': 'canonical' }),
+      })
+    );
+    coordinator.stop();
+  });
+
+  it('keeps a delete tombstone when DELETE returns 404', async () => {
     const { store, coordinator } = setup();
     await seedSyncedPath(store, coordinator);
     store.dispatch(markPathDeleted({ pathId: 1, at: Date.now() }));
@@ -660,8 +803,13 @@ describe('outboxCoordinator', () => {
 
     await coordinator.flushNow();
 
-    expect(store.getState().paths.paths.find((p) => p.pathId === 1)).toBeUndefined();
-    expect(store.getState().sync.meta[1]).toBeUndefined();
+    // The API's DELETE is idempotent and would return 204 for an already
+    // tombstoned row. A 404 is an identity/access mismatch, not proof that the
+    // live server row disappeared; retain the tombstone so Home cannot revive
+    // the card from the next GET response.
+    expect(store.getState().paths.paths.find((p) => p.pathId === 1)).toBeDefined();
+    expect(store.getState().sync.meta[1]?.deletedAt).not.toBeNull();
+    expect(store.getState().sync.pathOps[1]?.kind).toBe('delete');
     coordinator.stop();
   });
 });

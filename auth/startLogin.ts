@@ -25,15 +25,27 @@ import { clearLoginPending, setLoginPending } from './loginPending';
  * persisted we abort before opening the browser; if even the fallback browser
  * fails to open we roll back the pending flag so it doesn't linger for its TTL.
  */
-export async function startLogin(): Promise<void> {
+export interface StartLoginOptions {
+  /** Let the caller render the failure in its own dialog instead of Alert. */
+  suppressErrors?: boolean;
+}
+
+export async function startLogin({
+  suppressErrors = false,
+}: StartLoginOptions = {}): Promise<boolean> {
+  const reportFailure = (message: string) => {
+    if (!suppressErrors) {
+      showErrorAlert(message);
+    }
+  };
   const pendingSaved = await setLoginPending();
   if (!pendingSaved) {
     recordError(
       new Error('login-pending flag could not be saved'),
       'auth: startLogin aborted (secure storage)'
     );
-    showErrorAlert('Could not start sign in. Please try again.');
-    return;
+    reportFailure('Could not start login. Please try again.');
+    return false;
   }
 
   try {
@@ -49,27 +61,32 @@ export async function startLogin(): Promise<void> {
             new Error('login callback was not consumed'),
             'auth: startLogin callback rejected'
           );
-          showErrorAlert('Could not complete sign in. Please try again.');
+          reportFailure('Could not complete login. Please try again.');
+          return false;
         }
+        return true;
       } else if (result.type === 'cancelled') {
         // User dismissed the sign-in sheet before completing. On iOS this is
         // race-free (no deep-link listener competes), so roll back the pending
         // flag immediately instead of letting it linger for its TTL.
         await clearLoginPending();
+        return false;
       }
       // 'external' (in-app browser unavailable) → the deep-link listener handles
       // the return; leave the pending flag in place for it.
-      return;
+      return true;
     }
 
     // Android + system-browser fallback: the deep-link listener / cold-start
     // bootstrap consumes the redirect and clears the pending flag. Nothing to do
     // here — deliberately leaving the pending flag untouched avoids racing a
     // Custom Tab dismiss against the incoming redirect.
+    return true;
   } catch (error) {
     // Even the system-browser fallback failed to open.
     await clearLoginPending();
     recordError(error, 'auth: startLogin failed to open the login URL');
-    showErrorAlert('Could not open the sign-in page. Please try again.');
+    reportFailure('Could not open the login page. Please try again.');
+    return false;
   }
 }

@@ -1,8 +1,9 @@
-import type { Ang } from '@sikhi-ui/banidb';
+import type { Ang } from '@khalisfoundation/banidb';
 import { BaniDB, recordError } from '@utils';
 import type { PathContent, VishraamsMarker } from '../types';
 import { getBani } from './connection';
 import { isDatabaseInstalled } from './downloadDatabase';
+import { displayReadingAng } from '../utils/readingAng';
 
 /**
  * Single read entry point for an ang's content.
@@ -12,7 +13,7 @@ import { isDatabaseInstalled } from './downloadDatabase';
  * read fails (e.g. a corrupted DB), it falls back to the BaniDB API, which needs
  * the network — so the caller's connectivity handling only kicks in then.
  * Returns the same `{ success, data }` shape the reader already consumes;
- * `@sikhi-ui/banidb.getAng` already returns the API response shape, so mapping
+ * `@khalisfoundation/banidb.getAng` already returns the API response shape, so mapping
  * it to the app's `PathContent` is a field pick.
  */
 export interface AngContentResult {
@@ -49,19 +50,25 @@ const toPathContent = (ang: Ang, angNumber: number): PathContent => ({
 });
 
 export const getAngContent = async (angNumber: number): Promise<AngContentResult> => {
+  // A brand-new path is stored at ang 0 until its first reading checkpoint.
+  // Ang 0 is a valid progress sentinel, but it is not a real page in BaniDB.
+  // Resolve it here at the shared read boundary so initial, preview, and live
+  // follower reads all open Ang 1 instead of making a doomed API fallback.
+  const requestedAng = displayReadingAng(angNumber);
+
   // DB present → read fully offline. No connectivity check is needed before
   // this read. A missing or broken DB deliberately falls through to the API.
   if (await isDatabaseInstalled()) {
     try {
       const bani = await getBani();
-      const ang = await bani.getAng(angNumber);
+      const ang = await bani.getAng(requestedAng);
       // A single page has `page`; a MultiAng has `pages`. We only ask for one
       // ang, so anything else is unexpected — fall back to the API.
       if (ang && 'page' in ang) {
-        return { success: true, data: toPathContent(ang, angNumber), source: 'db' };
+        return { success: true, data: toPathContent(ang, requestedAng), source: 'db' };
       }
       recordError(
-        new Error(`offline getAng returned no single ang for ${angNumber}`),
+        new Error(`offline getAng returned no single ang for ${requestedAng}`),
         'db: getAng miss; falling back to API'
       );
     } catch (error) {
@@ -71,6 +78,6 @@ export const getAngContent = async (angNumber: number): Promise<AngContentResult
 
   // Missing/corrupt DB → API mode. The caller checks connectivity only if this
   // fallback fails, so downloaded content is never delayed by a network check.
-  const api = await BaniDB(angNumber);
+  const api = await BaniDB(requestedAng);
   return { ...api, source: 'api' };
 };

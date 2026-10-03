@@ -171,8 +171,15 @@ export const pathsSlice = createSlice({
      * tombstone (the outbox coordinator). The sync slice's `dropMeta` clears the
      * matching metadata separately.
      */
-    removePathLocal: (state, action: PayloadAction<number>) => {
-      const pathId = action.payload;
+    /**
+     * Payload is an OBJECT, like every other path action, so the rollback
+     * reducer can find the pathId in it. As a bare number it was invisible to
+     * `getActionPathId`, which meant a failed durable write left the removal
+     * applied while the command reported failure — the path vanished and the
+     * user was told it had not.
+     */
+    removePathLocal: (state, action: PayloadAction<{ pathId: number }>) => {
+      const { pathId } = action.payload;
       state.paths = state.paths.filter((path) => path.pathId !== pathId);
       state.dates = state.dates.filter((date) => date.pathid !== pathId);
     },

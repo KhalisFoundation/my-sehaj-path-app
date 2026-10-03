@@ -66,7 +66,7 @@ describe('SyncStatusNotice', () => {
     );
   });
 
-  it('hides a signing-in notice immediately when logout interrupts the session', async () => {
+  it('keeps automatic sign-in sync silent', async () => {
     const store = makeStore();
     store.dispatch(
       setSignedIn({ token: 'token', email: 'u@e.com', firstname: 'U', lastname: 'E' })
@@ -86,7 +86,7 @@ describe('SyncStatusNotice', () => {
     });
     expect(
       renderer.root.findAllByType(Text).some((node) => node.props.children === 'Signing you in…')
-    ).toBe(true);
+    ).toBe(false);
 
     await act(async () => {
       store.dispatch(setSignedOut());

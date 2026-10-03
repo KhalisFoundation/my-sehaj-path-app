@@ -66,6 +66,11 @@ export const configureApiClient = (): boolean => {
   configured = true;
   client.setConfig({
     baseURL: SEHAJ_API_BASE_URL,
+    // The generated operations (including push-device registration) resolve
+    // bearer auth before Axios interceptors run. Provide the token through the
+    // SDK's auth hook as well as the interceptor below so a device registered
+    // immediately after sign-in is attached to the correct account.
+    auth: async () => (await tokenGetter()) ?? undefined,
     timeout: REQUEST_TIMEOUT_MS,
     // Never let the platform HTTP cache store these responses.
     //

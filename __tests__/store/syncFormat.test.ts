@@ -136,3 +136,73 @@ describe('toPersisted', () => {
     expect((persisted as unknown as Record<string, unknown>).lastError).toBeUndefined();
   });
 });
+
+/**
+ * Optional metadata fields.
+ *
+ * The validator rejects unknown keys, which is right — a leaked token must not
+ * survive a round trip. But it enumerated one exact-key set per optional-field
+ * combination, so adding `shared` to `SyncMeta` without extending the allowlist
+ * made every record the app wrote fail validation on the NEXT launch.
+ *
+ * The consequence was disproportionate and silent: hydration classified the
+ * whole blob as malformed, wiped the in-memory account and set
+ * `recoveryNeeded`, which disables all cloud sync until a manual repair. The
+ * app simply stopped contacting the server, with correct metadata on disk.
+ */
+describe('optional fields in persisted sync metadata', () => {
+  const withMeta = (extra: Record<string, unknown>) =>
+    JSON.stringify({
+      ...validPersisted(),
+      meta: { 1: { ...validPersisted().meta[1], ...extra } },
+    });
+
+  it('accepts a record marked shared', () => {
+    const parsed = parseSyncMeta(withMeta({ shared: true }));
+    expect(parsed.status).toBe('valid');
+  });
+
+  it('accepts a record marked not shared', () => {
+    // The value the app actually writes for a personal path, and the one that
+    // took cloud sync down.
+    const parsed = parseSyncMeta(withMeta({ shared: false }));
+    expect(parsed.status).toBe('valid');
+  });
+
+  it('still accepts metadata written before group reading existed', () => {
+    const parsed = parseSyncMeta(JSON.stringify(validPersisted()));
+    expect(parsed.status).toBe('valid');
+  });
+
+  it('accepts both optional fields together', () => {
+    const parsed = parseSyncMeta(withMeta({ shared: true, serverCreatedAt: 1690000000000 }));
+    expect(parsed.status).toBe('valid');
+  });
+
+  it('rejects a non-boolean shared', () => {
+    expect(parseSyncMeta(withMeta({ shared: 'yes' })).status).toBe('recovery');
+  });
+
+  it('still rejects a genuinely unknown field', () => {
+    // The reason exact-key matching exists: a leaked token must never survive.
+    expect(parseSyncMeta(withMeta({ token: 'secret' })).status).toBe('recovery');
+  });
+
+  it('still rejects a record missing a required field', () => {
+    const meta = { ...validPersisted().meta[1] } as Record<string, unknown>;
+    delete meta.onServer;
+    const parsed = parseSyncMeta(JSON.stringify({ ...validPersisted(), meta: { 1: meta } }));
+    expect(parsed.status).toBe('recovery');
+  });
+
+  it('round-trips a shared flag through serialize and parse', () => {
+    // The actual failure was a write the next read could not accept.
+    const parsed = parseSyncMeta(withMeta({ shared: true }));
+    if (parsed.status !== 'valid') {
+      throw new Error('expected valid');
+    }
+    expect(parsed.value.meta[1].shared).toBe(true);
+    const again = parseSyncMeta(serializeSyncMeta(parsed.value));
+    expect(again.status).toBe('valid');
+  });
+});

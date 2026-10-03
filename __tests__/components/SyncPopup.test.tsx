@@ -1,12 +1,8 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
-import { Constants, ErrorConstants } from '@constants';
+import { Constants } from '@constants';
 import { SyncPopup } from '../../components/SyncPopup';
-import {
-  discardLocalDataAndSync,
-  runConfirmedAccountSync,
-  switchAccountData,
-} from '../../store/confirmedSync';
+import { runConfirmedAccountSync, switchAccountData } from '../../store/confirmedSync';
 import { onForeground } from '../../store/syncLifecycle';
 import { approveSync, declineSync } from '../../store/slices/syncSlice';
 
@@ -74,24 +70,9 @@ jest.mock('../../components/Dialog', () => {
       ReactForMock.createElement('Dialog', props, props.children),
   };
 });
-
 const mockRun = runConfirmedAccountSync as jest.Mock;
-const mockDiscard = discardLocalDataAndSync as jest.Mock;
 const mockSwitchAccount = switchAccountData as jest.Mock;
 const mockOnForeground = onForeground as jest.Mock;
-
-const pressSyncNow = async () => {
-  let renderer!: ReactTestRenderer.ReactTestRenderer;
-  await act(async () => {
-    renderer = ReactTestRenderer.create(<SyncPopup />);
-  });
-  const button = renderer.root.findAll(
-    (node) => node.props.accessibilityLabel === Constants.SYNC_LOCAL_ACTION
-  )[0];
-  await act(async () => {
-    await button.props.onPress();
-  });
-};
 
 beforeEach(() => {
   // SyncPopup schedules restore retries. Keeping timers fake for every test
@@ -99,7 +80,6 @@ beforeEach(() => {
   // advances this clock explicitly.
   jest.useFakeTimers();
   jest.clearAllMocks();
-  mockDiscard.mockResolvedValue(true);
   mockSwitchAccount.mockResolvedValue(true);
   mockOnForeground.mockResolvedValue(undefined);
   mockState.auth.email = 'u@e.com';
@@ -139,29 +119,6 @@ afterAll(() => {
   jest.restoreAllMocks();
 });
 
-describe('SyncPopup — Sync now', () => {
-  it('closes the popup only after a successful sync', async () => {
-    mockRun.mockResolvedValue(true);
-
-    await pressSyncNow();
-
-    expect(mockRun).toHaveBeenCalledWith(expect.anything(), 'u@e.com');
-    expect(mockDispatch).toHaveBeenCalledWith(approveSync('u@e.com')); // marks answered → closes
-    expect(mockShowError).not.toHaveBeenCalled();
-  });
-
-  it('keeps the popup open and alerts when the sync fails (so the user can retry)', async () => {
-    mockRun.mockResolvedValue(false);
-
-    await pressSyncNow();
-
-    expect(mockRun).toHaveBeenCalledTimes(1);
-    expect(mockShowError).toHaveBeenCalledWith(ErrorConstants.FAILED_TO_SYNC);
-    // approveSync must NOT run — the popup stays visible for a retry.
-    expect(mockDispatch).not.toHaveBeenCalledWith(approveSync('u@e.com'));
-  });
-});
-
 describe('SyncPopup — unowned progress', () => {
   const renderUnowned = async () => {
     let renderer!: ReactTestRenderer.ReactTestRenderer;
@@ -170,51 +127,6 @@ describe('SyncPopup — unowned progress', () => {
     });
     return renderer;
   };
-
-  /** Unique action labels — `findAll` also matches nested host nodes. */
-  const labels = (renderer: ReactTestRenderer.ReactTestRenderer) => [
-    ...new Set(
-      renderer.root
-        .findAll((node) => typeof node.props.accessibilityLabel === 'string')
-        .map((node) => node.props.accessibilityLabel as string)
-    ),
-  ];
-
-  it('offers exactly two actions and no logout', async () => {
-    const renderer = await renderUnowned();
-
-    // The progress either joins the account or it does not; there is no third
-    // answer. "Not now" used to sit here but only declined the prompt — it
-    // associated nothing and pulled nothing, so the user stayed signed in with
-    // the account's own progress invisible, and was never asked again.
-    expect(labels(renderer)).toEqual([Constants.SYNC_LOCAL_ACTION, Constants.DISCARD_LOCAL_LINK]);
-    expect(labels(renderer)).not.toContain(Constants.NOT_NOW);
-    // Signing out resolves nothing for progress that belongs to nobody yet.
-    expect(labels(renderer)).not.toContain(Constants.LOGOUT);
-  });
-
-  it('lets a user continue reading offline and asks again after reconnecting', async () => {
-    mockState.network.isOnline = false;
-    const renderer = await renderUnowned();
-
-    expect(labels(renderer)).toEqual([Constants.CONTINUE_OFFLINE]);
-    expect(mockRun).not.toHaveBeenCalled();
-
-    await act(async () => {
-      renderer.root
-        .find((node) => node.props.accessibilityLabel === Constants.CONTINUE_OFFLINE)
-        .props.onPress();
-    });
-    expect(renderer.root.find((node) => node.type === ('Dialog' as never)).props.visible).toBe(
-      false
-    );
-
-    mockState.network.isOnline = true;
-    await act(async () => {
-      renderer.update(<SyncPopup mode="unowned" />);
-    });
-    expect(labels(renderer)).toContain(Constants.SYNC_LOCAL_ACTION);
-  });
 
   it('associates silently when the device has nothing to ask about', async () => {
     mockState.paths.paths = [];
@@ -229,6 +141,22 @@ describe('SyncPopup — unowned progress', () => {
       false
     );
     expect(mockRun).toHaveBeenCalledWith(expect.anything(), 'u@e.com');
+  });
+
+  it('silently syncs existing local progress after sign in', async () => {
+    // This is the replacement for the retired Sync/Discard decision flow:
+    // local paths and their date records are now uploaded automatically.
+    mockState.paths.paths = [{ pathId: 1 }];
+    mockState.paths.dates = [{ pathid: 1 }];
+    mockRun.mockResolvedValue(true);
+
+    const renderer = await renderUnowned();
+
+    expect(renderer.root.find((node) => node.type === ('Dialog' as never)).props.visible).toBe(
+      false
+    );
+    expect(mockRun).toHaveBeenCalledWith(expect.anything(), 'u@e.com');
+    expect(mockDispatch).not.toHaveBeenCalledWith(declineSync());
   });
 
   it('restores again after signing out and back in as the same account', async () => {
@@ -345,121 +273,6 @@ describe('SyncPopup — unowned progress', () => {
     });
 
     expect(mockRun.mock.calls.length).toBeGreaterThan(attemptsWhileOffline);
-  });
-
-  it("refreshes after connecting, so another phone's reading appears at once", async () => {
-    // Home's focus effect does not re-fire when the user was already on Home as
-    // they signed in, so without this the list sits stale until the screen
-    // happens to be re-focused.
-    mockState.paths.paths = [];
-    mockState.paths.dates = [];
-    mockRun.mockResolvedValue(true);
-
-    await act(async () => {
-      ReactTestRenderer.create(<SyncPopup />);
-    });
-
-    expect(mockOnForeground).toHaveBeenCalled();
-  });
-
-  it('still prompts when only an orphan date record remains', async () => {
-    // `paths.dates` is a separate collection, so this device is not empty.
-    mockState.paths.paths = [];
-    mockState.paths.dates = [{ pathid: 1 }];
-
-    const renderer = await renderUnowned();
-
-    expect(renderer.root.find((node) => node.type === ('Dialog' as never)).props.visible).toBe(
-      true
-    );
-    expect(mockRun).not.toHaveBeenCalled();
-  });
-
-  it('puts Discard behind its own confirmation and never deletes on the first tap', async () => {
-    const renderer = await renderUnowned();
-    const discard = renderer.root.find(
-      (node) => node.props.accessibilityLabel === Constants.DISCARD_LOCAL_LINK
-    );
-
-    await act(async () => {
-      await discard.props.onPress();
-    });
-
-    expect(mockDiscard).not.toHaveBeenCalled(); // nothing removed yet
-    // The confirmation replaces the choice entirely: Discard / Cancel only.
-    expect(labels(renderer)).toEqual([Constants.CANCEL, Constants.DISCARD_CONFIRM_ACTION]);
-    const confirm = renderer.root.find(
-      (node) => node.props.accessibilityLabel === Constants.DISCARD_CONFIRM_ACTION
-    );
-
-    await act(async () => {
-      await confirm.props.onPress();
-    });
-    expect(mockDiscard).toHaveBeenCalledWith(expect.anything(), 'u@e.com');
-  });
-
-  it('locks Cancel and the back gesture while the discard is running', async () => {
-    // Deleting this device's progress is irreversible, so nothing may leave the
-    // dialog mid-wipe — not the button, and not the Android back gesture, which
-    // reaches `onRequestClose` directly rather than through the button.
-    let finishDiscard!: (ok: boolean) => void;
-    mockDiscard.mockReturnValue(
-      new Promise<boolean>((resolve) => {
-        finishDiscard = resolve;
-      })
-    );
-
-    const renderer = await renderUnowned();
-    await act(async () => {
-      await renderer.root
-        .find((node) => node.props.accessibilityLabel === Constants.DISCARD_LOCAL_LINK)
-        .props.onPress();
-    });
-
-    const dialog = renderer.root.find((node) => typeof node.props.onRequestClose === 'function');
-    await act(async () => {
-      renderer.root
-        .find((node) => node.props.accessibilityLabel === Constants.DISCARD_CONFIRM_ACTION)
-        .props.onPress();
-    });
-
-    expect(
-      renderer.root.find((node) => node.props.accessibilityLabel === Constants.CANCEL).props
-        .disabled
-    ).toBe(true);
-
-    // The back gesture must not dismiss it either.
-    await act(async () => {
-      dialog.props.onRequestClose();
-    });
-    expect(
-      renderer.root.find(
-        (node) => node.props.accessibilityLabel === Constants.DISCARD_CONFIRM_ACTION
-      )
-    ).toBeTruthy();
-
-    await act(async () => {
-      finishDiscard(true);
-    });
-  });
-
-  it('cancelling the discard confirmation changes nothing', async () => {
-    const renderer = await renderUnowned();
-    await act(async () => {
-      await renderer.root
-        .find((node) => node.props.accessibilityLabel === Constants.DISCARD_LOCAL_LINK)
-        .props.onPress();
-    });
-
-    await act(async () => {
-      await renderer.root
-        .find((node) => node.props.accessibilityLabel === Constants.CANCEL)
-        .props.onPress();
-    });
-
-    expect(mockDiscard).not.toHaveBeenCalled();
-    // Back to the three-action dialog.
-    expect(labels(renderer)).toContain(Constants.SYNC_LOCAL_ACTION);
   });
 });
 
