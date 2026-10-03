@@ -1670,6 +1670,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                 handleRefresh().catch(() => undefined);
               }}
               tintColor={UIConstants.PRIMARY_COLOR}
+              titleColor={UIConstants.PRIMARY_COLOR}
               colors={[UIConstants.PRIMARY_COLOR]}
             />
           }

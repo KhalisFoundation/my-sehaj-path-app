@@ -78,7 +78,7 @@ export const PathLiveStatus = ({
               onPress={onLeaveAfterReading}
               accessibilityRole="button"
             >
-              <Text style={DialogStyles.primaryText}>Back to Home</Text>
+              <Text style={DialogStyles.primaryText}>Back to Path</Text>
             </Pressable>
           </View>
         </Dialog>

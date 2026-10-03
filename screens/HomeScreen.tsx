@@ -1,5 +1,12 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, ImageBackground, ScrollView, BackHandler, TouchableOpacity } from 'react-native';
+import {
+  View,
+  ImageBackground,
+  ScrollView,
+  BackHandler,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -17,7 +24,7 @@ import {
   Message,
 } from '@components';
 import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
-import { Constants, Routes, EDGES_ALL_SIDES } from '@constants';
+import { Constants, Routes, EDGES_ALL_SIDES, UIConstants } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { MenuIcon, SyncedCheckIcon } from '@icons';
@@ -34,6 +41,7 @@ type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [membersByPathId, setMembersByPathId] = useState<Record<number, AvatarMember[]>>({});
   const dispatch = useAppDispatch();
   // Not the raw slice: a deleted path lingers there until the server confirms.
@@ -163,6 +171,21 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
     setIsDrawerVisible(false);
   }, []);
 
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) {
+      return;
+    }
+    setRefreshing(true);
+    try {
+      // Upload queued local work before pulling another device's paths. This
+      // is the same ordering used when Home regains focus, so a refresh can
+      // never overwrite offline reading progress with an older server copy.
+      await onForeground(null);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing]);
+
   const pathInProgressCards = useMemo(
     () =>
       pathInProgress?.map((path: PathData) => (
@@ -221,7 +244,22 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
         >
           <MenuIcon color="#0D2346" />
         </TouchableOpacity>
-        <ScrollView contentContainerStyle={HomeScreenStyles.scrollContainer}>
+        <ScrollView
+          contentContainerStyle={HomeScreenStyles.scrollContainer}
+          alwaysBounceVertical={true}
+          overScrollMode="always"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              tintColor={UIConstants.PRIMARY_COLOR}
+              titleColor={UIConstants.PRIMARY_COLOR}
+              colors={[UIConstants.PRIMARY_COLOR]}
+              onRefresh={() => {
+                handleRefresh().catch(() => undefined);
+              }}
+            />
+          }
+        >
           <View style={HomeScreenStyles.container}>
             <Headline headline={Constants.ITS_FINE_DAY_FOR} />
             <Headline headline={Constants.SEHAJ_PATH_ENGLISH} />
