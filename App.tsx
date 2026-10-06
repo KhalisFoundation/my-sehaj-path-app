@@ -44,6 +44,7 @@ import {
   subscribePushTap,
   flushPendingPushTaps,
   trackEvent,
+  isTurnNotificationType,
 } from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
 import { store } from './store';
@@ -64,6 +65,8 @@ export type RootStackParamList = {
     /** Keeps a stale Continue route identifiable after its local card is pruned. */
     sehajPathId?: string;
     initialTab?: 'progress' | 'streak' | 'turns' | 'members';
+    /** Changes on every notification tap so an already-mounted route reacts. */
+    notificationTapAt?: number;
   };
   CreatePath: undefined;
   Path: {
@@ -137,9 +140,10 @@ const PushRegistration = () => {
 };
 
 /**
- * Opens the exact shared path named by a push notification. The event bridge
- * retains presses received before hydration; returning false keeps an event in
- * that bridge until the matching group metadata reaches this device.
+ * Opens the exact shared path identified by the canonical path UUID carried in
+ * the push notification. Display names are never used for routing. The event
+ * bridge retains presses received before hydration; returning false keeps an
+ * event there until matching group metadata reaches this device.
  */
 const PushTapRouter = ({ navigationReady }: { navigationReady: boolean }) => {
   const syncMeta = useAppSelector((state) => state.sync.meta);
@@ -154,10 +158,7 @@ const PushTapRouter = ({ navigationReady }: { navigationReady: boolean }) => {
   useEffect(
     () =>
       subscribePushTap((event) => {
-        if (
-          (event.type !== 'sehaj-path-turn-updated' && event.type !== 'sehaj-path-turn-reminder') ||
-          !event.pathId
-        ) {
+        if (!isTurnNotificationType(event.type) || !event.pathId) {
           return false;
         }
         const match = groupIds.find(([groupId]) => groupId === event.pathId);
@@ -182,11 +183,13 @@ const PushTapRouter = ({ navigationReady }: { navigationReady: boolean }) => {
         notifyPlanRefresh(event.pathId);
         trackEvent('Notification', 'open', event.type ?? 'turn notification');
         const current = pushNavigationRef.getCurrentRoute();
-        if (
-          current?.name !== Routes.Continue ||
-          current.params?.pathId !== pathId ||
-          current.params?.initialTab !== 'turns'
-        ) {
+        if (current?.name === Routes.Continue && current.params?.pathId === pathId) {
+          // Native Android notification taps can arrive while this route is
+          // already mounted. Updating params directly is reliable on a
+          // singleTask activity; navigating to the same route can be treated
+          // as a no-op by the native stack.
+          pushNavigationRef.setParams({ initialTab: 'turns', notificationTapAt: Date.now() });
+        } else {
           pushNavigationRef.navigate(Routes.Continue, {
             pathId,
             sehajPathId: event.pathId,

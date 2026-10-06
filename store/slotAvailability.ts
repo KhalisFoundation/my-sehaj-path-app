@@ -1,4 +1,5 @@
 import type { SehajPathSlot } from '@api/generated/types.gen';
+import { SEHAJ_PATH_ENFORCE_EDIT_BOOKING_LEAD_TIME } from '@env';
 import {
   addLocalDays,
   addMinutes,
@@ -35,6 +36,9 @@ export const MINIMUM_TURN_GAP_MINUTES = 15;
 export const MINIMUM_BOOKING_LEAD_MINUTES = 15;
 /** Transport tolerance for a booking request reaching the server. */
 export const BOOKING_LEAD_TOLERANCE_MINUTES = 1;
+/** New builds enforce the lead rule for edits unless QA explicitly disables it. */
+export const ENFORCE_EDIT_BOOKING_LEAD_TIME =
+  SEHAJ_PATH_ENFORCE_EDIT_BOOKING_LEAD_TIME?.toLowerCase() !== 'false';
 
 /** How far ahead Progress searches for the first scheduled turn. */
 export const UPCOMING_TURN_LOOKAHEAD_DAYS = 30;

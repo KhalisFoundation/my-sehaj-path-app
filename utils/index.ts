@@ -18,6 +18,7 @@ export { displayReadingAng } from './readingAng';
 export * from './dateTime';
 export {
   displayPushMessage,
+  isTurnNotificationType,
   registerPushNotifications,
   registerPushNotificationTapHandlers,
   subscribePushTap,

@@ -19,6 +19,7 @@ import { CalendarIcon } from '@icons';
 import { bookSlot, loadPlan, reportUnexpectedGroupRefusal, updateSlot } from '../store/groupApi';
 import {
   availabilityForSelectedTime,
+  ENFORCE_EDIT_BOOKING_LEAD_TIME,
   MINIMUM_BOOKING_LEAD_MINUTES,
   planWindowFor,
 } from '../store/slotAvailability';
@@ -189,7 +190,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
       slots,
       excludeSlotId: editingSlotId,
       now,
-      enforceLeadTime: !isEditing,
+      enforceLeadTime: !isEditing || ENFORCE_EDIT_BOOKING_LEAD_TIME,
     });
   }, [editingSlotId, isEditing, minutes, now, slots, startsAt]);
   const durationAvailability = useMemo(
@@ -204,7 +205,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
             slots,
             excludeSlotId: editingSlotId,
             now,
-            enforceLeadTime: !isEditing,
+            enforceLeadTime: !isEditing || ENFORCE_EDIT_BOOKING_LEAD_TIME,
           }).available,
       })),
     [editingSlotId, isEditing, now, slots, startsAt]

@@ -36,6 +36,49 @@ type NotificationData = Record<string, unknown>;
 const asText = (value: unknown): string | undefined =>
   typeof value === 'string' && value.length > 0 ? value : undefined;
 
+const normaliseNotificationType = (value: string): string =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s]+/g, '-');
+
+/**
+ * Android can deliver the notification block separately from the FCM data
+ * block. Keep the turn classification tolerant of the casing/key spelling
+ * used by older senders, while retaining the canonical event names inside
+ * the app.
+ */
+export const isTurnNotificationType = (value: unknown): boolean => {
+  const text = asText(value);
+  if (!text) {
+    return false;
+  }
+  const normalised = normaliseNotificationType(text);
+  return (
+    normalised === 'sehaj-path-turn-updated' ||
+    normalised === 'sehaj-path-turn-reminder' ||
+    normalised === 'turn-updated' ||
+    normalised === 'turn-reminder'
+  );
+};
+
+/**
+ * Fallback for Android system-rendered notifications where a legacy FCM
+ * sender omitted notificationType from the delivered data. The turn title is
+ * deliberately narrow so unrelated dashboard notifications are unaffected.
+ */
+const inferTurnNotificationType = (data: NotificationData): string | undefined => {
+  const candidates = [data.title, data.body].map(asText).filter(Boolean) as string[];
+  const text = candidates.join(' ').toLowerCase();
+  if (/sehaj\s+path.*turn.*updated|turn.*updated/.test(text)) {
+    return 'sehaj-path-turn-updated';
+  }
+  if (/sehaj\s+path.*turn.*(coming|start)|turn.*(coming|start)/.test(text)) {
+    return 'sehaj-path-turn-reminder';
+  }
+  return undefined;
+};
+
 const createPushTapEvent = (data: NotificationData | undefined, id?: string): PushTapEvent => {
   const normalizedData: Record<string, unknown> = data ?? {};
   const pathId = [
@@ -47,14 +90,20 @@ const createPushTapEvent = (data: NotificationData | undefined, id?: string): Pu
   ]
     .map(asText)
     .find((value): value is string => value !== undefined);
-  const type = [
+  const rawType = [
     normalizedData.type,
     normalizedData.notificationType,
+    normalizedData.notification_type,
+    normalizedData.notificationtype,
     normalizedData.event,
     normalizedData.kind,
   ]
     .map(asText)
     .find((value): value is string => value !== undefined);
+  const type =
+    rawType !== undefined && isTurnNotificationType(rawType)
+      ? normaliseNotificationType(rawType)
+      : rawType ?? inferTurnNotificationType(normalizedData);
 
   return { id, pathId, type, data: normalizedData };
 };

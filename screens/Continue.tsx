@@ -47,6 +47,7 @@ import {
   trackEvent,
   trackSharedPathOutcome,
   subscribePushTap,
+  isTurnNotificationType,
 } from '@utils';
 import { removePathAndSyncState, store } from '../store';
 import { ensureAccessiblePath } from '../store/applyServerResponse';
@@ -103,7 +104,7 @@ const formatLiveReaderTime = (reader: {
   ].join(' - ');
 
 export const Continue = ({ route, navigation }: ContinueProps) => {
-  const { pathId, initialTab, sehajPathId: routeSehajPathId } = route.params;
+  const { pathId, initialTab, notificationTapAt, sehajPathId: routeSehajPathId } = route.params;
 
   /**
    * Group data is loaded only when a path can be represented on the server.
@@ -450,14 +451,19 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   // new `initialTab`. Apply that request once per changed route param; using a
   // plain effect on `uiState.tabs` would otherwise force users back to the
   // original tab every time they switched tabs themselves.
-  const lastRequestedInitialTabRef = useRef(initialTab);
+  const lastRequestedInitialTabRef = useRef({ initialTab, notificationTapAt });
   useEffect(() => {
-    if (!initialTab || lastRequestedInitialTabRef.current === initialTab) {
+    const previousRequest = lastRequestedInitialTabRef.current;
+    if (
+      !initialTab ||
+      (previousRequest.initialTab === initialTab &&
+        previousRequest.notificationTapAt === notificationTapAt)
+    ) {
       return;
     }
-    lastRequestedInitialTabRef.current = initialTab;
+    lastRequestedInitialTabRef.current = { initialTab, notificationTapAt };
     setUiState((previous) => ({ ...previous, tabs: initialTab }));
-  }, [initialTab]);
+  }, [initialTab, notificationTapAt]);
   useEffect(() => {
     if (!showTurnsTab && uiState.tabs === 'turns') {
       setUiState((previous) => ({ ...previous, tabs: 'progress' }));
@@ -1017,14 +1023,12 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
           if (!matchesPath) {
             return false;
           }
-          if (
-            event.type === 'sehaj-path-turn-updated' ||
-            event.type === 'sehaj-path-turn-reminder'
-          ) {
-            setUiState((previous) =>
-              previous.tabs === 'turns' ? previous : { ...previous, tabs: 'turns' }
-            );
+          if (!isTurnNotificationType(event.type)) {
+            return false;
           }
+          setUiState((previous) =>
+            previous.tabs === 'turns' ? previous : { ...previous, tabs: 'turns' }
+          );
           handleRefresh().catch((error) => {
             recordError(error, 'Continue: notification tap refresh failed');
           });

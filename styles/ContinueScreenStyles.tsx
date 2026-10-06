@@ -43,7 +43,11 @@ export const ContinueScreenStyles = StyleSheet.create({
   },
   container: {
     backgroundColor: UIConstants.SCREEN_OVERLAY,
-    height: '100%',
+    // This screen is inside a ScrollView. A fixed height clips the member
+    // summary when its count arrives asynchronously and the sentence wraps
+    // onto a second line; minimum height preserves the full-screen layout
+    // while allowing content to grow naturally.
+    minHeight: '100%',
     paddingTop: UIConstants.PADDING * 2,
     paddingHorizontal: UIConstants.PADDING * 1.5,
     paddingBottom: UIConstants.PADDING,
@@ -206,8 +210,8 @@ export const ContinueScreenStyles = StyleSheet.create({
   memberSummaryText: {
     color: '#111111',
     fontFamily: font.Baloo_Paaji_2_Regular,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: UIConstants.BODY_FONT_SIZE,
+    lineHeight: UIConstants.BODY_LINE_HEIGHT,
     textAlign: 'center',
   },
   memberSummaryCount: {
