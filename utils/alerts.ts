@@ -11,16 +11,19 @@ export const showSaveProgressAlert = ({
   onGoBackWithoutSaving,
   destinationLabel = 'Home',
 }: SaveProgressAlertProps) => {
+  // "Go to", not "Open". The destination is a screen the user moves to, not a
+  // thing they open — "Open Home" reads wrong, and it got worse the further the
+  // destination was from a document: "Open Progress", "Open Streaks".
   Alert.alert(
     'Save Progress?',
-    `You have navigated to a different ang. Do you want to save your current progress before opening ${destinationLabel}?`,
+    `You have navigated to a different ang. Do you want to save your current progress before going to ${destinationLabel}?`,
     [
       {
-        text: `Save & Open ${destinationLabel}`,
+        text: `Save & Go to ${destinationLabel}`,
         onPress: onSaveAndGoBack,
       },
       {
-        text: `Open ${destinationLabel} Without Saving`,
+        text: `Go to ${destinationLabel} Without Saving`,
         onPress: onGoBackWithoutSaving,
         style: 'destructive',
       },

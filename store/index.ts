@@ -73,6 +73,15 @@ export const rollbackDurableMutation = createAction<{
  */
 export const clearActiveAccountData = createAction('app/clearActiveAccountData');
 
+/**
+ * Removes a path and every piece of its sync bookkeeping in one durable
+ * snapshot. Used for a guest delete and after the server acknowledges an
+ * account deletion.
+ */
+export const removePathAndSyncState = createAction<{ pathId: number }>(
+  'app/removePathAndSyncState'
+);
+
 const rootReducer = (state: CombinedState | undefined, action: UnknownAction): CombinedState => {
   if (state && restoreDurableState.match(action)) {
     return {
@@ -174,6 +183,24 @@ const rootReducer = (state: CombinedState | undefined, action: UnknownAction): C
       paths,
       sync,
     };
+  }
+  if (state && removePathAndSyncState.match(action)) {
+    const { pathId } = action.payload;
+    const paths: PathsState = {
+      ...state.paths,
+      paths: state.paths.paths.filter((path) => path.pathId !== pathId),
+      dates: state.paths.dates.filter((date) => date.pathid !== pathId),
+    };
+    const sync: SyncState = {
+      ...state.sync,
+      meta: { ...state.sync.meta },
+      pathOps: { ...state.sync.pathOps },
+      scrollDirty: { ...state.sync.scrollDirty },
+    };
+    delete sync.meta[pathId];
+    delete sync.pathOps[pathId];
+    delete sync.scrollDirty[pathId];
+    return { ...state, paths, sync };
   }
   return combinedReducer(state, action);
 };

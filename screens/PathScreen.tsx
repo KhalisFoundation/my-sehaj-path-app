@@ -414,14 +414,17 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       if (unchangedSinceOpen) {
         return true;
       }
-      // Silent: the navigation handler shows the richer "leave anyway?" choice,
-      // so the command must not also pop a plain error alert.
+      // `silent` only suppresses the ERROR alert: the navigation handler shows
+      // the richer "leave anyway?" choice and a plain alert on top would be
+      // noise. The sync still announces itself — this is progress the user
+      // chose to save, and it is the one confirmation they get that leaving the
+      // reader kept their place.
       const saved = await savePathProgress(
         route.params.pathId,
         pathAng,
         verseIdToKeep,
         scrollOffset.current,
-        { silent: true }
+        { silent: true, silentSync: false }
       );
       // Only mirror the save into local refs when it actually reached disk.
       if (saved) {
