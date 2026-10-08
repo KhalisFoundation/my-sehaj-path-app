@@ -15,6 +15,8 @@ import {
 } from './pushEvents';
 
 const CHANNEL_ID = 'general';
+const INITIAL_NOTIFICATION_RETRY_DELAY_MS = 250;
+const INITIAL_NOTIFICATION_MAX_RETRIES = 8;
 
 const ensureAndroidNotificationChannel = async (): Promise<void> => {
   if (Platform.OS !== 'android') {
@@ -124,6 +126,52 @@ const emitRemoteMessageTap = (message: FirebaseMessagingTypes.RemoteMessage): vo
 let tapHandlersRegistered = false;
 
 /**
+ * On an Android cold start, index.js can run before the Activity exposing the
+ * notification intent is ready. Firebase reports `null` in that short window.
+ * Retry for two seconds so a tap cannot be turned into a plain Home launch.
+ */
+const readInitialRemoteNotification = (attempt = 0): void => {
+  messaging()
+    .getInitialNotification()
+    .then((message) => {
+      if (message !== null) {
+        emitRemoteMessageTap(message);
+        return;
+      }
+      if (attempt < INITIAL_NOTIFICATION_MAX_RETRIES) {
+        setTimeout(
+          () => readInitialRemoteNotification(attempt + 1),
+          INITIAL_NOTIFICATION_RETRY_DELAY_MS
+        );
+      }
+    })
+    .catch((error) => recordError(error, 'push: initial notification failed'));
+};
+
+const readInitialNotifeeNotification = (attempt = 0): void => {
+  notifee
+    .getInitialNotification()
+    .then((initialNotification) => {
+      if (initialNotification?.notification !== undefined) {
+        emitPushTap(
+          createPushTapEvent(
+            initialNotification.notification.data,
+            initialNotification.notification.id
+          )
+        );
+        return;
+      }
+      if (attempt < INITIAL_NOTIFICATION_MAX_RETRIES) {
+        setTimeout(
+          () => readInitialNotifeeNotification(attempt + 1),
+          INITIAL_NOTIFICATION_RETRY_DELAY_MS
+        );
+      }
+    })
+    .catch((error) => recordError(error, 'push: initial Notifee notification failed'));
+};
+
+/**
  * Registers all native notification-open entry points. This is called from
  * index.js so presses are captured even when the app is cold-started, while
  * pushEvents buffers them until the relevant screen is mounted.
@@ -136,14 +184,7 @@ export const registerPushNotificationTapHandlers = (): void => {
 
   try {
     messaging().onNotificationOpenedApp(emitRemoteMessageTap);
-    messaging()
-      .getInitialNotification()
-      .then((message) => {
-        if (message !== null) {
-          emitRemoteMessageTap(message);
-        }
-      })
-      .catch((error) => recordError(error, 'push: initial notification failed'));
+    readInitialRemoteNotification();
   } catch (error) {
     recordError(error, 'push: notification-open handler registration failed');
   }
@@ -158,19 +199,7 @@ export const registerPushNotificationTapHandlers = (): void => {
         emitPushTap(createPushTapEvent(notification.data, notification.id));
       }
     });
-    notifee
-      .getInitialNotification()
-      .then((initialNotification) => {
-        if (initialNotification?.notification !== undefined) {
-          emitPushTap(
-            createPushTapEvent(
-              initialNotification.notification.data,
-              initialNotification.notification.id
-            )
-          );
-        }
-      })
-      .catch((error) => recordError(error, 'push: initial Notifee notification failed'));
+    readInitialNotifeeNotification();
   } catch (error) {
     recordError(error, 'push: Notifee-open handler registration failed');
   }

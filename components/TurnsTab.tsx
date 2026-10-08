@@ -206,12 +206,17 @@ export const TurnsTab = ({
   const { height: windowHeight } = useWindowDimensions();
   const scheduleViewportRef = useRef<ScrollView>(null);
   const initialViewportAppliedRef = useRef(false);
+  const loadSequenceRef = useRef(0);
 
   const load = useCallback(async () => {
+    const loadSequence = ++loadSequenceRef.current;
     setLoadError(false);
     const { from, to } = planWindowFor(day);
     try {
       const result = await loadPlan(sehajPathId, from, to);
+      if (loadSequence !== loadSequenceRef.current) {
+        return;
+      }
       if (result.ok) {
         setSlots(result.data.slots);
       } else {
@@ -219,6 +224,9 @@ export const TurnsTab = ({
         setSlots([]);
       }
     } catch (error) {
+      if (loadSequence !== loadSequenceRef.current) {
+        return;
+      }
       recordError(error, 'TurnsTab: failed to load schedule');
       setLoadError(true);
       setSlots([]);
@@ -241,7 +249,7 @@ export const TurnsTab = ({
           }
           load().catch(() => undefined);
         }
-      }),
+      }, sehajPathId),
     [load, sehajPathId]
   );
 
