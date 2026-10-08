@@ -1,11 +1,11 @@
 import { open, type DB } from '@op-engineering/op-sqlite';
-import { createBaniDB, type BaniDB } from '@sikhi-ui/banidb';
+import { createBaniDB, type BaniDB } from '@khalisfoundation/banidb';
 import { DB_FILE_NAME } from '@constants';
 import { DB_DIRECTORY } from './paths';
 
 /**
  * Opens the downloaded SQLite DB with op-sqlite and wraps it in the one-method
- * adapter `@sikhi-ui/banidb` needs. `getBani()` is a lazy singleton so the file
+ * adapter `@khalisfoundation/banidb` needs. `getBani()` is a lazy singleton so the file
  * is opened once and shared. Adapter shape mirrors the package's RN example.
  */
 

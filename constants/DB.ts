@@ -1,6 +1,6 @@
 // Offline reading database (Sri Guru Granth Sahib, angs 1–1430).
 //
-// The DB is downloaded on first launch and read via @sikhi-ui/banidb + op-sqlite.
+// The DB is downloaded on first launch and read via @khalisfoundation/banidb + op-sqlite.
 
 /**
  * Azure Front Door CDN host for both files below.
