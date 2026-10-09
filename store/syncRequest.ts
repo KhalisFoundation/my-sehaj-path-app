@@ -47,6 +47,14 @@ export const buildSyncRequest = (state: RootState, includeSettings = true): Sync
       if (!meta) {
         return null;
       }
+      // A shared path is server-owned: several people move its position, and
+      // the server is the only thing that can order those writes. Sending one
+      // here would push this device's copy through the owner-scoped merge and
+      // overwrite whatever the group did while we were away — and the outbox
+      // would keep retrying until it won.
+      if (meta.shared) {
+        return null;
+      }
       const date = state.paths.dates.find((entry) => entry.pathid === path.pathId);
       return toSyncPath({ path, date, meta });
     })

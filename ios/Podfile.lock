@@ -7,6 +7,9 @@ PODS:
   - Firebase/Crashlytics (12.15.0):
     - Firebase/CoreOnly
     - FirebaseCrashlytics (~> 12.15.0)
+  - Firebase/Messaging (12.15.0):
+    - Firebase/CoreOnly
+    - FirebaseMessaging (~> 12.15.0)
   - FirebaseAnalytics/Core (12.15.0):
     - FirebaseCore (~> 12.15.0)
     - FirebaseInstallations (~> 12.15.0)
@@ -47,6 +50,15 @@ PODS:
     - GoogleUtilities/Environment (~> 8.1)
     - GoogleUtilities/UserDefaults (~> 8.1)
     - PromisesObjC (~> 2.4)
+  - FirebaseMessaging (12.15.0):
+    - FirebaseCore (~> 12.15.0)
+    - FirebaseInstallations (~> 12.15.0)
+    - GoogleDataTransport (~> 10.1)
+    - GoogleUtilities/AppDelegateSwizzler (~> 8.1)
+    - GoogleUtilities/Environment (~> 8.1)
+    - GoogleUtilities/Reachability (~> 8.1)
+    - GoogleUtilities/UserDefaults (~> 8.1)
+    - nanopb (~> 3.30910.0)
   - FirebaseRemoteConfigInterop (12.15.0)
   - FirebaseSessions (12.15.0):
     - FirebaseCore (~> 12.15.0)
@@ -2092,6 +2104,50 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNCClipboard (1.16.3):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
+  - RNDateTimePicker (9.1.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNFBAnalytics (25.0.1):
     - FirebaseAnalytics/Core (= 12.15.0)
     - FirebaseAnalytics/IdentitySupport (= 12.15.0)
@@ -2165,7 +2221,37 @@ PODS:
     - ReactNativeDependencies
     - RNFBApp
     - Yoga
+  - RNFBMessaging (25.0.1):
+    - Firebase/Messaging (= 12.15.0)
+    - FirebaseCoreExtension
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - RNFBApp
+    - Yoga
   - RNInAppBrowser (3.7.1):
+    - React-Core
+  - RNNotifee (9.1.8):
+    - React-Core
+    - RNNotifee/NotifeeCore (= 9.1.8)
+  - RNNotifee/NotifeeCore (9.1.8):
     - React-Core
   - RNScreens (4.18.0):
     - hermes-engine
@@ -2367,10 +2453,14 @@ DEPENDENCIES:
   - ReactNativeDependencies (from `../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - "ReactNativeFs (from `../node_modules/@dr.pogodin/react-native-fs`)"
   - "RNCAsyncStorage (from `../node_modules/@react-native-async-storage/async-storage`)"
+  - "RNCClipboard (from `../node_modules/@react-native-clipboard/clipboard`)"
+  - "RNDateTimePicker (from `../node_modules/@react-native-community/datetimepicker`)"
   - "RNFBAnalytics (from `../node_modules/@react-native-firebase/analytics`)"
   - "RNFBApp (from `../node_modules/@react-native-firebase/app`)"
   - "RNFBCrashlytics (from `../node_modules/@react-native-firebase/crashlytics`)"
+  - "RNFBMessaging (from `../node_modules/@react-native-firebase/messaging`)"
   - RNInAppBrowser (from `../node_modules/react-native-inappbrowser-reborn`)
+  - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNSVG (from `../node_modules/react-native-svg`)
   - RNVectorIcons (from `../node_modules/react-native-vector-icons`)
@@ -2385,6 +2475,7 @@ SPEC REPOS:
     - FirebaseCoreInternal
     - FirebaseCrashlytics
     - FirebaseInstallations
+    - FirebaseMessaging
     - FirebaseRemoteConfigInterop
     - FirebaseSessions
     - GoogleAppMeasurement
@@ -2560,14 +2651,22 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@dr.pogodin/react-native-fs"
   RNCAsyncStorage:
     :path: "../node_modules/@react-native-async-storage/async-storage"
+  RNCClipboard:
+    :path: "../node_modules/@react-native-clipboard/clipboard"
+  RNDateTimePicker:
+    :path: "../node_modules/@react-native-community/datetimepicker"
   RNFBAnalytics:
     :path: "../node_modules/@react-native-firebase/analytics"
   RNFBApp:
     :path: "../node_modules/@react-native-firebase/app"
   RNFBCrashlytics:
     :path: "../node_modules/@react-native-firebase/crashlytics"
+  RNFBMessaging:
+    :path: "../node_modules/@react-native-firebase/messaging"
   RNInAppBrowser:
     :path: "../node_modules/react-native-inappbrowser-reborn"
+  RNNotifee:
+    :path: "../node_modules/@notifee/react-native"
   RNScreens:
     :path: "../node_modules/react-native-screens"
   RNSVG:
@@ -2587,6 +2686,7 @@ SPEC CHECKSUMS:
   FirebaseCoreInternal: 6ab6a02c94446c026d2cf35cf5383842ebaa4992
   FirebaseCrashlytics: 87e76cc33259b076dd1f96cd829db76849338e08
   FirebaseInstallations: eb29ccbf64eaedf86fd5b2ccc7fabde567660b52
+  FirebaseMessaging: 40017d7bc8457ee295b0f41d480a80fdabc9994e
   FirebaseRemoteConfigInterop: 7e3d57ce4b1e958bb1d15403faa7178f46bbb5b7
   FirebaseSessions: acfe7eadca47cda94ac86592737204581bb1abf6
   GoogleAppMeasurement: a6d37949071d456e9147dac6789c4342e0e7a8c5
@@ -2675,10 +2775,14 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: fa0a54b3f5319ae0e3b9aff32bfee7a424b88e66
   ReactNativeFs: 1a3df27060be57d44dad3be7bddc8ba5f26c97b2
   RNCAsyncStorage: d90e523830fa7705f8c61632479abde871bc792f
+  RNCClipboard: 7a7d4557bfd3370b35c99dfecd92ae7b9fc4948a
+  RNDateTimePicker: afe0288e6c7855994f7f2617b7b2c05799fea7f3
   RNFBAnalytics: 4313f4a49191cc89afe8b1fdfc8b46d2c664f9bf
   RNFBApp: dc732c75a2db401ba790f25c82f6a47fd2ac7af6
   RNFBCrashlytics: 333eea535b5c1f697816589816a020be7fb1bd5d
+  RNFBMessaging: 65d5252dbd4ebef4a4aded643c06b2f97a5fd2f3
   RNInAppBrowser: 904d24dc75e8e6c6c98a3160329192608946f9df
+  RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNScreens: dd5c879d56b543c7ff8e593739eeb66093d60263
   RNSVG: 394cfd0518613b144c65ffe69045f827b78a7a7c
   RNVectorIcons: bd88db8836a8611aff4b44f061364c07002a6c2a

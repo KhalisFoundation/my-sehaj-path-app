@@ -1,9 +1,11 @@
 import React from 'react';
-import { Modal, View } from 'react-native';
+import { Modal, View, type StyleProp, type ViewStyle } from 'react-native';
 import { DialogStyles as styles } from '@styles';
 
 interface DialogProps {
   visible: boolean;
+  /** Render inside an already-present modal (for example the drawer). */
+  nativeModal?: boolean;
   /** Android back / swipe-to-dismiss handler. */
   onRequestClose?: () => void;
   /**
@@ -12,6 +14,9 @@ interface DialogProps {
    * screen, and `visible` alone cannot tell you that happened.
    */
   onShow?: () => void;
+  /** Optional layout overrides for dialogs with a more compact presentation. */
+  backdropStyle?: StyleProp<ViewStyle>;
+  cardStyle?: StyleProp<ViewStyle>;
   /** The dialog's content — title, message, buttons, or anything else. */
   children: React.ReactNode;
 }
@@ -23,18 +28,38 @@ interface DialogProps {
  * to show inside. Shared inner styles live in `DialogStyles` (title, message,
  * actions, buttons) for callers that want the default treatment.
  */
-const DialogComponent = ({ visible, onRequestClose, onShow, children }: DialogProps) => (
-  <Modal
-    visible={visible}
-    transparent
-    animationType="fade"
-    onRequestClose={onRequestClose}
-    onShow={onShow}
-  >
-    <View style={styles.backdrop}>
-      <View style={styles.card}>{children}</View>
+const DialogComponent = ({
+  visible,
+  nativeModal = true,
+  onRequestClose,
+  onShow,
+  backdropStyle,
+  cardStyle,
+  children,
+}: DialogProps) => {
+  if (!visible) {
+    return null;
+  }
+
+  const content = (
+    <View
+      style={[styles.backdrop, !nativeModal && styles.inlineBackdrop, backdropStyle]}
+      accessibilityViewIsModal
+      importantForAccessibility="yes"
+    >
+      <View style={[styles.card, cardStyle]}>{children}</View>
     </View>
-  </Modal>
-);
+  );
+
+  if (!nativeModal) {
+    return content;
+  }
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onRequestClose} onShow={onShow}>
+      {content}
+    </Modal>
+  );
+};
 
 export const Dialog = React.memo(DialogComponent);

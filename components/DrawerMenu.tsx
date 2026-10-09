@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -7,10 +7,10 @@ import {
   Pressable,
   Linking,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { AppText as Text } from './AppText';
+import { Dialog } from './Dialog';
 import { BlurView } from '@react-native-community/blur';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -20,7 +20,7 @@ import {
   KHALIS_FOUNDATION_DONATE_URL,
   UIConstants,
 } from '@constants';
-import { DrawerMenuStyles } from '@styles';
+import { DialogStyles, DrawerMenuStyles } from '@styles';
 import { KhalisIcon, LoginIcon, SaveIcon } from '@icons';
 import {
   recordError,
@@ -83,6 +83,7 @@ const DrawerMenuComponent = ({
   const slideAnim = useRef(new Animated.Value(-300)).current;
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isManualSyncing, setIsManualSyncing] = useState(false);
+  const [syncRecoveryPrompt, setSyncRecoveryPrompt] = useState<'recovery' | 'restore' | null>(null);
   const manualSyncInFlight = useRef(false);
   const authStatus = useAppSelector((state) => state.auth.status);
   const userEmail = useAppSelector((state) => state.auth.email);
@@ -228,7 +229,7 @@ const DrawerMenuComponent = ({
     }
   };
 
-  const restoreFromCloud = async () => {
+  const restoreFromCloud = useCallback(async () => {
     if (!userEmail || manualSyncInFlight.current) {
       return;
     }
@@ -247,7 +248,7 @@ const DrawerMenuComponent = ({
       manualSyncInFlight.current = false;
       setIsManualSyncing(false);
     }
-  };
+  }, [userEmail]);
 
   const handleSyncPress = () => {
     if (!recoveryNeeded) {
@@ -266,46 +267,29 @@ const DrawerMenuComponent = ({
       performSync();
       return;
     }
-    Alert.alert(
-      'Sync information damaged',
-      'Your paths are safe on this device, but we cannot safely match them to your cloud paths. Sync is paused to prevent duplicates.',
-      [
-        {
-          text: 'Keep local data',
-          style: 'cancel',
-          onPress: () => {
-            onClose();
-            store.dispatch(setRecoveryRestoreStatus('paused'));
-          },
-        },
-        {
-          text: 'Restore from cloud',
-          onPress: () => {
-            Alert.alert(
-              'Replace local paths?',
-              `This will replace the paths on this device with the cloud backup for ${
-                userEmail ?? 'the signed-in account'
-              }. This cannot be undone.`,
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Restore from cloud',
-                  style: 'destructive',
-                  onPress: () => {
-                    onClose();
-                    restoreFromCloud();
-                  },
-                },
-              ]
-            );
-          },
-          style: 'destructive',
-        },
-      ]
-    );
+    setSyncRecoveryPrompt('recovery');
   };
 
+  const keepLocalData = useCallback(() => {
+    setSyncRecoveryPrompt(null);
+    onClose();
+    store.dispatch(setRecoveryRestoreStatus('paused'));
+  }, [onClose]);
+
+  const openRestoreConfirmation = useCallback(() => setSyncRecoveryPrompt('restore'), []);
+
+  const cancelSyncRecoveryPrompt = useCallback(() => setSyncRecoveryPrompt(null), []);
+
+  const confirmRestoreFromCloud = useCallback(() => {
+    setSyncRecoveryPrompt(null);
+    onClose();
+    restoreFromCloud();
+  }, [onClose, restoreFromCloud]);
+
   useEffect(() => {
+    if (!isVisible) {
+      setSyncRecoveryPrompt(null);
+    }
     if (isVisible) {
       Animated.timing(slideAnim, {
         toValue: 0,
@@ -469,6 +453,64 @@ const DrawerMenuComponent = ({
           ) : null}
         </View>
       </SafeAreaProvider>
+      <Dialog
+        visible={syncRecoveryPrompt === 'recovery'}
+        nativeModal={false}
+        onRequestClose={cancelSyncRecoveryPrompt}
+      >
+        <Text style={DialogStyles.title}>Sync information damaged</Text>
+        <Text style={DialogStyles.message}>
+          Your paths are safe on this device, but we cannot safely match them to your cloud paths.
+          Sync is paused to prevent duplicates.
+        </Text>
+        <View style={DialogStyles.actions}>
+          <TouchableOpacity
+            style={DialogStyles.secondaryButton}
+            onPress={keepLocalData}
+            accessibilityRole="button"
+            accessibilityLabel="Keep local data"
+          >
+            <Text style={DialogStyles.secondaryText}>Keep local data</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={DialogStyles.destructiveButton}
+            onPress={openRestoreConfirmation}
+            accessibilityRole="button"
+            accessibilityLabel="Restore from cloud"
+          >
+            <Text style={DialogStyles.primaryText}>Restore from cloud</Text>
+          </TouchableOpacity>
+        </View>
+      </Dialog>
+      <Dialog
+        visible={syncRecoveryPrompt === 'restore'}
+        nativeModal={false}
+        onRequestClose={cancelSyncRecoveryPrompt}
+      >
+        <Text style={DialogStyles.title}>Replace local paths?</Text>
+        <Text style={DialogStyles.message}>
+          This will replace the paths on this device with the cloud backup for{' '}
+          {userEmail ?? 'the signed-in account'}. This cannot be undone.
+        </Text>
+        <View style={DialogStyles.actions}>
+          <TouchableOpacity
+            style={DialogStyles.secondaryButton}
+            onPress={cancelSyncRecoveryPrompt}
+            accessibilityRole="button"
+            accessibilityLabel={Constants.CANCEL}
+          >
+            <Text style={DialogStyles.secondaryText}>{Constants.CANCEL}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={DialogStyles.destructiveButton}
+            onPress={confirmRestoreFromCloud}
+            accessibilityRole="button"
+            accessibilityLabel="Restore from cloud"
+          >
+            <Text style={DialogStyles.primaryText}>Restore from cloud</Text>
+          </TouchableOpacity>
+        </View>
+      </Dialog>
     </Modal>
   );
 };

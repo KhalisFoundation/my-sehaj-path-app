@@ -16,10 +16,19 @@ export const useDrawerNavigation = () => {
           return;
         }
 
-        navigation.push(Routes.Continue, {
-          pathId,
-          initialTab,
-        });
+        const params = { pathId, initialTab };
+        const state = navigation.getState();
+        const currentRoute = state.routes[state.index]?.name;
+
+        // Path is normally opened from Continue. Pushing here created
+        // Home -> Continue -> Path -> Continue, so Back appeared to reopen
+        // Continue and the heavy reader route briefly exposed a blank frame.
+        if (currentRoute === Routes.Path) {
+          navigation.popTo(Routes.Continue, params);
+          return;
+        }
+
+        navigation.push(Routes.Continue, params);
       };
 
       const routeHandlers: Record<string, () => void> = {

@@ -36,7 +36,9 @@ const queueDirtyScroll = (store: AppStore): void => {
   Object.keys(state.sync.scrollDirty).forEach((key) => {
     const pathId = Number(key);
     const meta = state.sync.meta[pathId];
-    if (meta?.onServer && !state.sync.pathOps[pathId]) {
+    // `!meta.shared`: a shared path is left out of the sync body, so an op
+    // queued for it would sit pending for ever.
+    if (meta?.onServer && !meta.shared && !state.sync.pathOps[pathId]) {
       store.dispatch(markPathEdited({ pathId, at: Date.now() }));
     }
   });
