@@ -64,3 +64,5 @@ release/
 
 # CocoaPods
 /ios/Pods/
+# Local Xcode environment overrides (machine-specific)
+ios/.xcode.env.local
