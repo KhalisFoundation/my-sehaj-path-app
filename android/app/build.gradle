@@ -81,8 +81,9 @@ android {
 
     namespace "com.khalis.sehajpathapp"
 
-    // Extract native libraries at install time. This avoids the Android direct-APK
-    // loading path that has produced SoLoaderDSONotFoundError for libreactnative.so.
+    // Extract native libraries at install time. This reduces the risk of the
+    // direct-APK loading path associated with SoLoaderDSONotFoundError for
+    // libreactnative.so, but is a mitigation rather than a guaranteed fix.
     packaging {
         jniLibs {
             useLegacyPackaging = true
