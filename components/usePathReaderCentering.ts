@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import type { RefObject } from 'react';
-import type { LayoutChangeEvent, ScrollView } from 'react-native';
+import type { LayoutChangeEvent, ScrollViewInstance } from 'react-native';
 
 type VersePosition = {
   y: number;
@@ -48,7 +48,7 @@ const visibleLength = (text: string): number => {
 };
 
 type UsePathReaderCenteringArgs = {
-  scrollRef: RefObject<ScrollView | null>;
+  scrollRef: RefObject<ScrollViewInstance | null>;
   scrollOffset: RefObject<number>;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;

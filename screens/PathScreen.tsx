@@ -2,12 +2,12 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   ActivityIndicator,
   Animated,
   AppState,
   BackHandler,
   Alert,
+  type ScrollViewInstance,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -107,7 +107,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // the centre verse when a reader is handed off mid-screen.
   const firstVisibleVerseId = useRef<number>(0);
   const explicitSaveForSession = useRef<{ angNumber: number; verseId: number } | null>(null);
-  const scrollRef = useRef<ScrollView | null>(null);
+  const scrollRef = useRef<ScrollViewInstance | null>(null);
   const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));

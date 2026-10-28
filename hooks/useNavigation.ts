@@ -1,14 +1,14 @@
 import { useCallback } from 'react';
 import { showErrorAlert, recordError } from '@utils';
 import { ErrorConstants, PATH_DATA } from '@constants';
-import { ScrollView } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 
 export interface UseNavigationParams {
   isNavigating: boolean;
   setIsNavigating: (value: boolean) => void;
   setIsSaving: (value: boolean) => void;
   scrollOffset: React.MutableRefObject<number>;
-  scrollRef: React.MutableRefObject<ScrollView | null>;
+  scrollRef: React.MutableRefObject<ScrollViewInstance | null>;
   setPathAng: (value: number) => void;
   setCenterVerseId?: (value: number) => void;
   fetchFromBaniDB: (angNumber: number, options?: { isInitialLoad?: boolean }) => Promise<boolean>;

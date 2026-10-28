@@ -26,6 +26,7 @@ export { ParagraphTextForPath } from './ParagraphTextForPath';
 export { DrawerMenu } from './DrawerMenu';
 export { ErrorBoundary } from './ErrorBoundary';
 export { BootSplash } from './BootSplash';
+export { BackgroundImage } from './BackgroundImage';
 export { HydrationRetry } from './HydrationRetry';
 export { Dialog } from './Dialog';
 export { SyncPopup } from './SyncPopup';
