@@ -80,11 +80,21 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.khalis.sehajpathapp"
+
+    // Extract native libraries at install time. This reduces the risk of the
+    // direct-APK loading path associated with SoLoaderDSONotFoundError for
+    // libreactnative.so, but is a mitigation rather than a guaranteed fix.
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
     defaultConfig {
         applicationId "com.khalis.sehajpathapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
+        versionCode 18
         versionName "3.0.1"
         ndk {
             abiFilters "armeabi-v7a", "arm64-v8a"
@@ -108,6 +118,7 @@ android {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+
         }
     }
 }
