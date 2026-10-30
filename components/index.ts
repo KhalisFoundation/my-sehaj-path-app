@@ -40,4 +40,5 @@ export { PathOptionsMenu } from './PathOptionsMenu';
 export { MembersRow } from './MembersRow';
 export { InviteSheet } from './InviteSheet';
 export { SuggestedMembersSheet } from './SuggestedMembersSheet';
+export { TurnsTab } from './TurnsTab';
 export { BackButton } from './BackButton';

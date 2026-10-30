@@ -10,4 +10,5 @@ export const Routes = {
   Error: 'Error',
   JoinPath: 'JoinPath',
   InviteMember: 'InviteMember',
+  ChooseSlot: 'ChooseSlot',
 } as const;

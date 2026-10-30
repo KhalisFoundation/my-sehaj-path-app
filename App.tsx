@@ -7,6 +7,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import {
+  ChooseSlot,
   JoinPath,
   InviteMember,
   SplashScreen,
@@ -58,6 +59,13 @@ export type RootStackParamList = {
   Error: undefined;
   JoinPath: { token: string };
   InviteMember: { sehajPathId: string; pathName?: string };
+  ChooseSlot: {
+    sehajPathId: string;
+    pathId: number;
+    initialStartsAt?: string;
+    initialDurationMinutes?: number;
+    slotId?: string;
+  };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -225,6 +233,11 @@ const App = () => {
               <Stack.Screen name={Routes.Error} component={Error} />
               <Stack.Screen name={Routes.JoinPath} component={JoinPath} />
               <Stack.Screen name={Routes.InviteMember} component={InviteMember} />
+              <Stack.Screen
+                name={Routes.ChooseSlot}
+                component={ChooseSlot}
+                options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+              />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

@@ -10,3 +10,7 @@ export const CalenderDays: Days = {
   5: 'Fri',
   6: 'Sat',
 };
+
+export const CALENDAR_TIMELINE_HOUR_HEIGHT = 100;
+export const CALENDAR_WORKING_DAY_START_HOUR = 6;
+export const CALENDAR_CONTEXT_HOURS = 2;
