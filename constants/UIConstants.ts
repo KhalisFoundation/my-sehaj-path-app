@@ -21,7 +21,7 @@ export const UIConstants: UIConstant = {
   SWITCH_TRACK_COLOR_TRUE: 'rgba(17, 51, 106, 0.46)',
   SWITCH_THUMB_COLOR_TRUE: 'rgb(17, 51, 106)',
   SWITCH_THUMB_COLOR_FALSE: 'rgb(142, 142, 142)',
-  PATH_SELECTED_BACKGROUND_COLOR: 'rgba(253, 198, 6, 0.3)',
+  PATH_SELECTED_BACKGROUND_COLOR: '#FDC6064D',
   PADDING: 12,
   RHYTHM: 12,
 
@@ -29,21 +29,28 @@ export const UIConstants: UIConstant = {
   // (#0D2346 and #11336A appear in eight of them); naming them here is what lets
   // a screen be restyled without hunting for hex codes.
   SCREEN_BACKGROUND: '#FFFFFF',
+  SURFACE_BACKGROUND: '#FFFFFF',
+  SUBTLE_SURFACE_BACKGROUND: '#EEF3FA',
+  SUBTLE_SURFACE_BACKGROUND_V2: '#EBF0F8',
   NAV_BACKGROUND: '#0D2346',
   NAV_TEXT_COLOR: '#FFFFFF',
   NAV_TITLE_FONT_SIZE: 20,
+  BORDER_COLOR: '#EEEEEE',
 
   // Text roles, darkest to lightest.
-  BRAND_TEXT_COLOR: '#11336A',
+  PRIMARY_COLOR: '#11336A',
   BODY_TEXT_COLOR: '#2C3E50',
+  BODY_TEXT_SECONDARY: '#777777',
   MUTED_TEXT_COLOR: '#6B7B8F',
+  DANGER_COLOR: '#A3341F',
   DIVIDER_COLOR: '#E3E9F2',
+  DIVIDER_SECONDARY: '#11336A0D',
 
   // Base sizes. `AppText` scales these by the user's font-size setting, so they
   // are the value at the default setting rather than a fixed rendered size.
   TITLE_FONT_SIZE: 28,
   SUBTITLE_FONT_SIZE: 20,
-  BODY_FONT_SIZE: 16,
+  BODY_FONT_SIZE: 18,
   BODY_LINE_HEIGHT: 26,
   CAPTION_FONT_SIZE: 14,
 
@@ -53,6 +60,14 @@ export const UIConstants: UIConstant = {
   ABOUT_BANIDB_LOGO_SIZE: 64,
   DIVIDER_HEIGHT: 1,
   DRAWER_REDUCED_TRANSPARENCY_FALLBACK: 'rgba(0, 0, 0, 0.3)',
+
+  // Reusable form geometry and colours.
+  INPUT_BORDER_COLOR: '#CFCFCF',
+  INPUT_BACKGROUND: '#F9FAFC',
+  INPUT_PLACEHOLDER_COLOR: '#999999',
+  BORDER_RADIUS: 12,
+  SCREEN_OVERLAY: '#F5F5F5E3',
+  SCREEN_BORDER_COLOR: '#FDC6064D',
 };
 
 export const EDGES_ALL_SIDES = ['top', 'bottom', 'left', 'right'] as const;
