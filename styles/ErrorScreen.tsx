@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { UIConstants } from '@constants';
 
 export const ErrorScreenStyles = StyleSheet.create({
   container: {
@@ -6,7 +7,7 @@ export const ErrorScreenStyles = StyleSheet.create({
     padding: 5,
     borderWidth: 4,
     borderRightWidth: 5,
-    borderColor: 'rgba(253, 198, 6, 0.3)',
+    borderColor: UIConstants.SCREEN_BORDER_COLOR,
     justifyContent: 'center',
   },
   BaniDBImage: {

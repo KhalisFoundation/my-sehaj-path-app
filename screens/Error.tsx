@@ -7,15 +7,13 @@ import { ErrorScreenStyles } from '@styles';
 import { RootStackParamList } from '../App';
 import { ErrorConstants, Routes } from '@constants';
 import { useScreenAnalytics } from '@hooks/useScreenAnalytics';
+import { BaniDBImage } from '../assets/Images';
 
 export const Error = ({ navigation }: NativeStackScreenProps<RootStackParamList, 'Error'>) => {
   useScreenAnalytics('Error', 'Error');
   return (
     <ScrollView contentContainerStyle={ErrorScreenStyles.container}>
-      <Image
-        source={require('../assets/Images/BaniDB.png')}
-        style={ErrorScreenStyles.BaniDBImage}
-      />
+      <Image source={BaniDBImage} style={ErrorScreenStyles.BaniDBImage} />
       <SimpleText
         simpleText={ErrorConstants.WE_ARE_CURRENTLY_FACING_ISSUE_BANIDB}
         simpleTextStyle={ErrorScreenStyles.textStyle}

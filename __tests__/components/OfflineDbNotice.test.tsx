@@ -16,6 +16,24 @@ jest.mock('../../store/hooks', () => ({
   useAppDispatch: () => mockDispatch,
 }));
 
+jest.mock('../../components/Dialog', () => {
+  const ReactForMock = jest.requireActual<typeof React>('react');
+  const { Modal: NativeModal } = jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    Dialog: (props: {
+      visible: boolean;
+      onRequestClose?: () => void;
+      onShow?: () => void;
+      children: React.ReactNode;
+    }) =>
+      ReactForMock.createElement(
+        NativeModal,
+        { visible: props.visible, onRequestClose: props.onRequestClose, onShow: props.onShow },
+        props.children
+      ),
+  };
+});
+
 import { OfflineDbNotice } from '../../components/OfflineDbNotice';
 import { dbNoticeShown } from '../../store/slices/dbSlice';
 

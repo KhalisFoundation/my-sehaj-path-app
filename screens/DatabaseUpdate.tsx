@@ -3,9 +3,8 @@ import { ActivityIndicator, Image, ScrollView, TouchableOpacity, View } from 're
 import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NavContent } from '@components';
-import { LeftArrowIcon } from '@icons';
-import { EDGES_ALL_SIDES, DatabaseUpdateText } from '@constants';
+import { BackButton } from '@components';
+import { EDGES_ALL_SIDES, DatabaseUpdateText, UIConstants } from '@constants';
 import { DatabaseUpdateScreenStyles as styles, SafeAreaStyle } from '@styles';
 import {
   checkForDatabaseUpdate,
@@ -16,6 +15,7 @@ import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { trackEvent } from '@utils';
 import { useAppSelector } from '../store/hooks';
+import { BaniDBImage } from '../assets/Images';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DatabaseUpdate'>;
 type UpdateState =
@@ -245,21 +245,17 @@ export const DatabaseUpdate = ({ navigation }: Props) => {
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <View style={styles.container}>
         <View style={styles.navContainer}>
-          <TouchableOpacity
+          <BackButton
             onPress={() => navigation.goBack()}
             style={styles.backButton}
-            accessibilityRole="button"
             accessibilityLabel={DatabaseUpdateText.BACK}
+            color={UIConstants.NAV_TEXT_COLOR}
           >
-            <NavContent
-              navIcon={<LeftArrowIcon color="#fff" />}
-              onPress={() => navigation.goBack()}
-            />
             <Text style={styles.navText}>{DatabaseUpdateText.NAV_TITLE}</Text>
-          </TouchableOpacity>
+          </BackButton>
         </View>
         <ScrollView contentContainerStyle={styles.content}>
-          <Image source={require('../assets/Images/BaniDB.png')} style={styles.logo} />
+          <Image source={BaniDBImage} style={styles.logo} />
           <Text style={styles.subtitle}>{DatabaseUpdateText.SUBTITLE}</Text>
           <View style={styles.statusCard}>
             {isBusy && <ActivityIndicator size="small" color="#11336A" />}

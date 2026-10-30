@@ -35,7 +35,8 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
     if (!saved) {
       return;
     }
-    trackEvent('PathRename', 'click', `rename path ${newName}`);
+    // Never send user-entered path names to analytics.
+    trackEvent('PathRename', 'result', 'Path Renamed');
     setPathRename(false);
     setPathName(newName);
   };

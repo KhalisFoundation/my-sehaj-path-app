@@ -39,6 +39,7 @@ const allowTracking = async () => {
     // Analytics tracking setup failed - continue without analytics
   }
 };
+
 const safeLogEvent = async (category: string, action: string, label: string) => {
   if (!isAnalyticsReady()) {
     return;
