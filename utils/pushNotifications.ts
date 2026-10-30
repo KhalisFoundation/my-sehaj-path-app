@@ -1,5 +1,12 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import messaging, { type FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import {
+  getInitialNotification,
+  getMessaging,
+  getToken,
+  onNotificationOpenedApp,
+  onTokenRefresh,
+  type FirebaseMessagingTypes,
+} from '@react-native-firebase/messaging';
 import notifee, {
   AndroidImportance,
   AuthorizationStatus as NotifeeAuthorizationStatus,
@@ -17,6 +24,11 @@ import {
 const CHANNEL_ID = 'general';
 const INITIAL_NOTIFICATION_RETRY_DELAY_MS = 250;
 const INITIAL_NOTIFICATION_MAX_RETRIES = 8;
+
+// Preserve the previous lazy initialization timing: this module is imported by
+// many screens, but Firebase Messaging is only needed when one of the push
+// flows actually runs.
+const getDefaultMessaging = () => getMessaging();
 
 const ensureAndroidNotificationChannel = async (): Promise<void> => {
   if (Platform.OS !== 'android') {
@@ -131,8 +143,7 @@ let tapHandlersRegistered = false;
  * Retry for two seconds so a tap cannot be turned into a plain Home launch.
  */
 const readInitialRemoteNotification = (attempt = 0): void => {
-  messaging()
-    .getInitialNotification()
+  getInitialNotification(getDefaultMessaging())
     .then((message) => {
       if (message !== null) {
         emitRemoteMessageTap(message);
@@ -149,6 +160,9 @@ const readInitialRemoteNotification = (attempt = 0): void => {
 };
 
 const readInitialNotifeeNotification = (attempt = 0): void => {
+  // Notifee notifications are local notifications and therefore never appear
+  // in FCM's initial-message API. Keep this separate cold-start check so a
+  // press on a foreground-created notification is routed exactly as before.
   notifee
     .getInitialNotification()
     .then((initialNotification) => {
@@ -183,7 +197,7 @@ export const registerPushNotificationTapHandlers = (): void => {
   tapHandlersRegistered = true;
 
   try {
-    messaging().onNotificationOpenedApp(emitRemoteMessageTap);
+    onNotificationOpenedApp(getDefaultMessaging(), emitRemoteMessageTap);
     readInitialRemoteNotification();
   } catch (error) {
     recordError(error, 'push: notification-open handler registration failed');
@@ -274,10 +288,10 @@ export const registerPushNotifications = async (authToken?: string | null): Prom
       }
     }
 
-    // Notifee owns the local notification presentation used by both the
-    // foreground handler and the Android channel. Request its permission as
-    // well as Firebase's permission; asking Firebase alone can leave the
-    // Notifee presentation path denied (especially on iOS).
+    // Notifee owns local notification presentation on both platforms, and
+    // requests the same iOS notification authorization as FCM. Do not also
+    // call RNFirebase's deprecated requestPermission API: a second request
+    // cannot grant anything extra and only duplicates the system check.
     const notifeePermission = await notifee.requestPermission();
     if (notifeePermission.authorizationStatus === NotifeeAuthorizationStatus.DENIED) {
       return () => undefined;
@@ -287,15 +301,6 @@ export const registerPushNotifications = async (authToken?: string | null): Prom
     // background delivery. FCM's OS-rendered notification path cannot create
     // a Notifee channel for us when the app process is suspended.
     await ensureAndroidNotificationChannel();
-
-    const permission = await messaging().requestPermission();
-    const allowed =
-      Platform.OS === 'android' ||
-      permission === messaging.AuthorizationStatus.AUTHORIZED ||
-      permission === messaging.AuthorizationStatus.PROVISIONAL;
-    if (!allowed) {
-      return () => undefined;
-    }
 
     const register = async (token: string): Promise<void> => {
       const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
@@ -322,8 +327,9 @@ export const registerPushNotifications = async (authToken?: string | null): Prom
       }
     };
 
-    await register(await messaging().getToken());
-    const unsubscribe = messaging().onTokenRefresh((token) => {
+    const messaging = getDefaultMessaging();
+    await register(await getToken(messaging));
+    const unsubscribe = onTokenRefresh(messaging, (token) => {
       register(token).catch((error) =>
         recordError(error, 'push: token refresh registration failed')
       );

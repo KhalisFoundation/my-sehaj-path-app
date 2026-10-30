@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View, type ScrollViewInstance } from 'react-native';
 import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
@@ -60,7 +60,7 @@ interface PathReaderProps {
      */
     fontSizeIndex?: number;
   };
-  scrollRef: React.RefObject<ScrollView | null>;
+  scrollRef: React.RefObject<ScrollViewInstance | null>;
   scrollOffset: React.RefObject<number>;
   /** First rendered verse at the top of the viewport, used for hand-off save. */
   firstVisibleVerseId: React.MutableRefObject<number>;

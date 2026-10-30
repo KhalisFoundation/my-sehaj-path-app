@@ -4,7 +4,6 @@
   "exclude": ["**/node_modules", "**/Pods"],
   "compilerOptions": {
     "baseUrl": ".",
-    "types": ["jest"],
     // Base RN libs + DOM. The generated API client (api/generated) references
     // web/fetch globals (BodyInit, btoa, TextDecoderStream, RequestInit) that
     // React Native provides at runtime; DOM adds only their type declarations.

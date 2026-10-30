@@ -5,9 +5,9 @@ import {
   RefreshControl,
   View,
   ScrollView,
-  ImageBackground,
   Pressable,
   Image,
+  type ScrollViewInstance,
 } from 'react-native';
 import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -78,6 +78,7 @@ import { initialOf } from '../components/MemberAvatars';
 import { getAngContent } from '../db';
 import { RootStackParamList } from '../App';
 import { ContinueScreenBackground } from '../assets/Images';
+import { BackgroundImage } from '../components/BackgroundImage';
 import { onForeground } from '../store/syncLifecycle';
 import { setPathShared } from '../store/slices/syncSlice';
 import { notifyPlanRefresh } from '../store/planEvents';
@@ -764,7 +765,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   /** The live socket is the source of truth for the preview's current position. */
   const [livePreviewPosition, setLivePreviewPosition] = useState<LivePosition | null>(null);
   const previewLiveRef = useRef<LiveHandle | null>(null);
-  const previewScrollRef = useRef<ScrollView | null>(null);
+  const previewScrollRef = useRef<ScrollViewInstance | null>(null);
   const hasActiveSharedSession = sehajPathId !== null && liveReader !== null;
   const showUpcomingTurns = sehajPathId !== null && isSharedPath && uiState.tabs === 'progress';
 
@@ -1660,7 +1661,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   );
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
-      <ImageBackground
+      <BackgroundImage
         source={ContinueScreenBackground}
         style={ContinueScreenStyles.backgroundImage}
       >
@@ -2084,7 +2085,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
             )}
           </View>
         </ScrollView>
-      </ImageBackground>
+      </BackgroundImage>
       {invitableId !== null && inviteOpen && (
         <InviteSheet
           visible={inviteOpen}

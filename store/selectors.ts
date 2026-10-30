@@ -1,3 +1,4 @@
+import { createSelector } from '@reduxjs/toolkit';
 import type { RootState } from './index';
 import type { PathData } from '../types';
 
@@ -12,8 +13,10 @@ import type { PathData } from '../types';
  * Read paths through this. Reading `state.paths.paths` directly puts a path the
  * user has already deleted back on their screen.
  */
-export const selectVisiblePaths = (state: RootState): PathData[] =>
-  state.paths.paths.filter((path) => state.sync.meta[path.pathId]?.deletedAt == null);
+export const selectVisiblePaths = createSelector(
+  [(state: RootState) => state.paths.paths, (state: RootState) => state.sync.meta],
+  (paths, meta): PathData[] => paths.filter((path) => meta[path.pathId]?.deletedAt == null)
+);
 
 /** Whether a single path is still visible — false once it has been deleted. */
 export const selectPathIsVisible = (state: RootState, pathId: number): boolean =>
