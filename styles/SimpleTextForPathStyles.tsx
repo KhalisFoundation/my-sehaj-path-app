@@ -1,9 +1,10 @@
 import { StyleSheet } from 'react-native';
 import font from '@utils/font';
+import { UIConstants } from '@constants';
 
 export const SimpleTextForPathStyles = StyleSheet.create({
   coloredContainer: {
-    backgroundColor: 'rgba(253, 198, 6, 0.3)',
+    backgroundColor: UIConstants.PATH_SELECTED_BACKGROUND_COLOR,
     width: 'auto',
     padding: 2,
     borderRadius: 5,

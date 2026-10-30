@@ -41,4 +41,7 @@ export { MembersRow } from './MembersRow';
 export { InviteSheet } from './InviteSheet';
 export { SuggestedMembersSheet } from './SuggestedMembersSheet';
 export { TurnsTab } from './TurnsTab';
+export { FinishReadingSheet } from './FinishReadingSheet';
+export { PathLiveStatus } from './PathLiveStatus';
+export { PathScreenOverlays } from './PathScreenOverlays';
 export { BackButton } from './BackButton';
