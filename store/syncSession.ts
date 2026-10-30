@@ -21,4 +21,9 @@ export const isCurrentSyncSession = (state: RootState, session: SyncSession): bo
 
 export const syncSessionHeaders = (session: SyncSession): Record<string, string> => ({
   Authorization: `Bearer ${session.token}`,
+  // Why this exists: version 3 removes stale shared-path cards only on a 404.
+  // This opt-in lets newer builds receive the correct 410 for deletion while
+  // older released builds keep their working 404 cleanup. Remove this header
+  // and the API's legacy branch only after version 3 is no longer supported.
+  'x-sehaj-path-error-codes': '1',
 });

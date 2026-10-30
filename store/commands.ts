@@ -1,5 +1,5 @@
 import type { UnknownAction } from '@reduxjs/toolkit';
-import { ErrorConstants, MonthConstant, PATH_DATA } from '@constants';
+import { ErrorConstants, PATH_DATA } from '@constants';
 import { isPathCompleted } from '@utils/isPathCompleted';
 import { trackEvent } from '@utils/analytics';
 import { recordError } from '@utils/crashlytics';
@@ -24,6 +24,9 @@ import {
 import { markPathDeleted } from './slices/syncSlice';
 import type { SettingsState } from './slices/settingsSlice';
 import { showErrorAlert } from '@utils/Error';
+import { asLocalDateTime } from '@utils/dateTime';
+import { groupIdOf, isGroupPath } from './groupPaths';
+import { renameSharedPath } from './groupApi';
 
 /**
  * Acknowledged operations.
@@ -38,10 +41,7 @@ import { showErrorAlert } from '@utils/Error';
  * code stay declarative.
  */
 
-const todayString = (): string => {
-  const date = new Date();
-  return `${date.getDate()}-${MonthConstant[date.getMonth()]}-${date.getFullYear()}`;
-};
+const todayString = (): string => asLocalDateTime().format('D-MMMM-YYYY');
 
 const progressFor = (angNumber: number): number => (angNumber / PATH_DATA.LAST_ANG_NUMBER) * 100;
 
@@ -203,20 +203,21 @@ const runPathMutation = (pathId: number, build: () => UnknownAction): Promise<bo
  * cannot both read the same `getNextPathId` and mint duplicate ids (which the
  * next boot's hydration would then reject).
  */
-export const createPath = (): Promise<number | null> =>
+export const createPath = (requestedName?: string): Promise<number | null> =>
   runExclusive(async () => {
     const { paths, dates } = store.getState().paths;
     const reservedIds = [...dates.map((date) => date.pathid), ...getQuarantinedPathIds(store)];
     const pathId = getNextPathId(paths, reservedIds);
     const defaultPathNumber = getNextDefaultPathNumber(paths);
 
+    const pathName = requestedName?.trim() || `Path #${defaultPathNumber}`;
     const path: PathData = {
       pathId,
       progress: 1,
       saveData: { angNumber: 0, verseId: 0 },
       startDate: todayString(),
       completionDate: '',
-      pathName: `Path #${defaultPathNumber}`,
+      pathName,
     };
     const date: DateData = { pathid: pathId, dates: [], scrollPosition: 0 };
 
@@ -317,7 +318,29 @@ export const savePathScrollPosition = (pathId: number, scrollPosition: number): 
 export const renamePathCommand = async (pathId: number, name: string): Promise<boolean> => {
   // A rename still uses the ordinary outbox/API flow, but it is housekeeping,
   // not reading progress, so it should not show a sync notice.
-  const saved = await runPathMutation(pathId, () => renamePath({ pathId, name, silentSync: true }));
+  const normalizedName = name.trim();
+  if (!normalizedName) {
+    showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
+    return false;
+  }
+  const saved = await runExclusive(async () => {
+    const state = store.getState();
+    if (!state.paths.paths.some((path) => path.pathId === pathId)) {
+      return false;
+    }
+
+    // Shared paths are server-owned. The sync middleware deliberately ignores
+    // their rename action, so a local-only update made the admin see the new
+    // name while every member kept the old one.
+    if (isGroupPath(state, pathId)) {
+      const groupId = groupIdOf(state, pathId);
+      if (!groupId || !(await renameSharedPath(groupId, normalizedName)).ok) {
+        return false;
+      }
+    }
+
+    return dispatchDurable(renamePath({ pathId, name: normalizedName, silentSync: true }));
+  });
   if (!saved) {
     showErrorAlert(ErrorConstants.FAILED_TO_RENAME_PATH);
   }
