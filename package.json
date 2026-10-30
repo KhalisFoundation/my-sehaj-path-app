@@ -20,6 +20,7 @@
     "@jest/globals": "^30.0.2",
     "@op-engineering/op-sqlite": "^17.1.5",
     "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-clipboard/clipboard": "^1.16.3",
     "@react-native-community/blur": "^4.4.1",
     "@react-native-community/netinfo": "^11.4.1",
     "@react-native-firebase/analytics": "25.0.1",

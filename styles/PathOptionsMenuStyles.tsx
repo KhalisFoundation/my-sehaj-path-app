@@ -11,6 +11,9 @@ export const PathOptionsMenuStyles = StyleSheet.create({
    * delete confirmation.
    */
   menuBackdrop: {
+    ...StyleSheet.absoluteFill,
+  },
+  menuOverlay: {
     flex: 1,
   },
   /** Positioned at runtime, directly beneath the dots that opened it. */
