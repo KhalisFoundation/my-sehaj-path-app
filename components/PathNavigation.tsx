@@ -4,6 +4,7 @@ import { NavContent } from '@components';
 import { LeftArrowIcon, RightArrowIcon, MenuIcon } from '@icons';
 import { PathNavigationStyles } from '@styles';
 import { trackEvent } from '@utils';
+import { BackButton } from './BackButton';
 
 interface PathNavigationProps {
   pathPujabiAng: string;
@@ -12,6 +13,8 @@ interface PathNavigationProps {
   handleRightArrow: (pageNo: number) => void;
   setIsAngsNavigationVisible: (isVisible: boolean) => void;
   onMenuPress?: () => void;
+  isFollowing?: boolean;
+  onBackPress?: () => void;
 }
 
 const PathNavigationComponent = ({
@@ -21,6 +24,8 @@ const PathNavigationComponent = ({
   handleRightArrow,
   setIsAngsNavigationVisible,
   onMenuPress,
+  isFollowing = false,
+  onBackPress,
 }: PathNavigationProps) => {
   const handleLeftArrowPress = useCallback(() => {
     trackEvent('PreviousAngsByTopNav', 'click', 'previous ang from top nav');
@@ -50,44 +55,56 @@ const PathNavigationComponent = ({
 
   return (
     <View style={PathNavigationStyles.navContainer}>
-      <TouchableOpacity
-        style={PathNavigationStyles.menuButton}
-        onPress={handleMenuPress}
-        accessibilityLabel="Menu"
-        accessibilityRole="button"
-        accessibilityHint="Tap to open menu"
-      >
-        <NavContent navIcon={menuIcon} onPress={handleMenuPress} />
-      </TouchableOpacity>
-      <View style={PathNavigationStyles.centerNavigation}>
+      {isFollowing ? (
+        <BackButton
+          onPress={onBackPress ?? handleMenuPress}
+          color="#fff"
+          style={PathNavigationStyles.menuButton}
+          accessibilityLabel="Back to home"
+          accessibilityHint="Tap to return to the home screen"
+        />
+      ) : (
         <TouchableOpacity
-          style={PathNavigationStyles.navArrowButton}
-          onPress={handleLeftArrowPress}
-          accessibilityLabel={`Previous ang: ${pathPujabiAng}`}
+          style={PathNavigationStyles.menuButton}
+          onPress={handleMenuPress}
+          accessibilityLabel="Menu"
           accessibilityRole="button"
-          accessibilityHint="Tap to go to previous ang"
+          accessibilityHint="Tap to open menu"
         >
-          <NavContent navIcon={leftArrowIcon} onPress={handleLeftArrowPress} />
+          <NavContent navIcon={menuIcon} onPress={handleMenuPress} />
         </TouchableOpacity>
-        <TouchableOpacity
-          style={PathNavigationStyles.angs}
-          onPress={handleAngsNavigationPress}
-          accessibilityLabel={`Current ang: ${pathPujabiAng}`}
-          accessibilityRole="button"
-          accessibilityHint="Tap to open angs navigation"
-        >
-          <NavContent text={pathPujabiAng} contentStyle={PathNavigationStyles.navText} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={PathNavigationStyles.navArrowButton}
-          onPress={handleRightArrowPress}
-          accessibilityLabel={`Next ang: ${pathPujabiAng}`}
-          accessibilityRole="button"
-          accessibilityHint="Tap to go to next ang"
-        >
-          <NavContent navIcon={rightArrowIcon} onPress={handleRightArrowPress} />
-        </TouchableOpacity>
-      </View>
+      )}
+      {!isFollowing && (
+        <View style={PathNavigationStyles.centerNavigation}>
+          <TouchableOpacity
+            style={PathNavigationStyles.navArrowButton}
+            onPress={handleLeftArrowPress}
+            accessibilityLabel={`Previous ang: ${pathPujabiAng}`}
+            accessibilityRole="button"
+            accessibilityHint="Tap to go to previous ang"
+          >
+            <NavContent navIcon={leftArrowIcon} onPress={handleLeftArrowPress} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={PathNavigationStyles.angs}
+            onPress={handleAngsNavigationPress}
+            accessibilityLabel={`Current ang: ${pathPujabiAng}`}
+            accessibilityRole="button"
+            accessibilityHint="Tap to open angs navigation"
+          >
+            <NavContent text={pathPujabiAng} contentStyle={PathNavigationStyles.navText} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={PathNavigationStyles.navArrowButton}
+            onPress={handleRightArrowPress}
+            accessibilityLabel={`Next ang: ${pathPujabiAng}`}
+            accessibilityRole="button"
+            accessibilityHint="Tap to go to next ang"
+          >
+            <NavContent navIcon={rightArrowIcon} onPress={handleRightArrowPress} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };
