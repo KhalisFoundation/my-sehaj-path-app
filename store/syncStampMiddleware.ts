@@ -83,6 +83,13 @@ export const syncStampMiddleware: Middleware<object, RootState> =
       // "ghost" path — minting meta + a create op for a path that isn't in Redux
       // would later upload a path that doesn't exist locally.
       if (api.getState().paths.paths.some((entry) => entry.pathId === pathId)) {
+        // A shared path is server-owned and is deliberately left out of the
+        // `/sync` body. Marking it dirty here would queue an op that nothing
+        // ever sends, so the path would sit "pending" forever and hold the
+        // sync indicator on. Its writes go straight to the group endpoint.
+        if (api.getState().sync.meta[pathId]?.shared) {
+          return result;
+        }
         ensureMeta(api, pathId, now);
         api.dispatch(markPathEdited({ pathId, at: now }));
         const op = api.getState().sync.pathOps[pathId];
@@ -98,6 +105,17 @@ export const syncStampMiddleware: Middleware<object, RootState> =
         }
       }
     } else if (setScrollPosition.match(action)) {
+      // A shared path is server-owned and is deliberately absent from the
+      // `/sync` body, so a dirty flag on one can never be cleared by sending it.
+      // The result was a device that reported "syncing your progress" for ever
+      // and re-issued a `PATCH` the server answers with 404 — a shared path is
+      // addressed by the group id, not the one this device syncs under.
+      //
+      // Its position travels over the socket instead, and is written by the
+      // reader's own session.
+      if (api.getState().sync.meta[action.payload.pathId]?.shared) {
+        return result;
+      }
       // Scroll never drives a call: record the dirty flag and nothing else.
       api.dispatch(markScrollDirty({ pathId: action.payload.pathId, at: now }));
     } else if (action.type.startsWith(SETTINGS_PREFIX) && !hydrateSettings.match(action)) {

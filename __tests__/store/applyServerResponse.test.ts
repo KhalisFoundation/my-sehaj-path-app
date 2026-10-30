@@ -1,13 +1,15 @@
 import type { SehajPath, SehajPathSyncResult } from '@api/generated/types.gen';
 import {
+  sehajPathMembersControllerFindAccessible,
   sehajPathSettingsControllerGet,
   sehajPathsControllerFindAll,
 } from '@api/generated/sdk.gen';
-import { makeStore } from '../../store';
+import { makeStore, removePathAndSyncState } from '../../store';
 import {
   applyServerPath,
   applySyncResult,
   captureSyncSnapshot,
+  ensureAccessiblePath,
   reconcileDeletions,
   refreshPathsFromServer,
 } from '../../store/applyServerResponse';
@@ -20,6 +22,7 @@ import {
   clearSettingsIfUnchanged,
   hydrateEmptySync,
   markSettingsDirty,
+  setPathShared,
   setAccount,
 } from '../../store/slices/syncSlice';
 import { clearCurrentToken } from '../../auth/tokenUtils';
@@ -28,6 +31,9 @@ import type { DateData, PathData } from '../../types';
 jest.mock('@api/generated/sdk.gen', () => ({
   sehajPathsControllerFindAll: jest.fn(),
   sehajPathSettingsControllerGet: jest.fn(),
+  // Tells the refresh which paths are shared. Defaults to "nothing shared" so
+  // every existing test describes a purely personal account, as it did before.
+  sehajPathMembersControllerFindAccessible: jest.fn().mockResolvedValue({ data: [] }),
 }));
 jest.mock('../../auth/tokenUtils', () => ({
   clearCurrentToken: jest.fn().mockResolvedValue(true),
@@ -40,6 +46,7 @@ jest.mock('../../utils/crashlytics', () => ({
 }));
 
 const mockFindAll = sehajPathsControllerFindAll as jest.Mock;
+const mockAccessible = sehajPathMembersControllerFindAccessible as jest.Mock;
 const mockGetSettings = sehajPathSettingsControllerGet as jest.Mock;
 const mockClearToken = clearCurrentToken as jest.Mock;
 
@@ -229,6 +236,17 @@ describe('applySyncResult', () => {
     expect(store.getState().sync.pathOps[1]).toBeDefined(); // its op stays queued
   });
 
+  it('does not reallocate a path deleted while an older bulk sync was in flight', () => {
+    const { store, uuid } = syncedStore();
+    const snapshot = captureSyncSnapshot(store.getState());
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+
+    applySyncResult(store, result({ paths: [serverPath(uuid)] }), snapshot);
+
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
   it('removes a server-deleted path that is not locally dirtier', () => {
     const { store, uuid } = syncedStore();
     applySyncResult(
@@ -351,6 +369,177 @@ describe('refreshPathsFromServer', () => {
     return uuid;
   };
 
+  it('marks an owned path shared when another active member has joined', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid)]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [{ id: 'internal-1', pathId: uuid, sharing: 'PUBLIC', memberCount: 2 }],
+    });
+
+    await refreshPathsFromServer(store);
+
+    // Without this flag the sync filter, the dirty-marking guard and the reader
+    // gate all sit inert, and a shared path is pushed through the owner-scoped
+    // merge that can rewind the group's reading.
+    expect(store.getState().sync.meta[1].shared).toBe(true);
+  });
+
+  it('keeps the canonical shared rename after an owner-scoped response returns stale data', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    store.dispatch(setPathShared({ pathId: 1, shared: true, groupId: 'internal-1' }));
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid, { name: 'Old shared name' })]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'New shared name',
+          angNumber: 50,
+          verseId: 200,
+          progress: 3.5,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 2,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    expect(store.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
+      'New shared name'
+    );
+  });
+
+  it('does not let an older path-scoped accessibility response revert a newer rename', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolveOldAccessible: (value: { data: unknown[] }) => void = () => undefined;
+    mockAccessible
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOldAccessible = resolve;
+          })
+      )
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'internal-1',
+            pathId: uuid,
+            name: 'New shared name',
+            angNumber: 50,
+            verseId: 200,
+            progress: 3.5,
+            startDate: Date.UTC(2026, 0, 1),
+            sharing: 'PUBLIC',
+            relationship: 'OWNER',
+            stateVersion: 2,
+            memberCount: 2,
+          },
+        ],
+      });
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid, { name: 'Old shared name' })]));
+
+    const oldRequest = ensureAccessiblePath(store, 'internal-1', 1);
+    await refreshPathsFromServer(store);
+    resolveOldAccessible({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Old shared name',
+          angNumber: 50,
+          verseId: 200,
+          progress: 3.5,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 1,
+          memberCount: 2,
+        },
+      ],
+    });
+    await oldRequest;
+
+    expect(store.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
+      'New shared name'
+    );
+  });
+
+  it('keeps a link-only path personal until somebody else joins', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid)]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [{ id: 'internal-1', pathId: uuid, sharing: 'PUBLIC', memberCount: 1 }],
+    });
+
+    await refreshPathsFromServer(store);
+
+    expect(store.getState().sync.meta[1].shared).toBe(false);
+  });
+
+  it('ignores a joined path — there is no local row to mark', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid)]));
+    // `pathId` is null for a path the caller joined rather than owns.
+    mockAccessible.mockResolvedValueOnce({
+      data: [{ id: 'internal-9', pathId: null, sharing: 'PUBLIC', memberCount: 2 }],
+    });
+
+    await refreshPathsFromServer(store);
+
+    expect(store.getState().sync.meta[1].shared).toBeUndefined();
+  });
+
+  it('keeps the canonical group start date when allocating a joined path', async () => {
+    const store = signedInStore();
+    const canonicalStartDate = Date.UTC(2026, 0, 2);
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-9',
+          pathId: null,
+          name: 'Shared path',
+          angNumber: 25,
+          verseId: 100,
+          progress: 2,
+          startDate: canonicalStartDate,
+          sharing: 'PUBLIC',
+          relationship: 'MEMBER',
+          stateVersion: 1,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    const joinedMeta = Object.values(store.getState().sync.meta).find(
+      (meta) => meta.groupId === 'internal-9'
+    );
+    expect(joinedMeta?.startDate).toBe(canonicalStartDate);
+  });
+
+  it('still refreshes when the shared lookup fails', async () => {
+    const store = signedInStore();
+    mockFindAll.mockResolvedValueOnce(
+      findAllOk([serverPath(OTHER_UUID, { name: 'Other device' })])
+    );
+    mockAccessible.mockRejectedValueOnce(new Error('network'));
+
+    // Knowing which paths are shared is additive. Losing it must not fail a
+    // sync — the server refuses a rewind of a shared path regardless.
+    expect(await refreshPathsFromServer(store)).toBe(true);
+  });
+
   it('allocates a path created on another device', async () => {
     const store = signedInStore();
     mockFindAll.mockResolvedValueOnce(
@@ -371,17 +560,64 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().sync.meta[1]).toBeUndefined();
   });
 
+  it('removes an owner shared path when accessible no longer returns its group', async () => {
+    const store = signedInStore();
+    const groupId = addSyncedPath(store, 1);
+    store.dispatch(setPathShared({ pathId: 1, shared: true, groupId }));
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockResolvedValueOnce({ data: [] });
+
+    expect(await refreshPathsFromServer(store)).toBe(true);
+    expect(store.getState().paths.paths.find((p) => p.pathId === 1)).toBeUndefined();
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
+  it('still removes an owner shared path when the extra accessible lookup fails', async () => {
+    const store = signedInStore();
+    addSyncedPath(store, 1);
+    // Owner rows have two different identities: the client path UUID and the
+    // server group's primary key. A joined view is the only case where these
+    // values are intentionally equal.
+    store.dispatch(setPathShared({ pathId: 1, shared: true, groupId: 'group-1' }));
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockRejectedValueOnce(new Error('temporary network failure'));
+
+    expect(await refreshPathsFromServer(store)).toBe(true);
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
   it('does not apply server changes to the active reader path', async () => {
     const store = signedInStore();
     const uuid = addSyncedPath(store, 1); // local path 1: name 'Path #1', progress 1
+    const canonicalStartDate = Date.UTC(2025, 11, 24);
     mockFindAll.mockResolvedValueOnce(
       findAllOk([serverPath(uuid, { name: 'Changed on server', progress: 88 })])
     );
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Changed on server',
+          angNumber: 50,
+          verseId: 200,
+          progress: 88,
+          startDate: canonicalStartDate,
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 2,
+          memberCount: 2,
+        },
+      ],
+    });
 
     expect(await refreshPathsFromServer(store, 1)).toBe(true); // path 1 is the active reader
     const path = store.getState().paths.paths.find((p) => p.pathId === 1)!;
     expect(path.pathName).toBe('Path #1'); // untouched
     expect(path.progress).toBe(1);
+    // Safe metadata still refreshes, so the reader and followers calculate
+    // the same path age without moving the reader's live position.
+    expect(store.getState().sync.meta[1].startDate).toBe(canonicalStartDate);
   });
 
   it('skips (no network call) while a local path op is pending', async () => {
@@ -635,6 +871,95 @@ describe('refreshPathsFromServer', () => {
     await refresh;
     expect(store.getState().paths.paths.find((path) => path.pathId === 1)).toBeDefined();
     expect(store.getState().sync.meta[1].serverPathId).toBe(uuid);
+  });
+
+  it('does not reallocate a path deleted while an older listing was in flight', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolvePaths: (value: ReturnType<typeof findAllOk>) => void = () => undefined;
+    mockFindAll.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePaths = resolve;
+        })
+    );
+
+    const refresh = refreshPathsFromServer(store);
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+    resolvePaths(findAllOk([serverPath(uuid)])); // response began before DELETE committed
+
+    await refresh;
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
+  it('does not reallocate a deleted invite-only owner from a stale accessible response', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolveAccessible: (value: { data: unknown[] }) => void = () => undefined;
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAccessible = resolve;
+        })
+    );
+
+    const refresh = refreshPathsFromServer(store);
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+    resolveAccessible({
+      data: [
+        {
+          id: 'group-1',
+          pathId: uuid,
+          name: 'Deleted path',
+          angNumber: 0,
+          verseId: 0,
+          progress: 0,
+          startDate: Date.UTC(2026, 0, 1),
+          memberCount: 1,
+        },
+      ],
+    });
+
+    await refresh;
+    expect(store.getState().paths.paths).toHaveLength(0);
+    expect(store.getState().sync.meta[1]).toBeUndefined();
+  });
+
+  it("does not reallocate a deleted path from Continue's stale accessibility check", async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolveAccessible: (value: { data: Array<Record<string, unknown>> }) => void = () =>
+      undefined;
+    mockAccessible.mockImplementationOnce(
+      () =>
+        new Promise<{ data: Array<Record<string, unknown>> }>((resolve) => {
+          resolveAccessible = resolve;
+        })
+    );
+
+    // This is the persisted-v3/link-only shape: Continue has the group route
+    // id but the local record has not yet stored its groupId.
+    const ensured = ensureAccessiblePath(store, 'group-1', 1);
+    store.dispatch(removePathAndSyncState({ pathId: 1 }));
+    resolveAccessible({
+      data: [
+        {
+          id: 'group-1',
+          pathId: uuid,
+          name: 'Deleted path',
+          angNumber: 0,
+          verseId: 0,
+          progress: 0,
+          startDate: Date.UTC(2026, 0, 1),
+          memberCount: 1,
+        },
+      ],
+    });
+
+    await expect(ensured).resolves.toBeNull();
+    expect(store.getState().paths.paths).toHaveLength(0);
   });
 
   it('does not apply old settings after a newer local setting was acknowledged', async () => {
