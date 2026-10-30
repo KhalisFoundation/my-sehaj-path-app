@@ -71,6 +71,15 @@ describe('getAngContent', () => {
     expect(mockedGetBani).not.toHaveBeenCalled();
   });
 
+  it('reads Ang 1 when a new path still carries the Ang 0 progress sentinel', async () => {
+    mockedInstalled.mockResolvedValue(false);
+    mockedApi.mockResolvedValue({ success: true, data: { page: [], source: { pageNo: 1 } } });
+
+    await getAngContent(0);
+
+    expect(mockedApi).toHaveBeenCalledWith(1);
+  });
+
   it('falls back to the API when an installed DB cannot be read', async () => {
     // A corrupt DB must not permanently block reading when the API is reachable.
     mockedInstalled.mockResolvedValue(true);

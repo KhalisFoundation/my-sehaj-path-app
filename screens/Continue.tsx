@@ -46,6 +46,8 @@ import {
   showErrorAlert,
   trackEvent,
   trackSharedPathOutcome,
+  subscribePushTap,
+  isTurnNotificationType,
 } from '@utils';
 import { removePathAndSyncState, store } from '../store';
 import { ensureAccessiblePath } from '../store/applyServerResponse';
@@ -1005,6 +1007,36 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       setRefreshing(false);
     }
   }, [loadInviteStatus, loadMembers, loadUpcomingTurn, refreshing, sehajPathId, updateTheData]);
+
+  // A notification can bring the user back to an already-mounted Continue
+  // screen. Refresh the tapped path immediately instead of waiting for a
+  // second navigation or a manual pull-to-refresh. Events for other paths are
+  // left queued by the bridge until their Continue screen is opened.
+  useFocusEffect(
+    useCallback(
+      () =>
+        subscribePushTap((event) => {
+          const matchesPath =
+            event.pathId === undefined ||
+            event.pathId === String(pathId) ||
+            (sehajPathId !== null && event.pathId === sehajPathId);
+          if (!matchesPath) {
+            return false;
+          }
+          if (!isTurnNotificationType(event.type)) {
+            return false;
+          }
+          setUiState((previous) =>
+            previous.tabs === 'turns' ? previous : { ...previous, tabs: 'turns' }
+          );
+          handleRefresh().catch((error) => {
+            recordError(error, 'Continue: notification tap refresh failed');
+          });
+          return true;
+        }),
+      [handleRefresh, pathId, sehajPathId]
+    )
+  );
 
   useFocusEffect(
     useCallback(() => {
