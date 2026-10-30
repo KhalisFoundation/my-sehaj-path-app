@@ -8,6 +8,8 @@ export { InviteSheetStyles } from './InviteSheetStyles';
 export { MembersRowStyles } from './MembersRowStyles';
 export { InviteMemberStyles } from './InviteMemberStyles';
 export { MemberAvatarsStyles } from './MemberAvatarsStyles';
+export { ChooseSlotStyles } from './ChooseSlotStyles';
+export { TurnsTabStyles } from './TurnsTabStyles';
 export { FontSizeStyle } from './FontSizeStyles';
 export { ImportantTextStyles } from './ImportantTextStyles';
 export { LabelStyles } from './LabelStyles';
