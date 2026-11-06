@@ -14,7 +14,12 @@ import {
   refreshPathsFromServer,
 } from '../../store/applyServerResponse';
 import { setActiveReaderPath } from '../../store/syncLifecycle';
-import { addPath, renamePath, setScrollPosition } from '../../store/slices/pathsSlice';
+import {
+  addPath,
+  applyServerPathData,
+  renamePath,
+  setScrollPosition,
+} from '../../store/slices/pathsSlice';
 import { setSignedIn } from '../../store/slices/authSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
 import {
@@ -415,6 +420,110 @@ describe('refreshPathsFromServer', () => {
     );
   });
 
+  it('applies the canonical shared checkpoint after another device advances it', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid, { progress: 3.5 })]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Path #1',
+          angNumber: 1430,
+          verseId: 60403,
+          scrollPosition: 640,
+          progress: 100,
+          completionDate: Date.UTC(2026, 10, 4),
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 40,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    const path = store.getState().paths.paths.find((entry) => entry.pathId === 1);
+    expect(path?.progress).toBe(100);
+    expect(path?.saveData).toEqual({ angNumber: 1430, verseId: 60403 });
+    expect(store.getState().paths.dates.find((date) => date.pathid === 1)?.scrollPosition).toBe(
+      640
+    );
+  });
+
+  it('hydrates a shared completion date from the owner-scoped response', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    mockFindAll.mockResolvedValueOnce(
+      findAllOk([
+        serverPath(uuid, {
+          completionDate: Date.UTC(2026, 10, 4),
+          progress: 100,
+        }),
+      ])
+    );
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Path #1',
+          angNumber: 1430,
+          verseId: 60403,
+          progress: 100,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 42,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    expect(store.getState().paths.paths[0].completionDate).toBe('4-November-2026');
+  });
+
+  it('clears a stale local completion marker when the canonical path is partial', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    store.dispatch(
+      applyServerPathData({
+        pathId: 1,
+        pathPatch: { completionDate: '3-November-2026', progress: 100 },
+        datePatch: {},
+      })
+    );
+    mockFindAll.mockResolvedValueOnce(findAllOk([serverPath(uuid, { progress: 20.98 })]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Path #1',
+          angNumber: 300,
+          verseId: 12000,
+          progress: 20.98,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 41,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    const path = store.getState().paths.paths.find((entry) => entry.pathId === 1);
+    expect(path?.progress).toBe(20.98);
+    expect(path?.completionDate).toBe('');
+  });
+
   it('does not let an older path-scoped accessibility response revert a newer rename', async () => {
     const store = signedInStore();
     const uuid = addSyncedPath(store, 1);
@@ -510,7 +619,9 @@ describe('refreshPathsFromServer', () => {
           name: 'Shared path',
           angNumber: 25,
           verseId: 100,
+          scrollPosition: 420,
           progress: 2,
+          completionDate: null,
           startDate: canonicalStartDate,
           sharing: 'PUBLIC',
           relationship: 'MEMBER',
@@ -526,6 +637,52 @@ describe('refreshPathsFromServer', () => {
       (meta) => meta.groupId === 'internal-9'
     );
     expect(joinedMeta?.startDate).toBe(canonicalStartDate);
+    const joinedPathId = Number(
+      Object.entries(store.getState().sync.meta).find(
+        ([, meta]) => meta.groupId === 'internal-9'
+      )?.[0]
+    );
+    expect(
+      store.getState().paths.dates.find((date) => date.pathid === joinedPathId)?.scrollPosition
+    ).toBe(420);
+  });
+
+  it('hydrates the completion date when allocating a joined path', async () => {
+    const store = signedInStore();
+    mockFindAll.mockResolvedValueOnce(findAllOk([]));
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-9',
+          pathId: null,
+          name: 'Shared path',
+          angNumber: 1430,
+          verseId: 60403,
+          scrollPosition: 640,
+          progress: 100,
+          completionDate: Date.UTC(2026, 10, 4),
+          startDate: Date.UTC(2026, 0, 2),
+          sharing: 'PUBLIC',
+          relationship: 'MEMBER',
+          stateVersion: 2,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    const joinedPathId = Number(
+      Object.entries(store.getState().sync.meta).find(
+        ([, meta]) => meta.groupId === 'internal-9'
+      )?.[0]
+    );
+    expect(
+      store.getState().paths.paths.find((path) => path.pathId === joinedPathId)?.completionDate
+    ).toBe('4-November-2026');
+    expect(
+      store.getState().paths.dates.find((date) => date.pathid === joinedPathId)?.scrollPosition
+    ).toBe(640);
   });
 
   it('still refreshes when the shared lookup fails', async () => {

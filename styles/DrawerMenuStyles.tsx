@@ -27,8 +27,8 @@ export const DrawerMenuStyles = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 280,
-    backgroundColor: '#F5F5F5',
-    shadowColor: '#000',
+    backgroundColor: UIConstants.DRAWER_BACKGROUND,
+    shadowColor: UIConstants.SHADOW_COLOR,
     shadowOffset: { width: 2, height: 0 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -37,7 +37,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#11336A',
+    backgroundColor: UIConstants.PRIMARY_COLOR,
     paddingHorizontal: UIConstants.RHYTHM * 2,
     paddingVertical: UIConstants.RHYTHM * 1.2,
     gap: UIConstants.RHYTHM * 1.5,
@@ -45,18 +45,27 @@ export const DrawerMenuStyles = StyleSheet.create({
   logoContainer: {
     width: 32,
     height: 32,
-    borderRadius: 8,
-    backgroundColor: '#FFFFFF20',
+    borderRadius: UIConstants.RHYTHM * 0.5,
+    backgroundColor: UIConstants.DRAWER_HEADER_ICON_BACKGROUND,
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: 16,
     fontFamily: font.Baloo_Paaji_2_Medium,
-    color: '#FFFFFF',
+    color: UIConstants.NAV_TEXT_COLOR,
   },
   menuItems: {
     paddingTop: UIConstants.RHYTHM,
+  },
+  // The drawer can be shorter than its menu on folded/landscape devices.
+  // Let every item, including account actions, remain reachable. `flexGrow`
+  // keeps the footer at the bottom when the menu does fit.
+  menuScrollView: {
+    flex: 1,
+  },
+  menuScrollContent: {
+    flexGrow: 1,
   },
   menuItemsHighlight: {
     fontFamily: font.Baloo_Paaji_2_Medium,
@@ -76,7 +85,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 15,
-    color: '#2C3E50',
+    color: UIConstants.BODY_TEXT_COLOR,
     fontFamily: font.Baloo_Paaji_2_Regular,
   },
   footer: {
@@ -85,7 +94,7 @@ export const DrawerMenuStyles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: UIConstants.RHYTHM * 2,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#B8C5D6',
+    borderTopColor: UIConstants.DRAWER_DIVIDER_COLOR,
     gap: 0,
   },
   emailRow: {
@@ -94,7 +103,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 13,
-    color: '#7F8C8D',
+    color: UIConstants.SECONDARY_ACTION_TEXT_COLOR,
     fontFamily: font.Baloo_Paaji_2_Regular,
     marginTop: UIConstants.RHYTHM * 0.5,
   },
@@ -107,11 +116,11 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   donateIcon: {
     fontSize: 20,
-    color: '#F39C12',
+    color: UIConstants.ACCENT_COLOR,
   },
   donateText: {
     fontSize: 15,
-    color: '#F39C12',
+    color: UIConstants.ACCENT_COLOR,
     fontFamily: font.Baloo_Paaji_2_Medium,
   },
   logoutButton: {
@@ -123,7 +132,7 @@ export const DrawerMenuStyles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 15,
-    color: '#11336A',
+    color: UIConstants.PRIMARY_COLOR,
     fontFamily: font.Baloo_Paaji_2_Medium,
   },
 });

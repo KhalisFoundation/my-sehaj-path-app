@@ -28,6 +28,7 @@ import {
   type SyncMeta,
 } from './slices/syncSlice';
 import { fromServerPath } from './syncAdapters';
+import { msToLegacy } from './syncDateUtils';
 import { clearBlockedWork, hasWorkBlockingPull, setConfirmedSettings } from './syncWork';
 import { settingsFingerprint } from './syncRequest';
 import { captureSyncSession, isCurrentSyncSession, syncSessionHeaders } from './syncSession';
@@ -65,6 +66,23 @@ const acceptAccessibleVersion = (
   }
   return true;
 };
+
+/**
+ * Completion is an API-owned timestamp. Older deployed servers do not include
+ * it in the accessible response yet, so `undefined` deliberately means “keep
+ * the backwards-compatible fallback”, whereas `null` is an authoritative
+ * in-progress value.
+ */
+const completionDateFromAccessible = (value: number | null | undefined): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  return value !== null && Number.isFinite(value) ? msToLegacy(value) : '';
+};
+
+/** Older API deployments omit this field; preserve the local fallback in that case. */
+const scrollPositionFromAccessible = (value: number | undefined): number | undefined =>
+  value !== undefined && Number.isFinite(value) ? Math.max(0, Math.round(value)) : undefined;
 
 const findLocalIdByServerPathId = (state: RootState, serverPathId: string): number | null => {
   for (const [key, meta] of Object.entries(state.sync.meta)) {
@@ -212,7 +230,9 @@ const allocateAccessiblePath = (
     name: string;
     angNumber: number;
     verseId: number;
+    scrollPosition?: number;
     progress: number;
+    completionDate?: number | null;
     startDate: number;
     memberCount?: number;
   }
@@ -232,10 +252,14 @@ const allocateAccessiblePath = (
         saveData: { angNumber: row.angNumber, verseId: row.verseId },
         progress: row.progress,
         startDate: '',
-        completionDate: '',
+        completionDate: completionDateFromAccessible(row.completionDate) ?? '',
         pathName: row.name,
       },
-      date: { pathid: pathId, dates: [], scrollPosition: 0 },
+      date: {
+        pathid: pathId,
+        dates: [],
+        scrollPosition: scrollPositionFromAccessible(row.scrollPosition) ?? 0,
+      },
     })
   );
   store.dispatch(
@@ -370,8 +394,13 @@ export const ensureAccessiblePath = async (
         pathName: row.name,
         progress: row.progress,
         saveData: { angNumber: row.angNumber, verseId: row.verseId },
+        completionDate:
+          completionDateFromAccessible(row.completionDate) ??
+          (row.progress >= 100
+            ? current.paths.paths.find((path) => path.pathId === localId)?.completionDate ?? ''
+            : ''),
       },
-      datePatch: {},
+      datePatch: { scrollPosition: scrollPositionFromAccessible(row.scrollPosition) },
     })
   );
   return localId;
@@ -897,6 +926,9 @@ const performRefreshPathsFromServer = async (
             // whatever the path stood at when the member joined — so two
             // devices reading the same path disagreed about how far it had got,
             // and the joined one only fell further behind.
+            const joinedPath = store
+              .getState()
+              .paths.paths.find((path) => path.pathId === joinedId);
             store.dispatch(
               applyServerPathData({
                 pathId: joinedId,
@@ -904,8 +936,11 @@ const performRefreshPathsFromServer = async (
                   pathName: row.name,
                   progress: row.progress,
                   saveData: { angNumber: row.angNumber, verseId: row.verseId },
+                  completionDate:
+                    completionDateFromAccessible(row.completionDate) ??
+                    (row.progress >= 100 ? joinedPath?.completionDate ?? '' : ''),
                 },
-                datePatch: {},
+                datePatch: { scrollPosition: scrollPositionFromAccessible(row.scrollPosition) },
               })
             );
           }
@@ -932,18 +967,44 @@ const performRefreshPathsFromServer = async (
           })
         );
         // The owner-scoped `/paths` request and the canonical accessible-path
-        // request run in parallel. A rename can therefore be visible in the
-        // canonical response while `/paths` still returns the previous name.
-        // Apply the canonical name last for an actively shared path so a
-        // refresh cannot briefly show the new name and then revert to stale
-        // owner-scoped data. Do not do this for invite-only personal paths:
-        // their local rename is still local-first until another member joins.
-        if (localId !== activePathId && row.memberCount > 1 && typeof row.name === 'string') {
+        // request run in parallel. A shared path's `/paths` body can therefore
+        // be stale (or intentionally skipped), while the accessible response
+        // contains the group's current checkpoint. Apply the canonical body
+        // last for an inactive shared path so another device's progress is not
+        // left behind locally after logout/login or an app restart.
+        //
+        // Do not apply it while the reader is active: the reader owns its
+        // in-memory position until it exits, at which point Home performs a
+        // safe refresh. Invite-only personal paths continue to use the
+        // owner-scoped response as their local-first source of truth.
+        if (localId !== activePathId && row.memberCount > 1) {
+          const sharedPath = store.getState().paths.paths.find((path) => path.pathId === localId);
+          const ownerPath = pathsResult.data?.find((path) => path.pathId === row.pathId);
+          const ownerCompletionDate =
+            ownerPath?.completionDate != null
+              ? fromServerPath(ownerPath).pathPatch.completionDate
+              : undefined;
+          const ownerScrollPosition = ownerPath?.scrollPosition;
           store.dispatch(
             applyServerPathData({
               pathId: localId,
-              pathPatch: { pathName: row.name },
-              datePatch: {},
+              pathPatch: {
+                ...(typeof row.name === 'string' ? { pathName: row.name } : {}),
+                progress: row.progress,
+                saveData: { angNumber: row.angNumber, verseId: row.verseId },
+                // The accessible response now carries the canonical date for
+                // every member. The owner-scoped response and local value are
+                // fallbacks only while older API deployments roll out.
+                completionDate:
+                  completionDateFromAccessible(row.completionDate) ??
+                  (row.progress >= 100
+                    ? ownerCompletionDate ?? sharedPath?.completionDate ?? ''
+                    : ''),
+              },
+              datePatch: {
+                scrollPosition:
+                  scrollPositionFromAccessible(row.scrollPosition) ?? ownerScrollPosition,
+              },
             })
           );
         }

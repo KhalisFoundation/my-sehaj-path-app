@@ -1,10 +1,17 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 import type { SvgProps } from 'react-native-svg';
+import { scaledIconSize, useAppIconScale } from './useAppIconScale';
 
 export const LoginIcon = (props: SvgProps) => {
+  const scale = useAppIconScale();
   return (
-    <Svg width={props.width || 18} height={props.height || 18} viewBox="0 0 18 18" fill="none">
+    <Svg
+      width={props.width ?? scaledIconSize(18, scale)}
+      height={props.height ?? scaledIconSize(18, scale)}
+      viewBox="0 0 18 18"
+      fill="none"
+    >
       <Path
         d="M10.122 15.75H4.875C4.04625 15.75 3.375 14.8868 3.375 13.8218V4.1775C3.375 3.11325 4.04625 2.25 4.875 2.25H10.125"
         stroke={props.color || '#11336A'}

@@ -1,4 +1,5 @@
 import font from '@utils/font';
+import { ReaderStatusMessage } from '@constants/ResponsiveLayout';
 import { StyleSheet } from 'react-native';
 
 export const MessageStyles = StyleSheet.create({
@@ -7,7 +8,7 @@ export const MessageStyles = StyleSheet.create({
     bottom: 2,
     zIndex: 100,
     width: '100%',
-    maxWidth: 356,
+    maxWidth: ReaderStatusMessage.BASE_MAX_WIDTH,
     /**
      * A FLOOR, not a fixed height.
      *

@@ -9,8 +9,8 @@ export const SettingScreenStyle = StyleSheet.create({
   navContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#0D2346',
+    gap: UIConstants.RHYTHM,
+    backgroundColor: UIConstants.NAV_BACKGROUND,
   },
   navText: {
     color: UIConstants.NAV_TEXT_COLOR,
@@ -25,10 +25,30 @@ export const SettingScreenStyle = StyleSheet.create({
     // the end, rather than sitting flush against it.
     paddingBottom: UIConstants.RHYTHM * 3,
   },
+  sectionHeading: {
+    color: UIConstants.SETTINGS_SECTION_HEADING_COLOR,
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 58,
+    paddingHorizontal: UIConstants.RHYTHM,
+    paddingVertical: UIConstants.RHYTHM,
+  },
+  settingText: {
+    color: UIConstants.PRIMARY_COLOR,
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
+    lineHeight: 28,
+  },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: UIConstants.RHYTHM,
     width: '50%',
     padding: UIConstants.RHYTHM * 1.5,
   },
@@ -36,27 +56,31 @@ export const SettingScreenStyle = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 15,
+    minHeight: 58,
+    paddingHorizontal: UIConstants.RHYTHM,
+    paddingVertical: UIConstants.RHYTHM,
   },
   databaseUpdateCopy: {
     flex: 1,
   },
   databaseUpdateText: {
-    color: '#11336A',
-    fontFamily: font.Baloo_Paaji_2_Regular,
-    fontSize: 20,
+    color: UIConstants.PRIMARY_COLOR,
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
+    lineHeight: 28,
   },
-  // Account deletion reuses the database row's shape so it sits flush with the
-  // rest of the list; only the colour differs, because it is destructive.
   deleteAccountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 15,
+    minHeight: 58,
+    paddingHorizontal: UIConstants.RHYTHM,
+    paddingVertical: UIConstants.RHYTHM,
   },
   deleteAccountText: {
-    color: '#B3261E',
-    fontFamily: font.Baloo_Paaji_2_Regular,
-    fontSize: 20,
+    color: UIConstants.DESTRUCTIVE_TEXT_COLOR,
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
+    lineHeight: 28,
   },
 });

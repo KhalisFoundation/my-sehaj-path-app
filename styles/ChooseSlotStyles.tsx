@@ -6,7 +6,7 @@ export const ChooseSlotStyles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: UIConstants.DRAWER_REDUCED_TRANSPARENCY_FALLBACK,
+    backgroundColor: UIConstants.MODAL_BACKDROP_COLOR,
   },
   pickerOverlay: {
     flex: 1,
@@ -30,6 +30,7 @@ export const ChooseSlotStyles = StyleSheet.create({
     justifyContent: 'flex-end',
     gap: UIConstants.RHYTHM * 2,
     marginTop: UIConstants.RHYTHM,
+    paddingRight: UIConstants.RHYTHM * 2,
   },
   pickerCancel: {
     color: UIConstants.MUTED_TEXT_COLOR,
@@ -42,7 +43,7 @@ export const ChooseSlotStyles = StyleSheet.create({
     fontSize: UIConstants.BODY_FONT_SIZE,
   },
   sheet: {
-    height: '75%',
+    height: '85%',
     backgroundColor: UIConstants.SURFACE_BACKGROUND,
     borderTopLeftRadius: UIConstants.BORDER_RADIUS * 2,
     borderTopRightRadius: UIConstants.BORDER_RADIUS * 2,
