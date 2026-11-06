@@ -5,6 +5,7 @@ import {
   Animated,
   Modal,
   Pressable,
+  ScrollView,
   Linking,
   StyleSheet,
   ActivityIndicator,
@@ -389,14 +390,60 @@ const DrawerMenuComponent = ({
                     </View>
                     <Text style={DrawerMenuStyles.headerTitle}>{Constants.KHALIS_SEHAJ_PATH}</Text>
                   </View>
-                  <View style={DrawerMenuStyles.menuItems}>
-                    {menuItems.map((item) => {
-                      return (
+                  <ScrollView
+                    style={DrawerMenuStyles.menuScrollView}
+                    contentContainerStyle={DrawerMenuStyles.menuScrollContent}
+                    showsVerticalScrollIndicator={true}
+                    persistentScrollbar={true}
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                  >
+                    <View style={DrawerMenuStyles.menuItems}>
+                      {menuItems.map((item) => {
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            style={DrawerMenuStyles.menuItem}
+                            onPress={() => handleMenuItemPress(item.route, item.label)}
+                            accessibilityLabel={item.label}
+                            accessibilityRole="button"
+                          >
+                            <View
+                              style={[
+                                DrawerMenuStyles.menuItemIcon,
+                                { width: drawerIconSlotSize, height: drawerIconSlotSize },
+                              ]}
+                            >
+                              <item.Icon width={drawerIconSize} height={drawerIconSize} />
+                            </View>
+                            <Text
+                              style={[
+                                DrawerMenuStyles.menuItemText,
+                                currentRoute === item.route && DrawerMenuStyles.menuItemsHighlight,
+                              ]}
+                            >
+                              {item.label}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                      <TouchableOpacity
+                        style={DrawerMenuStyles.donateButton}
+                        onPress={() => {
+                          trackEvent('DonateButton', 'click', 'Donate button pressed');
+                          Linking.openURL(KHALIS_FOUNDATION_DONATE_URL);
+                        }}
+                        accessibilityLabel={Constants.DONATE}
+                        accessibilityRole="button"
+                      >
+                        <DonationIcon width={drawerIconSize} height={drawerIconSize} />
+                        <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
+                      </TouchableOpacity>
+                      {!isSignedIn ? (
                         <TouchableOpacity
-                          key={item.id}
                           style={DrawerMenuStyles.menuItem}
-                          onPress={() => handleMenuItemPress(item.route, item.label)}
-                          accessibilityLabel={item.label}
+                          onPress={handleLoginPress}
+                          accessibilityLabel={Constants.LOGIN}
                           accessibilityRole="button"
                         >
                           <View
@@ -405,80 +452,51 @@ const DrawerMenuComponent = ({
                               { width: drawerIconSlotSize, height: drawerIconSlotSize },
                             ]}
                           >
-                            <item.Icon width={drawerIconSize} height={drawerIconSize} />
+                            <LoginIcon width={drawerIconSize} height={drawerIconSize} />
                           </View>
-                          <Text
-                            style={[
-                              DrawerMenuStyles.menuItemText,
-                              currentRoute === item.route && DrawerMenuStyles.menuItemsHighlight,
-                            ]}
-                          >
-                            {item.label}
-                          </Text>
+                          <Text style={DrawerMenuStyles.menuItemText}>{Constants.LOGIN}</Text>
                         </TouchableOpacity>
-                      );
-                    })}
-                    <TouchableOpacity
-                      style={DrawerMenuStyles.donateButton}
-                      onPress={() => {
-                        trackEvent('DonateButton', 'click', 'Donate button pressed');
-                        Linking.openURL(KHALIS_FOUNDATION_DONATE_URL);
-                      }}
-                      accessibilityLabel={Constants.DONATE}
-                      accessibilityRole="button"
-                    >
-                      <DonationIcon width={drawerIconSize} height={drawerIconSize} />
-                      <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
-                    </TouchableOpacity>
-                    {!isSignedIn ? (
-                      <TouchableOpacity
-                        style={DrawerMenuStyles.menuItem}
-                        onPress={handleLoginPress}
-                        accessibilityLabel={Constants.LOGIN}
-                        accessibilityRole="button"
-                      >
-                        <View
-                          style={[
-                            DrawerMenuStyles.menuItemIcon,
-                            { width: drawerIconSlotSize, height: drawerIconSlotSize },
-                          ]}
-                        >
-                          <LoginIcon width={drawerIconSize} height={drawerIconSize} />
-                        </View>
-                        <Text style={DrawerMenuStyles.menuItemText}>{Constants.LOGIN}</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                  {isSignedIn ? (
-                    <View style={DrawerMenuStyles.footer}>
-                      <TouchableOpacity
-                        style={DrawerMenuStyles.logoutButton}
-                        onPress={handleSyncPress}
-                        disabled={isManualSyncing}
-                        accessibilityLabel={Constants.SYNC_NOW}
-                        accessibilityRole="button"
-                      >
-                        <SaveIcon width={drawerIconSize} height={drawerIconSize} color="#11336A" />
-                        <Text style={DrawerMenuStyles.logoutText}>{Constants.SYNC_NOW}</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={DrawerMenuStyles.logoutButton}
-                        onPress={handleLogoutPress}
-                        accessibilityLabel={Constants.LOGOUT}
-                        accessibilityRole="button"
-                      >
-                        <LoginIcon width={drawerIconSize} height={drawerIconSize} color="#11336A" />
-                        <Text style={DrawerMenuStyles.logoutText}>{Constants.LOGOUT}</Text>
-                      </TouchableOpacity>
-                      {userEmail ? (
-                        <View style={DrawerMenuStyles.emailRow}>
-                          <Text style={DrawerMenuStyles.userEmail} numberOfLines={1}>
-                            {userEmail}
-                          </Text>
-                        </View>
                       ) : null}
                     </View>
-                  ) : null}
+                    {isSignedIn ? (
+                      <View style={DrawerMenuStyles.footer}>
+                        <TouchableOpacity
+                          style={DrawerMenuStyles.logoutButton}
+                          onPress={handleSyncPress}
+                          disabled={isManualSyncing}
+                          accessibilityLabel={Constants.SYNC_NOW}
+                          accessibilityRole="button"
+                        >
+                          <SaveIcon
+                            width={drawerIconSize}
+                            height={drawerIconSize}
+                            color={UIConstants.PRIMARY_COLOR}
+                          />
+                          <Text style={DrawerMenuStyles.logoutText}>{Constants.SYNC_NOW}</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={DrawerMenuStyles.logoutButton}
+                          onPress={handleLogoutPress}
+                          accessibilityLabel={Constants.LOGOUT}
+                          accessibilityRole="button"
+                        >
+                          <LoginIcon
+                            width={drawerIconSize}
+                            height={drawerIconSize}
+                            color={UIConstants.PRIMARY_COLOR}
+                          />
+                          <Text style={DrawerMenuStyles.logoutText}>{Constants.LOGOUT}</Text>
+                        </TouchableOpacity>
+                        {userEmail ? (
+                          <View style={DrawerMenuStyles.emailRow}>
+                            <Text style={DrawerMenuStyles.userEmail} numberOfLines={1}>
+                              {userEmail}
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </ScrollView>
                 </SafeAreaView>
               </Animated.View>
             </View>

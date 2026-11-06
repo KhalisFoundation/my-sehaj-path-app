@@ -4,12 +4,12 @@ import { UIConstants } from '@constants/UIConstants';
 
 export const CompletedPathCardStyles = StyleSheet.create({
   container: {
-    backgroundColor: 'white',
-    borderRadius: 15,
+    backgroundColor: UIConstants.SURFACE_BACKGROUND,
+    borderRadius: UIConstants.BORDER_RADIUS,
     padding: UIConstants.RHYTHM * 1.25,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#11336A',
+    shadowColor: UIConstants.PRIMARY_COLOR,
     shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -20,14 +20,14 @@ export const CompletedPathCardStyles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     textAlign: 'center',
-    color: '#11336A',
+    color: UIConstants.PRIMARY_COLOR,
   },
   dateText: {
     fontFamily: font.Brandon_Grotesque_Regular,
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
-    color: '#666666',
-    marginVertical: 4,
+    color: UIConstants.CARD_SECONDARY_TEXT_COLOR,
+    marginVertical: UIConstants.RHYTHM * 0.5,
   },
 });

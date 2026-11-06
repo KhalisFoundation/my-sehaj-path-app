@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { UIConstants } from '@constants/UIConstants';
 import font from '@utils/font';
 
 export const AngsNavigationStyle = StyleSheet.create({
@@ -10,11 +11,11 @@ export const AngsNavigationStyle = StyleSheet.create({
     right: 0,
     bottom: 0,
     elevation: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.42)',
+    backgroundColor: UIConstants.FORM_DIALOG_BACKDROP_COLOR,
   },
 
   overlayContainer: {
-    padding: 15,
+    padding: UIConstants.RHYTHM,
     width: '100%',
     height: '100%',
     zIndex: 999,
@@ -22,16 +23,16 @@ export const AngsNavigationStyle = StyleSheet.create({
     alignItems: 'center',
   },
   angsNavigationContainer: {
-    backgroundColor: '#EBF0F8',
+    backgroundColor: UIConstants.SUBTLE_SURFACE_BACKGROUND_V2,
     position: 'relative',
-    padding: 5,
-    paddingVertical: 38,
+    padding: UIConstants.RHYTHM * 0.5,
+    paddingVertical: UIConstants.RHYTHM * 3,
     width: '92%',
     maxWidth: 560,
     alignItems: 'center',
-    gap: 18,
-    borderRadius: 15,
-    shadowColor: '#000',
+    gap: UIConstants.RHYTHM * 1.5,
+    borderRadius: UIConstants.BORDER_RADIUS,
+    shadowColor: UIConstants.SHADOW_COLOR,
     shadowOffset: {
       width: 0,
       height: 2,
@@ -41,38 +42,38 @@ export const AngsNavigationStyle = StyleSheet.create({
     elevation: 5,
   },
   angsNavigationText: {
-    fontSize: 18,
+    fontSize: UIConstants.BODY_FONT_SIZE,
     fontFamily: font.Baloo_Paaji_2_Medium,
-    color: '#11336A',
+    color: UIConstants.PRIMARY_COLOR,
   },
   angsNavigationInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '90%',
-    gap: 10,
+    gap: UIConstants.RHYTHM,
   },
   input: {
-    borderRadius: 25,
-    backgroundColor: 'white',
+    borderRadius: UIConstants.BORDER_RADIUS * 2,
+    backgroundColor: UIConstants.SURFACE_BACKGROUND,
     fontFamily: font.Baloo_Paaji_2_Medium,
-    color: '#11336A',
-    fontSize: 20,
+    color: UIConstants.PRIMARY_COLOR,
+    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
     width: '72%',
     textAlign: 'center',
     textAlignVertical: 'center',
-    padding: 8,
+    padding: UIConstants.RHYTHM,
   },
   goButton: {
-    backgroundColor: '#11336A',
-    padding: 8,
-    borderRadius: 25,
+    backgroundColor: UIConstants.PRIMARY_COLOR,
+    padding: UIConstants.RHYTHM,
+    borderRadius: UIConstants.BORDER_RADIUS * 2,
     alignItems: 'center',
     width: '50%',
   },
   buttonText: {
-    color: 'white',
-    fontSize: 18,
+    color: UIConstants.NAV_TEXT_COLOR,
+    fontSize: UIConstants.BODY_FONT_SIZE,
     fontFamily: font.Baloo_Paaji_2_Medium,
   },
   crossIcon: {
@@ -82,16 +83,16 @@ export const AngsNavigationStyle = StyleSheet.create({
     zIndex: 999,
   },
   warningText: {
-    color: '#FF6B6B',
-    fontSize: 14,
+    color: UIConstants.WARNING_TEXT_COLOR,
+    fontSize: UIConstants.CAPTION_FONT_SIZE,
     fontFamily: font.Baloo_Paaji_2_Medium,
     textAlign: 'center',
     marginTop: -5,
   },
   disabledButton: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: UIConstants.DISABLED_BACKGROUND_COLOR,
   },
   disabledButtonText: {
-    color: '#999999',
+    color: UIConstants.INPUT_PLACEHOLDER_COLOR,
   },
 });

@@ -18,7 +18,7 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
-    marginLeft: 12,
+    marginLeft: UIConstants.RHYTHM,
   },
   modalRoot: {
     flex: 1,
@@ -52,8 +52,8 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
   sheet: {
     maxHeight: '76%',
     backgroundColor: UIConstants.SURFACE_BACKGROUND,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
+    borderTopLeftRadius: UIConstants.BORDER_RADIUS * 3,
+    borderTopRightRadius: UIConstants.BORDER_RADIUS * 3,
     overflow: 'hidden',
   },
   grabber: {
@@ -61,9 +61,9 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 12,
-    backgroundColor: '#AAB6C6',
+    marginTop: UIConstants.RHYTHM,
+    marginBottom: UIConstants.RHYTHM,
+    backgroundColor: UIConstants.SHEET_HANDLE_COLOR,
   },
   sheetHeader: {
     minHeight: 60,
@@ -76,8 +76,8 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
   sheetTitle: {
     color: UIConstants.PRIMARY_COLOR,
     fontFamily: font.Baloo_Paaji_2_Medium,
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
+    lineHeight: UIConstants.BODY_LINE_HEIGHT,
     textAlign: 'center',
   },
   optionsScroll: {
@@ -87,7 +87,7 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
     minHeight: 72,
     justifyContent: 'center',
     paddingHorizontal: UIConstants.RHYTHM * 2,
-    paddingVertical: 12,
+    paddingVertical: UIConstants.RHYTHM,
   },
   selectedOption: {
     backgroundColor: UIConstants.SUBTLE_SURFACE_BACKGROUND,
@@ -102,7 +102,7 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   optionText: {
-    fontSize: 20,
+    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
     fontFamily: font.Baloo_Paaji_2_Regular,
     color: UIConstants.PRIMARY_COLOR,
   },
