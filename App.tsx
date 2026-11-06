@@ -45,9 +45,10 @@ import {
   flushPendingPushTaps,
   trackEvent,
   isTurnNotificationType,
+  isPathMembershipRemovedNotificationType,
 } from '@utils';
 import { configureApiClient, setTokenGetter } from '@api/config';
-import { store } from './store';
+import { removePathAndSyncState, store } from './store';
 import { useAppSelector } from './store/hooks';
 import { outbox, persistence } from './store/instance';
 import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syncLifecycle';
@@ -59,7 +60,17 @@ import { pushNavigationRef } from './navigation/pushTapRouter';
 
 export type RootStackParamList = {
   Splash: undefined;
-  Home: { pathDeleted?: boolean; pathMembershipEnded?: boolean } | undefined;
+  Home:
+    | {
+        pathDeleted?: boolean;
+        pathMembershipEnded?: boolean;
+        /** Present only after tapping the membership-removal notification. */
+        membershipRemovalNotice?: {
+          pathName?: string;
+          adminName?: string;
+        };
+      }
+    | undefined;
   Continue: {
     pathId: number;
     /** Keeps a stale Continue route identifiable after its local card is pruned. */
@@ -142,6 +153,37 @@ const PushRegistration = () => {
 };
 
 /**
+ * The API copies notification title/body into FCM data on Android, while iOS
+ * supplies them from the notification block when the app receives the tap.
+ * Prefer explicit future payload fields, but retain this parser so the dialog
+ * works with the removal pushes already sent by the current API.
+ */
+const membershipRemovalNoticeFromPush = (
+  data: Record<string, unknown>
+): { pathName?: string; adminName?: string } => {
+  const text = (value: unknown): string | undefined =>
+    typeof value === 'string' && value.trim().length > 0 ? value.trim() : undefined;
+  const pathName =
+    text(data.pathName) ??
+    text(data.sehajPathName) ??
+    text(data.path_name) ??
+    text(data.sehaj_path_name) ??
+    text(data.title)
+      ?.match(/^You were removed from\s+(.+)$/i)?.[1]
+      ?.trim();
+  const adminName =
+    text(data.adminName) ??
+    text(data.admin_name) ??
+    text(data.actorName) ??
+    text(data.actor_name) ??
+    text(data.body)
+      ?.match(/^(.+?)\s+removed you from\s+[“"].+[”"]\.?$/i)?.[1]
+      ?.trim();
+
+  return { pathName, adminName };
+};
+
+/**
  * Opens the exact shared path identified by the canonical path UUID carried in
  * the push notification. Display names are never used for routing. The event
  * bridge retains presses received before hydration; returning false keeps an
@@ -160,6 +202,32 @@ const PushTapRouter = ({ navigationReady }: { navigationReady: boolean }) => {
   useEffect(
     () =>
       subscribePushTap((event) => {
+        if (isPathMembershipRemovedNotificationType(event.type)) {
+          if (
+            !navigationReady ||
+            !pushNavigationRef.isReady() ||
+            pushNavigationRef.getCurrentRoute()?.name === undefined ||
+            pushNavigationRef.getCurrentRoute()?.name === Routes.Splash
+          ) {
+            return false;
+          }
+
+          // The API sends this only after the removal commits. Remove the
+          // local copy immediately so the just-removed path cannot briefly
+          // remain actionable while Home performs its normal background sync.
+          const match = event.pathId
+            ? groupIds.find(([groupId]) => groupId === event.pathId)
+            : undefined;
+          if (match) {
+            store.dispatch(removePathAndSyncState({ pathId: match[1] }));
+          }
+          trackEvent('Notification', 'open', 'sehaj-path-membership-removed');
+          pushNavigationRef.navigate(Routes.Home, {
+            membershipRemovalNotice: membershipRemovalNoticeFromPush(event.data),
+          });
+          return true;
+        }
+
         if (!isTurnNotificationType(event.type) || !event.pathId) {
           return false;
         }
