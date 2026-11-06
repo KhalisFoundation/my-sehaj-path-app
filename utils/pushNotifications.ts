@@ -70,9 +70,25 @@ export const isTurnNotificationType = (value: unknown): boolean => {
   const normalised = normaliseNotificationType(text);
   return (
     normalised === 'sehaj-path-turn-updated' ||
+    normalised === 'sehaj-path-turn-cancelled' ||
     normalised === 'sehaj-path-turn-reminder' ||
     normalised === 'turn-updated' ||
+    normalised === 'turn-cancelled' ||
     normalised === 'turn-reminder'
+  );
+};
+
+/** A removal does not have a readable path any more, so its tap returns Home. */
+export const isPathMembershipRemovedNotificationType = (value: unknown): boolean => {
+  const text = asText(value);
+  if (!text) {
+    return false;
+  }
+  const normalised = normaliseNotificationType(text);
+  return (
+    normalised === 'sehaj-path-membership-removed' ||
+    normalised === 'path-membership-removed' ||
+    normalised === 'membership-removed'
   );
 };
 
@@ -86,6 +102,11 @@ const inferTurnNotificationType = (data: NotificationData): string | undefined =
   const text = candidates.join(' ').toLowerCase();
   if (/sehaj\s+path.*turn.*updated|turn.*updated/.test(text)) {
     return 'sehaj-path-turn-updated';
+  }
+  if (
+    /sehaj\s+path.*turn.*(deleted|removed|cancelled)|turn.*(deleted|removed|cancelled)/.test(text)
+  ) {
+    return 'sehaj-path-turn-cancelled';
   }
   if (/sehaj\s+path.*turn.*(coming|start)|turn.*(coming|start)/.test(text)) {
     return 'sehaj-path-turn-reminder';
@@ -250,7 +271,15 @@ export const displayPushMessage = async (
     await notifee.displayNotification({
       title: title ?? 'Khalis',
       body: body ?? '',
-      data: message.data,
+      // Notifee owns the foreground notification that is later pressed. Keep
+      // the visible title/body in its data as well, otherwise the tap event
+      // only carries the route/type and the app cannot build a useful
+      // membership-removal dialog.
+      data: {
+        ...(message.data ?? {}),
+        ...(title ? { title } : {}),
+        ...(body ? { body } : {}),
+      },
       android: androidNotification(),
       // FCM does not present notification payloads while the app is active.
       // Explicitly request the iOS foreground banner/list and sound so a

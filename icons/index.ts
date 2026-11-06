@@ -9,6 +9,7 @@ export { RightChevronIcon } from './RightChevron.icon';
 export { LeftArrowIcon } from './LeftArrow.icon';
 export { RightArrowIcon } from './RightArrow.icon';
 export { CrossIcon } from './Cross.icon';
+export { InformationIcon } from './Information.icon';
 export { LeftLineIcon } from './LeftLine.icon';
 export { RightLineIcon } from './RightLine.icon';
 export { MenuIcon } from './Menu.icon';

@@ -36,6 +36,7 @@ export { SignInPopup } from './SignInPopup';
 export { LoginRequiredDialog } from './LoginRequiredDialog';
 export { SyncUnavailablePopup } from './SyncUnavailablePopup';
 export { SessionExpiredPopup } from './SessionExpiredPopup';
+export { PathMembershipRemovalDialog } from './PathMembershipRemovalDialog';
 export { PathSelectionProvider, usePathSelection } from './PathSelectionContext';
 export type { PathSelection } from './PathSelectionContext';
 export { PathOptionsMenu } from './PathOptionsMenu';
