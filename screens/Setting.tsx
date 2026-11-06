@@ -2,16 +2,9 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Platform, ScrollView, TouchableOpacity, View } from 'react-native';
 import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { BackButton, SimpleText, SwitchSettingItem, DropdownSettingItem } from '@components';
+import { BackButton, SwitchSettingItem, SelectionSheetSettingItem } from '@components';
 import { RightChevronIcon } from '@icons';
-import {
-  SettingScreenStyle,
-  SafeAreaStyle,
-  LarivaarStyles,
-  ParagraphModeStyles,
-  FontSizeStyle,
-  AngsFormatStyles,
-} from '@styles';
+import { SettingScreenStyle, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics, useSetting } from '@hooks';
 import { deleteAccount } from '@auth';
@@ -181,43 +174,32 @@ export const Settings = ({ navigation }: SettingProps) => {
           showsVerticalScrollIndicator={false}
         >
           <View>
-            <View>
-              <SimpleText simpleText={Constants.DISPLAY_OPTIONS} />
-            </View>
+            <Text style={SettingScreenStyle.sectionHeading}>{Constants.DISPLAY_OPTIONS}</Text>
 
-            <DropdownSettingItem<FontSizeData>
+            <SelectionSheetSettingItem<FontSizeData>
               settingKey="fontSize"
               label={Constants.FONT_SIZE}
               overlayTitle={Constants.SELECT_YOUR_FONT_SIZE}
               options={FontSizes.map((size) => ({ value: size, label: size.fontSize }))}
               value={fontSize}
               onValueChange={changeFontSize}
-              containerStyle={FontSizeStyle.container}
-              textStyle={FontSizeStyle.fontSizeText}
-              overlayHeaderStyle={FontSizeStyle.overlayHeader}
-              overlayTextContainerStyle={FontSizeStyle.overlayTextContainer}
-              overlayTextStyle={FontSizeStyle.overlayText}
-              overlayContainerStyle={FontSizeStyle.overlayContainer}
-              overlayContentStyle={FontSizeStyle.overlayContent}
+              containerStyle={SettingScreenStyle.settingRow}
+              textStyle={SettingScreenStyle.settingText}
               getDisplayValue={(value: FontSizeData) => value.fontSize || 'Default'}
               isEqual={(a: FontSizeData, b: FontSizeData) => a.fontSize === b.fontSize}
             />
 
-            <DropdownSettingItem<AngsFormat>
+            <SelectionSheetSettingItem<AngsFormat>
               settingKey="angsFormat"
               label={Constants.ANG_NUMBERING}
               overlayTitle={Constants.SELECT_YOUR_ANG_FORMAT}
               options={AngsFormatArray.map((format) => ({ value: format, label: format.format }))}
               value={angsFormat}
               onValueChange={changeAngsFormat}
-              containerStyle={AngsFormatStyles.container}
-              textStyle={AngsFormatStyles.angsText}
-              overlayHeaderStyle={AngsFormatStyles.overlayHeader}
-              overlayTextContainerStyle={AngsFormatStyles.overlayTextContainer}
-              overlayTextStyle={AngsFormatStyles.overlayText}
+              containerStyle={SettingScreenStyle.settingRow}
+              textStyle={SettingScreenStyle.settingText}
               getDisplayValue={(value: AngsFormat) => value.format}
               isEqual={(a: AngsFormat, b: AngsFormat) => a.format === b.format}
-              showCheckmark={false}
             />
 
             <SwitchSettingItem
@@ -225,8 +207,8 @@ export const Settings = ({ navigation }: SettingProps) => {
               label={Constants.PARAGRAPH_MODE}
               value={paragraphMode}
               onValueChange={changeParagraphMode}
-              containerStyle={ParagraphModeStyles.container}
-              textStyle={ParagraphModeStyles.fontSizeText}
+              containerStyle={SettingScreenStyle.settingRow}
+              textStyle={SettingScreenStyle.settingText}
             />
 
             <SwitchSettingItem
@@ -234,11 +216,11 @@ export const Settings = ({ navigation }: SettingProps) => {
               label={Constants.VISHRAAM}
               value={vishraam}
               onValueChange={changeVishraam}
-              containerStyle={ParagraphModeStyles.container}
-              textStyle={ParagraphModeStyles.fontSizeText}
+              containerStyle={SettingScreenStyle.settingRow}
+              textStyle={SettingScreenStyle.settingText}
             />
 
-            <DropdownSettingItem<VishraamsSource>
+            <SelectionSheetSettingItem<VishraamsSource>
               settingKey="vishraamsSource"
               label="Vishraam Source"
               overlayTitle="Select Vishraam Source"
@@ -248,41 +230,33 @@ export const Settings = ({ navigation }: SettingProps) => {
               }))}
               value={vishraamsSource}
               onValueChange={changeVishraamsSource}
-              containerStyle={AngsFormatStyles.container}
-              textStyle={AngsFormatStyles.angsText}
-              overlayHeaderStyle={AngsFormatStyles.overlayHeader}
-              overlayTextContainerStyle={AngsFormatStyles.overlayTextContainer}
-              overlayTextStyle={AngsFormatStyles.overlayText}
+              containerStyle={SettingScreenStyle.settingRow}
+              textStyle={SettingScreenStyle.settingText}
               getDisplayValue={(value: VishraamsSource) => VishraamsSourceLabels[value.source]}
               isEqual={(a: VishraamsSource, b: VishraamsSource) => a.source === b.source}
-              showCheckmark={false}
             />
           </View>
 
           <View>
-            <View>
-              <SimpleText simpleText={Constants.BANI_OPTIONS} />
-            </View>
+            <Text style={SettingScreenStyle.sectionHeading}>{Constants.BANI_OPTIONS}</Text>
             <SwitchSettingItem
               settingKey="larivaar"
               label={Constants.LARIVAAR}
               value={larivaar}
               onValueChange={changeLarivaar}
-              containerStyle={LarivaarStyles.container}
-              textStyle={LarivaarStyles.fontSizeText}
+              containerStyle={SettingScreenStyle.settingRow}
+              textStyle={SettingScreenStyle.settingText}
             />
           </View>
 
-          <View>
-            <SimpleText simpleText={'Other Settings'} />
-          </View>
+          <Text style={SettingScreenStyle.sectionHeading}>Other Settings</Text>
           <SwitchSettingItem
             settingKey="analytics"
             label={Constants.ANALYTICS}
             value={analyticsConsent}
             onValueChange={changeAnalyticsConsent}
-            containerStyle={LarivaarStyles.container}
-            textStyle={LarivaarStyles.fontSizeText}
+            containerStyle={SettingScreenStyle.settingRow}
+            textStyle={SettingScreenStyle.settingText}
           />
           <TouchableOpacity
             style={SettingScreenStyle.databaseUpdateRow}
@@ -309,7 +283,6 @@ export const Settings = ({ navigation }: SettingProps) => {
             </View>
             <RightChevronIcon />
           </TouchableOpacity>
-
           {/*
             Required by App Store guideline 5.1.1(v), which insists the option
             lives in the app and is not buried behind support. Only shown while

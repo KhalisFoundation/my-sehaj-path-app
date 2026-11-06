@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Modal, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { DialogStyles as styles } from '@styles';
 
 interface DialogProps {
@@ -8,6 +8,8 @@ interface DialogProps {
   nativeModal?: boolean;
   /** Android back / swipe-to-dismiss handler. */
   onRequestClose?: () => void;
+  /** Whether tapping the dimmed area should invoke {@link onRequestClose}. */
+  dismissOnBackdropPress?: boolean;
   /**
    * Fires when the modal is genuinely on screen. iOS silently refuses to
    * present a modal while another one (or an in-app browser) already owns the
@@ -32,6 +34,7 @@ const DialogComponent = ({
   visible,
   nativeModal = true,
   onRequestClose,
+  dismissOnBackdropPress = false,
   onShow,
   backdropStyle,
   cardStyle,
@@ -47,6 +50,14 @@ const DialogComponent = ({
       accessibilityViewIsModal
       importantForAccessibility="yes"
     >
+      {dismissOnBackdropPress && onRequestClose ? (
+        <Pressable
+          style={StyleSheet.absoluteFill}
+          onPress={onRequestClose}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      ) : null}
       <View style={[styles.card, cardStyle]}>{children}</View>
     </View>
   );

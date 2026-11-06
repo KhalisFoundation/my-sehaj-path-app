@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { UIConstants } from '@constants/UIConstants';
+import { ReaderToolbar } from '@constants/ResponsiveLayout';
 
 export const PathScreenStyles = StyleSheet.create({
   // Sits above the reader so a follower always knows the page is being moved
@@ -64,9 +65,9 @@ export const PathScreenStyles = StyleSheet.create({
     bottom: 5,
     zIndex: 9,
     width: '100%',
-    maxWidth: 200,
+    maxWidth: ReaderToolbar.BASE_MAX_WIDTH,
     backgroundColor: '#11336A',
-    height: 48,
+    height: ReaderToolbar.BASE_HEIGHT,
     alignItems: 'center',
     justifyContent: 'space-around',
     alignSelf: 'center',

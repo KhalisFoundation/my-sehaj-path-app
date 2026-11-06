@@ -15,6 +15,7 @@ import { BlurView } from '@react-native-community/blur';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   Constants,
+  DrawerIcon,
   EDGES_DRAWER_MENU,
   ErrorConstants,
   KHALIS_FOUNDATION_DONATE_URL,
@@ -32,6 +33,7 @@ import {
   trackEvent,
 } from '@utils';
 import { DonationIcon } from '@icons/Donation.icon';
+import { scaledIconSize, useAppIconScale } from '@icons/useAppIconScale';
 import { startLogin, logout } from '@auth';
 import { DRAWER_MENU_ITEMS } from '../data/drawerMenu';
 import { useAppSelector } from '../store/hooks';
@@ -51,6 +53,8 @@ interface DrawerMenuProps {
   onGoToAngPress?: () => void;
   onSavePress?: () => void;
 }
+
+const DRAWER_WIDTH = 280;
 
 const logoutOverlayStyles = StyleSheet.create({
   overlay: {
@@ -80,7 +84,8 @@ const DrawerMenuComponent = ({
   onGoToAngPress,
   onSavePress,
 }: DrawerMenuProps) => {
-  const slideAnim = useRef(new Animated.Value(-300)).current;
+  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const [isDrawerMounted, setIsDrawerMounted] = useState(isVisible);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isManualSyncing, setIsManualSyncing] = useState(false);
   const [syncRecoveryPrompt, setSyncRecoveryPrompt] = useState<'recovery' | 'restore' | null>(null);
@@ -89,7 +94,13 @@ const DrawerMenuComponent = ({
   const userEmail = useAppSelector((state) => state.auth.email);
   const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
   const isOnline = useAppSelector((state) => state.network.isOnline);
+  const iconScale = useAppIconScale();
   const isSignedIn = authStatus === 'signedIn';
+  const drawerIconSize = scaledIconSize(DrawerIcon.SIZE, iconScale);
+  // Keep the original 24pt slot as a minimum touch/layout target, then grow it
+  // with the icon at larger selected app sizes so neither icon nor label crowds
+  // the other in the sidebar.
+  const drawerIconSlotSize = Math.max(DrawerIcon.MINIMUM_SLOT_SIZE, drawerIconSize);
 
   const handleLoginPress = () => {
     trackEvent('AuthButton', 'click', 'Sign in pressed');
@@ -290,20 +301,43 @@ const DrawerMenuComponent = ({
     if (!isVisible) {
       setSyncRecoveryPrompt(null);
     }
+
+    slideAnim.stopAnimation();
     if (isVisible) {
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(slideAnim, {
-        toValue: -300,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
+      // A native Modal is removed as soon as `visible` becomes false. Reset
+      // before mounting it and animate on the next frame, so every open starts
+      // off-screen instead of occasionally reusing the previous resting value.
+      slideAnim.setValue(-DRAWER_WIDTH);
+      setIsDrawerMounted(true);
+      const animationFrame = requestAnimationFrame(() => {
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      });
+      return () => {
+        cancelAnimationFrame(animationFrame);
+        slideAnim.stopAnimation();
+      };
     }
-  }, [isVisible, slideAnim]);
+
+    if (!isDrawerMounted) {
+      return undefined;
+    }
+
+    const closeAnimation = Animated.timing(slideAnim, {
+      toValue: -DRAWER_WIDTH,
+      duration: 200,
+      useNativeDriver: true,
+    });
+    closeAnimation.start(({ finished }) => {
+      if (finished) {
+        setIsDrawerMounted(false);
+      }
+    });
+    return () => closeAnimation.stop();
+  }, [isDrawerMounted, isVisible, slideAnim]);
 
   const handleMenuItemPress = (route: string, label: string) => {
     trackEvent('DrawerMenuNavigation', 'click', `Navigate to ${label}`);
@@ -328,7 +362,7 @@ const DrawerMenuComponent = ({
 
   return (
     <Modal
-      visible={isVisible}
+      visible={isDrawerMounted}
       transparent
       animationType="none"
       presentationStyle="overFullScreen"
@@ -365,8 +399,13 @@ const DrawerMenuComponent = ({
                           accessibilityLabel={item.label}
                           accessibilityRole="button"
                         >
-                          <View style={DrawerMenuStyles.menuItemIcon}>
-                            <item.Icon width={20} height={20} />
+                          <View
+                            style={[
+                              DrawerMenuStyles.menuItemIcon,
+                              { width: drawerIconSlotSize, height: drawerIconSlotSize },
+                            ]}
+                          >
+                            <item.Icon width={drawerIconSize} height={drawerIconSize} />
                           </View>
                           <Text
                             style={[
@@ -388,7 +427,7 @@ const DrawerMenuComponent = ({
                       accessibilityLabel={Constants.DONATE}
                       accessibilityRole="button"
                     >
-                      <DonationIcon width={20} height={20} />
+                      <DonationIcon width={drawerIconSize} height={drawerIconSize} />
                       <Text style={DrawerMenuStyles.donateText}>{Constants.DONATE}</Text>
                     </TouchableOpacity>
                     {!isSignedIn ? (
@@ -398,8 +437,13 @@ const DrawerMenuComponent = ({
                         accessibilityLabel={Constants.LOGIN}
                         accessibilityRole="button"
                       >
-                        <View style={DrawerMenuStyles.menuItemIcon}>
-                          <LoginIcon width={20} height={20} />
+                        <View
+                          style={[
+                            DrawerMenuStyles.menuItemIcon,
+                            { width: drawerIconSlotSize, height: drawerIconSlotSize },
+                          ]}
+                        >
+                          <LoginIcon width={drawerIconSize} height={drawerIconSize} />
                         </View>
                         <Text style={DrawerMenuStyles.menuItemText}>{Constants.LOGIN}</Text>
                       </TouchableOpacity>
@@ -414,7 +458,7 @@ const DrawerMenuComponent = ({
                         accessibilityLabel={Constants.SYNC_NOW}
                         accessibilityRole="button"
                       >
-                        <SaveIcon width={20} height={20} color="#11336A" />
+                        <SaveIcon width={drawerIconSize} height={drawerIconSize} color="#11336A" />
                         <Text style={DrawerMenuStyles.logoutText}>{Constants.SYNC_NOW}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -423,7 +467,7 @@ const DrawerMenuComponent = ({
                         accessibilityLabel={Constants.LOGOUT}
                         accessibilityRole="button"
                       >
-                        <LoginIcon width={20} height={20} color="#11336A" />
+                        <LoginIcon width={drawerIconSize} height={drawerIconSize} color="#11336A" />
                         <Text style={DrawerMenuStyles.logoutText}>{Constants.LOGOUT}</Text>
                       </TouchableOpacity>
                       {userEmail ? (

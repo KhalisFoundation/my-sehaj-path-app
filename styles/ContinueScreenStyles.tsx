@@ -87,7 +87,6 @@ export const ContinueScreenStyles = StyleSheet.create({
   },
   sehajHeadingContainer: {
     flexDirection: 'row',
-    marginTop: UIConstants.RHYTHM * 2,
   },
   sehajHeading: {
     fontSize: 48,

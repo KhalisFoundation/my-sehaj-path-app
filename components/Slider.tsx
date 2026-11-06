@@ -18,6 +18,7 @@ interface Props {
   sliderContainerStyle?: StyleProp<ViewStyle>;
   dotsContainerStyle?: StyleProp<ViewStyle>;
   dotStyle?: StyleProp<ViewStyle>;
+  contentContainerStyle?: StyleProp<ViewStyle>;
 }
 
 export const getActiveSliderPage = (
@@ -60,6 +61,7 @@ export const Slider = ({
   sliderContainerStyle,
   dotStyle,
   dotsContainerStyle,
+  contentContainerStyle,
 }: Props) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const activeIndexRef = useRef(0);
@@ -127,7 +129,7 @@ export const Slider = ({
         decelerationRate="fast"
         onMomentumScrollEnd={(event) => updateActivePage(event.nativeEvent.contentOffset.x)}
         style={[SliderStyles.sliderContainer, sliderContainerStyle]}
-        contentContainerStyle={SliderStyles.sliderContentContainer}
+        contentContainerStyle={[SliderStyles.sliderContentContainer, contentContainerStyle]}
         renderItem={({ item }) => <View>{item}</View>}
       />
 

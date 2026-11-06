@@ -78,26 +78,35 @@ export const AngsNavigation = ({
   return (
     <View style={AngsNavigationStyle.blurView}>
       <BlurView
-        blurType="light"
-        blurAmount={2}
-        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
+        blurType="dark"
+        blurAmount={1}
+        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.55)"
+        pointerEvents="none"
         style={StyleSheet.absoluteFill}
       />
-      <View style={AngsNavigationStyle.overlayContainer}>
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={() => setIsAngsNavigationVisible(false)}
+        accessibilityLabel="Close angs navigation"
+        accessibilityRole="button"
+      />
+      <View style={AngsNavigationStyle.overlayContainer} pointerEvents="box-none">
         <View style={AngsNavigationStyle.angsNavigationContainer}>
           <Pressable
             style={AngsNavigationStyle.crossIcon}
             onPress={() => setIsAngsNavigationVisible(false)}
+            hitSlop={8}
             accessibilityLabel="Close angs navigation"
             accessibilityRole="button"
             accessibilityHint="Tap to close angs navigation dialog"
           >
             <CrossIcon />
           </Pressable>
-          <Text style={AngsNavigationStyle.angsNavigationText}>Angs Navigation:</Text>
+          <Text style={AngsNavigationStyle.angsNavigationText}>Angs Navigation</Text>
           <View style={AngsNavigationStyle.angsNavigationInputContainer}>
             <TouchableOpacity
               onPress={() => handleNavigation(handleLeftArrow)}
+              hitSlop={8}
               accessibilityLabel="Previous ang"
               accessibilityRole="button"
               accessibilityHint="Tap to go to previous ang"
@@ -118,6 +127,7 @@ export const AngsNavigation = ({
             />
             <TouchableOpacity
               onPress={() => handleNavigation(handleRightArrow)}
+              hitSlop={8}
               accessibilityLabel="Next ang"
               accessibilityRole="button"
               accessibilityHint="Tap to go to next ang"

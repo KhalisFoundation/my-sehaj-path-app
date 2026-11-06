@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, type StyleProp, type ViewStyle, useWindowDimensions } from 'react-native';
 import { AppText as Text } from './AppText';
 import { NavContent } from '@components';
+import { readerStatusMessageMaxWidth } from '@constants';
 import { SaveIcon } from '@icons';
+import { useAppIconScale } from '@icons/useAppIconScale';
 import { MessageStyles } from '@styles';
 
 /** Self-driven timings: long enough to read, short enough to stay out of the way. */
@@ -26,6 +28,9 @@ interface Props {
 export const Message = ({ message, fadeAnim, icon, onHidden, style }: Props) => {
   const ownAnim = useRef(new Animated.Value(0)).current;
   const opacity = fadeAnim ?? ownAnim;
+  const { width: windowWidth } = useWindowDimensions();
+  const iconScale = useAppIconScale();
+  const maxMessageWidth = readerStatusMessageMaxWidth(iconScale, windowWidth);
 
   // Held in a ref so an inline callback from the host does not restart the
   // animation on every render.
@@ -51,7 +56,10 @@ export const Message = ({ message, fadeAnim, icon, onHidden, style }: Props) => 
   }, [fadeAnim, ownAnim, message]);
 
   return (
-    <Animated.View pointerEvents="none" style={[MessageStyles.saveContainer, style, { opacity }]}>
+    <Animated.View
+      pointerEvents="none"
+      style={[MessageStyles.saveContainer, style, { maxWidth: maxMessageWidth, opacity }]}
+    >
       <NavContent navIcon={icon ?? <SaveIcon />} />
       <Text style={MessageStyles.saveText} allowFontScaling={false}>
         {message}

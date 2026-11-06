@@ -101,6 +101,9 @@ export const Constants: Constant = {
   ADD_TURN_AT_TIME: 'Add turn at this time',
   TURN_OPTIONS: 'Turn options',
   DELETE_TURN: 'Delete turn',
+  DELETE_TURN_CONFIRMATION_TITLE: 'Delete this turn?',
+  DELETE_TURN_CONFIRMATION_MESSAGE:
+    'This will permanently remove the scheduled turn. This action cannot be undone.',
   DELETE_TURN_FAILED_TITLE: 'Unable to delete turn',
   DELETING_TURN: 'Deleting…',
   ADD_TURN_TITLE: 'Add a turn',

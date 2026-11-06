@@ -9,6 +9,8 @@ export const AngsNavigationStyle = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    elevation: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.42)',
   },
 
   overlayContainer: {
@@ -23,11 +25,11 @@ export const AngsNavigationStyle = StyleSheet.create({
     backgroundColor: '#EBF0F8',
     position: 'relative',
     padding: 5,
-    paddingVertical: 25,
-    width: '95%',
-    maxWidth: 500,
+    paddingVertical: 38,
+    width: '92%',
+    maxWidth: 560,
     alignItems: 'center',
-    gap: 15,
+    gap: 18,
     borderRadius: 15,
     shadowColor: '#000',
     shadowOffset: {
@@ -46,6 +48,8 @@ export const AngsNavigationStyle = StyleSheet.create({
   angsNavigationInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '90%',
     gap: 10,
   },
   input: {
@@ -54,7 +58,7 @@ export const AngsNavigationStyle = StyleSheet.create({
     fontFamily: font.Baloo_Paaji_2_Medium,
     color: '#11336A',
     fontSize: 20,
-    width: '60%',
+    width: '72%',
     textAlign: 'center',
     textAlignVertical: 'center',
     padding: 8,
@@ -73,8 +77,8 @@ export const AngsNavigationStyle = StyleSheet.create({
   },
   crossIcon: {
     position: 'absolute',
-    top: 10,
-    right: 10,
+    top: 20,
+    right: 22,
     zIndex: 999,
   },
   warningText: {

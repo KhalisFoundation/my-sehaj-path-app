@@ -1,12 +1,10 @@
 import React from 'react';
-import { View, StyleProp, ViewStyle, TextStyle } from 'react-native';
-import { Switch } from '@rneui/themed';
+import { Switch, View, StyleProp, ViewStyle, TextStyle } from 'react-native';
 import { SimpleText } from '@components';
 import { recordError, trackEvent } from '@utils';
 import { UIConstants } from '@constants';
 
 interface SwitchSettingItemProps {
-  /** Identifier used for the analytics label. */
   settingKey: string;
   label: string;
   value: boolean;
@@ -50,12 +48,20 @@ export const SwitchSettingItem = ({
     <View style={containerStyle}>
       <SimpleText simpleText={label} simpleTextStyle={textStyle} />
       <Switch
+        // Use the platform control directly. The RNE wrapper applies its themed
+        // iOS tint during initial mount and a different native tint after a
+        // toggle, making an already-enabled persisted setting look lighter
+        // than the same setting after it is switched off and on.
         value={value}
         onValueChange={handleToggle}
         trackColor={{
           false: UIConstants.SWITCH_TRACK_COLOR_FALSE,
           true: UIConstants.SWITCH_TRACK_COLOR_TRUE,
         }}
+        // iOS renders an inactive switch against a separate background layer.
+        // Without this colour, the same off-state can look transparent on one
+        // row and filled on another depending on the view beneath it.
+        ios_backgroundColor={UIConstants.SWITCH_TRACK_COLOR_FALSE}
         thumbColor={
           value ? UIConstants.SWITCH_THUMB_COLOR_TRUE : UIConstants.SWITCH_THUMB_COLOR_FALSE
         }
@@ -63,6 +69,7 @@ export const SwitchSettingItem = ({
         accessibilityRole="switch"
         accessibilityHint={`Tap to ${value ? 'disable' : 'enable'} ${label}`}
         accessibilityState={{ checked: value }}
+        testID={`settings-switch-${settingKey}`}
       />
     </View>
   );

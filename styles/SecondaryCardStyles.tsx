@@ -4,11 +4,9 @@ import { UIConstants } from '@constants/UIConstants';
 
 export const CompletedPathCardStyles = StyleSheet.create({
   container: {
-    width: 130,
-    height: 107,
     backgroundColor: 'white',
     borderRadius: 15,
-    padding: UIConstants.RHYTHM * 1.1,
+    padding: UIConstants.RHYTHM * 1.25,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#11336A',
@@ -30,6 +28,6 @@ export const CompletedPathCardStyles = StyleSheet.create({
     lineHeight: 20,
     textAlign: 'center',
     color: '#666666',
-    marginTop: 4,
+    marginVertical: 4,
   },
 });

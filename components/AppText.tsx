@@ -5,6 +5,7 @@ import {
   TextInput as RNTextInput,
   type StyleProp,
   type TextInputProps,
+  type TextInputInstance,
   type TextProps,
   type TextStyle,
 } from 'react-native';
@@ -77,6 +78,15 @@ export const AppText = ({ style, allowFontScaling = false, ...rest }: TextProps)
  * everything around them moved. The placeholder follows the same size, since it
  * is drawn by the input itself.
  */
-export const AppTextInput = ({ style, allowFontScaling = false, ...rest }: TextInputProps) => (
-  <RNTextInput style={useSizedStyle(style)} allowFontScaling={allowFontScaling} {...rest} />
+export const AppTextInput = React.forwardRef<TextInputInstance, TextInputProps>(
+  ({ style, allowFontScaling = false, ...rest }, ref) => (
+    <RNTextInput
+      ref={ref}
+      style={useSizedStyle(style)}
+      allowFontScaling={allowFontScaling}
+      {...rest}
+    />
+  )
 );
+
+AppTextInput.displayName = 'AppTextInput';

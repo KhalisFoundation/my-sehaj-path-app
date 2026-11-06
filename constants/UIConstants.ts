@@ -36,6 +36,7 @@ export const UIConstants: UIConstant = {
   NAV_TEXT_COLOR: '#FFFFFF',
   NAV_TITLE_FONT_SIZE: 20,
   BORDER_COLOR: '#EEEEEE',
+  TURN_OPTIONS_DIALOG_MAX_WIDTH: 480,
 
   // Text roles, darkest to lightest.
   PRIMARY_COLOR: '#11336A',
@@ -60,6 +61,9 @@ export const UIConstants: UIConstant = {
   ABOUT_BANIDB_LOGO_SIZE: 64,
   DIVIDER_HEIGHT: 1,
   DRAWER_REDUCED_TRANSPARENCY_FALLBACK: 'rgba(0, 0, 0, 0.3)',
+  // Neutral rather than navy: sheets should dim the current screen without
+  // recolouring the calendar, background artwork, or status bar beneath them.
+  MODAL_BACKDROP_COLOR: 'rgba(0, 0, 0, 0.32)',
 
   // Reusable form geometry and colours.
   INPUT_BORDER_COLOR: '#CFCFCF',

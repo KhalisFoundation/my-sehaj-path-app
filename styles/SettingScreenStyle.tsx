@@ -25,6 +25,26 @@ export const SettingScreenStyle = StyleSheet.create({
     // the end, rather than sitting flush against it.
     paddingBottom: UIConstants.RHYTHM * 3,
   },
+  sectionHeading: {
+    color: 'rgba(153, 153, 153, 1)',
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: 16,
+    lineHeight: 22,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 58,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
+  },
+  settingText: {
+    color: '#11336A',
+    fontFamily: font.Brandon_Grotesque_Regular,
+    fontSize: 20,
+    lineHeight: 28,
+  },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -36,27 +56,31 @@ export const SettingScreenStyle = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 15,
+    minHeight: 58,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
   },
   databaseUpdateCopy: {
     flex: 1,
   },
   databaseUpdateText: {
     color: '#11336A',
-    fontFamily: font.Baloo_Paaji_2_Regular,
+    fontFamily: font.Brandon_Grotesque_Regular,
     fontSize: 20,
+    lineHeight: 28,
   },
-  // Account deletion reuses the database row's shape so it sits flush with the
-  // rest of the list; only the colour differs, because it is destructive.
   deleteAccountRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 15,
+    minHeight: 58,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
   },
   deleteAccountText: {
     color: '#B3261E',
-    fontFamily: font.Baloo_Paaji_2_Regular,
+    fontFamily: font.Brandon_Grotesque_Regular,
     fontSize: 20,
+    lineHeight: 28,
   },
 });
