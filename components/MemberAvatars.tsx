@@ -124,7 +124,7 @@ export const MemberAvatars = ({ members, memberCount, max = 3 }: Props) => {
       </View>
 
       <Text style={styles.count} numberOfLines={1}>
-        {`by ${count} ${count === 1 ? 'reader' : 'readers'}`}
+        {`by ${count} readers`}
       </Text>
     </View>
   );
