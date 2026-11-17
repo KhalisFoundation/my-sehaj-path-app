@@ -6920,6 +6920,13 @@
             "description": "Scroll offset within the ang, so a member who joins or returns on another\ndevice resumes at the saved line instead of the top of the page.",
             "minimum": 0
           },
+          "readDates": {
+            "description": "Calendar days for this path. A personal path contains its owner's days; a public path contains the deduplicated shared days from every member. V2 is therefore a complete initial streak snapshot for every role.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
           "completionDate": {
             "type": "integer",
             "nullable": true,
@@ -6928,6 +6935,14 @@
           "startDate": {
             "type": "integer",
             "description": "Canonical date the path began (milliseconds since epoch). Every member\nuses this same value when calculating elapsed days and projections."
+          },
+          "createdAt": {
+            "type": "integer",
+            "description": "When this path was first created (milliseconds since epoch)."
+          },
+          "updatedAt": {
+            "type": "integer",
+            "description": "Last path update (milliseconds since epoch)."
           },
           "sharing": {
             "example": "PUBLIC",
@@ -6989,7 +7004,9 @@
           "pathId",
           "name",
           "memberCount",
-          "progress"
+          "progress",
+          "createdAt",
+          "updatedAt"
         ]
       },
       "EnableSharingDto": {

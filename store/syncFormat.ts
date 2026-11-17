@@ -89,9 +89,29 @@ const META_KEYS = [
  * reading; `shared` marks a path the server owns. Both are absent from metadata
  * written by older binaries, which must still hydrate.
  */
-const META_OPTIONAL_KEYS = ['serverCreatedAt', 'shared', 'groupId'] as const;
+const META_OPTIONAL_KEYS = [
+  'serverCreatedAt',
+  'shared',
+  'groupId',
+  'memberCount',
+  'memberPreviews',
+] as const;
 
 const OP_KEYS = ['kind', 'localUpdatedAt'] as const;
+
+const MEMBER_PREVIEW_KEYS = ['id', 'displayLabel', 'hasAvatar'] as const;
+const MEMBER_PREVIEW_OPTIONAL_KEYS = ['avatarUpdatedAt'] as const;
+
+const isMemberPreview = (value: unknown): boolean =>
+  isObject(value) &&
+  hasAllowedKeys(value, MEMBER_PREVIEW_KEYS, MEMBER_PREVIEW_OPTIONAL_KEYS) &&
+  typeof value.id === 'string' &&
+  value.id.length > 0 &&
+  typeof value.displayLabel === 'string' &&
+  typeof value.hasAvatar === 'boolean' &&
+  (value.avatarUpdatedAt === undefined ||
+    value.avatarUpdatedAt === null ||
+    typeof value.avatarUpdatedAt === 'string');
 
 const TOP_LEVEL_KEYS = [
   'version',
@@ -117,7 +137,11 @@ const isSyncMeta = (value: unknown): value is SyncMeta =>
   typeof value.onServer === 'boolean' &&
   (value.shared === undefined || typeof value.shared === 'boolean') &&
   (value.groupId === undefined ||
-    (typeof value.groupId === 'string' && UUID_RE.test(value.groupId)));
+    (typeof value.groupId === 'string' && UUID_RE.test(value.groupId))) &&
+  (value.memberCount === undefined ||
+    (isFiniteNonNegative(value.memberCount) && Number.isInteger(value.memberCount))) &&
+  (value.memberPreviews === undefined ||
+    (Array.isArray(value.memberPreviews) && value.memberPreviews.every(isMemberPreview)));
 
 const isPendingPathOp = (value: unknown): value is PendingPathOp =>
   isObject(value) &&
