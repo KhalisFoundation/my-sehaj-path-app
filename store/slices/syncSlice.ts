@@ -8,14 +8,6 @@ export interface PendingPathOp {
   localUpdatedAt: number;
 }
 
-/** The small, card-safe member projection returned by the V2 paths endpoint. */
-export interface PathMemberPreview {
-  id: string;
-  displayLabel: string;
-  hasAvatar: boolean;
-  avatarUpdatedAt?: string | null;
-}
-
 export interface SyncMeta {
   /** Client-generated UUID used as the API's pathId. */
   serverPathId: string;
@@ -59,10 +51,6 @@ export interface SyncMeta {
    * Path not found`, because that column is not what they look up.
    */
   groupId?: string;
-  /** Exact active-reader count from V2; avoids fetching a roster to open a path. */
-  memberCount?: number;
-  /** At most three members for the card avatar stack, never the full roster. */
-  memberPreviews?: PathMemberPreview[];
 }
 
 export interface SyncState {

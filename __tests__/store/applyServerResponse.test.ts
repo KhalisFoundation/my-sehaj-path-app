@@ -440,8 +440,8 @@ describe('refreshPathsFromServer', () => {
     // prevent future foreground pulls.
     expect(Number.isFinite(store.getState().sync.meta[1].serverUpdatedAt)).toBe(true);
     expect(Number.isFinite(store.getState().sync.meta[1].localUpdatedAt)).toBe(true);
-    expect(store.getState().sync.meta[1].memberCount).toBe(2);
-    expect(store.getState().sync.meta[1].memberPreviews).toEqual([
+    expect(store.getState().memberMetadata.byPathId[1].memberCount).toBe(2);
+    expect(store.getState().memberMetadata.byPathId[1].memberPreviews).toEqual([
       {
         id: 'member-1',
         displayLabel: 'Amrit',
@@ -585,6 +585,40 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().paths.paths[0].completionDate).toBe('4-November-2026');
   });
 
+  it('keeps a locally saved completion date when an older V2 response omits it', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    store.dispatch(
+      applyServerPathData({
+        pathId: 1,
+        pathPatch: { completionDate: '7-November-2026', progress: 100 },
+        datePatch: {},
+      })
+    );
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Path #1',
+          angNumber: 1430,
+          verseId: 60403,
+          progress: 100,
+          completionDate: null,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PERSONAL',
+          relationship: 'OWNER',
+          stateVersion: 1,
+          memberCount: 0,
+        },
+      ],
+    });
+
+    await refreshPathsFromServer(store);
+
+    expect(store.getState().paths.paths[0].completionDate).toBe('7-November-2026');
+  });
+
   it('clears a stale local completion marker when the canonical path is partial', async () => {
     const store = signedInStore();
     const uuid = addSyncedPath(store, 1);
@@ -675,6 +709,45 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().paths.paths.find((path) => path.pathId === 1)?.pathName).toBe(
       'New shared name'
     );
+  });
+
+  it('does not apply a path-scoped response after the account changes', async () => {
+    const store = signedInStore();
+    const uuid = addSyncedPath(store, 1);
+    let resolveAccessible: (value: { data: unknown[] }) => void = () => undefined;
+    mockAccessible.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveAccessible = resolve;
+        })
+    );
+
+    const request = ensureAccessiblePath(store, 'internal-1', 1);
+    store.dispatch(
+      setSignedIn({ token: 'b-token', email: 'b@e.com', firstname: 'B', lastname: 'X' })
+    );
+    store.dispatch(setAccount('b@e.com'));
+    resolveAccessible({
+      data: [
+        {
+          id: 'internal-1',
+          pathId: uuid,
+          name: 'Account A path',
+          angNumber: 50,
+          verseId: 200,
+          progress: 3.5,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'OWNER',
+          stateVersion: 1,
+          memberCount: 2,
+        },
+      ],
+    });
+
+    await expect(request).resolves.toBeNull();
+    expect(store.getState().memberMetadata.byPathId).toEqual({});
+    expect(store.getState().sync.meta[1]?.shared).not.toBe(true);
   });
 
   it('keeps a link-only path personal until somebody else joins', async () => {

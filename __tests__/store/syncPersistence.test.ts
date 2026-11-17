@@ -1,10 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { makeStore } from '../../store';
+import { clearActiveAccountData, makeStore } from '../../store';
 import { createLegacyPersistence, hydrateStore } from '../../store/persistence';
 import { SYNC_META_KEY, serializeSyncMeta } from '../../store/syncFormat';
+import { MEMBER_METADATA_KEY } from '../../store/memberMetadata';
 import type { PersistedSyncState } from '../../store/slices/syncSlice';
 import { renamePath, setAll } from '../../store/slices/pathsSlice';
-import { upsertMeta } from '../../store/slices/syncSlice';
+import { hydrateEmptySync, setAccount, upsertMeta } from '../../store/slices/syncSlice';
+import { upsertMemberMetadata } from '../../store/slices/memberMetadataSlice';
 
 jest.mock('../../utils/crashlytics', () => ({
   recordError: jest.fn(),
@@ -113,6 +115,150 @@ describe('sync hydration (boot)', () => {
     expect(sync.account).toBe('user@example.com');
     expect(sync.lastSyncedAt).toBe(1700000000000);
     expect(sync.meta[1].serverPathId).toBe(UUID);
+  });
+
+  it('persists fresh member-card data in its own key, never in sync metadata', async () => {
+    await seedLegacyPaths();
+    await AsyncStorage.setItem(SYNC_META_KEY, serializeSyncMeta(validSync()));
+    const store = makeStore();
+    expect(await hydrateStore(store)).toBe(true);
+
+    store.dispatch(
+      upsertMemberMetadata({
+        pathId: 1,
+        account: 'user@example.com',
+        metadata: { memberCount: 2, memberPreviews: [] },
+      })
+    );
+    await flushMicrotasks();
+
+    expect(JSON.parse((await AsyncStorage.getItem(MEMBER_METADATA_KEY))!)).toMatchObject({
+      account: 'user@example.com',
+      paths: { 1: { memberCount: 2, memberPreviews: [] } },
+    });
+    expect(JSON.parse((await AsyncStorage.getItem(SYNC_META_KEY))!).meta[1]).not.toHaveProperty(
+      'memberCount'
+    );
+  });
+
+  it('hydrates member-card data only from the separate cache for the active account', async () => {
+    await seedLegacyPaths();
+    await AsyncStorage.setItem(SYNC_META_KEY, serializeSyncMeta(validSync()));
+    await AsyncStorage.setItem(
+      MEMBER_METADATA_KEY,
+      JSON.stringify({
+        version: 1,
+        account: 'user@example.com',
+        paths: {
+          1: {
+            memberCount: 2,
+            memberPreviews: [
+              { id: 'member-1', displayLabel: 'Amrit', hasAvatar: true, avatarUpdatedAt: null },
+            ],
+          },
+        },
+      })
+    );
+    const store = makeStore();
+
+    expect(await hydrateStore(store)).toBe(true);
+    expect(store.getState().memberMetadata).toMatchObject({
+      account: 'user@example.com',
+      hydrated: true,
+      byPathId: {
+        1: {
+          memberCount: 2,
+          memberPreviews: [{ id: 'member-1', displayLabel: 'Amrit', hasAvatar: true }],
+        },
+      },
+    });
+  });
+
+  it('does not expose a previous account’s member-card cache', async () => {
+    await seedLegacyPaths();
+    await AsyncStorage.setItem(SYNC_META_KEY, serializeSyncMeta(validSync()));
+    await AsyncStorage.setItem(
+      MEMBER_METADATA_KEY,
+      JSON.stringify({
+        version: 1,
+        account: 'another@example.com',
+        paths: { 1: { memberCount: 9, memberPreviews: [] } },
+      })
+    );
+    const store = makeStore();
+
+    expect(await hydrateStore(store)).toBe(true);
+    expect(store.getState().memberMetadata).toMatchObject({
+      account: 'user@example.com',
+      byPathId: {},
+    });
+  });
+
+  it('clears member-card data when the active account is cleared', async () => {
+    await seedLegacyPaths();
+    await AsyncStorage.setItem(SYNC_META_KEY, serializeSyncMeta(validSync()));
+    const store = makeStore();
+    expect(await hydrateStore(store)).toBe(true);
+    store.dispatch(
+      upsertMemberMetadata({
+        pathId: 1,
+        account: 'user@example.com',
+        metadata: { memberCount: 2, memberPreviews: [] },
+      })
+    );
+    await flushMicrotasks();
+
+    store.dispatch(clearActiveAccountData());
+    await flushMicrotasks();
+
+    expect(store.getState().memberMetadata).toMatchObject({
+      account: null,
+      hydrated: true,
+      byPathId: {},
+    });
+    expect(await AsyncStorage.getItem(MEMBER_METADATA_KEY)).toBeNull();
+  });
+
+  it('clears member-card data whenever sync ownership changes', async () => {
+    await seedLegacyPaths();
+    await AsyncStorage.setItem(SYNC_META_KEY, serializeSyncMeta(validSync()));
+    const store = makeStore();
+    expect(await hydrateStore(store)).toBe(true);
+    store.dispatch(
+      upsertMemberMetadata({
+        pathId: 1,
+        account: 'user@example.com',
+        metadata: { memberCount: 2, memberPreviews: [] },
+      })
+    );
+
+    store.dispatch(setAccount('another@example.com'));
+    await flushMicrotasks();
+    expect(store.getState().memberMetadata).toMatchObject({
+      account: 'another@example.com',
+      hydrated: true,
+      byPathId: {},
+    });
+    expect(JSON.parse((await AsyncStorage.getItem(MEMBER_METADATA_KEY))!)).toMatchObject({
+      account: 'another@example.com',
+      paths: {},
+    });
+
+    store.dispatch(
+      upsertMemberMetadata({
+        pathId: 1,
+        account: 'another@example.com',
+        metadata: { memberCount: 3, memberPreviews: [] },
+      })
+    );
+    store.dispatch(hydrateEmptySync());
+    await flushMicrotasks();
+    expect(store.getState().memberMetadata).toMatchObject({
+      account: null,
+      hydrated: true,
+      byPathId: {},
+    });
+    expect(await AsyncStorage.getItem(MEMBER_METADATA_KEY)).toBeNull();
   });
 
   it('malformed sync key -> app still boots, cloud disabled, raw preserved', async () => {

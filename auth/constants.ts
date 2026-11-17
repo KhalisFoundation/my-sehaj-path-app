@@ -2,12 +2,20 @@ import { SSO_SERVICE_URL, SSO_IDP_URL } from '@env';
 
 const stripTrailingSlash = (url: string): string => url.replace(/\/+$/, '');
 
+const getRequiredSsoServiceUrl = (): string => {
+  const url = SSO_SERVICE_URL?.trim();
+  if (!url) {
+    throw new Error('SSO_SERVICE_URL is required');
+  }
+  return stripTrailingSlash(url);
+};
+
 // Mirrors gurdham/mobile's auth/constants.ts. Base URL from `.env` (this app
 // uses react-native-dotenv rather than react-native-config).
 //
 // The SERVICE PROVIDER. Login, logout and the profile lookup live here; it is
 // what brokers SAML with the identity provider and hands back a token.
-export const SP_API = stripTrailingSlash(SSO_SERVICE_URL ?? 'https://serviceprovider.khalis.net');
+export const SP_API = getRequiredSsoServiceUrl();
 
 // The IDENTITY PROVIDER, which is a different host from the service provider.
 // Account deletion is served here rather than by the SP, so it needs its own

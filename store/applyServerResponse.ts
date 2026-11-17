@@ -24,9 +24,9 @@ import {
   setSyncStatus,
   showSessionExpired,
   upsertMeta,
-  type PathMemberPreview,
   type SyncMeta,
 } from './slices/syncSlice';
+import { upsertMemberMetadata, type PathMemberPreview } from './slices/memberMetadataSlice';
 import { fromServerPath } from './syncAdapters';
 import { isoToLegacy, legacyToIso, msToLegacy } from './syncDateUtils';
 import { clearBlockedWork, hasWorkBlockingPull, setConfirmedSettings } from './syncWork';
@@ -138,6 +138,23 @@ const memberPreviewsFromAccessible = (
     hasAvatar: member.hasAvatar,
     avatarUpdatedAt: member.avatarUpdatedAt,
   }));
+
+const updateMemberMetadata = (
+  store: AppStore,
+  pathId: number,
+  row: { memberCount?: number; members?: AccessibleSehajPath['members'] }
+): void => {
+  store.dispatch(
+    upsertMemberMetadata({
+      pathId,
+      account: store.getState().sync.account,
+      metadata: {
+        memberCount: row.memberCount ?? 0,
+        memberPreviews: memberPreviewsFromAccessible(row.members),
+      },
+    })
+  );
+};
 
 /** V2 uses ISO calendar days; local persistence keeps the legacy display form. */
 const readDatesFromAccessible = (
@@ -356,11 +373,10 @@ const allocateAccessiblePath = (
         localUpdatedAt: now,
         serverUpdatedAt: now,
         onServer: true,
-        memberCount: row.memberCount,
-        memberPreviews: memberPreviewsFromAccessible(row.members),
       },
     })
   );
+  updateMemberMetadata(store, pathId, row);
   store.dispatch(
     setPathShared({
       pathId,
@@ -374,11 +390,9 @@ const allocateAccessiblePath = (
  * Resolve one path immediately after an invite join.
  *
  * Invite joining is an authenticated group operation, not a personal-data
- * sync operation.  In particular, a newly signed-in account may not have
- * completed its `/sync` association yet.  Reusing the guarded owner refresh
- * here therefore creates a race and reports a valid join as a missing path.
- * The accessible-path endpoint is the authoritative source for this flow and
- * is safe to call before the personal sync account is associated.
+ * sync operation. The accessible-path endpoint is the authoritative source
+ * for this flow, but its response still belongs to the login/account that
+ * started it and must never be applied after an account switch.
  */
 export const ensureAccessiblePath = async (
   store: AppStore,
@@ -387,9 +401,13 @@ export const ensureAccessiblePath = async (
 ): Promise<number | null> => {
   const stateAtStart = store.getState();
   const session = captureSyncSession(stateAtStart);
-  if (!session) {
+  if (
+    !session ||
+    (stateAtStart.sync.account !== null && stateAtStart.sync.account !== session.email)
+  ) {
     return null;
   }
+  const accountAtStart = stateAtStart.sync.account;
   // Continue calls this as a focused-screen refresh. Preserve the row that
   // represented this group when the request began, so a DELETE that completes
   // before its response cannot be undone by `allocateAccessiblePath` below.
@@ -401,6 +419,16 @@ export const ensureAccessiblePath = async (
     headers: syncSessionHeaders(session),
   });
   if (result.error || !result.data) {
+    return null;
+  }
+
+  const stateAfterRequest = store.getState();
+  const associatedDuringRequest =
+    accountAtStart === null && stateAfterRequest.sync.account === session.email;
+  if (
+    !isCurrentSyncSession(stateAfterRequest, session) ||
+    (stateAfterRequest.sync.account !== accountAtStart && !associatedDuringRequest)
+  ) {
     return null;
   }
 
@@ -465,11 +493,10 @@ export const ensureAccessiblePath = async (
         startDate: Number.isFinite(row.startDate)
           ? row.startDate
           : current.sync.meta[localId].startDate,
-        memberCount: row.memberCount,
-        memberPreviews: memberPreviewsFromAccessible(row.members),
       },
     })
   );
+  updateMemberMetadata(store, localId, row);
   store.dispatch(
     applyServerPathData({
       pathId: localId,
@@ -529,6 +556,17 @@ export const applyServerPath = (store: AppStore, sp: SehajPath, sent?: SentOp): 
     ? store.getState().sync.meta[pathId]?.localUpdatedAt === sent.sentLocalUpdatedAt
     : false;
   const applied = fromServerPath(sp);
+  // Older API deployments can report a completed checkpoint without its
+  // completion date. Do not let that partial response erase the date this
+  // device just saved; a later canonical completion date still replaces it.
+  if (sp.completionDate == null && sp.progress >= 100) {
+    const localCompletionDate = store
+      .getState()
+      .paths.paths.find((path) => path.pathId === pathId)?.completionDate;
+    if (localCompletionDate) {
+      applied.pathPatch.completionDate = localCompletionDate;
+    }
+  }
   if (sent) {
     store.dispatch(
       ackServerPath({
@@ -1034,11 +1072,10 @@ const performRefreshPathsFromServer = async (
                   startDate: Number.isFinite(row.startDate)
                     ? row.startDate
                     : store.getState().sync.meta[joinedId].startDate,
-                  memberCount: row.memberCount,
-                  memberPreviews: memberPreviewsFromAccessible(row.members),
                 },
               })
             );
+            updateMemberMetadata(store, joinedId, row);
             // And take the group's position from the same response.
             //
             // A joined path is a VIEW of a row this device does not own: it
@@ -1150,11 +1187,10 @@ const performRefreshPathsFromServer = async (
               startDate: Number.isFinite(row.startDate)
                 ? row.startDate
                 : store.getState().sync.meta[localId].startDate,
-              memberCount: row.memberCount,
-              memberPreviews: memberPreviewsFromAccessible(row.members),
             },
           })
         );
+        updateMemberMetadata(store, localId, row);
       }
 
       // The accessible response is authoritative for every shared path on this

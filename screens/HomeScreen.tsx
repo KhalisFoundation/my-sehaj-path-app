@@ -41,6 +41,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   // Not the raw slice: a deleted path lingers there until the server confirms.
   const paths = useAppSelector(selectVisiblePaths);
   const syncMeta = useAppSelector((state) => state.sync.meta);
+  const memberMetadata = useAppSelector((state) => state.memberMetadata.byPathId);
   const completedCardWidth = completedCardDimensionsFor(
     useAppSelector((state) => fontSizeIndexOf(state.settings.fontSize))
   ).width;
@@ -69,7 +70,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           const groupId = meta?.groupId;
           let members: AvatarMember[] = [];
           if (meta?.shared && groupId) {
-            members = (meta.memberPreviews ?? []).map((member) => ({
+            members = (memberMetadata[path.pathId]?.memberPreviews ?? []).map((member) => ({
               id: member.id,
               displayLabel: member.displayLabel,
               avatarUri: avatarUrlFor(groupId, member),
@@ -78,7 +79,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           return [path.pathId, members];
         })
       ),
-    [paths, syncMeta]
+    [memberMetadata, paths, syncMeta]
   );
 
   useFocusEffect(
@@ -150,21 +151,20 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           angNumber={path.saveData.angNumber}
           progress={path.progress}
           members={membersByPathId[path.pathId]}
-          memberCount={syncMeta[path.pathId]?.memberCount}
+          memberCount={memberMetadata[path.pathId]?.memberCount}
           onPress={() => {
             // Continue already reads the persisted group id from sync metadata.
             // Keep normal Home navigation free of a route-level group id: that
             // id is also present on invite-ready personal paths and, when
             // cached metadata is stale, could briefly expose group-only UI.
-            const meta = syncMeta[path.pathId];
             navigation.push(Routes.Continue, {
               pathId: path.pathId,
-              precheckedShared: (meta?.memberCount ?? 0) > 1,
+              precheckedShared: (memberMetadata[path.pathId]?.memberCount ?? 0) > 1,
             });
           }}
         />
       )),
-    [pathInProgress, membersByPathId, navigation, syncMeta]
+    [pathInProgress, membersByPathId, memberMetadata, navigation]
   );
 
   const pathCompletedCards = useMemo(
@@ -175,10 +175,10 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           pathName={path.pathName}
           pathCompletionDate={path.completionDate}
           members={membersByPathId[path.pathId]}
-          memberCount={syncMeta[path.pathId]?.memberCount}
+          memberCount={memberMetadata[path.pathId]?.memberCount}
         />
       )),
-    [pathCompleted, membersByPathId, syncMeta]
+    [memberMetadata, pathCompleted, membersByPathId]
   );
 
   return (

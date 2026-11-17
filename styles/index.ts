@@ -43,3 +43,4 @@ export { DialogStyles } from './DialogStyles';
 export { PathMembershipRemovalDialogStyles } from './PathMembershipRemovalDialogStyles';
 export { SyncStatusNoticeStyles } from './SyncStatusNoticeStyles';
 export { PathOptionsMenuStyles } from './PathOptionsMenuStyles';
+export { SwitchSettingItemStyles } from './SwitchSettingItemStyles';

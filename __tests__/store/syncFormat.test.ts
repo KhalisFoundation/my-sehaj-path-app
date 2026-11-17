@@ -179,30 +179,6 @@ describe('optional fields in persisted sync metadata', () => {
     expect(parsed.status).toBe('valid');
   });
 
-  it('round-trips the V2 member-card preview without disabling sync on restart', () => {
-    const parsed = parseSyncMeta(
-      withMeta({
-        memberCount: 2,
-        memberPreviews: [
-          {
-            id: 'member-1',
-            displayLabel: 'Amrit',
-            hasAvatar: true,
-            avatarUpdatedAt: '2026-11-07T00:00:00.000Z',
-          },
-        ],
-      })
-    );
-    expect(parsed.status).toBe('valid');
-  });
-
-  it('rejects malformed V2 member-card preview data', () => {
-    expect(parseSyncMeta(withMeta({ memberCount: -1 })).status).toBe('recovery');
-    expect(
-      parseSyncMeta(withMeta({ memberPreviews: [{ id: 'member-1', hasAvatar: true }] })).status
-    ).toBe('recovery');
-  });
-
   it('rejects a non-boolean shared', () => {
     expect(parseSyncMeta(withMeta({ shared: 'yes' })).status).toBe('recovery');
   });
