@@ -2,20 +2,12 @@ import { SSO_SERVICE_URL, SSO_IDP_URL } from '@env';
 
 const stripTrailingSlash = (url: string): string => url.replace(/\/+$/, '');
 
-const getRequiredSsoServiceUrl = (): string => {
-  const url = SSO_SERVICE_URL?.trim();
-  if (!url) {
-    throw new Error('SSO_SERVICE_URL is required');
-  }
-  return stripTrailingSlash(url);
-};
-
 // Mirrors gurdham/mobile's auth/constants.ts. Base URL from `.env` (this app
 // uses react-native-dotenv rather than react-native-config).
 //
 // The SERVICE PROVIDER. Login, logout and the profile lookup live here; it is
 // what brokers SAML with the identity provider and hands back a token.
-export const SP_API = getRequiredSsoServiceUrl();
+export const SP_API = stripTrailingSlash(SSO_SERVICE_URL ?? 'https://serviceprovider.khalis.net');
 
 // The IDENTITY PROVIDER, which is a different host from the service provider.
 // Account deletion is served here rather than by the SP, so it needs its own
@@ -34,10 +26,7 @@ export const IDP_API = stripTrailingSlash(SSO_IDP_URL ?? 'https://sso.khalis.net
 export const REDIRECT_URL = 'khalissehajpath://login';
 export const LOGOUT_REDIRECT_URL = 'khalissehajpath://logout';
 
-export function getSSOLoginUrl(): string {
-  const encoded = encodeURIComponent(REDIRECT_URL);
-  return `${SP_API}/login/sso?redirect_url=${encoded}`;
-}
+export const SSO_LOGIN_URL = `${SP_API}/login/sso?redirect_url=${encodeURIComponent(REDIRECT_URL)}`;
 
 /**
  * Account deletion, required by App Store guideline 5.1.1(v).
