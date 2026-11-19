@@ -28,6 +28,8 @@ import type {
   SehajPathSession,
   SehajPathSlot,
   SehajPathInviteSummary,
+  CreateSlotDto,
+  UpdateSlotDto,
 } from '@api/generated/types.gen';
 import { SEHAJ_API_BASE_URL } from '../api/config';
 import { store } from './index';
@@ -504,18 +506,19 @@ export const avatarHeaders = (): Record<string, string> | undefined => {
  * which day it is showing and a server-side default would silently disagree
  * with the date in the header.
  */
-export const loadPlan = (
+export const loadPlan = async (
   sehajPathId: string,
   from: Date,
   to: Date
-): Promise<GroupResult<{ stateVersion: number; slots: SehajPathSlot[] }>> =>
-  call('Could not load the schedule.', (headers) =>
+): Promise<GroupResult<{ stateVersion: number; slots: SehajPathSlot[] }>> => {
+  return call('Could not load the schedule.', (headers) =>
     sehajPathSlotsControllerFindPlan({
       path: { sehajPathId },
       query: { from: from.toISOString(), to: to.toISOString() },
       headers,
     })
   );
+};
 
 /**
  * Book a time for yourself.
@@ -528,12 +531,17 @@ export const loadPlan = (
 export const bookSlot = (
   sehajPathId: string,
   startsAt: Date,
-  endsAt: Date
+  endsAt: Date,
+  recurrence?: Pick<CreateSlotDto, 'recurrenceRule' | 'recurrenceTimezone'>
 ): Promise<GroupResult<SehajPathSlot>> =>
   call('Could not book that time.', (headers) =>
     sehajPathSlotsControllerCreate({
       path: { sehajPathId },
-      body: { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() },
+      body: {
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        ...(recurrence ?? {}),
+      },
       headers,
     })
   );
@@ -541,11 +549,13 @@ export const bookSlot = (
 /** Cancel an upcoming slot owned by the current member. */
 export const cancelSlot = (
   sehajPathId: string,
-  slotId: string
+  slotId: string,
+  scope?: 'OCCURRENCE' | 'THIS_AND_FUTURE'
 ): Promise<GroupResult<SehajPathSlot>> =>
   call('Could not cancel that turn.', (headers) =>
     sehajPathSlotsControllerCancel({
       path: { sehajPathId, slotId },
+      ...(scope ? { query: { scope } } : {}),
       headers,
     })
   );
@@ -555,12 +565,19 @@ export const updateSlot = (
   sehajPathId: string,
   slotId: string,
   startsAt: Date,
-  endsAt: Date
+  endsAt: Date,
+  editScope?: 'OCCURRENCE' | 'THIS_AND_FUTURE',
+  recurrence?: Pick<UpdateSlotDto, 'recurrenceRule' | 'recurrenceTimezone'>
 ): Promise<GroupResult<SehajPathSlot>> =>
   call('Could not update that turn.', (headers) =>
     sehajPathSlotsControllerUpdate({
       path: { sehajPathId, slotId },
-      body: { startsAt: startsAt.toISOString(), endsAt: endsAt.toISOString() },
+      body: {
+        startsAt: startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        ...(editScope ? { editScope } : {}),
+        ...(recurrence ?? {}),
+      },
       headers,
     })
   );
@@ -569,19 +586,30 @@ export const updateSlot = (
 // Reading
 // ---------------------------------------------------------------------------
 
-/** Start a live reading; a booked slot is optional and only grants takeover priority. */
-export const startReading = (sehajPathId: string): Promise<GroupResult<SehajPathSession>> =>
+/** Start a live reading; occurrence context prevents a stale calendar tap from becoming unscheduled. */
+export const startReading = (
+  sehajPathId: string,
+  occurrenceId?: string
+): Promise<GroupResult<SehajPathSession>> =>
   call('Could not start reading.', (headers) =>
     sehajPathSessionsControllerStart({
       path: { sehajPathId },
+      body: occurrenceId ? { occurrenceId } : {},
       headers,
     })
   );
 
 /** Request the server-authoritative hand-off for an active booked slot. */
-export const takeoverReading = (sehajPathId: string): Promise<GroupResult<SehajPathSession>> =>
+export const takeoverReading = (
+  sehajPathId: string,
+  occurrenceId?: string
+): Promise<GroupResult<SehajPathSession>> =>
   call('Could not take over the reading.', (headers) =>
-    sehajPathSessionsControllerTakeover({ path: { sehajPathId }, headers })
+    sehajPathSessionsControllerTakeover({
+      path: { sehajPathId },
+      body: occurrenceId ? { occurrenceId } : {},
+      headers,
+    })
   );
 
 /** Whoever is reading right now, or null when nobody is. */

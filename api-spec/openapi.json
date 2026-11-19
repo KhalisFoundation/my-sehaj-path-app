@@ -1871,7 +1871,7 @@
             "bearer": []
           }
         ],
-        "summary": "Turn group reading on for a path the caller owns, or confirm that an\nactive admin may manage an already-shared path.\n\nUpdates one column on the existing path — it never creates a second path\nrow — and inserts the owner's ADMIN membership in the same transaction\nwhen transitioning a personal path to shared reading.",
+        "summary": "Turn group reading on for a path the caller owns, or confirm that an\nactive admin may manage an already-shared path.\n\nUpdates the existing path — it never creates a second path row — and\ninserts the owner's ADMIN membership in the same transaction when\ntransitioning a personal path to shared reading.",
         "tags": [
           "sehaj-path"
         ]
@@ -3117,6 +3117,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3259,6 +3267,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSessionDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Resumed the turn they already had after a dropped connection. Nothing was created, so this is 200 rather than 201.",
@@ -3326,7 +3344,7 @@
             "bearer": []
           }
         ],
-        "summary": "Take the turn and start reading.\n\nA member may start a normal reading without a booked slot. If they own a\nbooked slot covering now, the new session is associated with that slot;\notherwise `slotId` remains null and the calendar is untouched.",
+        "summary": "Take the turn and start reading.\n\nA member may start a normal reading without a booked slot. If they own a\nbooked slot or an open/assigned recurring occurrence covering now, the\nsession retains that scheduling context. Recurring turns are recorded only\non the session; they never create a child slot row.",
         "tags": [
           "sehaj-path"
         ]
@@ -3345,6 +3363,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartSessionDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -6921,7 +6949,7 @@
             "minimum": 0
           },
           "readDates": {
-            "description": "Calendar days for this path. A personal path contains its owner's days; a public path contains the deduplicated shared days from every member. V2 is therefore a complete initial streak snapshot for every role.",
+            "description": "Calendar days for this path. A personal path contains its owner's days;\na public path contains the deduplicated shared days from every member.\nV2 is therefore a complete initial streak snapshot for every role.",
             "type": "array",
             "items": {
               "type": "string"
@@ -6997,6 +7025,8 @@
           "scrollPosition",
           "completionDate",
           "startDate",
+          "createdAt",
+          "updatedAt",
           "sharing",
           "relationship",
           "stateVersion",
@@ -7004,9 +7034,7 @@
           "pathId",
           "name",
           "memberCount",
-          "progress",
-          "createdAt",
-          "updatedAt"
+          "progress"
         ]
       },
       "EnableSharingDto": {
@@ -7383,6 +7411,30 @@
             ],
             "type": "string"
           },
+          "recurrenceTemplateId": {
+            "type": "string",
+            "description": "Present only on a generated occurrence; old clients can ignore it."
+          },
+          "isRecurring": {
+            "type": "boolean",
+            "description": "Lets newer clients decorate a normal slot as part of a recurring series."
+          },
+          "isVirtual": {
+            "type": "boolean",
+            "description": "A projected recurrence item, not yet a booked slot row."
+          },
+          "occurrenceStartsAt": {
+            "type": "string",
+            "description": "The original recurrence occurrence this item represents.",
+            "format": "date-time"
+          },
+          "recurrenceRule": {
+            "type": "string",
+            "description": "Present on recurring plan entries so newer clients can edit the series."
+          },
+          "recurrenceTimezone": {
+            "type": "string"
+          },
           "id": {
             "type": "string",
             "example": "0f8fad5b-d9cb-469f-a165-70867728950e"
@@ -7465,9 +7517,21 @@
           "readerMemberId": {
             "type": "string",
             "nullable": true,
-            "description": "Who reads.\n\nOmit to book for yourself. An admin may pass another active member's id to\nassign the time to them, or `null` to leave the slot open for anybody to\nclaim. A non-admin passing anything but their own id is refused.",
+            "description": "Who reads.\n\nOmit to book for yourself. An admin may pass another active member's id to\nassign the time to them, or `null` to leave a one-time slot open for\nanybody to claim. Recurring turns must be assigned to a member. A\nnon-admin passing anything but their own id is refused.",
             "example": "8f14e45f-ceea-467a-9575-1b1c1d1e1f20",
             "format": "uuid"
+          },
+          "recurrenceRule": {
+            "type": "string",
+            "description": "RFC-5545 subset used by the repeat picker: DAILY, WEEKLY, MONTHLY, or\nYEARLY, with the selected day/date encoded by the client when needed.",
+            "maxLength": 200,
+            "example": "FREQ=WEEKLY;BYDAY=TH"
+          },
+          "recurrenceTimezone": {
+            "type": "string",
+            "description": "IANA zone that preserves the local clock time through DST.",
+            "maxLength": 100,
+            "example": "Asia/Kolkata"
           },
           "startsAt": {
             "format": "date-time",
@@ -7497,12 +7561,63 @@
             "type": "string",
             "description": "New end time. Omit to keep the stored one.",
             "format": "date-time"
+          },
+          "editScope": {
+            "description": "Whether to edit only this turn or this and future recurring turns.",
+            "enum": [
+              "OCCURRENCE",
+              "THIS_AND_FUTURE"
+            ],
+            "type": "string"
+          },
+          "recurrenceRule": {
+            "type": "string",
+            "description": "A changed repeat rule is meaningful only for this and following turns.\nOlder clients omit both fields and therefore retain occurrence-only edits.",
+            "maxLength": 200,
+            "example": "FREQ=WEEKLY;BYDAY=TH"
+          },
+          "recurrenceTimezone": {
+            "type": "string",
+            "maxLength": 100,
+            "example": "Asia/Kolkata"
+          }
+        }
+      },
+      "StartSessionDto": {
+        "type": "object",
+        "properties": {
+          "occurrenceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The active projected recurring occurrence being taken."
           }
         }
       },
       "SehajPathSession": {
         "type": "object",
         "properties": {
+          "recurrenceTemplateId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Present when the actual reading began inside a recurring turn."
+          },
+          "recurrenceOccurrenceStartsAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Stable original RRULE occurrence identity for history and plan overlays.",
+            "format": "date-time"
+          },
+          "scheduledStartsAt": {
+            "type": "string",
+            "nullable": true,
+            "description": "Effective scheduled window snapshot for a recurring reading.",
+            "format": "date-time"
+          },
+          "scheduledEndsAt": {
+            "type": "string",
+            "nullable": true,
+            "format": "date-time"
+          },
           "slotEndsAt": {
             "type": "string",
             "nullable": true,
@@ -8259,6 +8374,20 @@
             "minLength": 1,
             "maxLength": 80,
             "example": "sehaj-path-turn-updated"
+          },
+          "pathName": {
+            "type": "string",
+            "description": "Display name of the Sehaj Path involved in a path-specific notification.\nKept as data so iOS tap handling does not need to parse notification copy.",
+            "minLength": 1,
+            "maxLength": 120,
+            "example": "Morning Sehaj Path"
+          },
+          "adminName": {
+            "type": "string",
+            "description": "The person who performed a path-specific action, when applicable.",
+            "minLength": 1,
+            "maxLength": 120,
+            "example": "Amrit"
           },
           "baniId": {
             "type": "string",

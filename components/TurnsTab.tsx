@@ -22,7 +22,9 @@ import {
   UIConstants,
 } from '@constants';
 import { avatarHeaders, loadPlan } from '../store/groupApi';
+import { useAppSelector } from '../store/hooks';
 import { planWindowFor } from '../store/slotAvailability';
+import { isRecurringTurn } from '../store/recurringTurn';
 import type { SehajPathMember, SehajPathSlot } from '@api/generated/types.gen';
 import { initialOf, tintFor } from './MemberAvatars';
 import { RightChevronIcon, CalendarIcon, CrossIcon, PlusIcon } from '@icons';
@@ -43,11 +45,17 @@ import {
   startOfLocalWeek,
 } from '../utils/dateTime';
 
+/** How much of a recurring series a delete removes. */
+type DeleteScope = 'OCCURRENCE' | 'THIS_AND_FUTURE';
+
 interface Props {
   sehajPathId: string;
   onBookSlot: (startsAt?: Date) => void;
   onFollow?: () => void;
-  onCancelSlot?: (slot: SehajPathSlot) => Promise<void> | void;
+  /** Start this active recurring turn without creating a slot row. */
+  onTakeTurn?: (slot: SehajPathSlot) => Promise<void> | void;
+  /** `scope` is sent only for a recurring turn; an ordinary turn passes none. */
+  onCancelSlot?: (slot: SehajPathSlot, scope?: DeleteScope) => Promise<void> | void;
   onEditSlot?: (slot: SehajPathSlot) => void;
   /** Lets the parent refresh derived turn UI after this calendar changes. */
   onPlanChanged?: () => void;
@@ -59,6 +67,25 @@ interface Props {
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const HOURS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTES_PER_HOUR = 60;
+const MAX_CACHED_PLANS = 32;
+
+type CachedTurnPlan = {
+  stateVersion: number;
+  slots: SehajPathSlot[];
+};
+
+const turnPlanCache = new Map<string, CachedTurnPlan>();
+
+const cacheTurnPlan = (key: string, plan: CachedTurnPlan): void => {
+  turnPlanCache.delete(key);
+  turnPlanCache.set(key, plan);
+  const oldest = turnPlanCache.keys().next().value;
+  if (turnPlanCache.size > MAX_CACHED_PLANS && typeof oldest === 'string') {
+    turnPlanCache.delete(oldest);
+  }
+};
+
+export const clearTurnPlanCache = (): void => turnPlanCache.clear();
 
 export const timelineFrameFor = (
   slot: Pick<SehajPathSlot, 'startsAt' | 'endsAt'>
@@ -191,6 +218,7 @@ export const TurnsTab = ({
   sehajPathId,
   onBookSlot,
   onFollow,
+  onTakeTurn,
   onCancelSlot,
   onEditSlot,
   onPlanChanged,
@@ -199,15 +227,33 @@ export const TurnsTab = ({
   avatarUriFor,
 }: Props) => {
   const [day, setDay] = useState(() => startOfLocalDay(new Date()));
-  const [slots, setSlots] = useState<SehajPathSlot[] | null>(null);
+  const account = useAppSelector((state) => state.auth.email ?? 'guest');
+  const planKey = useMemo(() => {
+    const { from, to } = planWindowFor(day);
+    return `${account}:${sehajPathId}:${from.toISOString()}:${to.toISOString()}`;
+  }, [account, day, sehajPathId]);
+  const cachedPlan = turnPlanCache.get(planKey);
+  const [planState, setPlanState] = useState<{
+    key: string;
+    slots: SehajPathSlot[] | null;
+  }>(() => ({ key: planKey, slots: cachedPlan?.slots ?? null }));
+  const slots = planState.key === planKey ? planState.slots : cachedPlan?.slots ?? null;
   const [loadError, setLoadError] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [footerHeight, setFooterHeight] = useState(0);
   const [requestedScrollAt, setRequestedScrollAt] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<SehajPathSlot | null>(null);
   const [deletingSlotId, setDeletingSlotId] = useState<string | null>(null);
+  const [takingTurnId, setTakingTurnId] = useState<string | null>(null);
+  const [turnActionError, setTurnActionError] = useState<'DELETE' | 'TAKE' | null>(null);
   const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+  const [recurringDeleteScopeOpen, setRecurringDeleteScopeOpen] = useState(false);
+  // The scope of the delete in flight, kept only so a retry sends exactly what
+  // the failed attempt sent. It is never read to start a new delete: every
+  // delete states its own scope, so one choice cannot leak into the next.
+  const lastDeleteScopeRef = useRef<DeleteScope | undefined>(undefined);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [clockNow, setClockNow] = useState(() => new Date());
   const { height: windowHeight } = useWindowDimensions();
   const scheduleViewportRef = useRef<ScrollViewInstance>(null);
   const initialViewportAppliedRef = useRef(false);
@@ -217,16 +263,33 @@ export const TurnsTab = ({
     const loadSequence = ++loadSequenceRef.current;
     setLoadError(false);
     const { from, to } = planWindowFor(day);
+    const requestKey = `${account}:${sehajPathId}:${from.toISOString()}:${to.toISOString()}`;
+    const previous = turnPlanCache.get(requestKey);
     try {
       const result = await loadPlan(sehajPathId, from, to);
       if (loadSequence !== loadSequenceRef.current) {
         return;
       }
       if (result.ok) {
-        setSlots(result.data.slots);
+        if (previous?.stateVersion === result.data.stateVersion) {
+          setPlanState((current) =>
+            current.key === requestKey && current.slots === previous.slots
+              ? current
+              : { key: requestKey, slots: previous.slots }
+          );
+          return;
+        }
+        const next = {
+          stateVersion: result.data.stateVersion,
+          slots: result.data.slots,
+        };
+        cacheTurnPlan(requestKey, next);
+        setPlanState({ key: requestKey, slots: next.slots });
       } else {
         setLoadError(true);
-        setSlots([]);
+        if (!previous) {
+          setPlanState({ key: requestKey, slots: [] });
+        }
       }
     } catch (error) {
       if (loadSequence !== loadSequenceRef.current) {
@@ -234,9 +297,11 @@ export const TurnsTab = ({
       }
       recordError(error, 'TurnsTab: failed to load schedule');
       setLoadError(true);
-      setSlots([]);
+      if (!previous) {
+        setPlanState({ key: requestKey, slots: [] });
+      }
     }
-  }, [day, sehajPathId]);
+  }, [account, day, sehajPathId]);
 
   useEffect(() => {
     // A date change starts a new viewport; let the first content layout place
@@ -264,6 +329,36 @@ export const TurnsTab = ({
   }, [day]);
   const booked = useMemo(() => visibleSlotsForDay(slots ?? [], day), [slots, day]);
   const slotLanes = useMemo(() => timelineLanesFor(booked), [booked]);
+
+  // A planned recurring turn becomes actionable at its start time and stops
+  // being actionable at its end time. Wake only at the next relevant boundary
+  // instead of rerendering the full calendar every second.
+  const nextSlotBoundary = useMemo(() => {
+    const nowMs = clockNow.getTime();
+    return (slots ?? []).reduce<number | null>((next, slot) => {
+      if (slot.status !== 'SCHEDULED') {
+        return next;
+      }
+      for (const value of [slot.startsAt, slot.endsAt]) {
+        const boundary = asLocalDateTime(value).valueOf();
+        if (boundary > nowMs && (next === null || boundary < next)) {
+          next = boundary;
+        }
+      }
+      return next;
+    }, null);
+  }, [clockNow, slots]);
+
+  useEffect(() => {
+    if (nextSlotBoundary === null) {
+      return;
+    }
+    const timeout = setTimeout(
+      () => setClockNow(new Date()),
+      Math.max(0, nextSlotBoundary - Date.now()) + 50
+    );
+    return () => clearTimeout(timeout);
+  }, [nextSlotBoundary]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -326,18 +421,33 @@ export const TurnsTab = ({
   const selectedSlotAvatarUri =
     selectedSlotMember && avatarUriFor ? avatarUriFor(selectedSlotMember) : null;
   const currentMemberId = useMemo(() => members.find((member) => member.isMine)?.id, [members]);
+  const canTakeTurn = useCallback(
+    (slot: SehajPathSlot): boolean => {
+      return (
+        slot.isVirtual === true &&
+        (slot.readerMemberId === null || slot.isMine) &&
+        slot.status === 'SCHEDULED' &&
+        asLocalDateTime(slot.startsAt).isSameOrBefore(clockNow) &&
+        asLocalDateTime(slot.endsAt).isAfter(clockNow) &&
+        onTakeTurn !== undefined
+      );
+    },
+    [clockNow, onTakeTurn]
+  );
   const scheduleMaxHeight =
     headerHeight > 0 && footerHeight > 0
       ? Math.max(0, windowHeight - headerHeight - footerHeight - UIConstants.PADDING * 23)
       : 0;
 
   const closeSlotMenu = useCallback(() => {
-    if (deletingSlotId === null) {
+    if (deletingSlotId === null && takingTurnId === null) {
       setDeleteError(null);
+      setTurnActionError(null);
       setDeleteConfirmationOpen(false);
+      setRecurringDeleteScopeOpen(false);
       setSelectedSlot(null);
     }
-  }, [deletingSlotId]);
+  }, [deletingSlotId, takingTurnId]);
   const handleEditSelectedSlot = useCallback(() => {
     if (selectedSlot && onEditSlot) {
       onEditSlot(selectedSlot);
@@ -347,49 +457,91 @@ export const TurnsTab = ({
   }, [onEditSlot, selectedSlot]);
   const requestDeleteSelectedSlot = useCallback(() => {
     if (selectedSlot && deletingSlotId === null) {
-      setDeleteConfirmationOpen(true);
+      if (isRecurringTurn(selectedSlot)) {
+        setRecurringDeleteScopeOpen(true);
+      } else {
+        setDeleteConfirmationOpen(true);
+      }
     }
   }, [deletingSlotId, selectedSlot]);
   const cancelDeleteConfirmation = useCallback(() => {
     if (deletingSlotId === null) {
       setDeleteConfirmationOpen(false);
+      setRecurringDeleteScopeOpen(false);
     }
   }, [deletingSlotId]);
-  const handleDeleteSelectedSlot = useCallback(async () => {
-    if (!selectedSlot || !onCancelSlot || deletingSlotId !== null) {
-      return;
-    }
-    const slotToDelete = selectedSlot;
-    setDeleteError(null);
-    // A confirmed destructive action should not leave its confirmation card
-    // sitting over the schedule while the request runs. Close it first; on a
-    // failure we restore this same slot and show the retry state below.
-    setDeleteConfirmationOpen(false);
-    setSelectedSlot(null);
-    setDeletingSlotId(slotToDelete.id);
-    try {
-      await onCancelSlot(slotToDelete);
-      await load();
-      onPlanChanged?.();
-    } catch (error) {
-      recordError(error, 'TurnsTab: failed to delete turn');
-      setSelectedSlot(slotToDelete);
-      setDeleteError(
-        error instanceof Error && error.message.length > 0
-          ? error.message
-          : ErrorConstants.FAILED_TO_DELETE_TURN
-      );
-    } finally {
-      setDeletingSlotId(null);
-    }
-  }, [deletingSlotId, load, onCancelSlot, onPlanChanged, selectedSlot]);
+  const handleDeleteSelectedSlot = useCallback(
+    // `scope` is sent only when the caller chose one (a recurring turn). An
+    // ordinary turn passes none, so no scope reaches the server.
+    async (scope?: DeleteScope) => {
+      if (!selectedSlot || !onCancelSlot || deletingSlotId !== null) {
+        return;
+      }
+      const slotToDelete = selectedSlot;
+      lastDeleteScopeRef.current = scope;
+      setDeleteError(null);
+      setTurnActionError(null);
+      // A confirmed destructive action should not leave its confirmation card
+      // sitting over the schedule while the request runs. Close it first; on a
+      // failure we restore this same slot and show the retry state below.
+      setDeleteConfirmationOpen(false);
+      setRecurringDeleteScopeOpen(false);
+      setSelectedSlot(null);
+      setDeletingSlotId(slotToDelete.id);
+      try {
+        await onCancelSlot(slotToDelete, scope);
+        await load();
+        onPlanChanged?.();
+      } catch (error) {
+        recordError(error, 'TurnsTab: failed to delete turn');
+        setSelectedSlot(slotToDelete);
+        setTurnActionError('DELETE');
+        setDeleteError(
+          error instanceof Error && error.message.length > 0
+            ? error.message
+            : ErrorConstants.FAILED_TO_DELETE_TURN
+        );
+      } finally {
+        setDeletingSlotId(null);
+      }
+    },
+    [deletingSlotId, load, onCancelSlot, onPlanChanged, selectedSlot]
+  );
 
   const retryDeleteSelectedSlot = useCallback(() => {
     setDeleteError(null);
-    handleDeleteSelectedSlot().catch((error: unknown) => {
+    setTurnActionError(null);
+    handleDeleteSelectedSlot(lastDeleteScopeRef.current).catch((error: unknown) => {
       recordError(error, 'TurnsTab: retry delete turn failed');
     });
   }, [handleDeleteSelectedSlot]);
+  const handleTakeTurn = useCallback(async () => {
+    if (!selectedSlot || !onTakeTurn || takingTurnId !== null) {
+      return;
+    }
+    setDeleteError(null);
+    setTurnActionError(null);
+    setTakingTurnId(selectedSlot.id);
+    try {
+      await onTakeTurn(selectedSlot);
+      setSelectedSlot(null);
+      // The turn is taken, so it must stop being offered as takeable. The
+      // reader screen is already opening; refresh in the background so going
+      // back shows the current plan instead of the stale entry.
+      load().catch(() => undefined);
+      onPlanChanged?.();
+    } catch (error) {
+      recordError(error, 'TurnsTab: failed to take recurring turn');
+      setTurnActionError('TAKE');
+      setDeleteError(
+        error instanceof Error && error.message.length > 0
+          ? error.message
+          : 'Unable to take this turn. Please try again.'
+      );
+    } finally {
+      setTakingTurnId(null);
+    }
+  }, [load, onPlanChanged, onTakeTurn, selectedSlot, takingTurnId]);
 
   return (
     <>
@@ -533,13 +685,25 @@ export const TurnsTab = ({
                 const belongsToCurrentMember =
                   slot.isMine ||
                   (currentMemberId !== undefined && slot.readerMemberId === currentMemberId);
+                const editable =
+                  (belongsToCurrentMember || canManageSlots) &&
+                  slot.status === 'SCHEDULED' &&
+                  isAfter(slot.sourceSlot.startsAt, clockNow) &&
+                  onEditSlot !== undefined;
                 const cancellable =
                   (belongsToCurrentMember || canManageSlots) &&
                   slot.status === 'SCHEDULED' &&
-                  isAfter(slot.sourceSlot.startsAt, new Date()) &&
+                  isAfter(slot.sourceSlot.startsAt, clockNow) &&
                   onCancelSlot !== undefined;
+                const takeable = canTakeTurn(slot.sourceSlot);
+                let slotAccessibilityLabel: string | undefined;
+                if (followable) {
+                  slotAccessibilityLabel = Constants.FOLLOW_ALONG;
+                } else if (takeable) {
+                  slotAccessibilityLabel = Constants.TAKE_YOUR_TURN;
+                }
                 const openSlotMenu = () => {
-                  if (!cancellable) {
+                  if (!editable && !cancellable && !takeable) {
                     return;
                   }
                   setSelectedSlot(slot.sourceSlot);
@@ -547,7 +711,7 @@ export const TurnsTab = ({
                 return (
                   <Pressable
                     key={`${slot.id}:${day.toISOString()}`}
-                    onPress={followable ? onFollow : undefined}
+                    onPress={followable ? onFollow : takeable ? openSlotMenu : undefined}
                     onLongPress={openSlotMenu}
                     delayLongPress={350}
                     style={[
@@ -558,8 +722,8 @@ export const TurnsTab = ({
                       slot.status === 'ACTIVE' && styles.liveSlot,
                       styles.slotOnTimeline,
                     ]}
-                    accessibilityRole={followable ? 'button' : undefined}
-                    accessibilityLabel={followable ? Constants.FOLLOW_ALONG : undefined}
+                    accessibilityRole={followable || takeable ? 'button' : undefined}
+                    accessibilityLabel={slotAccessibilityLabel}
                   >
                     {!compact && avatarUri ? (
                       <Image
@@ -609,13 +773,17 @@ export const TurnsTab = ({
       <Dialog
         visible={selectedSlot !== null}
         onRequestClose={closeSlotMenu}
-        dismissOnBackdropPress={deletingSlotId === null}
+        dismissOnBackdropPress={deletingSlotId === null && takingTurnId === null}
         cardStyle={deleteError === null ? styles.turnOptionsCard : undefined}
         backdropStyle={deleteError === null ? styles.turnOptionsBackdrop : undefined}
       >
         {deleteError !== null ? (
           <>
-            <Text style={dialogStyles.title}>{Constants.DELETE_TURN_FAILED_TITLE}</Text>
+            <Text style={dialogStyles.title}>
+              {turnActionError === 'TAKE'
+                ? 'Unable to take turn'
+                : Constants.DELETE_TURN_FAILED_TITLE}
+            </Text>
             <Text style={dialogStyles.message}>{deleteError}</Text>
             <View style={dialogStyles.actions}>
               <TouchableOpacity
@@ -628,13 +796,52 @@ export const TurnsTab = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={dialogStyles.primaryButton}
-                onPress={retryDeleteSelectedSlot}
+                onPress={turnActionError === 'TAKE' ? handleTakeTurn : retryDeleteSelectedSlot}
                 accessibilityRole="button"
                 accessibilityLabel={Constants.RETRY}
               >
                 <Text style={dialogStyles.primaryText}>{Constants.RETRY}</Text>
               </TouchableOpacity>
             </View>
+          </>
+        ) : recurringDeleteScopeOpen ? (
+          <>
+            <View style={styles.turnOptionsHeader}>
+              <Text style={styles.turnOptionsTitle}>Delete recurring turn</Text>
+              <TouchableOpacity
+                style={styles.turnOptionsClose}
+                onPress={closeSlotMenu}
+                disabled={deletingSlotId !== null}
+                accessibilityRole="button"
+                accessibilityLabel="Close delete recurring turn"
+                hitSlop={8}
+              >
+                <CrossIcon />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.turnOptionsConfirmationMessage}>
+              Choose whether to remove only this scheduled turn or this turn and future turns.
+            </Text>
+            <TouchableOpacity
+              style={styles.turnOptionsPrimaryAction}
+              onPress={() => {
+                handleDeleteSelectedSlot('OCCURRENCE').catch(() => undefined);
+              }}
+              disabled={deletingSlotId !== null}
+              accessibilityRole="button"
+            >
+              <Text style={styles.turnOptionsPrimaryText}>Delete this turn</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.turnOptionsDeleteAction}
+              onPress={() => {
+                handleDeleteSelectedSlot('THIS_AND_FUTURE').catch(() => undefined);
+              }}
+              disabled={deletingSlotId !== null}
+              accessibilityRole="button"
+            >
+              <Text style={styles.turnOptionsDeleteText}>Delete this and following turns</Text>
+            </TouchableOpacity>
           </>
         ) : deleteConfirmationOpen ? (
           <>
@@ -668,7 +875,9 @@ export const TurnsTab = ({
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.turnOptionsConfirmDeleteAction}
-                onPress={handleDeleteSelectedSlot}
+                onPress={() => {
+                  handleDeleteSelectedSlot().catch(() => undefined);
+                }}
                 disabled={deletingSlotId !== null}
                 accessibilityRole="button"
                 accessibilityLabel={Constants.DELETE_TURN}
@@ -722,7 +931,24 @@ export const TurnsTab = ({
                 </View>
               </View>
             ) : null}
-            {onEditSlot ? (
+            {selectedSlot && canTakeTurn(selectedSlot) ? (
+              <TouchableOpacity
+                style={styles.turnOptionsPrimaryAction}
+                onPress={() => {
+                  handleTakeTurn().catch(() => undefined);
+                }}
+                disabled={takingTurnId !== null}
+                accessibilityRole="button"
+                accessibilityLabel={Constants.TAKE_YOUR_TURN}
+              >
+                {takingTurnId !== null ? (
+                  <ActivityIndicator color={UIConstants.NAV_TEXT_COLOR} size="small" />
+                ) : (
+                  <Text style={styles.turnOptionsPrimaryText}>{Constants.TAKE_YOUR_TURN}</Text>
+                )}
+              </TouchableOpacity>
+            ) : null}
+            {selectedSlot && onEditSlot && !canTakeTurn(selectedSlot) ? (
               <TouchableOpacity
                 style={styles.turnOptionsPrimaryAction}
                 onPress={handleEditSelectedSlot}
@@ -733,24 +959,26 @@ export const TurnsTab = ({
                 <Text style={styles.turnOptionsPrimaryText}>{Constants.EDIT_TURN}</Text>
               </TouchableOpacity>
             ) : null}
-            <View style={styles.turnOptionsDestructiveSection}>
-              <TouchableOpacity
-                style={styles.turnOptionsDeleteAction}
-                onPress={requestDeleteSelectedSlot}
-                disabled={deletingSlotId !== null}
-                accessibilityRole="button"
-                accessibilityLabel={Constants.DELETE_TURN}
-              >
-                {deletingSlotId !== null ? (
-                  <View style={styles.turnOptionsBusyLabel}>
-                    <ActivityIndicator color={UIConstants.DANGER_COLOR} size="small" />
-                    <Text style={styles.turnOptionsDeleteText}>{Constants.DELETING_TURN}</Text>
-                  </View>
-                ) : (
-                  <Text style={styles.turnOptionsDeleteText}>{Constants.DELETE_TURN}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
+            {selectedSlot && !canTakeTurn(selectedSlot) ? (
+              <View style={styles.turnOptionsDestructiveSection}>
+                <TouchableOpacity
+                  style={styles.turnOptionsDeleteAction}
+                  onPress={requestDeleteSelectedSlot}
+                  disabled={deletingSlotId !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel={Constants.DELETE_TURN}
+                >
+                  {deletingSlotId !== null ? (
+                    <View style={styles.turnOptionsBusyLabel}>
+                      <ActivityIndicator color={UIConstants.DANGER_COLOR} size="small" />
+                      <Text style={styles.turnOptionsDeleteText}>{Constants.DELETING_TURN}</Text>
+                    </View>
+                  ) : (
+                    <Text style={styles.turnOptionsDeleteText}>{Constants.DELETE_TURN}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            ) : null}
           </>
         )}
       </Dialog>

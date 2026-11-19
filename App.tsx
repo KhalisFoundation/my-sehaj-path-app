@@ -57,6 +57,7 @@ import { setOnline } from './store/slices/networkSlice';
 import { provisionDatabase } from './db';
 import { notifyPlanRefresh } from './store/planEvents';
 import { pushNavigationRef } from './navigation/pushTapRouter';
+import { clearTurnPlanCache } from './components/TurnsTab';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -115,6 +116,8 @@ export type RootStackParamList = {
     initialStartsAt?: string;
     initialDurationMinutes?: number;
     slotId?: string;
+    isRecurring?: boolean;
+    initialRecurrenceRule?: string;
   };
 };
 
@@ -414,7 +417,15 @@ const App = () => {
               // a cold-start tap queued. Flush again after later transitions.
               flushPendingPushTaps();
             }}
-            onStateChange={flushPendingPushTaps}
+            onStateChange={() => {
+              flushPendingPushTaps();
+              // Turn plans are only a short-lived navigation cache. Returning
+              // to Home starts a new path context, so do not retain the prior
+              // path's schedule beyond that boundary.
+              if (pushNavigationRef.getCurrentRoute()?.name === Routes.Home) {
+                clearTurnPlanCache();
+              }
+            }}
           >
             <Stack.Navigator
               initialRouteName={Routes.Splash}
