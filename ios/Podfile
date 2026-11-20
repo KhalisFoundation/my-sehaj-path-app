@@ -38,5 +38,19 @@ target 'KhalisSehajPathApp' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Xcode 27's simulator SDK no longer builds Pods that declare an iOS
+    # deployment target below 15. Keep generated Pods aligned with the app's
+    # existing 15.1 minimum without lowering targets that require something newer.
+    minimum_ios_deployment_target = Gem::Version.new('15.1')
+    installer.pods_project.targets.each do |pod_target|
+      pod_target.build_configurations.each do |build_configuration|
+        deployment_target = build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+
+        if deployment_target.nil? || Gem::Version.new(deployment_target) < minimum_ios_deployment_target
+          build_configuration.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = minimum_ios_deployment_target.to_s
+        end
+      end
+    end
   end
 end

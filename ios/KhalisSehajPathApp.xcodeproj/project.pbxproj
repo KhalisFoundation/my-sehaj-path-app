@@ -12,10 +12,12 @@
 		1A01F1A6F6774A77A07FF862 /* BrandonGrotesque-Medium.otf in Resources */ = {isa = PBXBuildFile; fileRef = 9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */; };
 		1D2DD3253B524FFEB7485125 /* BrandonGrotesque-BlackItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */; };
 		21C39197FD014DA6B1BE35CE /* BrandonGrotesque-Regular.otf in Resources */ = {isa = PBXBuildFile; fileRef = AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */; };
+		2ED653F2284797AD137D1471 /* Pods_KhalisSehajPathApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2C43C9A479174908637C6CC9 /* Pods_KhalisSehajPathApp.framework */; };
 		2EFB72CC094141C896D050EE /* BrandonGrotesque-RegularItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */; };
 		4B03546C4C814DDA8350D70A /* BalooPaaji2-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */; };
 		6FED06782EAAD4B6002C9687 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 6FED06772EAAD4B6002C9687 /* GoogleService-Info.plist */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
+		761780EF2CA45674006654EF /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EE2CA45674006654EF /* SceneDelegate.swift */; };
 		7DE83A1E107669805AFD1E19 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		80C02B58B31D49FFAF412660 /* BrandonGrotesque-LightItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
@@ -28,7 +30,6 @@
 		C1F501B894BB4B2D8173CB50 /* BrandonGrotesque-Black.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */; };
 		C52C1E20C845497B8BC373A2 /* BalooPaaji2-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */; };
 		C69CCFD2BC344C4FB46E0CBC /* BalooPaaji2-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7F586339571B4D0D970974E9 /* BalooPaaji2-SemiBold.ttf */; };
-		C8621D46CE94B687368E1017 /* Pods_KhalisSehajPathApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 14C49625F62B3CB7FB2A1F16 /* Pods_KhalisSehajPathApp.framework */; };
 		CEA811B0CD6A4AE996456955 /* BrandonGrotesque-MediumItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */; };
 		DFB9BC4FDB5548198E8AE4A2 /* BrandonGrotesque-BoldItalic.otf in Resources */ = {isa = PBXBuildFile; fileRef = 5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */; };
 /* End PBXBuildFile section */
@@ -39,15 +40,16 @@
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = KhalisSehajPathApp/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = KhalisSehajPathApp/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		13B07FB91A68108700A75B9A /* KhalisSehajPathApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = KhalisSehajPathApp.entitlements; path = KhalisSehajPathApp/KhalisSehajPathApp.entitlements; sourceTree = "<group>"; };
-		14C49625F62B3CB7FB2A1F16 /* Pods_KhalisSehajPathApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_KhalisSehajPathApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1D6DA5C338D14802A33A0FF9 /* BrandonGrotesque-RegularItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-RegularItalic.otf"; path = "../assets/fonts/BrandonGrotesque-RegularItalic.otf"; sourceTree = "<group>"; };
 		1F1C1E10A1A8456F814554BB /* BalooPaaji2-Medium.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Medium.ttf"; path = "../assets/fonts/BalooPaaji2-Medium.ttf"; sourceTree = "<group>"; };
-		2C614AEF4502AE68E9E3E9B4 /* Pods-KhalisSehajPathApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp.release.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp.release.xcconfig"; sourceTree = "<group>"; };
+		2C43C9A479174908637C6CC9 /* Pods_KhalisSehajPathApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_KhalisSehajPathApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		44B5A0A92571D65FDC3F56C8 /* Pods-KhalisSehajPathApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp.debug.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp.debug.xcconfig"; sourceTree = "<group>"; };
 		4E64192F80B140D1A39DD834 /* BrandonGrotesque-Black.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Black.otf"; path = "../assets/fonts/BrandonGrotesque-Black.otf"; sourceTree = "<group>"; };
 		5F36EA2DF41746FCB01DCF0C /* BrandonGrotesque-BoldItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BoldItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BoldItalic.otf"; sourceTree = "<group>"; };
 		6FED06772EAAD4B6002C9687 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		7178E05E978B4325B8FF4EE3 /* BrandonGrotesque-LightItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-LightItalic.otf"; path = "../assets/fonts/BrandonGrotesque-LightItalic.otf"; sourceTree = "<group>"; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = KhalisSehajPathApp/AppDelegate.swift; sourceTree = "<group>"; };
+		761780EE2CA45674006654EF /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = KhalisSehajPathApp/SceneDelegate.swift; sourceTree = "<group>"; };
 		76CB81D591B743499B295D59 /* BalooPaaji2-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Bold.ttf"; path = "../assets/fonts/BalooPaaji2-Bold.ttf"; sourceTree = "<group>"; };
 		78657D25E6DF4E2ABDE5CCEA /* Recoleta-RegularDEMO.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Recoleta-RegularDEMO.otf"; path = "../assets/fonts/Recoleta-RegularDEMO.otf"; sourceTree = "<group>"; };
 		7D7146366BB04AC5B048FC43 /* BrandonGrotesque-Light.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Light.otf"; path = "../assets/fonts/BrandonGrotesque-Light.otf"; sourceTree = "<group>"; };
@@ -58,10 +60,10 @@
 		9BCD459C6BC246B7AFCE2472 /* BrandonGrotesque-ThinItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-ThinItalic.otf"; path = "../assets/fonts/BrandonGrotesque-ThinItalic.otf"; sourceTree = "<group>"; };
 		9DAB32B391EC434D9B131F01 /* BrandonGrotesque-Medium.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Medium.otf"; path = "../assets/fonts/BrandonGrotesque-Medium.otf"; sourceTree = "<group>"; };
 		AA4A557845C84B46A037448E /* BrandonGrotesque-Regular.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Regular.otf"; path = "../assets/fonts/BrandonGrotesque-Regular.otf"; sourceTree = "<group>"; };
-		BC6896D8247A3927D8865598 /* Pods-KhalisSehajPathApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp.debug.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp.debug.xcconfig"; sourceTree = "<group>"; };
 		D0B56B6CD1F746208D20F5E2 /* BalooPaaji2-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BalooPaaji2-Regular.ttf"; path = "../assets/fonts/BalooPaaji2-Regular.ttf"; sourceTree = "<group>"; };
 		D941C8315010498088B65B70 /* BrandonGrotesque-Thin.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-Thin.otf"; path = "../assets/fonts/BrandonGrotesque-Thin.otf"; sourceTree = "<group>"; };
 		DFF1507C50C44505A35A7847 /* BrandonGrotesque-MediumItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-MediumItalic.otf"; path = "../assets/fonts/BrandonGrotesque-MediumItalic.otf"; sourceTree = "<group>"; };
+		EBF2DC2AAC9089FBA9433A91 /* Pods-KhalisSehajPathApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-KhalisSehajPathApp.release.xcconfig"; path = "Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp.release.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F20B3CC8CFD54031B35614D3 /* BrandonGrotesque-BlackItalic.otf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "BrandonGrotesque-BlackItalic.otf"; path = "../assets/fonts/BrandonGrotesque-BlackItalic.otf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -71,7 +73,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C8621D46CE94B687368E1017 /* Pods_KhalisSehajPathApp.framework in Frameworks */,
+				2ED653F2284797AD137D1471 /* Pods_KhalisSehajPathApp.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -83,6 +85,7 @@
 			children = (
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
+				761780EE2CA45674006654EF /* SceneDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
@@ -95,7 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				14C49625F62B3CB7FB2A1F16 /* Pods_KhalisSehajPathApp.framework */,
+				2C43C9A479174908637C6CC9 /* Pods_KhalisSehajPathApp.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -159,8 +162,8 @@
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				BC6896D8247A3927D8865598 /* Pods-KhalisSehajPathApp.debug.xcconfig */,
-				2C614AEF4502AE68E9E3E9B4 /* Pods-KhalisSehajPathApp.release.xcconfig */,
+				44B5A0A92571D65FDC3F56C8 /* Pods-KhalisSehajPathApp.debug.xcconfig */,
+				EBF2DC2AAC9089FBA9433A91 /* Pods-KhalisSehajPathApp.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -172,15 +175,15 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "KhalisSehajPathApp" */;
 			buildPhases = (
-				7F44CF9C8C107FD975E08D39 /* [CP] Check Pods Manifest.lock */,
+				BA9C880679E1A8A73CEC2051 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				626DC2BA3CC2025CE05B2F90 /* [CP] Embed Pods Frameworks */,
-				B1E98C86165551761E0CA473 /* [CP] Copy Pods Resources */,
-				CBA97ADC1C07DD764A0C16DB /* [CP-User] [RNFB] Core Configuration */,
-				96990BD66B8A4D63856A623D /* [CP-User] [RNFB] Crashlytics Configuration */,
+				C375E65E9D7EEE09E2F95953 /* [CP] Embed Pods Frameworks */,
+				C9564918C4E3D97919F76B95 /* [CP] Copy Pods Resources */,
+				E675079023FDCEECEB3E7AB6 /* [CP-User] [RNFB] Core Configuration */,
+				4F0CEED23689EA2050C3A888 /* [CP-User] [RNFB] Crashlytics Configuration */,
 			);
 			buildRules = (
 			);
@@ -271,24 +274,21 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"\\\"$WITH_ENVIRONMENT\\\" \\\"$REACT_NATIVE_XCODE\\\"\"\n";
 		};
-		626DC2BA3CC2025CE05B2F90 /* [CP] Embed Pods Frameworks */ = {
+		4F0CEED23689EA2050C3A888 /* [CP-User] [RNFB] Crashlytics Configuration */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			inputPaths = (
+				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
+				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
 			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
+			name = "[CP-User] [RNFB] Crashlytics Configuration";
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
+			shellScript = "#!/usr/bin/env bash\n#\n# Copyright (c) 2016-present Invertase Limited & Contributors\n#\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this library except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#   http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n#\nset -e\n\nif [[ ${PODS_ROOT} ]]; then\n  echo \"info: Exec FirebaseCrashlytics Run from Pods\"\n  \"${PODS_ROOT}/FirebaseCrashlytics/run\"\nelse\n  echo \"info: Exec FirebaseCrashlytics Run from framework\"\n  \"${PROJECT_DIR}/FirebaseCrashlytics.framework/run\"\nfi\n";
 		};
-		7F44CF9C8C107FD975E08D39 /* [CP] Check Pods Manifest.lock */ = {
+		BA9C880679E1A8A73CEC2051 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -310,21 +310,24 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		96990BD66B8A4D63856A623D /* [CP-User] [RNFB] Crashlytics Configuration */ = {
+		C375E65E9D7EEE09E2F95953 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}",
-				"$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)",
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			name = "[CP-User] [RNFB] Crashlytics Configuration";
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "#!/usr/bin/env bash\n#\n# Copyright (c) 2016-present Invertase Limited & Contributors\n#\n# Licensed under the Apache License, Version 2.0 (the \"License\");\n# you may not use this library except in compliance with the License.\n# You may obtain a copy of the License at\n#\n#   http://www.apache.org/licenses/LICENSE-2.0\n#\n# Unless required by applicable law or agreed to in writing, software\n# distributed under the License is distributed on an \"AS IS\" BASIS,\n# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n# See the License for the specific language governing permissions and\n# limitations under the License.\n#\nset -e\n\nif [[ ${PODS_ROOT} ]]; then\n  echo \"info: Exec FirebaseCrashlytics Run from Pods\"\n  \"${PODS_ROOT}/FirebaseCrashlytics/run\"\nelse\n  echo \"info: Exec FirebaseCrashlytics Run from framework\"\n  \"${PROJECT_DIR}/FirebaseCrashlytics.framework/run\"\nfi\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
 		};
-		B1E98C86165551761E0CA473 /* [CP] Copy Pods Resources */ = {
+		C9564918C4E3D97919F76B95 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -341,7 +344,7 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-KhalisSehajPathApp/Pods-KhalisSehajPathApp-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		CBA97ADC1C07DD764A0C16DB /* [CP-User] [RNFB] Core Configuration */ = {
+		E675079023FDCEECEB3E7AB6 /* [CP-User] [RNFB] Core Configuration */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -362,6 +365,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				761780ED2CA45674006654EE /* AppDelegate.swift in Sources */,
+				761780EF2CA45674006654EF /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -370,7 +374,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = BC6896D8247A3927D8865598 /* Pods-KhalisSehajPathApp.debug.xcconfig */;
+			baseConfigurationReference = 44B5A0A92571D65FDC3F56C8 /* Pods-KhalisSehajPathApp.debug.xcconfig */;
 			buildSettings = {
 				APS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -404,7 +408,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 2C614AEF4502AE68E9E3E9B4 /* Pods-KhalisSehajPathApp.release.xcconfig */;
+			baseConfigurationReference = EBF2DC2AAC9089FBA9433A91 /* Pods-KhalisSehajPathApp.release.xcconfig */;
 			buildSettings = {
 				APS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -505,6 +509,14 @@
 					"${PODS_ROOT}/React-graphics/react/renderer/graphics/platform/ios",
 					"${PODS_ROOT}/React-featureflags",
 					"${PODS_ROOT}/React-renderercss",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/cxx",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/textlayoutmanager/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/text/platform/cxx",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/textinput/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/switch/iosswitch",
+					"${PODS_ROOT}/React-bridging",
+					"${PODS_ROOT}/React-cxxstableapi",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -608,6 +620,14 @@
 					"${PODS_ROOT}/React-graphics/react/renderer/graphics/platform/ios",
 					"${PODS_ROOT}/React-featureflags",
 					"${PODS_ROOT}/React-renderercss",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/cxx",
+					"${PODS_ROOT}/React-Fabric/react/renderer/components/scrollview/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/textlayoutmanager/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/text/platform/cxx",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/textinput/platform/ios",
+					"${PODS_ROOT}/React-FabricComponents/react/renderer/components/switch/iosswitch",
+					"${PODS_ROOT}/React-bridging",
+					"${PODS_ROOT}/React-cxxstableapi",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (

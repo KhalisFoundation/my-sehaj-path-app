@@ -8,6 +8,7 @@ import {
   useWindowDimensions,
   View,
   type GestureResponderEvent,
+  type ScrollViewInstance,
 } from 'react-native';
 import { AppText as Text } from './AppText';
 import { Dialog } from './Dialog';
@@ -204,7 +205,7 @@ export const TurnsTab = ({
   const [deletingSlotId, setDeletingSlotId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const { height: windowHeight } = useWindowDimensions();
-  const scheduleViewportRef = useRef<ScrollView>(null);
+  const scheduleViewportRef = useRef<ScrollViewInstance>(null);
   const initialViewportAppliedRef = useRef(false);
   const loadSequenceRef = useRef(0);
 

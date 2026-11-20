@@ -1,12 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  View,
-  ImageBackground,
-  ScrollView,
-  BackHandler,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import { View, ScrollView, BackHandler, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -36,6 +29,7 @@ import { sortPathsForHome } from '../store/pathOrdering';
 import { avatarUrlFor, listMembers } from '../store/groupApi';
 import type { AvatarMember } from '../components/MemberAvatars';
 import { HomeScreenBackground } from '../assets/Images';
+import { BackgroundImage } from '../components/BackgroundImage';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -230,7 +224,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
       <SyncPopup mode="unowned" />
       <SignInPopup />
       <SyncUnavailablePopup />
-      <ImageBackground
+      <BackgroundImage
         source={HomeScreenBackground}
         resizeMode="cover"
         style={HomeScreenStyles.backgroundImage}
@@ -301,7 +295,7 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           currentRoute={Routes.Home}
           showOnlyHomeItems={true}
         />
-      </ImageBackground>
+      </BackgroundImage>
     </SafeAreaView>
   );
 });

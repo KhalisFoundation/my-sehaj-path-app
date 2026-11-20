@@ -1,5 +1,6 @@
 import React from 'react';
-import { ImageBackground, View } from 'react-native';
+import { View } from 'react-native';
+import { BackgroundImage } from './BackgroundImage';
 import { AppText as Text } from './AppText';
 import { Constants } from '@constants';
 import { SplashScreenStyles } from '@styles';
@@ -13,11 +14,11 @@ import { SplashScreenBackground } from '../assets/Images';
  * and would crash here) or any screen-level hooks.
  */
 export const BootSplash = () => (
-  <ImageBackground source={SplashScreenBackground} style={SplashScreenStyles.backgroundImage}>
+  <BackgroundImage source={SplashScreenBackground} style={SplashScreenStyles.backgroundImage}>
     <View style={SplashScreenStyles.overlayBg}>
       <Text style={SplashScreenStyles.mainHeadline}>{Constants.SEHAJ_PATH}</Text>
       <Text style={SplashScreenStyles.tagline}>{Constants.BUILDING_THE_HABIT}</Text>
       <Text style={SplashScreenStyles.tagline}>{Constants.OF_READING_GURBANI}</Text>
     </View>
-  </ImageBackground>
+  </BackgroundImage>
 );

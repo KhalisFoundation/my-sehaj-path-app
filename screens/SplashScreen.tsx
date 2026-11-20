@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, ImageBackground, Animated } from 'react-native';
+import { View, Animated } from 'react-native';
 import { AppText as Text } from '../components/AppText';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import { SplashScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { SplashScreenBackground } from '../assets/Images';
+import { BackgroundImage } from '../components/BackgroundImage';
 
 type SplashProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -30,13 +31,13 @@ export const SplashScreen = ({ navigation }: SplashProps) => {
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <Animated.View style={{ opacity: fadeOut }}>
-        <ImageBackground source={SplashScreenBackground} style={SplashScreenStyles.backgroundImage}>
+        <BackgroundImage source={SplashScreenBackground} style={SplashScreenStyles.backgroundImage}>
           <View style={SplashScreenStyles.overlayBg}>
             <Text style={SplashScreenStyles.mainHeadline}>{Constants.SEHAJ_PATH}</Text>
             <Text style={SplashScreenStyles.tagline}>{Constants.BUILDING_THE_HABIT}</Text>
             <Text style={SplashScreenStyles.tagline}>{Constants.OF_READING_GURBANI}</Text>
           </View>
-        </ImageBackground>
+        </BackgroundImage>
       </Animated.View>
     </SafeAreaView>
   );
