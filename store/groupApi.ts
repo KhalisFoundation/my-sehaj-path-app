@@ -218,18 +218,14 @@ const call = async <T>(
 // Sharing and joining
 // ---------------------------------------------------------------------------
 
-const personalDatesForGroup = (sehajPathId: string): string[] => {
-  const meta = Object.entries(store.getState().sync.meta).find(
-    ([, entry]) => entry.groupId === sehajPathId
-  );
-  if (!meta) {
+const personalDatesForPath = (localPathId?: number): string[] => {
+  if (localPathId === undefined) {
     return [];
   }
-  const pathId = Number(meta[0]);
+  const state = store.getState();
   const dates =
-    store
-      .getState()
-      .paths.dates.find((entry) => entry.pathid === pathId)
+    state.paths.dates
+      .find((entry) => entry.pathid === localPathId)
       ?.dates.map((date) => date.date) ?? [];
 
   // `enableSharing` deliberately remains compatible with the v3 API contract
@@ -246,14 +242,24 @@ const personalDatesForGroup = (sehajPathId: string): string[] => {
   });
 };
 
-export const enableSharing = (sehajPathId: string) =>
+const sendSharingDates = (sehajPathId: string, localPathId?: number) =>
   call('Could not turn on group reading.', (headers) =>
     sehajPathMembersControllerEnableSharing({
       path: { sehajPathId },
-      body: { dates: personalDatesForGroup(sehajPathId) },
+      body: { dates: personalDatesForPath(localPathId) },
       headers,
     })
   );
+
+/**
+ * Enable sharing and carry the owner's pre-share reading history with it.
+ *
+ * Passing the local id is important for the first share: metadata is normally
+ * refreshed with the group id, but a user can create a path and share it
+ * before that refresh completes.
+ */
+export const enableSharing = (sehajPathId: string, localPathId?: number) =>
+  sendSharingDates(sehajPathId, localPathId);
 
 /** Rename a shared path through its canonical group id. */
 export const renameSharedPath = (

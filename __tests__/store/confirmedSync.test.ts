@@ -16,6 +16,10 @@ import { serializeKey } from '../../store/legacyFormat';
 import { setSignedIn } from '../../store/slices/authSlice';
 import { setOnline } from '../../store/slices/networkSlice';
 import { setAll } from '../../store/slices/pathsSlice';
+import {
+  hydrateMemberMetadata,
+  upsertMemberMetadata,
+} from '../../store/slices/memberMetadataSlice';
 import { setLarivaar } from '../../store/slices/settingsSlice';
 import {
   hydrateEmptySync,
@@ -133,6 +137,14 @@ describe('switchAccountData', () => {
 
   it('keeps A hidden and safely stored when B chooses Keep for A', async () => {
     const store = setupUnsyncedA();
+    store.dispatch(hydrateMemberMetadata({ account: 'a@e.com', byPathId: {} }));
+    store.dispatch(
+      upsertMemberMetadata({
+        pathId: 1,
+        account: 'a@e.com',
+        metadata: { memberCount: 2, memberPreviews: [] },
+      })
+    );
 
     expect(await switchAccountData(store, 'b@e.com', false)).toBe(true);
 
@@ -142,6 +154,11 @@ describe('switchAccountData', () => {
     );
     expect(store.getState().sync.account).toBe('b@e.com');
     expect(store.getState().paths.paths).toEqual([]);
+    expect(store.getState().memberMetadata).toMatchObject({
+      account: 'b@e.com',
+      hydrated: true,
+      byPathId: {},
+    });
   });
 
   it('copies A progress into B, queues it, and does not copy A settings', async () => {

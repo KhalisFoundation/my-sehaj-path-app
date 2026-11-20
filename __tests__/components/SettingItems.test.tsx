@@ -85,7 +85,7 @@ const findSwitch = (renderer: ReactTestRenderer.ReactTestRenderer, settingKey: s
   const control = renderer.root.findAll(
     (node) =>
       node.props.testID === `settings-switch-${settingKey}` &&
-      typeof node.props.onValueChange === 'function'
+      typeof node.props.onPress === 'function'
   )[0];
   if (!control) {
     throw new Error(`Could not find switch for setting: ${settingKey}`);
@@ -110,7 +110,7 @@ describe('setting analytics', () => {
     });
 
     await act(async () => {
-      await findSwitch(renderer, 'paragraphMode').props.onValueChange(true);
+      await findSwitch(renderer, 'paragraphMode').props.onPress();
     });
 
     expect(onValueChange).toHaveBeenCalledWith(true);
@@ -121,7 +121,7 @@ describe('setting analytics', () => {
     );
   });
 
-  it('uses the same explicit inactive-track colour on iOS', async () => {
+  it('uses a controlled, accessible custom switch control', async () => {
     let renderer!: ReactTestRenderer.ReactTestRenderer;
 
     await act(async () => {
@@ -136,11 +136,8 @@ describe('setting analytics', () => {
     });
 
     const control = findSwitch(renderer, 'paragraphMode');
-    expect(control.props.ios_backgroundColor).toBe('rgb(194, 194, 194)');
-    expect(control.props.trackColor).toEqual({
-      false: 'rgb(194, 194, 194)',
-      true: 'rgba(17, 51, 106, 0.46)',
-    });
+    expect(control.props.accessibilityRole).toBe('switch');
+    expect(control.props.accessibilityState).toEqual({ checked: false });
   });
 
   it.each([
@@ -165,7 +162,7 @@ describe('setting analytics', () => {
     });
 
     await act(async () => {
-      await findSwitch(renderer, 'vishraam').props.onValueChange(true);
+      await findSwitch(renderer, 'vishraam').props.onPress();
     });
 
     expect(mockTrackEvent).not.toHaveBeenCalled();

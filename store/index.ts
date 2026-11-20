@@ -7,10 +7,12 @@ import {
 import { authSlice } from './slices/authSlice';
 import { dbSlice } from './slices/dbSlice';
 import { networkSlice } from './slices/networkSlice';
+import { initialMemberMetadataState, memberMetadataSlice } from './slices/memberMetadataSlice';
 import { pathsSlice, type PathsState } from './slices/pathsSlice';
 import { SETTINGS_DEFAULTS, settingsSlice, type SettingsState } from './slices/settingsSlice';
 import { syncSlice, type SyncState } from './slices/syncSlice';
 import { syncStampMiddleware } from './syncStampMiddleware';
+import { createMemberMetadataPersistenceMiddleware } from './memberMetadata';
 
 const combinedReducer = combineReducers({
   settings: settingsSlice.reducer,
@@ -18,6 +20,7 @@ const combinedReducer = combineReducers({
   network: networkSlice.reducer,
   auth: authSlice.reducer,
   sync: syncSlice.reducer,
+  memberMetadata: memberMetadataSlice.reducer,
   db: dbSlice.reducer,
 });
 type CombinedState = ReturnType<typeof combinedReducer>;
@@ -84,11 +87,24 @@ export const removePathAndSyncState = createAction<{ pathId: number }>(
 
 const rootReducer = (state: CombinedState | undefined, action: UnknownAction): CombinedState => {
   if (state && restoreDurableState.match(action)) {
+    const accountChanged = state.sync.account !== action.payload.sync.account;
+    let { memberMetadata } = state;
+    if (accountChanged) {
+      memberMetadata = {
+        ...initialMemberMetadataState,
+        account: action.payload.sync.account,
+        hydrated: true,
+      };
+    }
     return {
       ...state,
       settings: action.payload.settings,
       paths: action.payload.paths,
       sync: action.payload.sync,
+      // Member previews are account-scoped and are deliberately not part of
+      // durable account snapshots. Never carry A's card cache into B when a
+      // snapshot replaces the active account; V2 will refill it for B.
+      memberMetadata,
     };
   }
   if (state && rollbackDurableMutation.match(action)) {
@@ -182,6 +198,7 @@ const rootReducer = (state: CombinedState | undefined, action: UnknownAction): C
       settings: { ...SETTINGS_DEFAULTS },
       paths,
       sync,
+      memberMetadata: { ...initialMemberMetadataState, hydrated: true },
     };
   }
   if (state && removePathAndSyncState.match(action)) {
@@ -200,9 +217,33 @@ const rootReducer = (state: CombinedState | undefined, action: UnknownAction): C
     delete sync.meta[pathId];
     delete sync.pathOps[pathId];
     delete sync.scrollDirty[pathId];
-    return { ...state, paths, sync };
+    return {
+      ...state,
+      paths,
+      sync,
+      memberMetadata: {
+        ...state.memberMetadata,
+        byPathId: Object.fromEntries(
+          Object.entries(state.memberMetadata.byPathId).filter(([key]) => Number(key) !== pathId)
+        ),
+      },
+    };
   }
-  return combinedReducer(state, action);
+  const next = combinedReducer(state, action);
+  if (state && state.sync.account !== next.sync.account) {
+    return {
+      ...next,
+      // Account ownership can also change through ordinary sync-slice actions
+      // (`setAccount`, recovery reset, boot hydration). Clear synchronously so
+      // no render can pair the new account with the previous account's cards.
+      memberMetadata: {
+        ...initialMemberMetadataState,
+        account: next.sync.account,
+        hydrated: true,
+      },
+    };
+  }
+  return next;
 };
 
 /**
@@ -217,7 +258,11 @@ export const makeStore = () =>
     reducer: rootReducer,
     // Stamps sync bookkeeping from path/settings mutations (Step 5). Type-only
     // import of RootState above keeps this free of a runtime import cycle.
-    middleware: (getDefaultMiddleware) => getDefaultMiddleware().concat(syncStampMiddleware),
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware().concat(
+        syncStampMiddleware,
+        createMemberMetadataPersistenceMiddleware()
+      ),
   });
 
 export const store = makeStore();

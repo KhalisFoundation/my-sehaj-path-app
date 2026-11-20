@@ -1,16 +1,15 @@
 import type { PathData } from '../types';
+import { isPathCompleted } from '@utils/isPathCompleted';
 import type { SyncMeta } from './slices/syncSlice';
 
 /**
- * The owner `/paths` response includes completionDate, while the accessible
- * shared-path response currently exposes only progress. Treat either signal
- * as authoritative so a completed shared path is not shown as in progress
- * after login.
+ * Progress is derived from the ang number, so every verse on the final ang
+ * reports 100%. A path is complete only once its checkpoint reaches the
+ * scripture's final verse; completionDate is display metadata, not the
+ * completion condition.
  */
-export const isPathCompletedForHome = (
-  path: Pick<PathData, 'completionDate' | 'progress'>
-): boolean =>
-  path.completionDate !== '' || (Number.isFinite(path.progress) && path.progress >= 100);
+export const isPathCompletedForHome = (path: Pick<PathData, 'saveData'>): boolean =>
+  isPathCompleted(path.saveData.angNumber, path.saveData.verseId);
 
 /**
  * Home-only display order. Once a path is on the server, its server creation

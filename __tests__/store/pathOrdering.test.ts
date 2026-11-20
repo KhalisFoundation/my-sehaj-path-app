@@ -39,17 +39,15 @@ describe('sortPathsForHome', () => {
 });
 
 describe('isPathCompletedForHome', () => {
-  it('recognizes an accessible completed path when completionDate is omitted', () => {
-    expect(isPathCompletedForHome({ completionDate: '', progress: 100 })).toBe(true);
+  it('recognizes the final verse as complete even before a completion date is returned', () => {
+    expect(isPathCompletedForHome({ saveData: { angNumber: 1430, verseId: 60403 } })).toBe(true);
   });
 
-  it('keeps a partial accessible path in progress', () => {
-    expect(isPathCompletedForHome({ completionDate: '', progress: 69.93 })).toBe(false);
+  it('keeps the first verse of the final ang in progress despite its 100% progress value', () => {
+    expect(isPathCompletedForHome({ saveData: { angNumber: 1430, verseId: 60300 } })).toBe(false);
   });
 
-  it('preserves completion dates from the owner-scoped response', () => {
-    expect(isPathCompletedForHome({ completionDate: '3-November-2026', progress: 20.98 })).toBe(
-      true
-    );
+  it('does not trust a stale completion date for a partial checkpoint', () => {
+    expect(isPathCompletedForHome({ saveData: { angNumber: 300, verseId: 12000 } })).toBe(false);
   });
 });

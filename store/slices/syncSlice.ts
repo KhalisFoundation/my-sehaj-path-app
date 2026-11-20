@@ -107,7 +107,7 @@ export interface SyncState {
   catchUpSyncDone: boolean;
   catchUpSyncRunning: boolean;
   /**
-   * A `GET /paths` refresh is in flight. `status` only covers the push half, so
+   * A `GET /v2/paths` refresh is in flight. `status` only covers the push half, so
    * without this the notice would call a sync finished while the download that
    * may change what the user sees is still running.
    */

@@ -68,8 +68,12 @@ export const usePathNavigation = ({
               // Before navigating: leaving triggers the reader's own checkpoint,
               // which would write the ang being abandoned.
               suppressLeaveSave();
+              // Let `usePreventRemove` unregister its native-stack guard before
+              // dispatching the confirmed exit. Without this, iOS sees the
+              // discard action as another swipe-back and reopens this alert.
+              setIsAngNavigation(false);
               updatePathAng(lastSavedAngNumber);
-              navigate();
+              setTimeout(navigate, 0);
             },
             destinationLabel,
           });

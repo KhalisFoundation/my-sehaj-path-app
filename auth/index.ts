@@ -21,7 +21,7 @@ export {
   IDP_API,
   REDIRECT_URL,
   LOGOUT_REDIRECT_URL,
-  getSSOLoginUrl,
+  SSO_LOGIN_URL,
   getSSOLogoutUrl,
   getAccountDeleteEndpoint,
 } from './constants';
