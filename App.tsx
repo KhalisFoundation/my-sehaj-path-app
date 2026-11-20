@@ -8,6 +8,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import {
   ChooseSlot,
+  GroupPath,
   JoinPath,
   InviteMember,
   SplashScreen,
@@ -50,14 +51,26 @@ export type RootStackParamList = {
     pathId: number;
     sehajPathId?: string;
     initialTab?: string;
+    notificationTapAt?: number;
   };
   CreatePath: undefined;
-  Path: { pathId: number };
+  Path: {
+    pathId: number;
+    live?: {
+      sehajPathId: string;
+      driving: boolean;
+      sessionId?: string;
+      startAng?: number;
+      startedAt?: string;
+      slotEndsAt?: string | null;
+    };
+  };
   Setting: undefined;
   DatabaseUpdate: undefined;
   About: undefined;
   Error: undefined;
   JoinPath: { token: string };
+  GroupPath: { sehajPathId: string; pathId: number; pathName: string };
   InviteMember: { sehajPathId: string; pathName?: string };
   ChooseSlot: {
     sehajPathId: string;
@@ -232,6 +245,7 @@ const App = () => {
               <Stack.Screen name={Routes.About} component={About} />
               <Stack.Screen name={Routes.Error} component={Error} />
               <Stack.Screen name={Routes.JoinPath} component={JoinPath} />
+              <Stack.Screen name={Routes.GroupPath} component={GroupPath} />
               <Stack.Screen name={Routes.InviteMember} component={InviteMember} />
               <Stack.Screen
                 name={Routes.ChooseSlot}
