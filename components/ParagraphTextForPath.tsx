@@ -14,6 +14,7 @@ import { useAppSelector } from '../store/hooks';
 import { useReaderFontSize } from '../hooks/useReaderFontSize';
 import { usePathSelection } from './PathSelectionContext';
 import { VishraamsText } from './VishraamsText';
+import { AndroidParagraphSaveIcon } from './AndroidParagraphSaveIcon';
 
 type ParagraphTextForPathProps = PathTextProps & {
   onTextLayout?: (event: any) => void;
@@ -25,8 +26,11 @@ const ParagraphTextForPathComponent = ({
   onSelection,
   index,
   onSave,
+  selectionEnabled = true,
   verseId,
   vishraams,
+  vishraamEnabled,
+  vishraamsSource: vishraamsSourceOverride,
   onLayout,
   onTextLayout,
 }: ParagraphTextForPathProps) => {
@@ -36,8 +40,10 @@ const ParagraphTextForPathComponent = ({
   // Selection state from context; display settings from the store.
   const selection = usePathSelection();
   const fontSize = useReaderFontSize();
-  const isVishraam = useAppSelector((state) => state.settings.vishraam);
-  const vishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const ownVishraam = useAppSelector((state) => state.settings.vishraam);
+  const isVishraam = vishraamEnabled ?? ownVishraam;
+  const ownVishraamsSource = useAppSelector((state) => state.settings.vishraamsSource.source);
+  const vishraamsSource = vishraamsSourceOverride ?? ownVishraamsSource;
 
   const isSelected = useIsSelected(
     verseId,
@@ -61,6 +67,9 @@ const ParagraphTextForPathComponent = ({
   );
 
   const triggerLongPress = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     didLongPress.current = true;
     baseLongPressHandler();
   };
@@ -73,6 +82,9 @@ const ParagraphTextForPathComponent = ({
   };
 
   const handlePressIn = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     clearLongPressTimer();
     // Text does not expose delayLongPress. Its native default is 500 ms; use a
     // controlled shorter delay and cancel on movement so paragraph selection is
@@ -91,6 +103,9 @@ const ParagraphTextForPathComponent = ({
   };
 
   const handlePress = () => {
+    if (!selectionEnabled) {
+      return;
+    }
     if (didLongPress.current) {
       didLongPress.current = false;
       return;
@@ -131,11 +146,13 @@ const ParagraphTextForPathComponent = ({
     <Text
       onPress={handlePress}
       accessibilityLabel={accessibilityLabel}
-      accessibilityRole="button"
-      onPressIn={handlePressIn}
+      accessibilityRole={selectionEnabled ? 'button' : 'text'}
+      onPressIn={selectionEnabled ? handlePressIn : undefined}
       onPressOut={handlePressOut}
-      accessibilityHint="Tap to select, long press to save this line"
-      disabled={selection.isSaved || selection.found}
+      accessibilityHint={
+        selectionEnabled ? 'Tap to select, long press to save this line' : undefined
+      }
+      disabled={!selectionEnabled || selection.isSaved || selection.found}
       suppressHighlighting={true}
       style={textStyle}
       allowFontScaling={false}
@@ -159,14 +176,16 @@ const ParagraphTextForPathComponent = ({
 
       {isSelected && (
         <Text allowFontScaling={false}>
-          <SaveIcon
-            color={UIConstants.SAVE_ICON_COLOR}
-            width={fontSize * 1.2}
-            height={fontSize * 1.2}
-            style={{
-              transform: [{ translateY: Platform.OS === 'ios' ? -fontSize * 0.3 : fontSize * 0.3 }],
-            }}
-          />
+          {Platform.OS === 'android' ? (
+            <AndroidParagraphSaveIcon size={fontSize * 1.2} />
+          ) : (
+            <SaveIcon
+              color={UIConstants.SAVE_ICON_COLOR}
+              width={fontSize * 1.2}
+              height={fontSize * 1.2}
+              style={{ transform: [{ translateY: -fontSize * 0.3 }] }}
+            />
+          )}
         </Text>
       )}
     </Text>
