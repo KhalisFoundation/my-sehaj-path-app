@@ -7,6 +7,7 @@ import { Constants, Routes, EDGES_ALL_SIDES } from '@constants';
 import { SplashScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
+import { SplashScreenBackground } from '../assets/Images';
 
 type SplashProps = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
@@ -29,10 +30,7 @@ export const SplashScreen = ({ navigation }: SplashProps) => {
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
       <Animated.View style={{ opacity: fadeOut }}>
-        <ImageBackground
-          source={require('../assets/Images/SplashScreenBg.png')}
-          style={SplashScreenStyles.backgroundImage}
-        >
+        <ImageBackground source={SplashScreenBackground} style={SplashScreenStyles.backgroundImage}>
           <View style={SplashScreenStyles.overlayBg}>
             <Text style={SplashScreenStyles.mainHeadline}>{Constants.SEHAJ_PATH}</Text>
             <Text style={SplashScreenStyles.tagline}>{Constants.BUILDING_THE_HABIT}</Text>

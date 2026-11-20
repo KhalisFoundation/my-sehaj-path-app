@@ -1,4 +1,5 @@
 export { PrimaryButton } from './PrimaryButton';
+export { BackButton } from './BackButton';
 export { SecondaryButton } from './SecondaryButton';
 export { SecondaryHeading } from './SecondaryHeading';
 export { SimpleText } from './SimpleText';
@@ -44,4 +45,3 @@ export { TurnsTab } from './TurnsTab';
 export { FinishReadingSheet } from './FinishReadingSheet';
 export { PathLiveStatus } from './PathLiveStatus';
 export { PathScreenOverlays } from './PathScreenOverlays';
-export { BackButton } from './BackButton';
