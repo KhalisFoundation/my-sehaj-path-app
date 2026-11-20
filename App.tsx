@@ -7,6 +7,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SafeAreaStyle } from '@styles';
 import {
+  JoinPath,
+  InviteMember,
   SplashScreen,
   HomeScreen,
   Continue,
@@ -15,6 +17,7 @@ import {
   DatabaseUpdate,
   About,
   Error,
+  CreatePath,
 } from '@screens';
 import {
   BootSplash,
@@ -37,16 +40,24 @@ import { canSyncNow, onCheckpoint, onForeground, onReconnect } from './store/syn
 import { hydrateStore } from './store/persistence';
 import { setOnline } from './store/slices/networkSlice';
 import { provisionDatabase } from './db';
+import { linking } from './navigation/linking';
 
 export type RootStackParamList = {
   Splash: undefined;
-  Home: { pathDeleted?: boolean } | undefined;
-  Continue: { pathId: number; initialTab?: string };
+  Home: { pathDeleted?: boolean; pathMembershipEnded?: boolean } | undefined;
+  Continue: {
+    pathId: number;
+    sehajPathId?: string;
+    initialTab?: string;
+  };
+  CreatePath: undefined;
   Path: { pathId: number };
   Setting: undefined;
   DatabaseUpdate: undefined;
   About: undefined;
   Error: undefined;
+  JoinPath: { token: string };
+  InviteMember: { sehajPathId: string; pathName?: string };
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -193,7 +204,7 @@ const App = () => {
               prompt. Keep it app-wide so B can never continue editing A's
               active paths from the reader while the switch is unresolved. */}
           <SyncPopup mode="accountSwitch" />
-          <NavigationContainer>
+          <NavigationContainer linking={linking}>
             <Stack.Navigator
               initialRouteName={Routes.Splash}
               screenOptions={{
@@ -206,11 +217,14 @@ const App = () => {
               <Stack.Screen name={Routes.Splash} component={SplashScreen} />
               <Stack.Screen name={Routes.Home} component={HomeScreen} />
               <Stack.Screen name={Routes.Continue} component={Continue} />
+              <Stack.Screen name={Routes.CreatePath} component={CreatePath} />
               <Stack.Screen name={Routes.Path} component={PathScreen} />
               <Stack.Screen name={Routes.Setting} component={Settings} />
               <Stack.Screen name={Routes.DatabaseUpdate} component={DatabaseUpdate} />
               <Stack.Screen name={Routes.About} component={About} />
               <Stack.Screen name={Routes.Error} component={Error} />
+              <Stack.Screen name={Routes.JoinPath} component={JoinPath} />
+              <Stack.Screen name={Routes.InviteMember} component={InviteMember} />
             </Stack.Navigator>
           </NavigationContainer>
         </SafeAreaProvider>

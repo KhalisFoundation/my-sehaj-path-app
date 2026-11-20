@@ -1,5 +1,8 @@
 export { PathScreen } from './PathScreen';
 export { Continue } from './Continue';
+export { CreatePath } from './CreatePath';
+export { InviteMember } from './InviteMember';
+export { JoinPath } from './JoinPath';
 export { SplashScreen } from './SplashScreen';
 export { HomeScreen } from './HomeScreen';
 export { Settings } from './Setting';
