@@ -65,10 +65,22 @@ describe('syncSlice — coalescing', () => {
     expect(s.meta[1].deletedAt).toBeGreaterThan(500);
   });
 
-  it('editing a tombstoned path revives it (delete → create/update, deletedAt cleared)', () => {
+  it("a late edit cannot replace this device's pending delete", () => {
     let s = reducer(withMeta(false), markPathDeleted({ pathId: 1, at: 200 }));
     s = reducer(s, markPathEdited({ pathId: 1, at: 300 }));
-    expect(s.pathOps[1].kind).toBe('create'); // not on server → create
+    expect(s.pathOps[1].kind).toBe('delete');
+    expect(s.meta[1].deletedAt).toBe(200);
+    expect(s.meta[1].localUpdatedAt).toBe(200);
+  });
+
+  it('an edit can still revive a remote tombstone when no local delete is queued', () => {
+    let s = withMeta(true);
+    s.meta[1].deletedAt = 200;
+    s.meta[1].localUpdatedAt = 200;
+
+    s = reducer(s, markPathEdited({ pathId: 1, at: 300 }));
+
+    expect(s.pathOps[1].kind).toBe('update');
     expect(s.meta[1].deletedAt).toBeNull();
   });
 });

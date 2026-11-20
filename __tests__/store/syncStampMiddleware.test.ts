@@ -8,7 +8,7 @@ import {
   updatePath,
 } from '../../store/slices/pathsSlice';
 import { setFontSize, setLarivaar } from '../../store/slices/settingsSlice';
-import { ackServerPath } from '../../store/slices/syncSlice';
+import { ackServerPath, markPathDeleted } from '../../store/slices/syncSlice';
 import { isSilentPathOp } from '../../store/syncWork';
 import type { DateData, PathData } from '../../types';
 
@@ -89,6 +89,19 @@ describe('syncStampMiddleware', () => {
     } finally {
       (Date.now as jest.Mock).mockRestore();
     }
+  });
+
+  it('keeps a queued delete when a delayed screen update arrives', () => {
+    const store = makeStore();
+    store.dispatch(addPath({ path: makePath(1), date: makeDate(1) }));
+    const created = store.getState().sync.pathOps[1].localUpdatedAt;
+    store.dispatch(ackServerPath({ pathId: 1, sentLocalUpdatedAt: created, serverUpdatedAt: 100 }));
+    store.dispatch(markPathDeleted({ pathId: 1, at: 200 }));
+
+    store.dispatch(updateFor(1));
+
+    expect(store.getState().sync.pathOps[1].kind).toBe('delete');
+    expect(store.getState().sync.meta[1].deletedAt).not.toBeNull();
   });
 
   it('setScrollPosition sets scrollDirty only — no op, no settings change', () => {

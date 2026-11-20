@@ -165,11 +165,12 @@ describe('post-login catch-up', () => {
     mockState.sync.catchUpSyncDone = false;
   });
 
-  it('announces itself while running and marks itself done', async () => {
+  it('runs silently and marks itself done', async () => {
     await onForeground();
 
     expect(types()).toContain(setCatchUpSyncRunning.type);
     expect(types()).toContain(markCatchUpSyncDone.type);
+    expect(types()).not.toContain(requestSyncConfirmation.type);
   });
 
   it('runs only once per login, not on every Home focus', async () => {
@@ -194,17 +195,15 @@ describe('post-login catch-up', () => {
     expect(types()).not.toContain(requestSyncConfirmation.type);
   });
 
-  it('reports when this device has reading to reconcile', async () => {
+  it('stays silent when this device has reading to reconcile', async () => {
     mockState.paths.paths = [{ pathId: 1, saveData: { angNumber: 2, verseId: 0 }, pathName: 'P' }];
 
     await onForeground();
 
-    expect(types()).toContain(requestSyncConfirmation.type);
+    expect(types()).not.toContain(requestSyncConfirmation.type);
   });
 
-  it("reports when another device's reading arrives on an empty device", async () => {
-    // Nothing locally, so nothing is requested up front — but the pull brings
-    // paths down, and that change on screen is worth explaining.
+  it("stays silent when another device's reading arrives on an empty device", async () => {
     mockRefresh.mockImplementationOnce(async () => {
       mockState.paths.paths = [
         { pathId: 1, saveData: { angNumber: 9, verseId: 0 }, pathName: 'From cloud' },
@@ -214,21 +213,7 @@ describe('post-login catch-up', () => {
 
     await onForeground();
 
-    expect(types()).toContain(requestSyncConfirmation.type);
-  });
-
-  it('requests the confirmation before finishing, not after', async () => {
-    // Device report: a reload that downloaded another device's progress showed
-    // nothing, because the request arrived after the notice had already decided
-    // to stay quiet.
-    mockState.paths.paths = [{ pathId: 1, saveData: { angNumber: 2, verseId: 0 }, pathName: 'P' }];
-
-    await onForeground();
-
-    const order = types();
-    expect(order.indexOf(requestSyncConfirmation.type)).toBeLessThan(
-      order.indexOf(markCatchUpSyncDone.type)
-    );
+    expect(types()).not.toContain(requestSyncConfirmation.type);
   });
 
   it('still marks itself done when the sync cannot finish', async () => {
