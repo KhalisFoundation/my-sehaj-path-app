@@ -95,6 +95,12 @@ describe('usePathNavigation', () => {
 
     await act(async () => result.current.handleGoBack());
     await pressAlert('Without Saving');
+    await act(
+      () =>
+        new Promise<void>((resolve) => {
+          setTimeout(resolve, 0);
+        })
+    );
 
     // The checkpoint is disarmed BEFORE navigating, or it fires on the way out.
     expect(suppressLeaveSave).toHaveBeenCalledTimes(1);

@@ -20,6 +20,8 @@ export interface AvatarMember {
 
 interface Props {
   members: AvatarMember[];
+  /** Exact active-member count when `members` is a capped server preview. */
+  memberCount?: number;
   /**
    * How many faces to draw before collapsing the rest into a count.
    *
@@ -71,13 +73,14 @@ export const tintFor = (id: string): string => {
  * and an empty row would leave a hole in the card where the group summary sits
  * on shared paths.
  */
-export const MemberAvatars = ({ members, max = 3 }: Props) => {
-  if (members.length < 2) {
+export const MemberAvatars = ({ members, memberCount, max = 3 }: Props) => {
+  const count = memberCount ?? members.length;
+  if (count < 2) {
     return null;
   }
 
   const shown = members.slice(0, max);
-  const hidden = members.length - shown.length;
+  const hidden = Math.max(0, count - shown.length);
 
   return (
     <View style={styles.row}>
@@ -121,7 +124,7 @@ export const MemberAvatars = ({ members, max = 3 }: Props) => {
       </View>
 
       <Text style={styles.count} numberOfLines={1}>
-        {`by ${members.length} ${members.length === 1 ? 'reader' : 'readers'}`}
+        {`by ${count} readers`}
       </Text>
     </View>
   );

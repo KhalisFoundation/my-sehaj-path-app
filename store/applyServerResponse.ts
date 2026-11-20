@@ -1,9 +1,8 @@
-import type { SehajPath, SehajPathSyncResult } from '@api/generated/types.gen';
+import type { AccessibleSehajPath, SehajPath, SehajPathSyncResult } from '@api/generated/types.gen';
 import { resolveFontSize } from '../constants/FontSize';
 import {
   sehajPathSettingsControllerGet,
   sehajPathMembersControllerFindAccessible,
-  sehajPathsControllerFindAll,
 } from '@api/generated/sdk.gen';
 import { clearCurrentToken } from '../auth/tokenUtils';
 import type { AngsFormat, DateData, FontSizeData, PathData, VishraamsSource } from '../types';
@@ -27,8 +26,9 @@ import {
   upsertMeta,
   type SyncMeta,
 } from './slices/syncSlice';
+import { upsertMemberMetadata, type PathMemberPreview } from './slices/memberMetadataSlice';
 import { fromServerPath } from './syncAdapters';
-import { msToLegacy } from './syncDateUtils';
+import { isoToLegacy, legacyToIso, msToLegacy } from './syncDateUtils';
 import { clearBlockedWork, hasWorkBlockingPull, setConfirmedSettings } from './syncWork';
 import { settingsFingerprint } from './syncRequest';
 import { captureSyncSession, isCurrentSyncSession, syncSessionHeaders } from './syncSession';
@@ -84,9 +84,103 @@ const completionDateFromAccessible = (value: number | null | undefined): string 
 const scrollPositionFromAccessible = (value: number | undefined): number | undefined =>
   value !== undefined && Number.isFinite(value) ? Math.max(0, Math.round(value)) : undefined;
 
+/**
+ * V2 is the home-screen source of truth. Its owner rows contain the complete
+ * legacy checkpoint so the existing, conflict-safe personal-path merge can be
+ * reused without ever requesting the retired owner-only listing.
+ *
+ * Joined rows intentionally have no `pathId`; their canonical position and
+ * group-wide reading days are applied through the shared-path branch below.
+ */
+interface OwnerPathFallback {
+  readDates?: string[];
+  startDate?: number;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+const finiteOr = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+
+const ownerPathFromAccessible = (
+  row: AccessibleSehajPath,
+  fallback?: OwnerPathFallback
+): SehajPath | null => {
+  if (!row.pathId) {
+    return null;
+  }
+  // During a rolling deploy, the previous V2 server has the canonical path
+  // position but not the legacy sync timestamps yet. Never write `undefined`
+  // into the local clocks: it becomes NaN on the next merge and blocks pulls.
+  const createdAt = finiteOr(row.createdAt, fallback?.createdAt ?? row.startDate ?? 0);
+  const updatedAt = finiteOr(row.updatedAt, fallback?.updatedAt ?? 0);
+  return {
+    pathId: row.pathId,
+    name: row.name,
+    angNumber: row.angNumber,
+    verseId: row.verseId,
+    progress: row.progress,
+    scrollPosition: row.scrollPosition,
+    readDates: row.readDates ?? fallback?.readDates ?? [],
+    startDate: finiteOr(row.startDate, fallback?.startDate ?? createdAt),
+    completionDate: row.completionDate,
+    createdAt,
+    updatedAt,
+  };
+};
+
+const memberPreviewsFromAccessible = (
+  members: AccessibleSehajPath['members'] | undefined
+): PathMemberPreview[] =>
+  (members ?? []).map((member) => ({
+    id: member.id,
+    displayLabel: member.displayLabel,
+    hasAvatar: member.hasAvatar,
+    avatarUpdatedAt: member.avatarUpdatedAt,
+  }));
+
+const updateMemberMetadata = (
+  store: AppStore,
+  pathId: number,
+  row: { memberCount?: number; members?: AccessibleSehajPath['members'] }
+): void => {
+  store.dispatch(
+    upsertMemberMetadata({
+      pathId,
+      account: store.getState().sync.account,
+      metadata: {
+        memberCount: row.memberCount ?? 0,
+        memberPreviews: memberPreviewsFromAccessible(row.members),
+      },
+    })
+  );
+};
+
+/** V2 uses ISO calendar days; local persistence keeps the legacy display form. */
+const readDatesFromAccessible = (
+  row: Pick<AccessibleSehajPath, 'readDates'>
+): DateData['dates'] | undefined => {
+  if (row.readDates === undefined) {
+    return undefined;
+  }
+  return row.readDates.flatMap((date) => {
+    const legacy = isoToLegacy(date);
+    return legacy === null ? [] : [{ date: legacy }];
+  });
+};
+
 const findLocalIdByServerPathId = (state: RootState, serverPathId: string): number | null => {
   for (const [key, meta] of Object.entries(state.sync.meta)) {
     if (meta.serverPathId === serverPathId) {
+      return Number(key);
+    }
+  }
+  return null;
+};
+
+const findLocalIdByGroupId = (state: RootState, groupId: string): number | null => {
+  for (const [key, meta] of Object.entries(state.sync.meta)) {
+    if (meta.groupId === groupId) {
       return Number(key);
     }
   }
@@ -235,6 +329,8 @@ const allocateAccessiblePath = (
     completionDate?: number | null;
     startDate: number;
     memberCount?: number;
+    members?: AccessibleSehajPath['members'];
+    readDates?: AccessibleSehajPath['readDates'];
   }
 ): void => {
   const state = store.getState();
@@ -257,7 +353,7 @@ const allocateAccessiblePath = (
       },
       date: {
         pathid: pathId,
-        dates: [],
+        dates: readDatesFromAccessible(row) ?? [],
         scrollPosition: scrollPositionFromAccessible(row.scrollPosition) ?? 0,
       },
     })
@@ -280,6 +376,7 @@ const allocateAccessiblePath = (
       },
     })
   );
+  updateMemberMetadata(store, pathId, row);
   store.dispatch(
     setPathShared({
       pathId,
@@ -293,11 +390,9 @@ const allocateAccessiblePath = (
  * Resolve one path immediately after an invite join.
  *
  * Invite joining is an authenticated group operation, not a personal-data
- * sync operation.  In particular, a newly signed-in account may not have
- * completed its `/sync` association yet.  Reusing the guarded owner refresh
- * here therefore creates a race and reports a valid join as a missing path.
- * The accessible-path endpoint is the authoritative source for this flow and
- * is safe to call before the personal sync account is associated.
+ * sync operation. The accessible-path endpoint is the authoritative source
+ * for this flow, but its response still belongs to the login/account that
+ * started it and must never be applied after an account switch.
  */
 export const ensureAccessiblePath = async (
   store: AppStore,
@@ -306,9 +401,13 @@ export const ensureAccessiblePath = async (
 ): Promise<number | null> => {
   const stateAtStart = store.getState();
   const session = captureSyncSession(stateAtStart);
-  if (!session) {
+  if (
+    !session ||
+    (stateAtStart.sync.account !== null && stateAtStart.sync.account !== session.email)
+  ) {
     return null;
   }
+  const accountAtStart = stateAtStart.sync.account;
   // Continue calls this as a focused-screen refresh. Preserve the row that
   // represented this group when the request began, so a DELETE that completes
   // before its response cannot be undone by `allocateAccessiblePath` below.
@@ -320,6 +419,16 @@ export const ensureAccessiblePath = async (
     headers: syncSessionHeaders(session),
   });
   if (result.error || !result.data) {
+    return null;
+  }
+
+  const stateAfterRequest = store.getState();
+  const associatedDuringRequest =
+    accountAtStart === null && stateAfterRequest.sync.account === session.email;
+  if (
+    !isCurrentSyncSession(stateAfterRequest, session) ||
+    (stateAfterRequest.sync.account !== accountAtStart && !associatedDuringRequest)
+  ) {
     return null;
   }
 
@@ -376,17 +485,18 @@ export const ensureAccessiblePath = async (
       groupId: sehajPathId,
     })
   );
-  if (Number.isFinite(row.startDate)) {
-    store.dispatch(
-      upsertMeta({
-        pathId: localId,
-        meta: {
-          serverPathId: row.pathId ?? row.id,
-          startDate: row.startDate,
-        },
-      })
-    );
-  }
+  store.dispatch(
+    upsertMeta({
+      pathId: localId,
+      meta: {
+        serverPathId: row.pathId ?? row.id,
+        startDate: Number.isFinite(row.startDate)
+          ? row.startDate
+          : current.sync.meta[localId].startDate,
+      },
+    })
+  );
+  updateMemberMetadata(store, localId, row);
   store.dispatch(
     applyServerPathData({
       pathId: localId,
@@ -400,7 +510,12 @@ export const ensureAccessiblePath = async (
             ? current.paths.paths.find((path) => path.pathId === localId)?.completionDate ?? ''
             : ''),
       },
-      datePatch: { scrollPosition: scrollPositionFromAccessible(row.scrollPosition) },
+      datePatch: {
+        scrollPosition: scrollPositionFromAccessible(row.scrollPosition),
+        ...(readDatesFromAccessible(row) === undefined
+          ? {}
+          : { dates: readDatesFromAccessible(row) }),
+      },
     })
   );
   return localId;
@@ -424,7 +539,8 @@ export const applyServerPath = (store: AppStore, sp: SehajPath, sent?: SentOp): 
     return;
   }
 
-  const knownServerClock = store.getState().sync.meta[pathId]?.serverUpdatedAt ?? 0;
+  const currentMeta = store.getState().sync.meta[pathId];
+  const knownServerClock = finiteOr(currentMeta?.serverUpdatedAt, 0);
   // Creation time never changes. Keep it even if the body is intentionally
   // skipped because a newer local edit is pending; Home uses it for display
   // order only and it has no effect on conflict handling or API requests.
@@ -440,6 +556,17 @@ export const applyServerPath = (store: AppStore, sp: SehajPath, sent?: SentOp): 
     ? store.getState().sync.meta[pathId]?.localUpdatedAt === sent.sentLocalUpdatedAt
     : false;
   const applied = fromServerPath(sp);
+  // Older API deployments can report a completed checkpoint without its
+  // completion date. Do not let that partial response erase the date this
+  // device just saved; a later canonical completion date still replaces it.
+  if (sp.completionDate == null && sp.progress >= 100) {
+    const localCompletionDate = store
+      .getState()
+      .paths.paths.find((path) => path.pathId === pathId)?.completionDate;
+    if (localCompletionDate) {
+      applied.pathPatch.completionDate = localCompletionDate;
+    }
+  }
   if (sent) {
     store.dispatch(
       ackServerPath({
@@ -482,10 +609,7 @@ export const applyServerPath = (store: AppStore, sp: SehajPath, sent?: SentOp): 
           serverPathId: sp.pathId,
           startDate: sp.startDate,
           serverCreatedAt: sp.createdAt,
-          localUpdatedAt: Math.max(
-            store.getState().sync.meta[pathId]?.localUpdatedAt ?? 0,
-            sp.updatedAt
-          ),
+          localUpdatedAt: Math.max(finiteOr(currentMeta?.localUpdatedAt, 0), sp.updatedAt),
           serverUpdatedAt: sp.updatedAt,
           onServer: true,
         },
@@ -790,20 +914,11 @@ const performRefreshPathsFromServer = async (
   };
 
   try {
-    const [pathsResult, settingsResult, accessibleResult] = await Promise.all([
-      sehajPathsControllerFindAll({ headers: syncSessionHeaders(session) }),
-      sehajPathSettingsControllerGet({ headers: syncSessionHeaders(session) }),
-      // Which of those paths are shared with a group.
-      //
-      // Never allowed to fail the refresh. It answers an extra question about
-      // rows the other two calls already fetched, so losing the answer means a
-      // shared path is momentarily treated as personal — the server refuses a
-      // rewind of a shared path regardless, so this is defence in depth, not
-      // the only guard. Failing the whole sync over it would trade a small
-      // degradation for a total one.
+    const [accessibleResult, settingsResult] = await Promise.all([
       sehajPathMembersControllerFindAccessible({
         headers: syncSessionHeaders(session),
-      }).catch(() => null),
+      }),
+      sehajPathSettingsControllerGet({ headers: syncSessionHeaders(session) }),
     ]);
     // A logout or a different login may happen while GET is in flight. Never
     // let account A's response populate account B's local dataset.
@@ -815,7 +930,7 @@ const performRefreshPathsFromServer = async (
     ) {
       return false;
     }
-    const pathsUnauthorized = pathsResult.error && pathsResult.response?.status === 401;
+    const pathsUnauthorized = accessibleResult.error && accessibleResult.response?.status === 401;
     const settingsUnauthorized = settingsResult.error && settingsResult.response?.status === 401;
     if (pathsUnauthorized || settingsUnauthorized) {
       resetRefreshFailure(store);
@@ -827,19 +942,20 @@ const performRefreshPathsFromServer = async (
       return false;
     }
     const settingsMissing = settingsResult.error && settingsResult.response?.status === 404;
-    // "Nothing changed" is a successful answer, not a failure. Without this the
-    // client reports "unable to sync" for a refresh the server answered fine.
-    const pathsUnchanged = pathsResult.error && pathsResult.response?.status === 304;
+    // Express may answer a conditional V2 read with 304. Keep the current
+    // local snapshot in that case; it is a successful refresh, not a sync
+    // failure or an empty authoritative path list.
+    const pathsUnchanged = accessibleResult.error && accessibleResult.response?.status === 304;
     if (
-      (pathsResult.error && !pathsUnchanged) ||
-      (!pathsUnchanged && !pathsResult.data) ||
+      (accessibleResult.error && !pathsUnchanged) ||
+      (!pathsUnchanged && !accessibleResult.data) ||
       (settingsResult.error && !settingsMissing)
     ) {
       const reasons = [
-        pathsResult.error && !pathsUnchanged
-          ? `GET /paths HTTP ${pathsResult.response?.status ?? 'no response'}`
+        accessibleResult.error && !pathsUnchanged
+          ? `GET /v2/paths HTTP ${accessibleResult.response?.status ?? 'no response'}`
           : null,
-        !pathsUnchanged && !pathsResult.data ? 'GET /paths returned no data' : null,
+        !pathsUnchanged && !accessibleResult.data ? 'GET /v2/paths returned no data' : null,
         settingsResult.error && !settingsMissing
           ? `GET /settings HTTP ${settingsResult.response?.status ?? 'no response'}`
           : null,
@@ -853,53 +969,91 @@ const performRefreshPathsFromServer = async (
       }
       return false;
     }
-    if (!pathsUnchanged && pathsResult.data) {
-      pathsResult.data.forEach((sp) => {
-        if (wasRemovedSinceRefreshStarted(sp.pathId)) {
-          return;
-        }
-        const localId = findLocalIdByServerPathId(store.getState(), sp.pathId);
-        // A shared path is server-owned by its canonical group row. The
-        // owner-scoped `/paths` response can be stale while the accessible
-        // response is already current (especially when a rename happens on
-        // another device), so never apply its name/progress/readDates to a
-        // path that is already known to be shared. The accessible response
-        // below is the authoritative shared-path body.
-        if (localId != null && store.getState().sync.meta[localId]?.shared) {
-          return;
-        }
-        // Leave a personal path open in the reader completely untouched —
-        // don't apply the server's name/progress/readDates under an active
-        // reader. It reconciles on the next safe refresh once the reader exits.
-        if (localId != null && localId === activePathId) {
-          return;
-        }
-        applyServerPath(store, sp);
+    const accessiblePaths = accessibleResult.data ?? [];
+    // Older group builds stored the canonical group id in `serverPathId` for
+    // an owner. That loses the client sync id, so a later V2 refresh cannot
+    // match the owner row and treats it like a joined row. Repair it before
+    // applying this response; the V2 owner row is the one authoritative place
+    // where both identities are available together.
+    accessiblePaths.forEach((row) => {
+      if (!row.pathId) {
+        return;
+      }
+      const localId = findLocalIdByGroupId(store.getState(), row.id);
+      if (localId === null) {
+        return;
+      }
+      const meta = store.getState().sync.meta[localId];
+      if (meta?.serverPathId === row.id) {
+        store.dispatch(
+          upsertMeta({
+            pathId: localId,
+            meta: { serverPathId: row.pathId, startDate: meta.startDate },
+          })
+        );
+      }
+    });
+    const ownedPaths = accessiblePaths.flatMap((row) => {
+      const localId = row.pathId ? findLocalIdByServerPathId(store.getState(), row.pathId) : null;
+      const meta = localId == null ? undefined : store.getState().sync.meta[localId];
+      const localDates =
+        localId == null
+          ? undefined
+          : store.getState().paths.dates.find((entry) => entry.pathid === localId)?.dates;
+      const dates = localDates?.flatMap(({ date }) => {
+        const iso = legacyToIso(date);
+        return iso ? [iso] : [];
       });
-    }
-    // Mark which local paths are actively shared, BEFORE anything else looks
-    // at them.
-    //
-    // This flag is what makes a group path behave as a group path: the bulk
-    // `/sync` body leaves it out, the middleware stops marking it dirty, and
-    // `isGroupPath` gates the reader. Every one of those was built and tested,
-    // and none of them did anything, because nothing set the flag — so a shared
-    // path was still being pushed through the owner-scoped merge that can
-    // rewind a group's reading.
-    //
-    // Only OWNED paths matter here. `GET /sehaj-path/paths` is owner-scoped, so
-    // a joined path has no local row to mark — and `accessible` returns
-    // `pathId: null` for exactly those.
-    if (accessibleResult?.data) {
+      const path = ownerPathFromAccessible(row, {
+        readDates: dates,
+        startDate: meta?.startDate,
+        createdAt: meta?.serverCreatedAt,
+        updatedAt: meta?.serverUpdatedAt,
+      });
+      return path ? [path] : [];
+    });
+    ownedPaths.forEach((sp) => {
+      if (wasRemovedSinceRefreshStarted(sp.pathId)) {
+        return;
+      }
+      const localId = findLocalIdByServerPathId(store.getState(), sp.pathId);
+      // A shared path is server-owned by its canonical group row. The
+      // owner-scoped `/paths` response can be stale while the accessible
+      // response is already current (especially when a rename happens on
+      // another device), so never apply its name/progress/readDates to a
+      // path that is already known to be shared. The accessible response
+      // below is the authoritative shared-path body.
+      if (localId != null && store.getState().sync.meta[localId]?.shared) {
+        return;
+      }
+      // Leave a personal path open in the reader completely untouched —
+      // don't apply the server's name/progress/readDates under an active
+      // reader. It reconciles on the next safe refresh once the reader exits.
+      if (localId != null && localId === activePathId) {
+        return;
+      }
+      applyServerPath(store, sp);
+    });
+    if (!pathsUnchanged) {
+      // Mark which local paths are actively shared, BEFORE anything else looks
+      // at them.
+      //
+      // This flag is what makes a group path behave as a group path: the bulk
+      // `/sync` body leaves it out, the middleware stops marking it dirty, and
+      // `isGroupPath` gates the reader. Every one of those was built and tested,
+      // and none of them did anything, because nothing set the flag — so a shared
+      // path was still being pushed through the owner-scoped merge that can
+      // rewind a group's reading.
+      //
+      // An owner row contains the full personal checkpoint; a joined row has no
+      // local path id and is allocated below. Both come from this one V2 payload.
       // Read fresh rather than reusing the `state` captured at entry: the calls
       // above have applied server paths since, so an older snapshot could miss
       // the very meta this match needs.
       const afterPaths = store.getState();
-      for (const row of accessibleResult.data) {
-        // The accessible response is fetched alongside `/paths`. It can carry
-        // the same pre-delete group row, including an invite-only owner path
-        // whose UI still looks personal. Do not allocate that stale row after
-        // the delete has removed its local identity.
+      for (const row of accessiblePaths) {
+        // Do not allocate a stale row after a delete has removed its local
+        // identity while this request was in flight.
         if (wasRemovedSinceRefreshStarted(row.pathId ?? row.id)) {
           continue;
         }
@@ -918,14 +1072,18 @@ const performRefreshPathsFromServer = async (
             // can never be pushed, so skipping it here left a joined row
             // retrying a `PATCH` for ever.
             store.dispatch(setPathShared({ pathId: joinedId, shared: true, groupId: row.id }));
-            if (Number.isFinite(row.startDate)) {
-              store.dispatch(
-                upsertMeta({
-                  pathId: joinedId,
-                  meta: { serverPathId: row.id, startDate: row.startDate },
-                })
-              );
-            }
+            store.dispatch(
+              upsertMeta({
+                pathId: joinedId,
+                meta: {
+                  serverPathId: row.id,
+                  startDate: Number.isFinite(row.startDate)
+                    ? row.startDate
+                    : store.getState().sync.meta[joinedId].startDate,
+                },
+              })
+            );
+            updateMemberMetadata(store, joinedId, row);
             // And take the group's position from the same response.
             //
             // A joined path is a VIEW of a row this device does not own: it
@@ -948,7 +1106,12 @@ const performRefreshPathsFromServer = async (
                     completionDateFromAccessible(row.completionDate) ??
                     (row.progress >= 100 ? joinedPath?.completionDate ?? '' : ''),
                 },
-                datePatch: { scrollPosition: scrollPositionFromAccessible(row.scrollPosition) },
+                datePatch: {
+                  scrollPosition: scrollPositionFromAccessible(row.scrollPosition),
+                  ...(readDatesFromAccessible(row) === undefined
+                    ? {}
+                    : { dates: readDatesFromAccessible(row) }),
+                },
               })
             );
           }
@@ -987,7 +1150,7 @@ const performRefreshPathsFromServer = async (
         // owner-scoped response as their local-first source of truth.
         if (localId !== activePathId && row.memberCount > 1) {
           const sharedPath = store.getState().paths.paths.find((path) => path.pathId === localId);
-          const ownerPath = pathsResult.data?.find((path) => path.pathId === row.pathId);
+          const ownerPath = ownedPaths.find((path) => path.pathId === row.pathId);
           const ownerCompletionDate =
             ownerPath?.completionDate != null
               ? fromServerPath(ownerPath).pathPatch.completionDate
@@ -1012,6 +1175,9 @@ const performRefreshPathsFromServer = async (
               datePatch: {
                 scrollPosition:
                   scrollPositionFromAccessible(row.scrollPosition) ?? ownerScrollPosition,
+                ...(readDatesFromAccessible(row) === undefined
+                  ? {}
+                  : { dates: readDatesFromAccessible(row) }),
               },
             })
           );
@@ -1021,25 +1187,28 @@ const performRefreshPathsFromServer = async (
         // active reader so its live position cannot jump, but skipping the
         // canonical start date made that device show "0 days ago" while other
         // members correctly showed the real age.
-        if (Number.isFinite(row.startDate)) {
-          store.dispatch(
-            upsertMeta({
-              pathId: localId,
-              meta: { serverPathId: row.pathId, startDate: row.startDate },
-            })
-          );
-        }
+        store.dispatch(
+          upsertMeta({
+            pathId: localId,
+            meta: {
+              serverPathId: row.pathId,
+              startDate: Number.isFinite(row.startDate)
+                ? row.startDate
+                : store.getState().sync.meta[localId].startDate,
+            },
+          })
+        );
+        updateMemberMetadata(store, localId, row);
       }
 
       // The accessible response is authoritative for every shared path on this
-      // device, including the owner's copy. The owner-scoped `/paths` list is
-      // intentionally not enough here because `reconcileDeletions` skips shared
-      // rows: a joined member is absent from that list by design, while a
+      // device, including the owner's copy. `reconcileDeletions` skips shared
+      // rows because a joined member is absent from the owned subset, while a
       // deleted group owner must also disappear from the local shared copy.
       // Once membership is removed or the group is deleted, accessible no
       // longer returns the group id; remove either local representation so Home
       // cannot resurrect a deleted shared path after a restart.
-      const accessibleGroupIds = new Set(accessibleResult.data.map((row) => row.id));
+      const accessibleGroupIds = new Set(accessiblePaths.map((row) => row.id));
       const refreshed = store.getState();
       for (const [key, meta] of Object.entries(refreshed.sync.meta)) {
         const localId = Number(key);
@@ -1061,12 +1230,9 @@ const performRefreshPathsFromServer = async (
           store.dispatch(removePathAndSyncState({ pathId: localId }));
         }
       }
-    }
-
-    if (!pathsUnchanged && pathsResult.data) {
       reconcileDeletions(
         store,
-        new Set(pathsResult.data.map((path) => path.pathId)),
+        new Set(ownedPaths.map((path) => path.pathId)),
         activePathId,
         expectedMeta
       );
@@ -1106,10 +1272,10 @@ const performRefreshPathsFromServer = async (
     resetRefreshFailure(store);
     return true;
   } catch (error) {
-    const reason = `GET /paths transport: ${
+    const reason = `GET /v2/paths transport: ${
       error instanceof Error ? error.message : String(error)
     }`;
-    recordError(error, 'refresh: GET /paths failed', {
+    recordError(error, 'refresh: GET /v2/paths failed', {
       sync_failure_reason: reason.slice(0, 1000),
     });
     noteRefreshFailure(store, reason);
