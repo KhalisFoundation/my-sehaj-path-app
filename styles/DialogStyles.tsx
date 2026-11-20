@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { UIConstants } from '@constants/UIConstants';
 import font from '@utils/font';
 
 export const DialogStyles = StyleSheet.create({
@@ -7,7 +8,7 @@ export const DialogStyles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 36,
+    padding: 24,
   },
   inlineBackdrop: {
     position: 'absolute',
@@ -18,15 +19,14 @@ export const DialogStyles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 350,
+    maxWidth: UIConstants.DIALOG_MAX_WIDTH,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
     gap: 12,
   },
   compactBackdrop: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    padding: 24,
   },
   compactCard: {
     padding: 20,

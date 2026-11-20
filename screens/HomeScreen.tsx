@@ -15,6 +15,7 @@ import {
   SignInPopup,
   SyncUnavailablePopup,
   Message,
+  PathMembershipRemovalDialog,
 } from '@components';
 import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
 import { Constants, Routes, EDGES_ALL_SIDES, UIConstants } from '@constants';
@@ -49,6 +50,8 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const { handleDrawerNavigate } = useDrawerNavigation();
   const pathDeleted = route.params?.pathDeleted === true;
   const pathMembershipEnded = route.params?.pathMembershipEnded === true;
+  const membershipRemovalNotice = route.params?.membershipRemovalNotice;
+  const showMembershipRemovalDialog = membershipRemovalNotice !== undefined;
   useScreenAnalytics('HomeScreen', 'HomeScreen');
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
@@ -169,6 +172,10 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
     setIsDrawerVisible(false);
   }, []);
 
+  const dismissMembershipRemovalNotice = useCallback(() => {
+    navigation.setParams({ membershipRemovalNotice: undefined });
+  }, [navigation]);
+
   const handleRefresh = useCallback(async () => {
     if (refreshing) {
       return;
@@ -236,6 +243,12 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
       <SyncPopup mode="unowned" />
       <SignInPopup />
       <SyncUnavailablePopup />
+      <PathMembershipRemovalDialog
+        visible={showMembershipRemovalDialog}
+        pathName={membershipRemovalNotice?.pathName}
+        adminName={membershipRemovalNotice?.adminName}
+        onDismiss={dismissMembershipRemovalNotice}
+      />
       <BackgroundImage
         source={HomeScreenBackground}
         resizeMode="cover"
