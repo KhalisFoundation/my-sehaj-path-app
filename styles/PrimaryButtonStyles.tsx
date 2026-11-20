@@ -1,5 +1,6 @@
 import { StyleSheet } from 'react-native';
 import font from '@utils/font';
+import { UIConstants } from '@constants/UIConstants';
 
 export const PrimaryButtonStyles = StyleSheet.create({
   container: {
@@ -12,7 +13,8 @@ export const PrimaryButtonStyles = StyleSheet.create({
   },
   button: {
     flexDirection: 'row',
-    padding: 12,
+    padding: UIConstants.PADDING,
+    paddingHorizontal: UIConstants.PADDING * 2,
     gap: 10,
     alignItems: 'center',
     justifyContent: 'center',
