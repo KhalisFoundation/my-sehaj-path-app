@@ -30,6 +30,12 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <!-- React Native disables standalone SoLoader in its library manifest. Enable it here so
+           MainApplication can recover a native library that Android failed to extract. -->
+      <meta-data
+        android:name="com.facebook.soloader.enabled"
+        android:value="true"
+        tools:replace="android:value" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
