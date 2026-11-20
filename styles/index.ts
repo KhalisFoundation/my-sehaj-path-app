@@ -10,6 +10,8 @@ export { InviteMemberStyles } from './InviteMemberStyles';
 export { MemberAvatarsStyles } from './MemberAvatarsStyles';
 export { ChooseSlotStyles } from './ChooseSlotStyles';
 export { TurnsTabStyles } from './TurnsTabStyles';
+export { FinishReadingSheetStyles } from './FinishReadingSheetStyles';
+export { GroupPathStyles } from './GroupPathStyles';
 export { FontSizeStyle } from './FontSizeStyles';
 export { ImportantTextStyles } from './ImportantTextStyles';
 export { LabelStyles } from './LabelStyles';

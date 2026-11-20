@@ -22,8 +22,13 @@ export interface PathTextProps {
   verseId: number;
   /** Vishraam markers for THIS verse (per-verse data, not a setting). */
   vishraams: Visraams;
+  /** Optional session layout overrides supplied by the reader. */
+  vishraamEnabled?: boolean;
+  vishraamsSource?: string;
   onSelection: () => void;
   onSave: () => void;
+  /** False for a Read Along follower: scripture remains readable, never savable. */
+  selectionEnabled?: boolean;
   onLayout?: (event: any) => void;
 }
 
@@ -174,6 +179,9 @@ export const pathTextPropsAreEqual = (prevProps: PathTextProps, nextProps: PathT
     prevProps.index === nextProps.index &&
     prevProps.verseId === nextProps.verseId &&
     prevProps.vishraams === nextProps.vishraams &&
+    prevProps.vishraamEnabled === nextProps.vishraamEnabled &&
+    prevProps.vishraamsSource === nextProps.vishraamsSource &&
+    prevProps.selectionEnabled === nextProps.selectionEnabled &&
     prevProps.onLayout === nextProps.onLayout
   );
 };
