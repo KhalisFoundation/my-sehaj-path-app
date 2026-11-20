@@ -31,6 +31,12 @@ jest.mock('../../components', () => {
     SyncPopup: Empty,
     SignInPopup: Empty,
     SyncUnavailablePopup: Empty,
+    PathMembershipRemovalDialog: (props: {
+      visible: boolean;
+      pathName?: string;
+      adminName?: string;
+      onDismiss: () => void;
+    }) => ReactForMock.createElement('PathMembershipRemovalDialog', props),
     PrimaryButton: (props: { buttonTitle: string; onPress: () => void }) =>
       ReactForMock.createElement('PrimaryButton', props),
   };
@@ -60,5 +66,39 @@ describe('HomeScreen', () => {
       startButton.props.onPress();
     });
     expect(navigation.push).toHaveBeenCalledWith(Routes.CreatePath);
+  });
+
+  it('shows the membership-removal dialog after a notification tap', async () => {
+    const navigation = { push: jest.fn(), setParams: jest.fn() };
+
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <HomeScreen
+          navigation={navigation as never}
+          route={
+            {
+              key: 'Home-notification',
+              name: Routes.Home,
+              params: {
+                membershipRemovalNotice: { pathName: 'Morning Sehaj Path', adminName: 'Amrit' },
+              },
+            } as never
+          }
+        />
+      );
+    });
+
+    const dialog = renderer.root.findByType('PathMembershipRemovalDialog' as never);
+    expect(dialog.props).toMatchObject({
+      visible: true,
+      pathName: 'Morning Sehaj Path',
+      adminName: 'Amrit',
+    });
+
+    await act(async () => {
+      dialog.props.onDismiss();
+    });
+    expect(navigation.setParams).toHaveBeenCalledWith({ membershipRemovalNotice: undefined });
   });
 });

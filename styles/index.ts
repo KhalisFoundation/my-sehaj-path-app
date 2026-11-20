@@ -40,5 +40,6 @@ export { AngsNavigationStyle } from './AngsNavigation';
 export { LoadingStyles } from './LoadingStyles';
 export { DrawerMenuStyles } from './DrawerMenuStyles';
 export { DialogStyles } from './DialogStyles';
+export { PathMembershipRemovalDialogStyles } from './PathMembershipRemovalDialogStyles';
 export { SyncStatusNoticeStyles } from './SyncStatusNoticeStyles';
 export { PathOptionsMenuStyles } from './PathOptionsMenuStyles';

@@ -36,24 +36,40 @@ export const UIConstants: UIConstant = {
   NAV_TEXT_COLOR: '#FFFFFF',
   NAV_TITLE_FONT_SIZE: 20,
   BORDER_COLOR: '#EEEEEE',
+  DIALOG_MAX_WIDTH: 500,
   TURN_OPTIONS_DIALOG_MAX_WIDTH: 480,
+  DRAWER_BACKGROUND: '#F5F5F5',
+  DRAWER_DIVIDER_COLOR: '#B8C5D6',
+  DRAWER_HEADER_ICON_BACKGROUND: '#FFFFFF20',
+  ACCENT_COLOR: '#F39C12',
+  SHADOW_COLOR: '#000000',
 
   // Text roles, darkest to lightest.
   PRIMARY_COLOR: '#11336A',
   BODY_TEXT_COLOR: '#2C3E50',
   BODY_TEXT_SECONDARY: '#777777',
+  CARD_SECONDARY_TEXT_COLOR: '#666666',
+  SECONDARY_ACTION_TEXT_COLOR: '#7F8C8D',
   MUTED_TEXT_COLOR: '#6B7B8F',
   DANGER_COLOR: '#A3341F',
+  DESTRUCTIVE_TEXT_COLOR: '#B3261E',
+  WARNING_TEXT_COLOR: '#FF6B6B',
+  DISABLED_BACKGROUND_COLOR: '#CCCCCC',
+  DISABLED_TEXT_COLOR: '#888888',
+  STATUS_ERROR_COLOR: '#913B3B',
+  STATUS_ERROR_BACKGROUND: '#FBE9E8',
   DIVIDER_COLOR: '#E3E9F2',
   DIVIDER_SECONDARY: '#11336A0D',
 
   // Base sizes. `AppText` scales these by the user's font-size setting, so they
   // are the value at the default setting rather than a fixed rendered size.
   TITLE_FONT_SIZE: 28,
+  SUBTITLE_FONT_SIZE_BOLD: 24,
   SUBTITLE_FONT_SIZE: 20,
   BODY_FONT_SIZE: 18,
   BODY_LINE_HEIGHT: 26,
   CAPTION_FONT_SIZE: 14,
+  SMALL_FONT_SIZE: 16,
 
   // About screen artwork, sized to the aspect ratio of each source image.
   ABOUT_KHALIS_LOGO_WIDTH: 220,
@@ -64,6 +80,10 @@ export const UIConstants: UIConstant = {
   // Neutral rather than navy: sheets should dim the current screen without
   // recolouring the calendar, background artwork, or status bar beneath them.
   MODAL_BACKDROP_COLOR: 'rgba(0, 0, 0, 0.32)',
+  MODAL_SECONDARY_TEXT_COLOR: '#6E747B',
+  FORM_DIALOG_BACKDROP_COLOR: 'rgba(0, 0, 0, 0.42)',
+  SHEET_HANDLE_COLOR: '#AAB6C6',
+  SETTINGS_SECTION_HEADING_COLOR: '#999999',
 
   // Reusable form geometry and colours.
   INPUT_BORDER_COLOR: '#CFCFCF',
