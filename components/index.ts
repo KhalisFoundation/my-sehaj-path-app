@@ -13,7 +13,7 @@ export { PrimaryCard } from './PrimaryCard';
 export { Label } from './Label';
 export { ImportantText } from './ImportantText';
 export { Headline } from './Headline';
-export { SwitchSettingItem, DropdownSettingItem } from './Settings';
+export { SwitchSettingItem, SelectionSheetSettingItem } from './Settings';
 export { PathRename } from './PathRename';
 export { Calender } from './Calender';
 export { PathReader } from './PathReader';

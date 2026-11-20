@@ -6,6 +6,7 @@ import {
   endOfLocalDayExclusive,
   formatCalendarDate,
   formatDateTime,
+  formatPathCompletionDate,
   formatTime,
   isSameLocalDay,
   parseLegacyPathDate,
@@ -88,5 +89,11 @@ describe('shared Day.js date utilities', () => {
   it('strictly parses legacy path dates', () => {
     expect(parseLegacyPathDate('2-July-2026').format('YYYY-MM-DD')).toBe('2026-07-02');
     expect(parseLegacyPathDate('31-February-2026').isValid()).toBe(false);
+  });
+
+  it('formats legacy, ISO, and epoch completion dates for completed cards', () => {
+    expect(formatPathCompletionDate('2-July-2026')).toBe('2 Jul 2026');
+    expect(formatPathCompletionDate('2026-07-02T12:00:00.000Z')).toBe('2 Jul 2026');
+    expect(formatPathCompletionDate(String(Date.UTC(2026, 6, 2, 12)))).toBe('2 Jul 2026');
   });
 });

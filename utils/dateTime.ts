@@ -108,3 +108,20 @@ export const isSameOrAfterDateTime = (left: ConfigType, right: ConfigType): bool
   dayjs(left).isSameOrAfter(dayjs(right));
 
 export const parseLegacyPathDate = (value: string): Dayjs => dayjs(value, 'D-MMMM-YYYY', true);
+
+/**
+ * Completed paths exist in both the original `D-MMMM-YYYY` storage format and
+ * newer server-backed formats. Keep that migration detail out of card UI.
+ */
+export const formatPathCompletionDate = (value: string): string => {
+  const legacy = parseLegacyPathDate(value);
+  if (legacy.isValid()) {
+    return legacy.format('D MMM YYYY');
+  }
+
+  // A string of digits is an epoch value, not a year. `dayjs('179…')` treats
+  // it as an invalid date on some platforms, so pass the numeric value through.
+  const epoch = /^\d+$/.test(value) ? Number(value) : null;
+  const date = epoch !== null && Number.isSafeInteger(epoch) ? dayjs(epoch) : dayjs(value);
+  return date.isValid() ? date.format('D MMM YYYY') : value;
+};
