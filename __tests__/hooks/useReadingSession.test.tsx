@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
-import { useReadingSession } from '../../hooks/useReadingSession';
+import { READER_LEFT_NOTICE_DELAY_MS, useReadingSession } from '../../hooks/useReadingSession';
 import { useLiveReading } from '../../hooks/useLiveReading';
 import type {
   LiveReaderTakeoverCompleted,
@@ -21,7 +21,13 @@ const useLiveReadingMock = useLiveReading as jest.MockedFunction<typeof useLiveR
 type SessionValue = ReturnType<typeof useReadingSession>;
 
 let callbacks!: {
-  onReadingEnded?: (event: { readerLabel: string; endAng: number }) => void;
+  onReadingEnded?: (event: {
+    readerLabel: string;
+    endAng: number;
+    endReason?: 'DISCONNECTED';
+  }) => void;
+  onReaderLeft?: () => void;
+  onReaderRejoined?: () => void;
   onTakeoverStarted?: (event: LiveReaderTakeoverStarted) => void;
   onTakeoverCancelled?: (event: { takeoverId: string }) => void;
   onTakeoverCompleted?: (event: LiveReaderTakeoverCompleted) => void;
@@ -143,5 +149,225 @@ describe('useReadingSession takeover feedback', () => {
       pathId: 1,
       initialTab: 'progress',
     });
+  });
+});
+
+describe('useReadingSession reader-left notice', () => {
+  const follower = { ...reader, driving: false };
+  const advance = async (ms: number) => {
+    await act(async () => {
+      jest.advanceTimersByTime(ms);
+    });
+  };
+
+  it('waits five seconds before telling a follower the reader has left', async () => {
+    await mount(follower);
+
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+
+    await advance(READER_LEFT_NOTICE_DELAY_MS - 1);
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+
+    await advance(1);
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+  });
+
+  it('never shows the notice when the reader is back inside the wait', async () => {
+    await mount(follower);
+
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(3000);
+    await act(async () => {
+      callbacks.onReaderRejoined?.();
+    });
+    await advance(READER_LEFT_NOTICE_DELAY_MS * 2);
+
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+    // Nobody was told the reader left, so nobody is told they came back.
+    expect(latest.readerRejoined).toBe(false);
+  });
+
+  it('takes the notice away the moment the reader returns after it was shown', async () => {
+    await mount(follower);
+
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(READER_LEFT_NOTICE_DELAY_MS);
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+
+    await act(async () => {
+      callbacks.onReaderRejoined?.();
+    });
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+    expect(latest.readerRejoined).toBe(true);
+  });
+
+  it('restarts the wait if the reader leaves a second time', async () => {
+    await mount(follower);
+
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(4000);
+    await act(async () => {
+      callbacks.onReaderRejoined?.();
+      callbacks.onReaderLeft?.();
+    });
+    // Four seconds after the first leave would have fired; the second leave
+    // starts its own full wait.
+    await advance(4000);
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+    await advance(1000);
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+  });
+
+  it('tells the follower at once when the server ended the reading for good', async () => {
+    await mount(follower);
+
+    await act(async () => {
+      callbacks.onReadingEnded?.({ readerLabel: 'Reader', endAng: 2, endReason: 'DISCONNECTED' });
+    });
+
+    // Nothing to wait for: that reading cannot be rejoined.
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+  });
+
+  it('drops a pending notice when the reader finishes properly while it waits', async () => {
+    await mount(follower);
+
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await act(async () => {
+      callbacks.onReadingEnded?.({ readerLabel: 'Reader', endAng: 2 });
+    });
+    await advance(READER_LEFT_NOTICE_DELAY_MS * 2);
+
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+  });
+
+  it('does nothing on the reader’s own screen', async () => {
+    await mount(reader);
+
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(READER_LEFT_NOTICE_DELAY_MS * 2);
+
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+  });
+});
+
+describe('useReadingSession when the reader changes while the old one is away', () => {
+  const follower = { ...reader, driving: false };
+  let liveLabel: string | null = 'Amrit';
+  const advance = async (ms: number) => {
+    await act(async () => {
+      jest.advanceTimersByTime(ms);
+    });
+  };
+  const handOver = async () => {
+    await act(async () => {
+      callbacks.onTakeoverCompleted?.({
+        takeoverId: 'takeover-1',
+        sessionId: 'session-2',
+        readerMemberId: 'member-2',
+        readerLabel: 'Gurbaj',
+        currentAng: 1,
+        currentVerseId: 10,
+        scrollPosition: 0,
+        sequence: 2,
+      });
+    });
+  };
+  const rerender = async (tree: ReactTestRenderer.ReactTestRenderer) => {
+    await act(async () => {
+      tree.update(<Probe live={follower} />);
+    });
+  };
+
+  beforeEach(() => {
+    liveLabel = 'Amrit';
+    useLiveReadingMock.mockImplementation((options) => {
+      callbacks = options;
+      return { connection: 'connected', readerLabel: liveLabel, reportNow: jest.fn() } as never;
+    });
+  });
+
+  it('cancels a pending notice when somebody takes over during the wait', async () => {
+    await mount(follower);
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(2000);
+
+    await handOver();
+    await advance(READER_LEFT_NOTICE_DELAY_MS * 2);
+
+    // Nothing is said about the reader who left; the new one is simply reading.
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+  });
+
+  it('closes a notice already on screen when somebody takes over', async () => {
+    await mount(follower);
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(READER_LEFT_NOTICE_DELAY_MS);
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+
+    await handOver();
+
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+    expect(latest.readerRejoined).toBe(false);
+  });
+
+  it('withdraws the notice when the name changes, so it cannot blame the new reader', async () => {
+    const tree = await mount(follower);
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(READER_LEFT_NOTICE_DELAY_MS);
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+    expect(latest.readerLabel).toBe('Amrit');
+
+    // This follower reconnects and the server says Gurbaj is reading now.
+    liveLabel = 'Gurbaj';
+    await rerender(tree);
+
+    expect(latest.readerLeftNoticeOpen).toBe(false);
+    expect(latest.followingLabel).toBe('Following Gurbaj');
+  });
+
+  it('keeps the notice when the same reader is still the one who left', async () => {
+    const tree = await mount(follower);
+    await act(async () => {
+      callbacks.onReaderLeft?.();
+    });
+    await advance(READER_LEFT_NOTICE_DELAY_MS);
+
+    await rerender(tree);
+
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+  });
+
+  it('does not take back a notice for a reading the server ended', async () => {
+    const tree = await mount(follower);
+    await act(async () => {
+      callbacks.onReadingEnded?.({ readerLabel: 'Amrit', endAng: 2, endReason: 'DISCONNECTED' });
+    });
+    expect(latest.readerLeftNoticeOpen).toBe(true);
+
+    liveLabel = 'Gurbaj';
+    await rerender(tree);
+
+    // That reading is over for good, whoever reads next.
+    expect(latest.readerLeftNoticeOpen).toBe(true);
   });
 });

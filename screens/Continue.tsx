@@ -54,6 +54,8 @@ import { ensureAccessiblePath } from '../store/applyServerResponse';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { selectVisiblePaths } from '../store/selectors';
 import { canInvite, isPersonalPath, isTurnStillLive } from '../store/groupPaths';
+import { takeRecurringTurn } from '../store/takeTurn';
+import { isRecurringTurn } from '../store/recurringTurn';
 import {
   listMembers,
   listActiveInvites,
@@ -359,10 +361,18 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const loadInviteStatus = useCallback(async () => {
     const requestVersion = ++inviteStatusLoadVersionRef.current;
-    if (!invitableId || !canManageInvites) {
+    if (!invitableId) {
       setInviteStatus('none');
       return;
     }
+    if (!canManageInvites) {
+      // A member refresh may promote this account to admin. Keep the action in
+      // its neutral loading state until that role is known, so stale state does
+      // not flash Create link before the existing invite is fetched.
+      setInviteStatus('unknown');
+      return;
+    }
+    setInviteStatus((current) => (current === 'active' ? current : 'unknown'));
     const [active, storedState] = await Promise.all([
       listActiveInvites(invitableId),
       getStoredInviteState(invitableId),
@@ -2007,8 +2017,29 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   trackSharedPathOutcome('READ_ALONG', 'success');
                   navigation.push('Path', { pathId, live: { sehajPathId, driving: false } });
                 }}
-                onCancelSlot={async (slot) => {
-                  const result = await cancelSlot(sehajPathId, slot.id);
+                onTakeTurn={async (slot) => {
+                  const { outcome, session } = await takeRecurringTurn(
+                    sehajPathId,
+                    slot.id,
+                    members
+                  );
+                  if (outcome !== null) {
+                    trackSharedPathOutcome(outcome, 'success');
+                  }
+                  navigation.push('Path', {
+                    pathId,
+                    live: {
+                      sehajPathId,
+                      driving: true,
+                      sessionId: session.id,
+                      startAng: session.startAng,
+                      startedAt: session.startedAt,
+                      slotEndsAt: session.slotEndsAt,
+                    },
+                  });
+                }}
+                onCancelSlot={async (slot, scope) => {
+                  const result = await cancelSlot(sehajPathId, slot.id, scope);
                   if (!result.ok) {
                     throw new Error(result.message);
                   }
@@ -2024,6 +2055,8 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                     sehajPathId,
                     pathId,
                     slotId: slot.id,
+                    isRecurring: isRecurringTurn(slot),
+                    initialRecurrenceRule: slot.recurrenceRule,
                     initialStartsAt: slot.startsAt,
                     initialDurationMinutes: Math.max(
                       15,

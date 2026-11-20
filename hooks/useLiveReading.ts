@@ -266,6 +266,11 @@ export const useLiveReading = ({
       },
       onTakeoverCompleted: (takeover) => {
         if (!cancelled) {
+          // Who is reading is what the follower shows, so it must change with
+          // the hand-over whether or not the position fields below are usable.
+          if (!driving && typeof takeover.readerLabel === 'string') {
+            setReaderLabel(takeover.readerLabel);
+          }
           if (
             !driving &&
             typeof takeover.currentAng === 'number' &&
@@ -277,9 +282,6 @@ export const useLiveReading = ({
             // ownership changes. Apply the authoritative hand-off snapshot so
             // followers do not remain attached to a dead reader until the next
             // packet arrives from the replacement.
-            if (typeof takeover.readerLabel === 'string') {
-              setReaderLabel(takeover.readerLabel);
-            }
             applyRef.current({
               currentAng: takeover.currentAng,
               currentVerseId: takeover.currentVerseId,

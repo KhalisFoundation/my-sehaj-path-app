@@ -8,6 +8,9 @@ export const ChooseSlotStyles = StyleSheet.create({
     justifyContent: 'flex-end',
     backgroundColor: UIConstants.MODAL_BACKDROP_COLOR,
   },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
   pickerOverlay: {
     flex: 1,
     alignItems: 'center',
@@ -62,10 +65,14 @@ export const ChooseSlotStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: UIConstants.RHYTHM / 2,
   },
+  scroll: {
+    flex: 1,
+  },
   content: {
+    flexGrow: 1,
     paddingHorizontal: UIConstants.PADDING + UIConstants.DIVIDER_HEIGHT * 4,
     paddingTop: UIConstants.RHYTHM,
-    paddingBottom: UIConstants.RHYTHM * 2,
+    paddingBottom: UIConstants.PADDING * 3,
   },
   title: {
     alignSelf: 'center',
@@ -99,9 +106,18 @@ export const ChooseSlotStyles = StyleSheet.create({
     fontSize: UIConstants.BODY_FONT_SIZE,
     textAlign: 'center',
   },
-  timePickerField: { justifyContent: 'center' },
-  placeholder: { color: UIConstants.INPUT_PLACEHOLDER_COLOR },
-  dayArrow: { paddingHorizontal: UIConstants.RHYTHM, paddingVertical: UIConstants.RHYTHM / 2 },
+  repeatFieldText: { textAlign: 'left' },
+  repeatFieldChevron: { transform: [{ rotate: '90deg' }] },
+  timePickerField: {
+    justifyContent: 'center',
+  },
+  placeholder: {
+    color: UIConstants.INPUT_PLACEHOLDER_COLOR,
+  },
+  dayArrow: {
+    paddingHorizontal: UIConstants.RHYTHM,
+    paddingVertical: UIConstants.RHYTHM / 2,
+  },
   dayArrowText: {
     color: UIConstants.PRIMARY_COLOR,
     fontFamily: font.Baloo_Paaji_2_Extra_Bold,
@@ -149,6 +165,74 @@ export const ChooseSlotStyles = StyleSheet.create({
   },
   durationTextSelected: { color: UIConstants.NAV_TEXT_COLOR },
   durationTextDisabled: { color: UIConstants.MUTED_TEXT_COLOR },
+  repeatOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: UIConstants.MODAL_BACKDROP_COLOR,
+  },
+  repeatSheet: {
+    backgroundColor: UIConstants.SURFACE_BACKGROUND,
+    borderTopLeftRadius: UIConstants.BORDER_RADIUS * 2,
+    borderTopRightRadius: UIConstants.BORDER_RADIUS * 2,
+    paddingHorizontal: UIConstants.PADDING + UIConstants.DIVIDER_HEIGHT * 4,
+    paddingBottom: UIConstants.PADDING * 2,
+  },
+  repeatGrabber: {
+    alignSelf: 'center',
+    width: UIConstants.RHYTHM * 4,
+    height: UIConstants.DIVIDER_HEIGHT * 5,
+    marginTop: UIConstants.RHYTHM / 2,
+    borderRadius: UIConstants.BORDER_RADIUS,
+    backgroundColor: UIConstants.SHEET_HANDLE_COLOR,
+  },
+  repeatTitle: {
+    marginTop: UIConstants.RHYTHM * 2,
+    marginBottom: UIConstants.RHYTHM * 2,
+    color: UIConstants.PRIMARY_COLOR,
+    fontFamily: font.Baloo_Paaji_2_Extra_Bold,
+    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
+    textAlign: 'center',
+  },
+  repeatOption: {
+    minHeight: UIConstants.PADDING * 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: UIConstants.RHYTHM,
+    paddingHorizontal: UIConstants.PADDING,
+    paddingVertical: UIConstants.RHYTHM / 2,
+    borderBottomWidth: UIConstants.DIVIDER_HEIGHT,
+    borderBottomColor: UIConstants.DIVIDER_COLOR,
+  },
+  repeatOptionCopy: { flex: 1 },
+  repeatOptionText: {
+    color: UIConstants.PRIMARY_COLOR,
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    fontSize: UIConstants.BODY_FONT_SIZE,
+  },
+  repeatOptionDescription: {
+    marginTop: UIConstants.DIVIDER_HEIGHT,
+    color: UIConstants.MUTED_TEXT_COLOR,
+    fontFamily: font.Baloo_Paaji_2_Regular,
+    fontSize: UIConstants.CAPTION_FONT_SIZE,
+  },
+  repeatRadio: {
+    width: UIConstants.PADDING * 2,
+    height: UIConstants.PADDING * 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: UIConstants.DIVIDER_HEIGHT * 2,
+    borderColor: UIConstants.MUTED_TEXT_COLOR,
+    borderRadius: UIConstants.PADDING,
+  },
+  repeatRadioSelected: {
+    borderColor: UIConstants.PRIMARY_COLOR,
+  },
+  repeatRadioDot: {
+    width: UIConstants.RHYTHM,
+    height: UIConstants.RHYTHM,
+    borderRadius: UIConstants.RHYTHM / 2,
+    backgroundColor: UIConstants.PRIMARY_COLOR,
+  },
   loading: { marginVertical: UIConstants.RHYTHM * 2 },
   empty: {
     marginVertical: UIConstants.RHYTHM,
@@ -161,6 +245,17 @@ export const ChooseSlotStyles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: UIConstants.PADDING + UIConstants.DIVIDER_HEIGHT * 4,
     marginBottom: UIConstants.RHYTHM,
+    paddingVertical: UIConstants.RHYTHM / 2,
+    borderRadius: UIConstants.BORDER_RADIUS,
+    backgroundColor: UIConstants.PRIMARY_COLOR,
+    alignItems: 'center',
+  },
+  // The confirm button inside the edit sheet; the sheet already supplies the
+  // side padding that `book` adds as margin on the main screen.
+  scopeConfirm: {
+    minHeight: UIConstants.PADDING * 4,
+    justifyContent: 'center',
+    marginTop: UIConstants.RHYTHM * 2,
     paddingVertical: UIConstants.RHYTHM / 2,
     borderRadius: UIConstants.BORDER_RADIUS,
     backgroundColor: UIConstants.PRIMARY_COLOR,

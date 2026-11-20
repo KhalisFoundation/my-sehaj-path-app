@@ -11,6 +11,8 @@ jest.mock('../../store/groupApi', () => ({
   listMembers: jest.fn(),
   currentSession: jest.fn(),
   startReading: jest.fn(),
+  // Telemetry for unexpected refusals; the screens call it on every refusal.
+  reportUnexpectedGroupRefusal: jest.fn(),
 }));
 jest.mock('../../store/liveSession', () => ({ connectLive: jest.fn() }));
 jest.mock('../../components/MemberAvatars', () => ({ MemberAvatars: () => null }));
@@ -98,7 +100,7 @@ describe('the GroupPath screen', () => {
     const { findByText, queryByText } = renderScreen();
 
     expect(await findByText('Harpreet')).toBeTruthy();
-    expect(await findByText('Follow along')).toBeTruthy();
+    expect(await findByText('Read along')).toBeTruthy();
     // Only one session per path may be live; offering "Start" would be a
     // button whose only outcome is a 409.
     expect(queryByText('Start reading')).toBeNull();
@@ -166,7 +168,7 @@ describe('the GroupPath screen', () => {
   it('opens the reading screen as a follower, never as a driver', async () => {
     liveSession();
     const { findByText } = renderScreen();
-    fireEvent.press(await findByText('Follow along'));
+    fireEvent.press(await findByText('Read along'));
 
     // Exactly one device drives. A follower arriving with driving:true would
     // report a position and move the whole group.

@@ -10,6 +10,8 @@ jest.mock('../../store/groupApi', () => ({
   enableSharing: jest.fn(),
   createInvite: jest.fn(),
   listMembers: jest.fn(),
+  // Telemetry for unexpected refusals; the screens call it on every refusal.
+  reportUnexpectedGroupRefusal: jest.fn(),
 }));
 
 const enableSharingMock = enableSharing as jest.MockedFunction<typeof enableSharing>;
