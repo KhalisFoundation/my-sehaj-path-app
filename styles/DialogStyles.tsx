@@ -9,6 +9,13 @@ export const DialogStyles = StyleSheet.create({
     alignItems: 'center',
     padding: 36,
   },
+  inlineBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
   card: {
     width: '100%',
     maxWidth: 350,
@@ -17,17 +24,38 @@ export const DialogStyles = StyleSheet.create({
     padding: 24,
     gap: 12,
   },
+  compactBackdrop: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+  },
+  compactCard: {
+    padding: 20,
+    gap: 8,
+  },
   title: {
     fontFamily: font.Baloo_Paaji_2_Medium,
     fontSize: 26,
     color: '#11336A',
     textAlign: 'center',
   },
+  compactTitle: {
+    fontSize: 24,
+  },
   message: {
     fontFamily: font.Baloo_Paaji_2_Regular,
     fontSize: 16,
     lineHeight: 22,
     color: '#2C3E50',
+    textAlign: 'center',
+  },
+  compactMessage: {
+    fontSize: 14,
+  },
+  error: {
+    fontFamily: font.Baloo_Paaji_2_Regular,
+    fontSize: 15,
+    lineHeight: 21,
+    color: '#B03A2E',
     textAlign: 'center',
   },
   /** Emphasis inside a message — used for the account emails being compared. */
@@ -41,9 +69,17 @@ export const DialogStyles = StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
+  compactActions: {
+    gap: 8,
+    marginTop: 2,
+  },
   secondaryButton: {
     paddingHorizontal: 20,
     paddingVertical: 12,
+  },
+  compactSecondaryButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 24,
   },
   secondaryText: {
     fontFamily: font.Baloo_Paaji_2_Medium,
@@ -56,6 +92,14 @@ export const DialogStyles = StyleSheet.create({
     backgroundColor: '#11336A',
     borderRadius: 28,
     justifyContent: 'center',
+  },
+  compactActionButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 24,
+  },
+  /** Compact variant for the one-action reader-left notice. */
+  compactPrimaryButton: {
+    paddingVertical: 7,
   },
   primaryText: {
     fontFamily: font.Baloo_Paaji_2_Medium,
@@ -106,5 +150,8 @@ export const DialogStyles = StyleSheet.create({
     backgroundColor: '#B03A2E',
     borderRadius: 28,
     justifyContent: 'center',
+  },
+  disabled: {
+    opacity: 0.6,
   },
 });

@@ -16,3 +16,5 @@ export { AboutText, KHALIS_FOUNDATION_URL, KHALIS_PRIVACY_POLICY_URL, BANIDB_URL
 export { Routes } from './Routes';
 export { EDGES_ALL_SIDES, EDGES_DRAWER_MENU } from './UIConstants';
 export { PATH_DATA } from './PathData';
+export { SharedPathAnalytics } from './Analytics';
+export type { SharedPathAnalyticsEvent } from './Analytics';
