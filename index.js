@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { AppRegistry } from 'react-native';
-import messaging from '@react-native-firebase/messaging';
+import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 import { displayPushMessage, registerPushNotificationTapHandlers } from './utils/pushNotifications';
 import App from './App';
 import { ErrorBoundary } from './components';
@@ -14,7 +14,7 @@ registerPushNotificationTapHandlers();
 
 // Register at process startup so foreground delivery is not lost while React
 // is hydrating or remounting its authenticated tree.
-messaging().onMessage(displayPushMessage);
+onMessage(getMessaging(), displayPushMessage);
 
 // The API sends normal notification payloads. iOS and Android render those
 // while the app is backgrounded, so drawing a second Notifee notification from

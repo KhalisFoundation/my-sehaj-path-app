@@ -29,15 +29,30 @@ jest.mock('@react-native-community/netinfo', () => {
 // Push libraries are native at runtime. Keep their contract available to every
 // unit test so importing a screen does not require an installed device module.
 jest.mock('@react-native-firebase/messaging', () => {
-  const messaging = () => ({
+  const instance = {
     onMessage: jest.fn(() => jest.fn()),
     onNotificationOpenedApp: jest.fn(() => jest.fn()),
     getInitialNotification: jest.fn().mockResolvedValue(null),
     getToken: jest.fn().mockResolvedValue('test-token'),
     requestPermission: jest.fn().mockResolvedValue(1),
-  });
+    onTokenRefresh: jest.fn(() => jest.fn()),
+  };
+  const messaging = () => instance;
   messaging.setBackgroundMessageHandler = jest.fn();
-  return { __esModule: true, default: messaging };
+  return {
+    __esModule: true,
+    default: messaging,
+    AuthorizationStatus: { AUTHORIZED: 1, PROVISIONAL: 2 },
+    getMessaging: jest.fn(() => instance),
+    onMessage: jest.fn((_messaging, listener) => instance.onMessage(listener)),
+    onNotificationOpenedApp: jest.fn((_messaging, listener) =>
+      instance.onNotificationOpenedApp(listener)
+    ),
+    getInitialNotification: jest.fn(() => instance.getInitialNotification()),
+    getToken: jest.fn(() => instance.getToken()),
+    requestPermission: jest.fn(() => instance.requestPermission()),
+    onTokenRefresh: jest.fn((_messaging, listener) => instance.onTokenRefresh(listener)),
+  };
 });
 
 jest.mock('@notifee/react-native', () => ({

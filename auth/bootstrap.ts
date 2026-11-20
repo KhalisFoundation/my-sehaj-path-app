@@ -28,7 +28,9 @@ export async function hydrateAuth(): Promise<void> {
 export async function initAuth(): Promise<void> {
   let initialUrl: string | null = null;
   try {
-    initialUrl = await Linking.getInitialURL();
+    // RN 0.88 permits `undefined` here in addition to its older `null`
+    // result. Treat both as the existing no-initial-link path.
+    initialUrl = (await Linking.getInitialURL()) ?? null;
   } catch {
     initialUrl = null;
   }
