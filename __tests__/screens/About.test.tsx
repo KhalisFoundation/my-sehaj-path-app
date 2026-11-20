@@ -31,7 +31,7 @@ const renderAbout = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+  jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
 });
 
 describe('the About screen', () => {

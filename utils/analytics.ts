@@ -3,7 +3,6 @@ import {
   getAppInstanceId,
   logEvent,
   setAnalyticsCollectionEnabled,
-  logScreenView,
 } from '@react-native-firebase/analytics';
 import { getApp } from '@react-native-firebase/app';
 import { store } from '../store';
@@ -75,9 +74,12 @@ const trackScreenView = async (screenName: string, screenClass = screenName) => 
   }
 
   try {
-    await logScreenView(analytics!, {
-      screen_name: sanitize(screenName),
-      screen_class: sanitize(screenClass.replace(/\s+/g, '')),
+    // Firebase's modular SDK records screen views as the standard
+    // `screen_view` event. Keep the parameter names unchanged so existing
+    // Analytics reports continue to group screens exactly as before.
+    await logEvent(analytics!, 'screen_view', {
+      firebase_screen: sanitize(screenName),
+      firebase_screen_class: sanitize(screenClass.replace(/\s+/g, '')),
     });
   } catch (error) {
     // Failed to log screen view - continue without analytics

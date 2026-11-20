@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { ScrollView } from 'react-native';
+import type { ScrollViewInstance } from 'react-native';
 import { showErrorAlert } from '@utils';
 import { ErrorConstants } from '@constants';
 import { DateData } from '@hooks';
@@ -11,7 +11,7 @@ interface UseScrollToSavedPathProps {
   scrolledToSavedPath: React.MutableRefObject<boolean>;
   /** True only while this hook is moving the reader to an existing checkpoint. */
   isRestoringScroll: React.MutableRefObject<boolean>;
-  scrollRef: React.MutableRefObject<ScrollView | null>;
+  scrollRef: React.MutableRefObject<ScrollViewInstance | null>;
   scrollOffset: React.MutableRefObject<number>;
   setFound: (value: boolean) => void;
   /** Current font size from the store — no longer fetched from disk here. */

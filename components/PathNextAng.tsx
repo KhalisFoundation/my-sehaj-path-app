@@ -1,6 +1,7 @@
 import React from 'react';
 import { LeftLineIcon, RightArrowIcon, RightLineIcon } from '@icons';
-import { View, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, TouchableOpacity } from 'react-native';
+import { BackgroundImage } from './BackgroundImage';
 import { AppText as Text } from './AppText';
 import { PathNextAngStyles } from '@styles/PathNextAngStyles';
 import { Constants } from '@constants';
@@ -17,9 +18,9 @@ export const PathNextAng = ({ pathAng, handleRightArrow }: Props) => {
       <View style={PathNextAngStyles.nextAngContainer}>
         <View style={PathNextAngStyles.container}>
           <LeftLineIcon />
-          <ImageBackground source={AngImage} style={PathNextAngStyles.imgBg}>
+          <BackgroundImage source={AngImage} style={PathNextAngStyles.imgBg}>
             <Text style={PathNextAngStyles.angText}>{pathAng}</Text>
-          </ImageBackground>
+          </BackgroundImage>
           <RightLineIcon />
         </View>
         <TouchableOpacity onPress={handleRightArrow} style={PathNextAngStyles.nextButtonContainer}>

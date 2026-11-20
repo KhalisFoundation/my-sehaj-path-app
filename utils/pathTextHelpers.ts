@@ -136,13 +136,16 @@ export const createLongPressHandler = (
 
     // Highlight the verse and enter saving mode, but do NOT claim it is saved
     // yet: `isSaved` is only set once the write is durable (in the save handler).
+    // RN 0.88's type now requires the bookkeeping argument. `undefined` is
+    // intentionally unused; batching and the resulting state updates are
+    // unchanged from the previous one-argument call.
     unstable_batchedUpdates(() => {
       selection.setPressIndex(index);
       selection.setSavedPathVerseId(verseId);
       selection.setHasPendingVerseSelection(true);
       selection.setIsSaving(true);
       selection.setIsSaved(false);
-    });
+    }, undefined);
 
     onSelection();
     onSave();
