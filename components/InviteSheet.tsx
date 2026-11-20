@@ -333,13 +333,28 @@ export const InviteSheet = ({
       visible &&
       inviteLoadSucceeded &&
       !loadingInvite &&
-      autoCreate &&
+      // `autoCreatePending`, not the `autoCreate` prop: the prop stays true for
+      // as long as the sheet is open, so a failed create would run this effect
+      // again the moment `creating` went back to false, and keep going for as
+      // long as the server kept refusing. The pending flag is cleared on
+      // failure, and `createFailed` stops a retry until the person asks.
+      autoCreatePending &&
+      !createFailed &&
       link === null &&
       !creating
     ) {
       createNewLink('automatic').catch(() => undefined);
     }
-  }, [autoCreate, createNewLink, creating, inviteLoadSucceeded, link, loadingInvite, visible]);
+  }, [
+    autoCreatePending,
+    createFailed,
+    createNewLink,
+    creating,
+    inviteLoadSucceeded,
+    link,
+    loadingInvite,
+    visible,
+  ]);
 
   const copy = useCallback(() => {
     if (!link) {

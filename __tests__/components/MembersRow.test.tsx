@@ -1,8 +1,10 @@
 import React from 'react';
+import { Image } from 'react-native';
 import { Provider } from 'react-redux';
 import { render, fireEvent } from '@testing-library/react-native';
 import { MembersRow } from '../../components/MembersRow';
 import { store } from '../../store';
+import * as groupApi from '../../store/groupApi';
 import type { SehajPathMember } from '@api/generated/types.gen';
 
 const onAdd = jest.fn();
@@ -36,6 +38,28 @@ const renderRow = (
   );
 
 beforeEach(() => jest.clearAllMocks());
+
+describe('the avatar images', () => {
+  it('are requested with the auth headers, because the avatar route is authenticated', () => {
+    // Without headers the request gets a 401 and the member shows as an empty
+    // circle, never falling back to their initial because a URL was supplied.
+    const headers = { Authorization: 'Bearer test-token' };
+    const spy = jest.spyOn(groupApi, 'avatarHeaders').mockReturnValue(headers);
+
+    const view = renderRow(
+      [member({ id: 'm1', hasAvatar: true })],
+      () => 'https://api.example/sehaj-path/paths/p/members/m1/avatar'
+    );
+
+    const images = view.UNSAFE_getAllByType(Image);
+    expect(images).toHaveLength(1);
+    expect(images[0].props.source).toEqual({
+      uri: 'https://api.example/sehaj-path/paths/p/members/m1/avatar',
+      headers,
+    });
+    spy.mockRestore();
+  });
+});
 
 describe('the members row', () => {
   it('names each person, because the reader is looking for someone in particular', () => {
