@@ -139,8 +139,6 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
    */
   const signingIn = useAppSelector((state) => state.auth.signingIn);
   const email = useAppSelector((state) => state.auth.email);
-  const firstname = useAppSelector((state) => state.auth.firstname);
-  const answered = useAppSelector((state) => state.sync.syncPopupAnswered);
   const account = useAppSelector((state) => state.sync.account);
   const recoveryNeeded = useAppSelector((state) => state.sync.recoveryNeeded);
   const isOnline = useAppSelector((state) => state.network.isOnline);
@@ -176,36 +174,18 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     (previousAccountHasUnsyncedData || (deviceHasData && !previousAccountIsFullySynced));
 
   /**
-   * Cases 1 & 2: unowned but empty. There is no progress to ask about, so a
-   * prompt would only be noise — and leaving `sync.account` null keeps the outbox
-   * disabled, meaning nothing the user creates afterwards would ever sync.
+   * An account with no owner is associated automatically. This includes local
+   * reading data: login is the account-selection event, so there is no second
+   * consent prompt and no opportunity for the data to remain stranded locally.
    */
-  const canAssociateSilently =
-    mode === 'unowned' && account === null && !deviceHasData && !recoveryNeeded && !!email;
+  const canAssociateSilently = mode === 'unowned' && account === null && !recoveryNeeded && !!email;
 
   const isVisible =
     status === 'signedIn' &&
     !!email &&
     !confirmingDiscard &&
-    (mode === 'accountSwitch'
-      ? isAccountSwitch
-      : account === null &&
-        !answered &&
-        !recoveryNeeded &&
-        !syncDeferredOffline &&
-        deviceHasData &&
-        // A silent association may be in flight for a device that was empty a
-        // moment ago. Creating a path during that window flips `deviceHasData`
-        // and would ask "what about your local progress?" about a path the user
-        // just made, while it is already being connected.
-        !associating &&
-        // `!associating` alone is too narrow: it only covers the in-flight
-        // moment. A silent attempt that pulled the account's paths and THEN
-        // failed releases `busy` with `account` still null, so the data on the
-        // device is the account's own — not unowned progress to ask about. Stay
-        // quiet until that attempt has actually succeeded; the next foreground
-        // or reconnect retries it.
-        silentAssociationPending.current !== email);
+    mode === 'accountSwitch' &&
+    isAccountSwitch;
 
   // "Continue offline" is only a temporary dismissal, never an answer to a
   // data-ownership question. Bring the safety prompt back once sync is usable.
@@ -278,11 +258,14 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
         // Succeeded: this device is connected, so the dialog may speak again if
         // it ever legitimately needs to.
         silentAssociationPending.current = null;
-        // Pull once more before releasing the busy state. Home's focus effect
-        // does NOT re-fire when the user was already standing on Home as they
-        // signed in, so nothing else would fetch what another device synced
-        // while this one was signed out — the list would sit stale until the
-        // screen happened to be re-focused.
+        // `/sync` already applied the account snapshot. Automatic association
+        // must stay silent and must not immediately issue a second foreground
+        // refresh when the user opens a path; an explicit Sync/refresh action
+        // remains the place for that extra pull.
+        if (silent) {
+          setBusy(null);
+          return;
+        }
         setLoadingProgress(true);
         try {
           await onForeground();
@@ -379,7 +362,8 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     syncing,
   ]);
 
-  // Cases 1 & 2: associate an empty device without a prompt.
+  // Associate the device automatically after login, including any unowned
+  // local progress. The invite flow uses the same operation before joining.
   //
   // The attempt is keyed by account AND connectivity, not by account alone. The
   // key used to be the email, set before the request and never cleared — so a
@@ -520,15 +504,12 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     }
   };
 
-  const name = firstname?.trim() || email || '';
-
-  // A silent restore in flight is the account's reading arriving, which is worth
-  // saying out loud: on a device cleared by logout there is nothing on screen
-  // yet, so an unexplained wait looks like an empty app. The prompted
-  // association is excluded — its own button already shows a spinner, and a
-  // modal on top of that would be the same news twice.
+  // Automatic association/restore is deliberately silent. It can continue in
+  // the background while the user opens a path, but it must not cover the path
+  // with a modal loading notice. An explicit account-switch flow still owns its
+  // loading dialog below.
   const restoring = associating && silentAssociationPending.current !== null;
-  if (loadingProgress || restoring) {
+  if (mode === 'accountSwitch' && (loadingProgress || restoring)) {
     return (
       <Dialog visible onRequestClose={ignoreRequestClose}>
         <View style={styles.loadingState} accessibilityLabel={Constants.LOADING_PROGRESS}>
@@ -635,7 +616,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
         <Text style={styles.title}>{Constants.SWITCHED_ACCOUNT_TITLE}</Text>
         <Text style={styles.message}>
           <Text style={styles.strong}>{switchedFrom}</Text>
-          {`'s progress is saved on this device and comes back when you sign in as that account.`}
+          {`'s progress is saved on this device and comes back when you login as that account.`}
         </Text>
         <View style={styles.actions}>
           <TouchableOpacity
@@ -707,7 +688,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
           message: (
             <>
               Progress for {who} is on this device, but we could not confirm it is backed up. Please
-              sign in as that account first.
+              login as that account first.
             </>
           ),
         };
@@ -737,7 +718,7 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
       return {
         title: Constants.SWITCHING_ACCOUNT_TITLE,
         message: (
-          <>Progress for {who} stays on this device and returns when you sign in as that account.</>
+          <>Progress for {who} stays on this device and returns when you login as that account.</>
         ),
       };
     };
@@ -864,58 +845,11 @@ const SyncPopupComponent = ({ mode = 'unowned', onAccountSwitched }: SyncPopupPr
     );
   }
 
-  // --- Case 3: unowned progress exists and an account just signed in --------
+  // The unowned case is handled automatically above. Keep this branch as an
+  // invisible fallback while an older mounted instance settles.
   return (
-    /*
-      Deliberately not dismissible. This is a fork in the data, not a prompt:
-      the progress on this device either joins the account or it does not, and
-      both answers are below. The "Not now" button that used to sit here only
-      called `declineSync`, which associated nothing and pulled nothing — so the
-      user ended up signed in while the account's own progress stayed invisible,
-      and `syncPopupAnswered` meant they were never asked again. "Later" was
-      really "never", with the account's history hidden behind it.
-    */
-    <Dialog visible={mode === 'unowned' && isVisible} onRequestClose={noop}>
-      <Text style={styles.title}>
-        {Constants.WELCOME}
-        {name ? `, ${name}` : ''}!
-      </Text>
-      <Text style={styles.message}>
-        {`This device has reading progress that isn’t saved to any account. Add it to ${email}?`}
-      </Text>
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={styles.primaryButton}
-          onPress={() => associate(false)}
-          disabled={syncing}
-          accessibilityRole="button"
-          accessibilityLabel={Constants.SYNC_LOCAL_ACTION}
-        >
-          <ActionLabel
-            running={busy === 'sync'}
-            idle={Constants.SYNC_LOCAL_ACTION}
-            textStyle={styles.primaryText}
-            spinnerColor="#FFFFFF"
-          />
-        </TouchableOpacity>
-      </View>
-      {/*
-        Two actions only, and no Logout here. This progress belongs to nobody
-        yet, so signing out resolves nothing — it just leaves the same question
-        waiting at the next login. Logout stays on the account-switch dialog,
-        where "wrong account" is a real answer.
-      */}
-      <View style={styles.links}>
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={() => setConfirmingDiscard(true)}
-          disabled={syncing}
-          accessibilityRole="button"
-          accessibilityLabel={Constants.DISCARD_LOCAL_LINK}
-        >
-          <Text style={styles.destructiveLinkText}>{Constants.DISCARD_LOCAL_LINK}</Text>
-        </TouchableOpacity>
-      </View>
+    <Dialog visible={false} onRequestClose={noop}>
+      {null}
     </Dialog>
   );
 };

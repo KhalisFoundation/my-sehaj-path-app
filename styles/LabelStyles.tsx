@@ -7,6 +7,6 @@ export const LabelStyles = StyleSheet.create({
     color: 'background: rgba(17, 51, 106, 1)',
     textAlign: 'center',
     margin: 10,
-    fontFamily: font.Brandon_Grotesque_Regular,
+    fontFamily: font.Baloo_Paaji_2_Regular,
   },
 });
