@@ -6915,6 +6915,16 @@
           "verseId": {
             "type": "integer"
           },
+          "scrollPosition": {
+            "type": "integer",
+            "description": "Scroll offset within the ang, so a member who joins or returns on another\ndevice resumes at the saved line instead of the top of the page.",
+            "minimum": 0
+          },
+          "completionDate": {
+            "type": "integer",
+            "nullable": true,
+            "description": "When the path was completed, as epoch milliseconds. Null while it is still\nin progress. This is shared with every active member so completed cards\nrender the same date on every device."
+          },
           "startDate": {
             "type": "integer",
             "description": "Canonical date the path began (milliseconds since epoch). Every member\nuses this same value when calculating elapsed days and projections."
@@ -6969,6 +6979,8 @@
         "required": [
           "angNumber",
           "verseId",
+          "scrollPosition",
+          "completionDate",
           "startDate",
           "sharing",
           "relationship",

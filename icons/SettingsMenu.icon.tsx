@@ -1,10 +1,17 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 import type { SvgProps } from 'react-native-svg';
+import { scaledIconSize, useAppIconScale } from './useAppIconScale';
 
 export const SettingsMenu = (props: SvgProps) => {
+  const scale = useAppIconScale();
   return (
-    <Svg width={props.width || 18} height={props.height || 18} viewBox="0 0 18 18" fill="none">
+    <Svg
+      width={props.width ?? scaledIconSize(18, scale)}
+      height={props.height ?? scaledIconSize(18, scale)}
+      viewBox="0 0 18 18"
+      fill="none"
+    >
       <Path
         d="M10.875 9C10.875 8.50272 10.6775 8.02581 10.3258 7.67417C9.97419 7.32254 9.49728 7.125 9 7.125C8.50272 7.125 8.02581 7.32254 7.67417 7.67417C7.32254 8.02581 7.125 8.50272 7.125 9C7.125 9.49728 7.32254 9.97419 7.67417 10.3258C8.02581 10.6775 8.50272 10.875 9 10.875C9.49728 10.875 9.97419 10.6775 10.3258 10.3258C10.6775 9.97419 10.875 9.49728 10.875 9Z"
         stroke={props.color || '#11336A'}

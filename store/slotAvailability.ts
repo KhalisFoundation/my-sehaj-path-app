@@ -4,6 +4,7 @@ import {
   addLocalDays,
   addMinutes,
   asLocalDateTime,
+  ceilToLocalMinute,
   endOfLocalDayExclusive,
   isAfter,
   isBefore,
@@ -48,6 +49,40 @@ const BLOCKING = new Set(['SCHEDULED', 'ACTIVE']);
 
 /** Allows the current minute and small device/network clock drift. */
 export const SLOT_PAST_TOLERANCE_MINUTES = 2;
+
+/**
+ * The first start time a new turn can use without overlapping the currently
+ * loaded plan. Slots are walked in chronological order, jumping directly to a
+ * conflicting slot's end rather than advancing one minute at a time.
+ *
+ * This is an initial picker suggestion only; `availabilityForSelectedTime`
+ * remains the authoritative validation for every later user change and the
+ * server still enforces the exclusion constraint.
+ */
+export const earliestBookableStart = ({
+  slots,
+  durationMinutes,
+  now = new Date(),
+}: {
+  slots: SehajPathSlot[];
+  durationMinutes: number;
+  now?: Date;
+}): Date => {
+  let candidate = ceilToLocalMinute(addMinutes(now, MINIMUM_BOOKING_LEAD_MINUTES));
+  const blockingSlots = slots
+    .filter((slot) => BLOCKING.has(slot.status))
+    .sort((left, right) => asLocalDateTime(left.startsAt).diff(right.startsAt));
+
+  for (const slot of blockingSlots) {
+    const candidateEndsAt = addMinutes(candidate, durationMinutes);
+    const overlaps = isBefore(candidate, slot.endsAt) && isAfter(candidateEndsAt, slot.startsAt);
+    if (overlaps) {
+      candidate = ceilToLocalMinute(asLocalDateTime(slot.endsAt).toDate());
+    }
+  }
+
+  return candidate;
+};
 
 /** Validate the exact time selected by the user, including its full duration. */
 export const availabilityForSelectedTime = ({

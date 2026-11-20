@@ -1,12 +1,14 @@
 import React from 'react';
 import Svg, { Path, SvgProps } from 'react-native-svg';
+import { scaledIconSize, useAppIconScale } from './useAppIconScale';
 
 export const PlusIcon = (props: SvgProps) => {
+  const scale = useAppIconScale();
   return (
     <>
       <Svg
-        width={props.width || 14}
-        height={props.height || 14}
+        width={props.width ?? scaledIconSize(14, scale)}
+        height={props.height ?? scaledIconSize(14, scale)}
         viewBox="0 0 14 14"
         fill="none"
         {...props}

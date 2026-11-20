@@ -1,6 +1,7 @@
 import React from 'react';
 import { Animated, View } from 'react-native';
-import { Constants, Routes } from '@constants';
+import { Constants, readerToolbarLayout, Routes } from '@constants';
+import { useAppIconScale } from '@icons/useAppIconScale';
 import { PathScreenStyles } from '@styles';
 import { AngsNavigation } from './AngsNavigation';
 import { DrawerMenu } from './DrawerMenu';
@@ -99,75 +100,80 @@ export const PathScreenOverlays = ({
   pathId,
   onGoToAng,
   onSave,
-}: Props) => (
-  <>
-    {alertIndicator !== undefined && (
-      <Loading alertIndicator={alertIndicator} alertText={Constants.ALERT_TEXT_LOADING} />
-    )}
+}: Props) => {
+  const toolbarScale = useAppIconScale();
+  const toolbarLayout = readerToolbarLayout(toolbarScale);
 
-    {!isSaving && !found && !isFollowing && (
-      <View style={PathScreenStyles.navigationContainer}>
-        <PathControls
-          handleGoBack={requestExit}
-          setIsSaving={setIsSaving}
-          fadeAnim={fadeAnim}
-          onSettings={onSettings}
-        />
-      </View>
-    )}
+  return (
+    <>
+      {alertIndicator !== undefined && (
+        <Loading alertIndicator={alertIndicator} alertText={Constants.ALERT_TEXT_LOADING} />
+      )}
 
-    <PathLiveStatus
-      isFollowing={isFollowing}
-      followingLabel={followingLabel}
-      readerNotice={readerNotice}
-      takeoverInProgress={takeoverInProgress}
-      readerLeftNoticeOpen={readerLeftNoticeOpen}
-      readerRejoined={readerRejoined}
-      endedBy={endedBy}
-      endedAt={endedAt}
-      endedNoticeOpen={endedNoticeOpen}
-      liveReaderLabel={readerLabel}
-      startedAt={startedAt}
-      onDismissReaderLeft={onDismissReaderLeft}
-      onLeaveAfterReading={onLeaveAfterReading}
-    />
+      {!isSaving && !found && !isFollowing && (
+        <View style={[PathScreenStyles.navigationContainer, toolbarLayout]}>
+          <PathControls
+            handleGoBack={requestExit}
+            setIsSaving={setIsSaving}
+            fadeAnim={fadeAnim}
+            onSettings={onSettings}
+          />
+        </View>
+      )}
 
-    {isSaving && <Message message={savingMessage} fadeAnim={fadeAnim.current} />}
-    {found && <Message message={Constants.RESUMING_SAVED_PROGRESS} fadeAnim={fadeAnim.current} />}
-
-    {readerDriving && readerStartAng !== undefined && (
-      <FinishReadingSheet
-        visible={finishOpen}
-        startAng={readerStartAng}
-        currentAng={pathAng}
+      <PathLiveStatus
+        isFollowing={isFollowing}
+        followingLabel={followingLabel}
+        readerNotice={readerNotice}
+        takeoverInProgress={takeoverInProgress}
+        readerLeftNoticeOpen={readerLeftNoticeOpen}
+        readerRejoined={readerRejoined}
+        endedBy={endedBy}
+        endedAt={endedAt}
+        endedNoticeOpen={endedNoticeOpen}
+        liveReaderLabel={readerLabel}
         startedAt={startedAt}
-        busy={finishing}
-        onConfirm={onConfirmFinish}
-        onCancel={onCancelFinish}
+        onDismissReaderLeft={onDismissReaderLeft}
+        onLeaveAfterReading={onLeaveAfterReading}
       />
-    )}
 
-    {isAngsNavigationVisible && !isFollowing && (
-      <AngsNavigation
-        setIsAngsNavigationVisible={setIsAngsNavigationVisible}
-        handleRightArrow={onRightAng}
-        handleLeftArrow={onLeftAng}
-        pathAng={pathAng}
-        isAngNavigation={isAngNavigation}
-        setIsAngNavigation={setIsAngNavigation}
-        fetchAngData={fetchAngData}
-        updatePathAng={updatePathAng}
+      {isSaving && <Message message={savingMessage} fadeAnim={fadeAnim.current} />}
+      {found && <Message message={Constants.RESUMING_SAVED_PROGRESS} fadeAnim={fadeAnim.current} />}
+
+      {readerDriving && readerStartAng !== undefined && (
+        <FinishReadingSheet
+          visible={finishOpen}
+          startAng={readerStartAng}
+          currentAng={pathAng}
+          startedAt={startedAt}
+          busy={finishing}
+          onConfirm={onConfirmFinish}
+          onCancel={onCancelFinish}
+        />
+      )}
+
+      {isAngsNavigationVisible && !isFollowing && (
+        <AngsNavigation
+          setIsAngsNavigationVisible={setIsAngsNavigationVisible}
+          handleRightArrow={onRightAng}
+          handleLeftArrow={onLeftAng}
+          pathAng={pathAng}
+          isAngNavigation={isAngNavigation}
+          setIsAngNavigation={setIsAngNavigation}
+          fetchAngData={fetchAngData}
+          updatePathAng={updatePathAng}
+        />
+      )}
+
+      <DrawerMenu
+        isVisible={drawerVisible}
+        onClose={onCloseDrawer}
+        onNavigate={onNavigateDrawer}
+        currentRoute={Routes.Path}
+        pathId={pathId}
+        onGoToAngPress={onGoToAng}
+        onSavePress={onSave}
       />
-    )}
-
-    <DrawerMenu
-      isVisible={drawerVisible}
-      onClose={onCloseDrawer}
-      onNavigate={onNavigateDrawer}
-      currentRoute={Routes.Path}
-      pathId={pathId}
-      onGoToAngPress={onGoToAng}
-      onSavePress={onSave}
-    />
-  </>
-);
+    </>
+  );
+};

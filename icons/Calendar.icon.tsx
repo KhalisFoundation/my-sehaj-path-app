@@ -1,12 +1,14 @@
 import React from 'react';
 import Svg, { Path } from 'react-native-svg';
 import type { SvgProps } from 'react-native-svg';
+import { scaledIconSize, useAppIconScale } from './useAppIconScale';
 
 export const CalendarIcon = (props: SvgProps) => {
+  const scale = useAppIconScale();
   return (
     <Svg
-      width={props.width || 21}
-      height={props.height || 21}
+      width={props.width ?? scaledIconSize(21, scale)}
+      height={props.height ?? scaledIconSize(21, scale)}
       viewBox="0 0 21 21"
       fill="none"
       {...props}

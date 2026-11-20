@@ -66,7 +66,9 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress, membe
       accessibilityHint="Tap to continue this Sehaj Path"
     >
       <View style={PathProgressCardStyles.textContainer}>
-        <Text style={PathProgressCardStyles.sehajText}>{sehajPathName}</Text>
+        <Text style={PathProgressCardStyles.sehajText} numberOfLines={1} ellipsizeMode="tail">
+          {sehajPathName}
+        </Text>
         <Text style={PathProgressCardStyles.angText}>
           {Constants.ANG} <Text style={PathProgressCardStyles.angNumber}>{displayedAngNumber}</Text>
         </Text>

@@ -1,4 +1,4 @@
-import { sortPathsForHome } from '../../store/pathOrdering';
+import { isPathCompletedForHome, sortPathsForHome } from '../../store/pathOrdering';
 import type { PathData } from '../../types';
 import type { SyncMeta } from '../../store/slices/syncSlice';
 
@@ -35,5 +35,21 @@ describe('sortPathsForHome', () => {
   it('keeps local-only paths in their current order until they are uploaded', () => {
     const ordered = sortPathsForHome([path(3), path(2)], { 2: meta(), 3: meta() });
     expect(ordered.map((entry) => entry.pathId)).toEqual([3, 2]);
+  });
+});
+
+describe('isPathCompletedForHome', () => {
+  it('recognizes an accessible completed path when completionDate is omitted', () => {
+    expect(isPathCompletedForHome({ completionDate: '', progress: 100 })).toBe(true);
+  });
+
+  it('keeps a partial accessible path in progress', () => {
+    expect(isPathCompletedForHome({ completionDate: '', progress: 69.93 })).toBe(false);
+  });
+
+  it('preserves completion dates from the owner-scoped response', () => {
+    expect(isPathCompletedForHome({ completionDate: '3-November-2026', progress: 20.98 })).toBe(
+      true
+    );
   });
 });

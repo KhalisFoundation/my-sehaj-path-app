@@ -64,6 +64,8 @@ export type RootStackParamList = {
     pathId: number;
     /** Keeps a stale Continue route identifiable after its local card is pruned. */
     sehajPathId?: string;
+    /** Home preflight confirmed another active member before opening this path. */
+    precheckedShared?: boolean;
     initialTab?: 'progress' | 'streak' | 'turns' | 'members';
     /** Changes on every notification tap so an already-mounted route reacts. */
     notificationTapAt?: number;
@@ -374,7 +376,14 @@ const App = () => {
               <Stack.Screen
                 name={Routes.ChooseSlot}
                 component={ChooseSlot}
-                options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+                options={{
+                  presentation: 'transparentModal',
+                  animation: 'slide_from_bottom',
+                  // The sheet's Pressable supplies the translucent navy scrim.
+                  // Native stack's default white content surface would sit
+                  // behind that scrim and hide the underlying schedule.
+                  contentStyle: { backgroundColor: 'transparent' },
+                }}
               />
             </Stack.Navigator>
           </NavigationContainer>
