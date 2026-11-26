@@ -13,8 +13,6 @@ export { FinishReadingSheetStyles } from './FinishReadingSheetStyles';
 export { TurnsTabStyles } from './TurnsTabStyles';
 export { InviteSheetStyles } from './InviteSheetStyles';
 export { MembersRowStyles } from './MembersRowStyles';
-export { GroupPathStyles } from './GroupPathStyles';
-export { InviteMemberStyles } from './InviteMemberStyles';
 export { MemberAvatarsStyles } from './MemberAvatarsStyles';
 export { PathProgressCardStyles } from './PrimaryCardStyles';
 export { PrimaryButtonStyles } from './PrimaryButtonStyles';

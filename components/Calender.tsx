@@ -80,7 +80,9 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
         return sharedDates.map((date) => dayjs(date).format('D-MMMM-YYYY'));
       }
     }
-    return progressDates?.dates?.map((date: any) => date.date) ?? [];
+    // Older builds wrote `{ date: '' }` for shared saves. It is not a day, and
+    // counting it made the list non-empty, skipping the loading state.
+    return progressDates?.dates?.map((date: any) => date.date).filter(Boolean) ?? [];
   }, [progressDates, sharedDates, sharedPathId]);
 
   const isStreakLoading =

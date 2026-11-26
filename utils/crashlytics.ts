@@ -20,6 +20,15 @@ const allowCrashReporting = async (): Promise<void> => {
   }
 };
 
+/** A non-fatal note attached to the next crash or error report. Never throws. */
+const logBreadcrumb = (message: string): void => {
+  try {
+    log(instance, message);
+  } catch (_error) {
+    // Silent failure
+  }
+};
+
 /** Firebase has no "remove key", so blanking is how a key stops applying. */
 const blanked = (attributes: Record<string, string>): Record<string, string> =>
   Object.fromEntries(Object.keys(attributes).map((key) => [key, '']));
@@ -110,4 +119,4 @@ const recordError = (
     .catch(() => undefined);
 };
 
-export { allowCrashReporting, recordError };
+export { allowCrashReporting, logBreadcrumb, recordError };

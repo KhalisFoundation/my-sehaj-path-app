@@ -9,8 +9,6 @@ import { SafeAreaStyle } from '@styles';
 import {
   ChooseSlot,
   JoinPath,
-  GroupPath,
-  InviteMember,
   SplashScreen,
   HomeScreen,
   Continue,
@@ -96,8 +94,6 @@ export type RootStackParamList = {
    * with a session, a loaded database, or a warm store.
    */
   JoinPath: { token: string };
-  GroupPath: { sehajPathId: string; pathId: number; pathName: string };
-  InviteMember: { sehajPathId: string; pathName?: string };
   ChooseSlot: {
     sehajPathId: string;
     pathId: number;
@@ -371,8 +367,6 @@ const App = () => {
               <Stack.Screen name={Routes.About} component={About} />
               <Stack.Screen name={Routes.Error} component={Error} />
               <Stack.Screen name={Routes.JoinPath} component={JoinPath} />
-              <Stack.Screen name={Routes.GroupPath} component={GroupPath} />
-              <Stack.Screen name={Routes.InviteMember} component={InviteMember} />
               <Stack.Screen
                 name={Routes.ChooseSlot}
                 component={ChooseSlot}

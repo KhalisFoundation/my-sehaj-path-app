@@ -10,8 +10,6 @@ export const Routes = {
   Error: 'Error',
   /** Opened by an invite link, from outside the app. */
   JoinPath: 'JoinPath',
-  GroupPath: 'GroupPath',
-  InviteMember: 'InviteMember',
   /** Booking a reading time on a shared path. */
   ChooseSlot: 'ChooseSlot',
 } as const;

@@ -41,8 +41,37 @@ class SceneDelegate: RCTDefaultReactNativeFactoryDelegate, UIWindowSceneDelegate
    
   }
 
+  /// URLs that arrived before the scene was active, held until it is.
+  private var pendingURLContexts: Set<UIOpenURLContext> = []
+
+  // A URL opened while the app is running (the system-browser login fallback,
+  // an invite link). Returning from Safari, it can arrive while the scene is
+  // still coming to the foreground, before JS has resumed, and the `url` event
+  // was then lost. The old AppDelegate held it until
+  // `applicationDidBecomeActive` for exactly this. Keep the same rule here:
+  // deliver now only if already active, otherwise in `sceneDidBecomeActive`.
+  //
+  // A cold start does not come through here. Its URL is in `connectionOptions`,
+  // which `startReactNative` passes on as the launch URL for
+  // `Linking.getInitialURL()`.
   func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-    RCTLinkingManager.scene(scene, openURLContexts: URLContexts)
+    pendingURLContexts.formUnion(URLContexts)
+    if scene.activationState == .foregroundActive {
+      deliverPendingURLContexts(to: scene)
+    }
+  }
+
+  func sceneDidBecomeActive(_ scene: UIScene) {
+    deliverPendingURLContexts(to: scene)
+  }
+
+  private func deliverPendingURLContexts(to scene: UIScene) {
+    guard !pendingURLContexts.isEmpty else {
+      return
+    }
+    let contexts = pendingURLContexts
+    pendingURLContexts = []
+    RCTLinkingManager.scene(scene, openURLContexts: contexts)
   }
 
   func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
