@@ -62,8 +62,12 @@ export type RootStackParamList = {
     pathId: number;
     /** Keeps a stale Continue route identifiable after its local card is pruned. */
     sehajPathId?: string;
-    /** Home preflight confirmed another active member before opening this path. */
-    precheckedShared?: boolean;
+    /**
+     * Home's already-loaded member list showed another active member. Lets a
+     * shared path show Turns on the first frame; Continue's own members load
+     * then has the final say.
+     */
+    knownOtherMember?: boolean;
     initialTab?: 'progress' | 'streak' | 'turns' | 'members';
     /** Changes on every notification tap so an already-mounted route reacts. */
     notificationTapAt?: number;
