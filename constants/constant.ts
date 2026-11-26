@@ -286,4 +286,5 @@ export const Constants: Constant = {
   GO_TO_ANG: 'Go To Ang',
   SAVE: 'Save',
   BACK_TO_PATH: 'Back to path',
+  GO_TO_PATH: 'Go to path',
 };

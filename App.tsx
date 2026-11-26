@@ -83,6 +83,11 @@ export type RootStackParamList = {
     initialTab?: 'progress' | 'streak' | 'turns' | 'members';
     /** Changes on every notification tap so an already-mounted route reacts. */
     notificationTapAt?: number;
+    /**
+     * Set when the reader was closed to show Progress or Streaks from its menu.
+     * Continue then offers "Go to path", reopening the reader as it was opened.
+     */
+    returnToReader?: { live?: RootStackParamList['Path']['live'] };
   };
   CreatePath: undefined;
   Path: {

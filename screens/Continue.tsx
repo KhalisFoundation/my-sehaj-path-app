@@ -94,6 +94,7 @@ import {
   isAfter,
   parseLegacyPathDate,
 } from '../utils/dateTime';
+import { continueBackTarget } from '../utils/continueBack';
 
 type ContinueProps = NativeStackScreenProps<RootStackParamList, 'Continue'>;
 
@@ -113,6 +114,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     notificationTapAt,
     sehajPathId: routeSehajPathId,
     knownOtherMember = false,
+    returnToReader,
   } = route.params;
 
   /**
@@ -1669,14 +1671,45 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     [dispatch, loadMembers, members, pathId, sehajPathId]
   );
 
+  const backTarget = useMemo(
+    () =>
+      continueBackTarget({
+        isFromPath,
+        returnToReader,
+        pathId,
+        liveSessionId: liveReader?.sessionId,
+      }),
+    [isFromPath, returnToReader, pathId, liveReader?.sessionId]
+  );
+
   const handleBackPress = useCallback(() => {
-    if (isFromPath) {
+    if (backTarget.kind === 'back-to-reader') {
       navigation.goBack();
       return;
     }
 
+    if (backTarget.kind === 'reopen-reader') {
+      // Once back in the reader, a later return here is an ordinary one.
+      navigation.setParams({ returnToReader: undefined });
+      navigation.push(Routes.Path, backTarget.reader);
+      return;
+    }
+
     navigation.popTo(Routes.Home);
-  }, [navigation, isFromPath]);
+  }, [navigation, backTarget]);
+
+  let backLabel: string = Constants.HOME;
+  let backA11yLabel = 'Back to home';
+  let backA11yHint = 'Tap to go back to home screen';
+  if (backTarget.kind === 'back-to-reader') {
+    backLabel = Constants.BACK_TO_PATH;
+    backA11yLabel = Constants.BACK_TO_PATH;
+    backA11yHint = 'Tap to go back to the path screen';
+  } else if (backTarget.kind === 'reopen-reader') {
+    backLabel = Constants.GO_TO_PATH;
+    backA11yLabel = Constants.GO_TO_PATH;
+    backA11yHint = 'Tap to open the path where you were reading';
+  }
 
   const progressText = useMemo(
     () => [
@@ -1734,12 +1767,10 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
               <BackButton
                 style={ContinueScreenStyles.navContainer}
                 onPress={handleBackPress}
-                accessibilityLabel={isFromPath ? Constants.BACK_TO_PATH : 'Back to home'}
-                accessibilityHint={
-                  isFromPath ? 'Tap to go back to the path screen' : 'Tap to go back to home screen'
-                }
+                accessibilityLabel={backA11yLabel}
+                accessibilityHint={backA11yHint}
               >
-                <NavContent text={isFromPath ? Constants.BACK_TO_PATH : Constants.HOME} />
+                <NavContent text={backLabel} />
               </BackButton>
               {matchedPath && canManagePath ? (
                 <PathOptionsMenu
