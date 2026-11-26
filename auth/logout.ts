@@ -1,4 +1,4 @@
-import { recordError } from '@utils';
+import { detachPushDevice, recordError } from '@utils';
 import { store } from '../store';
 import { setSignedOut } from '../store/slices/authSlice';
 import {
@@ -33,6 +33,13 @@ import { clearCurrentToken, getCurrentToken } from './tokenUtils';
  */
 export async function logout(): Promise<void> {
   const token = await getCurrentToken();
+  if (token) {
+    // Before the token is cleared: signing out re-registers this device
+    // anonymously, and that never takes it off the old account, so without
+    // this it kept receiving that account's turn notifications. Best-effort
+    // and time-boxed, so it can never stop the sign-out.
+    await detachPushDevice();
+  }
   const cleared = await clearCurrentToken(token ?? undefined);
   if (!cleared) {
     recordError(new Error('logout: token could not be cleared'), 'auth: logout token-clear failed');
