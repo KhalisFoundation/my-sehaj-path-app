@@ -13,6 +13,7 @@ import notifee, {
   EventType,
 } from '@notifee/react-native';
 import { pushControllerRegister, pushControllerRemove } from '@api/generated/sdk.gen';
+import NetInfo from '@react-native-community/netinfo';
 import { logBreadcrumb, recordError } from './crashlytics';
 import {
   emitPushTap,
@@ -355,6 +356,48 @@ export const detachPushDevice = async (): Promise<void> => {
   }
 };
 
+/**
+ * What a registration request came to. `no-response` means the request got no
+ * HTTP response at all — the device was offline, the connection dropped, or it
+ * timed out. That is not a fault; the server answering with an error is, and is
+ * thrown instead.
+ */
+type RegistrationOutcome = 'registered' | 'no-response';
+
+const NO_RESPONSE_BREADCRUMB = 'push: registration got no response from the server';
+
+/**
+ * Try `attempt` once more, as soon as the device reports a usable connection.
+ *
+ * Registration runs as the app opens, which is exactly when a phone is often
+ * still between networks. Without this, a missed registration waited for the
+ * next launch. NetInfo reports the current state immediately on subscribing, so
+ * a device that is already back online retries straight away. One retry only:
+ * it cannot loop.
+ */
+const retryWhenOnline = (attempt: () => Promise<RegistrationOutcome>): (() => void) => {
+  let done = false;
+  const unsubscribe = NetInfo.addEventListener((state) => {
+    const online = state.isConnected === true && state.isInternetReachable !== false;
+    if (done || !online) {
+      return;
+    }
+    done = true;
+    unsubscribe();
+    attempt()
+      .then((outcome) => {
+        if (outcome === 'no-response') {
+          logBreadcrumb(NO_RESPONSE_BREADCRUMB);
+        }
+      })
+      .catch((error) => recordError(error, 'push: registration retry failed'));
+  });
+  return () => {
+    done = true;
+    unsubscribe();
+  };
+};
+
 /** Requests permission, registers the current token, and tracks token rotation. */
 export const registerPushNotifications = async (authToken?: string | null): Promise<() => void> => {
   try {
@@ -384,7 +427,7 @@ export const registerPushNotifications = async (authToken?: string | null): Prom
     // a Notifee channel for us when the app process is suspended.
     await ensureAndroidNotificationChannel();
 
-    const register = async (token: string): Promise<void> => {
+    const register = async (token: string): Promise<RegistrationOutcome> => {
       const { timeZone } = Intl.DateTimeFormat().resolvedOptions();
       const result = await pushControllerRegister({
         // Pass the current SSO token through the generated operation. This is
@@ -401,22 +444,33 @@ export const registerPushNotifications = async (authToken?: string | null): Prom
 
       if (result.error !== undefined || result.data === undefined) {
         const status = 'response' in result ? result.response?.status ?? 0 : 0;
-        throw new Error(
-          status > 0
-            ? `Push device registration failed with HTTP ${status}`
-            : 'Push device registration failed'
-        );
+        if (status === 0) {
+          return 'no-response';
+        }
+        throw new Error(`Push device registration failed with HTTP ${status}`);
       }
+      return 'registered';
     };
 
     const messaging = getDefaultMessaging();
-    await register(await getToken(messaging));
+    let stopRetry: () => void = () => undefined;
+    if ((await register(await getToken(messaging))) === 'no-response') {
+      logBreadcrumb(NO_RESPONSE_BREADCRUMB);
+      stopRetry = retryWhenOnline(async () => register(await getToken(messaging)));
+    }
     const unsubscribe = onTokenRefresh(messaging, (token) => {
-      register(token).catch((error) =>
-        recordError(error, 'push: token refresh registration failed')
-      );
+      register(token)
+        .then((outcome) => {
+          if (outcome === 'no-response') {
+            logBreadcrumb(NO_RESPONSE_BREADCRUMB);
+          }
+        })
+        .catch((error) => recordError(error, 'push: token refresh registration failed'));
     });
-    return unsubscribe;
+    return () => {
+      stopRetry();
+      unsubscribe();
+    };
   } catch (error) {
     recordError(error, 'push: registration failed');
     return () => undefined;
