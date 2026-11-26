@@ -12,7 +12,7 @@ import {
   type ModalProps,
 } from 'react-native';
 import { SimpleText } from '@components';
-import { BlurView } from '@react-native-community/blur';
+import { ModalBackdrop } from '../ModalBackdrop';
 import { AppText } from '../AppText';
 import { RightChevronIcon, CheckMarkIcon } from '@icons';
 import { recordError, trackEvent } from '@utils';
@@ -137,13 +137,7 @@ export const SelectionSheetSettingItem = <T,>({
               pointerEvents="none"
               style={[SelectionSheetSettingItemStyles.backdropFill, { opacity: backdropOpacity }]}
             >
-              <BlurView
-                style={SelectionSheetSettingItemStyles.backdropBlur}
-                blurType="light"
-                blurAmount={4}
-                reducedTransparencyFallbackColor="rgba(255, 255, 255, 0.72)"
-              />
-              <View style={SelectionSheetSettingItemStyles.backdropTint} />
+              <ModalBackdrop />
             </Animated.View>
           </Pressable>
           <Animated.View

@@ -6,7 +6,6 @@ export const ChooseSlotStyles = StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: UIConstants.MODAL_BACKDROP_COLOR,
   },
   backdrop: {
     ...StyleSheet.absoluteFill,
@@ -15,7 +14,6 @@ export const ChooseSlotStyles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: UIConstants.DRAWER_REDUCED_TRANSPARENCY_FALLBACK,
   },
   pickerCard: {
     minWidth: UIConstants.PADDING * 18,
@@ -168,7 +166,6 @@ export const ChooseSlotStyles = StyleSheet.create({
   repeatOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: UIConstants.MODAL_BACKDROP_COLOR,
   },
   repeatSheet: {
     backgroundColor: UIConstants.SURFACE_BACKGROUND,

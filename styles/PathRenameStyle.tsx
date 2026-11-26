@@ -11,7 +11,6 @@ export const PathRenameStyle = StyleSheet.create({
     right: 0,
     bottom: 0,
     elevation: 1,
-    backgroundColor: UIConstants.FORM_DIALOG_BACKDROP_COLOR,
   },
   overlayContainer: {
     padding: UIConstants.RHYTHM,

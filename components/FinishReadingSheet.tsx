@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, Modal, Pressable, TouchableOpacity, View } from 'react-native';
+import { ModalBackdrop } from './ModalBackdrop';
 import { AppText as Text } from './AppText';
 import { FinishReadingSheetStyles as styles } from '@styles';
 import { displayReadingAng } from '../utils/readingAng';
@@ -80,7 +81,9 @@ export const FinishReadingSheet = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
-      <Pressable style={styles.backdrop} onPress={onCancel} accessibilityLabel="Close" />
+      <Pressable style={styles.backdrop} onPress={onCancel} accessibilityLabel="Close">
+        <ModalBackdrop />
+      </Pressable>
       <View style={styles.centre} pointerEvents="box-none">
         <View style={styles.card}>
           <View style={styles.tick}>

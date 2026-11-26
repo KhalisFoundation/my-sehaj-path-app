@@ -38,17 +38,6 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
     bottom: 0,
     left: 0,
   },
-  backdropBlur: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-  },
-  backdropTint: {
-    flex: 1,
-    backgroundColor: UIConstants.MODAL_BACKDROP_COLOR,
-  },
   sheet: {
     maxHeight: '76%',
     backgroundColor: UIConstants.SURFACE_BACKGROUND,
@@ -102,7 +91,8 @@ export const SelectionSheetSettingItemStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   optionText: {
-    fontSize: UIConstants.SUBTITLE_FONT_SIZE,
+    // One step below the sheet title, so the title reads as the heading.
+    fontSize: UIConstants.BODY_FONT_SIZE,
     fontFamily: font.Baloo_Paaji_2_Regular,
     color: UIConstants.PRIMARY_COLOR,
   },

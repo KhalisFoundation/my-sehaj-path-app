@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from './AppText';
-import { BlurView } from '@react-native-community/blur';
+import { ModalBackdrop } from './ModalBackdrop';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
 import { PATH_DATA } from '@constants';
@@ -77,13 +77,7 @@ export const AngsNavigation = ({
 
   return (
     <View style={AngsNavigationStyle.blurView}>
-      <BlurView
-        blurType="dark"
-        blurAmount={1}
-        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.55)"
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
+      <ModalBackdrop />
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={() => setIsAngsNavigationVisible(false)}

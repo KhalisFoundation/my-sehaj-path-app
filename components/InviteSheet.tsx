@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Share, TouchableOpacity, View } from 'react-native';
+import { ModalBackdrop } from './ModalBackdrop';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText as Text } from './AppText';
@@ -407,7 +408,9 @@ export const InviteSheet = ({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       {/* Tapping the dimmed area closes, which is what a sheet is expected to do. */}
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close" />
+      <Pressable style={styles.backdrop} onPress={onClose} accessibilityLabel="Close">
+        <ModalBackdrop />
+      </Pressable>
       <View style={[styles.sheet, { paddingBottom: 34 + insets.bottom }]}>
         <View style={styles.grabber} />
         <Text style={styles.title}>{Constants.INVITE_MEMBER_TITLE}</Text>

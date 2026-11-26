@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { ModalBackdrop } from './ModalBackdrop';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { AppText as Text } from './AppText';
 import { AddMembersStyles as styles, InviteSheetStyles } from '@styles';
@@ -114,7 +115,9 @@ export const SuggestedMembersSheet = ({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={InviteSheetStyles.backdrop} onPress={onClose} />
+      <Pressable style={InviteSheetStyles.backdrop} onPress={onClose}>
+        <ModalBackdrop />
+      </Pressable>
       <View style={[InviteSheetStyles.sheet, styles.suggestedSheet]}>
         <View style={InviteSheetStyles.grabber} />
         <Text style={InviteSheetStyles.title}>Add members</Text>

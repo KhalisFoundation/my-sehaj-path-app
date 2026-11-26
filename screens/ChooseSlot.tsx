@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { ModalBackdrop } from '../components/ModalBackdrop';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText as Text } from '../components/AppText';
@@ -588,6 +589,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
 
   return (
     <View style={styles.overlay}>
+      <ModalBackdrop />
       <Pressable
         style={styles.backdrop}
         onPress={() => {
@@ -647,6 +649,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
               onRequestClose={() => setDatePickerOpen(false)}
             >
               <Pressable style={styles.pickerOverlay} onPress={() => setDatePickerOpen(false)}>
+                <ModalBackdrop />
                 <Pressable style={styles.pickerCard} onPress={() => {}}>
                   <DateTimePicker
                     value={draftDay}
@@ -702,6 +705,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
               onRequestClose={() => setTimePickerOpen(false)}
             >
               <Pressable style={styles.pickerOverlay} onPress={() => setTimePickerOpen(false)}>
+                <ModalBackdrop />
                 <Pressable style={styles.pickerCard} onPress={() => {}}>
                   <DateTimePicker
                     value={draftTime}
@@ -806,6 +810,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
           onRequestClose={() => setRepeatPickerOpen(false)}
         >
           <Pressable style={styles.repeatOverlay} onPress={() => setRepeatPickerOpen(false)}>
+            <ModalBackdrop />
             <Pressable style={styles.repeatSheet} onPress={() => {}}>
               <View style={styles.repeatGrabber} />
               <Text style={styles.repeatTitle}>{Constants.REPEAT}</Text>
@@ -850,6 +855,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
           onRequestClose={() => setRecurringEditScopeOpen(false)}
         >
           <Pressable style={styles.repeatOverlay} onPress={() => setRecurringEditScopeOpen(false)}>
+            <ModalBackdrop />
             <Pressable style={styles.repeatSheet} onPress={() => {}}>
               <View style={styles.repeatGrabber} />
               <Text style={styles.repeatTitle}>Update recurring turn</Text>
