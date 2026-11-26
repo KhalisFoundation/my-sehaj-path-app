@@ -1,5 +1,9 @@
 import { PermissionsAndroid, Platform } from 'react-native';
-import messaging, { type FirebaseMessagingTypes } from '@react-native-firebase/messaging';
+import messaging, {
+  getMessaging,
+  getToken,
+  type FirebaseMessagingTypes,
+} from '@react-native-firebase/messaging';
 import notifee, {
   AndroidImportance,
   AuthorizationStatus as NotifeeAuthorizationStatus,
@@ -277,7 +281,9 @@ const DETACH_TIMEOUT_MS = 5_000;
  */
 export const detachPushDevice = async (): Promise<void> => {
   const detach = async (): Promise<void> => {
-    const token = await messaging().getToken();
+    // Modular API, which the RN 0.88 upgrade moves this whole file to. Using it
+    // here already keeps this working unchanged when the branch merges up.
+    const token = await getToken(getMessaging());
     if (!token) {
       return;
     }

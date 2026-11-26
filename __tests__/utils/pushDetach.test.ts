@@ -6,10 +6,17 @@ jest.mock('@api/generated/sdk.gen', () => ({
   pushControllerRegister: jest.fn(),
   pushControllerRemove: jest.fn(),
 }));
-jest.mock('@react-native-firebase/messaging', () => {
-  const messaging = () => ({ getToken: jest.fn(() => Promise.resolve('test-token')) });
-  return { __esModule: true, default: messaging };
-});
+// Detach uses the modular API. The default export is kept because the rest of
+// the module still calls `messaging()` on this branch.
+jest.mock('@react-native-firebase/messaging', () => ({
+  __esModule: true,
+  default: () => ({ getToken: jest.fn(() => Promise.resolve('test-token')) }),
+  getMessaging: jest.fn(() => ({})),
+  getToken: jest.fn(() => Promise.resolve('test-token')),
+  getInitialNotification: jest.fn(() => Promise.resolve(null)),
+  onNotificationOpenedApp: jest.fn(() => jest.fn()),
+  onTokenRefresh: jest.fn(() => jest.fn()),
+}));
 jest.mock('../../utils/crashlytics', () => ({
   logBreadcrumb: jest.fn(),
   recordError: jest.fn(),
