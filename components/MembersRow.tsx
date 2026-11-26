@@ -13,11 +13,15 @@ import { AppText as Text } from './AppText';
 import { MembersRowStyles as styles } from '@styles';
 import { Constants, UIConstants } from '@constants';
 import { initialOf, tintFor } from './MemberAvatars';
+import { avatarHeaders } from '../store/groupApi';
 import type { SehajPathMember } from '@api/generated/types.gen';
 
 interface Props {
   members: SehajPathMember[];
-  /** Built by the caller, which holds the auth headers the URL needs. */
+  /**
+   * The avatar URL for a member. The route is authenticated, so the image is
+   * requested with `avatarHeaders()`; the URL alone is not enough.
+   */
   avatarUriFor?: (member: SehajPathMember) => string | null;
   onAdd: () => void;
   onShare?: () => void;
@@ -106,7 +110,7 @@ export const MembersRow = ({
             return (
               <View key={member.id} style={styles.member}>
                 {uri ? (
-                  <Image source={{ uri }} style={styles.avatar} />
+                  <Image source={{ uri, headers: avatarHeaders() }} style={styles.avatar} />
                 ) : (
                   <View
                     style={[

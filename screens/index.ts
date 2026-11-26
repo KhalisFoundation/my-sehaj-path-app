@@ -1,7 +1,5 @@
 export { ChooseSlot } from './ChooseSlot';
 export { JoinPath } from './JoinPath';
-export { GroupPath } from './GroupPath';
-export { InviteMember } from './InviteMember';
 export { PathScreen } from './PathScreen';
 export { Continue } from './Continue';
 export { CreatePath } from './CreatePath';

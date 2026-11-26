@@ -9,6 +9,14 @@ import { addPath } from '../../store/slices/pathsSlice';
 import { hydrateEmptySync } from '../../store/slices/syncSlice';
 import { blockPathOp, hasSendableWork } from '../../store/syncWork';
 import type { DateData, PathData } from '../../types';
+import { detachPushDevice } from '../../utils/pushNotifications';
+
+jest.mock('../../utils/pushNotifications', () => ({
+  ...jest.requireActual('../../utils/pushNotifications'),
+  detachPushDevice: jest.fn().mockResolvedValue(undefined),
+}));
+
+const mockedDetach = detachPushDevice as jest.MockedFunction<typeof detachPushDevice>;
 
 const mockedOpenAuth = InAppBrowser.openAuth as jest.MockedFunction<typeof InAppBrowser.openAuth>;
 
@@ -77,6 +85,27 @@ describe('logout', () => {
     await Promise.resolve();
     expect(store.getState().auth.status).toBe('signedOut');
     expect(mockedOpenAuth).not.toHaveBeenCalled();
+    // Nothing was attached to an account, so there is nothing to detach.
+    expect(mockedDetach).not.toHaveBeenCalled();
+  });
+
+  it('detaches push from the account while still signed in', async () => {
+    // Otherwise the device keeps receiving the old account's turn
+    // notifications: the anonymous re-register after sign-out never detaches.
+    await saveCurrentToken('tok123');
+    store.dispatch(
+      setSignedIn({ token: 'tok123', email: 'a@b.com', firstname: 'A', lastname: 'B' })
+    );
+    let statusWhenDetached: string | undefined;
+    mockedDetach.mockImplementationOnce(async () => {
+      statusWhenDetached = store.getState().auth.status;
+    });
+
+    await logout();
+
+    expect(mockedDetach).toHaveBeenCalledTimes(1);
+    expect(statusWhenDetached).toBe('signedIn');
+    expect(store.getState().auth.status).toBe('signedOut');
   });
 
   it('clears permanently-blocked work so the next login retries it', async () => {
