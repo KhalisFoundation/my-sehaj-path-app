@@ -4,9 +4,17 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text, AppTextInput } from '../components/AppText';
 import { BackButton, LoginRequiredDialog } from '@components';
-import { Constants, EDGES_ALL_SIDES, ErrorConstants, Routes, UIConstants } from '@constants';
+import {
+  Constants,
+  EDGES_ALL_SIDES,
+  ErrorConstants,
+  PATH_DATA,
+  Routes,
+  UIConstants,
+} from '@constants';
 import { CreatePathStyles as styles, SafeAreaStyle } from '@styles';
 import { createPath } from '../store/commands';
+import { sanitizePathName } from '../utils/pathName';
 import { recordError, showErrorAlert, trackEvent } from '@utils';
 import type { RootStackParamList } from '../App';
 import { useAppSelector } from '../store/hooks';
@@ -99,10 +107,14 @@ export const CreatePath = ({ navigation }: Props) => {
 
               <AppTextInput
                 value={name ?? defaultName}
-                onChangeText={setName}
+                onChangeText={(text) => setName(sanitizePathName(text))}
+                maxLength={PATH_DATA.MAX_NAME_LENGTH}
                 placeholder={Constants.PATH_NAME_PLACEHOLDER}
                 placeholderTextColor={UIConstants.INPUT_PLACEHOLDER_COLOR}
                 multiline
+                // Multiline only so a long name wraps; return should finish the
+                // name, not add a line to it.
+                submitBehavior="blurAndSubmit"
                 accessibilityLabel={Constants.PATH_NAME_INPUT_LABEL}
                 style={styles.input}
                 editable={!creating}

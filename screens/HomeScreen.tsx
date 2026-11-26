@@ -201,28 +201,24 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           progress={path.progress}
           members={membersByPathId[path.pathId]}
           onPress={() => {
-            // Continue already reads the persisted group id from sync metadata.
-            // Keep normal Home navigation free of a route-level group id: that
-            // id is also present on invite-ready personal paths and, when
-            // cached metadata is stale, could briefly expose group-only UI.
-            const openPath = async () => {
-              const meta = syncMeta[path.pathId];
-              let precheckedShared = false;
-              if (meta?.groupId) {
-                const result = await listMembers(meta.groupId);
-                precheckedShared =
-                  result.ok &&
-                  result.data.some((member) => member.status === 'ACTIVE' && !member.isMine);
-              }
-              navigation.push(Routes.Continue, { pathId: path.pathId, precheckedShared });
-            };
-            openPath().catch(() => {
-              navigation.push(Routes.Continue, { pathId: path.pathId });
-            });
+            // Open straight away, with no request of its own. Waiting for a
+            // members check here left the tap dead for up to the request
+            // timeout, and a second tap pushed Continue twice.
+            //
+            // The avatar list Home already loaded says whether another active
+            // member exists (it holds active members only, including this
+            // user). Passing that lets a shared path show Turns on the first
+            // frame, while a personal path, which has no list, never does.
+            // Continue's own members load then has the final say.
+            //
+            // No route-level group id: invite-ready personal paths have one
+            // too, and with stale metadata it could briefly show group-only UI.
+            const knownOtherMember = (membersByPathId[path.pathId]?.length ?? 0) > 1;
+            navigation.push(Routes.Continue, { pathId: path.pathId, knownOtherMember });
           }}
         />
       )),
-    [pathInProgress, membersByPathId, navigation, syncMeta]
+    [pathInProgress, membersByPathId, navigation]
   );
 
   const pathCompletedCards = useMemo(

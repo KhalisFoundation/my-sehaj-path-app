@@ -112,10 +112,17 @@ export const pathsSlice = createSlice({
 
       const dateRecord = ensureDateRecord(state, pathId);
       // Dedup today's entry, mirroring the old handleUpdatePath behaviour.
-      dateRecord.dates = [
-        ...dateRecord.dates.filter((entry) => entry.date !== todayDate),
-        { date: todayDate },
-      ];
+      //
+      // An empty `todayDate` means "not a reading day" — a shared save, whose
+      // reading days belong to the server. Writing it anyway left a `{ date: '' }`
+      // entry that the calendar's fallback counted as a day, so a shared path
+      // briefly showed a 0 streak instead of loading.
+      if (todayDate) {
+        dateRecord.dates = [
+          ...dateRecord.dates.filter((entry) => entry.date !== todayDate),
+          { date: todayDate },
+        ];
+      }
       if (scrollPosition !== undefined) {
         dateRecord.scrollPosition = scrollPosition;
       }

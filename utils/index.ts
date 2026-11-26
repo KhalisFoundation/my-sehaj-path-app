@@ -17,6 +17,7 @@ export { getOrCreatePathUuid } from './pathIdUtils';
 export { displayReadingAng } from './readingAng';
 export * from './dateTime';
 export {
+  detachPushDevice,
   displayPushMessage,
   isTurnNotificationType,
   isPathMembershipRemovedNotificationType,
