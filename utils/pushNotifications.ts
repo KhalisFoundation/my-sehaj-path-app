@@ -12,8 +12,8 @@ import notifee, {
   AuthorizationStatus as NotifeeAuthorizationStatus,
   EventType,
 } from '@notifee/react-native';
-import { pushControllerRegister } from '@api/generated/sdk.gen';
-import { recordError } from './crashlytics';
+import { pushControllerRegister, pushControllerRemove } from '@api/generated/sdk.gen';
+import { logBreadcrumb, recordError } from './crashlytics';
 import {
   emitPushTap,
   flushPendingPushTaps,
@@ -270,6 +270,57 @@ export const displayPushMessage = async (
   } catch (error) {
     // Foreground notification presentation must never interrupt the app.
     recordError(error, 'push: display notification failed');
+  }
+};
+
+/** Long enough for a slow connection, short enough not to hold up signing out. */
+const DETACH_TIMEOUT_MS = 5_000;
+
+/**
+ * Detaches this device's push token from the signed-in account. Call it on
+ * sign-out, before the auth token is cleared.
+ *
+ * Signing out re-registers the token anonymously, but an anonymous register
+ * only records the device; it never takes it off the account it was attached
+ * to. Without this the device kept receiving the old account's turn
+ * notifications, path names included, after signing out.
+ *
+ * The server keeps the device (it still gets general broadcasts) and only
+ * clears the account. Best-effort: it never throws and gives up after
+ * DETACH_TIMEOUT_MS, so a slow or offline network cannot block sign-out.
+ */
+export const detachPushDevice = async (): Promise<void> => {
+  const detach = async (): Promise<void> => {
+    const token = await messaging().getToken();
+    if (!token) {
+      return;
+    }
+    const result = await pushControllerRemove({ path: { token } });
+    if (result.error !== undefined) {
+      const status = 'response' in result ? result.response?.status ?? 0 : 0;
+      if (status === 0) {
+        // No answer: offline or the connection dropped. Expected, not a fault.
+        logBreadcrumb('push: sign-out detach got no response from the server');
+        return;
+      }
+      throw new Error(`Push device detach failed with HTTP ${status}`);
+    }
+  };
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(() => {
+      logBreadcrumb('push: sign-out detach timed out');
+      resolve();
+    }, DETACH_TIMEOUT_MS);
+  });
+
+  try {
+    await Promise.race([detach(), timeout]);
+  } catch (error) {
+    recordError(error, 'push: sign-out detach failed');
+  } finally {
+    clearTimeout(timer);
   }
 };
 

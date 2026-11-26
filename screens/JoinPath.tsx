@@ -250,6 +250,15 @@ export const JoinPath = ({ route, navigation }: Props) => {
         >
           <Text style={styles.primaryText}>{Constants.OPEN_PATH}</Text>
         </TouchableOpacity>
+        {/*
+          An invite opened from outside the app starts the stack at this screen,
+          so there is nothing behind it to go back to. Every stage needs a way
+          out, including this one, which is also what stays on screen if opening
+          the path fails after a successful join.
+        */}
+        <TouchableOpacity style={styles.secondary} onPress={goHome} accessibilityRole="button">
+          <Text style={styles.secondaryText}>Not now</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -265,6 +274,9 @@ export const JoinPath = ({ route, navigation }: Props) => {
           accessibilityRole="button"
         >
           <Text style={styles.primaryText}>Retry</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.secondary} onPress={goHome} accessibilityRole="button">
+          <Text style={styles.secondaryText}>Not now</Text>
         </TouchableOpacity>
       </View>
     );
