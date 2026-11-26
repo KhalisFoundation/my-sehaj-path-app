@@ -89,9 +89,10 @@ describe('logout', () => {
     expect(mockedDetach).not.toHaveBeenCalled();
   });
 
-  it('detaches push from the account while still signed in', async () => {
-    // Otherwise the device keeps receiving the old account's turn
-    // notifications: the anonymous re-register after sign-out never detaches.
+  it('detaches push only after signing out', async () => {
+    // Detaching while still signed in left an empty, signed-in device for the
+    // whole request, and the automatic restore downloaded the account's paths
+    // back onto the signed-out Home screen.
     await saveCurrentToken('tok123');
     store.dispatch(
       setSignedIn({ token: 'tok123', email: 'a@b.com', firstname: 'A', lastname: 'B' })
@@ -104,7 +105,7 @@ describe('logout', () => {
     await logout();
 
     expect(mockedDetach).toHaveBeenCalledTimes(1);
-    expect(statusWhenDetached).toBe('signedIn');
+    expect(statusWhenDetached).toBe('signedOut');
     expect(store.getState().auth.status).toBe('signedOut');
   });
 
