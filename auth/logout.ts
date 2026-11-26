@@ -1,4 +1,4 @@
-import { recordError } from '@utils';
+import { detachPushDevice, recordError } from '@utils';
 import { store } from '../store';
 import { setSignedOut } from '../store/slices/authSlice';
 import {
@@ -40,6 +40,15 @@ export async function logout(): Promise<void> {
   await clearLoginPending();
   store.dispatch(setSignedOut());
   store.dispatch(dismissSessionExpired());
+  if (token) {
+    // Only after signing out. The drawer has already cleared this device, and
+    // while still signed in an empty device looks like a fresh login, so the
+    // automatic restore downloaded the account's paths again during this wait.
+    // The detach needs only the push token, not the login. Without it the
+    // device kept getting the old account's turn notifications. Best-effort and
+    // time-boxed, so it can never stop the sign-out.
+    await detachPushDevice();
+  }
   // Runtime "the server rejected this" markers must not outlive the session.
   // The next login may be a different account reusing the same local path ids,
   // and even for the same account the work deserves a fresh attempt rather than

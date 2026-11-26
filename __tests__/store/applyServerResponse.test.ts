@@ -1313,6 +1313,49 @@ describe('refreshPathsFromServer', () => {
     expect(store.getState().paths.paths).toHaveLength(0);
   });
 
+  it('does not remove a path joined while a refresh was in flight', async () => {
+    // Opening an invite link from outside the app brings the app to the
+    // foreground, which starts a refresh; the join then lands before that
+    // refresh's answer does. The answer was taken before the join, so it cannot
+    // list the new group, and must not be read as "the group was deleted".
+    const store = signedInStore();
+    let releasePaths: (value: unknown) => void = () => undefined;
+    mockFindAll.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releasePaths = resolve;
+        })
+    );
+    mockAccessible.mockResolvedValueOnce({ data: [] }); // the refresh's list, from before the join
+    const refresh = refreshPathsFromServer(store);
+
+    mockAccessible.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'group-joined',
+          pathId: 'srv-joined',
+          name: 'Joined path',
+          angNumber: 10,
+          verseId: 100,
+          progress: 1,
+          startDate: Date.UTC(2026, 0, 1),
+          sharing: 'PUBLIC',
+          relationship: 'MEMBER',
+          stateVersion: 1,
+          memberCount: 2,
+        },
+      ],
+    });
+    const localId = await ensureAccessiblePath(store, 'group-joined');
+    expect(store.getState().paths.paths.some((path) => path.pathId === localId)).toBe(true);
+
+    releasePaths(findAllOk([]));
+    await refresh;
+
+    expect(store.getState().paths.paths.some((path) => path.pathId === localId)).toBe(true);
+    expect(store.getState().sync.meta[localId as number]?.groupId).toBe('group-joined');
+  });
+
   it('does not apply old settings after a newer local setting was acknowledged', async () => {
     const store = signedInStore();
     let resolvePaths: (value: ReturnType<typeof findAllOk>) => void = () => undefined;

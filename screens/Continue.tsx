@@ -110,7 +110,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     initialTab,
     notificationTapAt,
     sehajPathId: routeSehajPathId,
-    precheckedShared = false,
+    knownOtherMember = false,
   } = route.params;
 
   /**
@@ -165,7 +165,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }
 
   const [members, setMembers] = useState<SehajPathMember[]>([]);
-  const [sharedMembershipChecked, setSharedMembershipChecked] = useState(false);
+  // Whether this screen's own members load has answered. Until it has, Home's
+  // already-loaded hint (`knownOtherMember`) stands in for it.
+  const [membersLoaded, setMembersLoaded] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteAutoCreate, setInviteAutoCreate] = useState(false);
@@ -217,14 +219,17 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   // Keep the shared UI available immediately from the persisted sync flag.
   // Membership is refreshed in the background, so waiting for that request
   // made Continue briefly look like a personal path on every launch.
+  // Home's hint counts only until this screen's own members load answers.
+  const otherMemberHint = knownOtherMember && !membersLoaded;
   const isSharedPath =
-    hasOtherMember || groupMetaShared === true || hasExplicitGroupRoute || precheckedShared;
+    hasOtherMember || groupMetaShared === true || hasExplicitGroupRoute || otherMemberHint;
   // Turns is a group-only feature. Cached metadata can briefly say `shared`
-  // after a member has left, so normal Home opens wait for the active-member
-  // response. Invite joins and notification routes carry an explicit group id
-  // and are already known to be group paths, so they can render immediately.
-  const showTurnsTab =
-    hasOtherMember || hasExplicitGroupRoute || (precheckedShared && !sharedMembershipChecked);
+  // after a member has left, so it never decides Turns. A Home open uses Home's
+  // already-loaded members until this screen's own load answers, so a shared
+  // path shows Turns at once and a personal path never shows it. Invite joins
+  // and notification routes carry an explicit group id and are already known
+  // to be group paths, so they can render immediately.
+  const showTurnsTab = hasOtherMember || hasExplicitGroupRoute || otherMemberHint;
 
   // A link makes a path shareable, not shared. Its owner is the first active
   // membership, so group turns and live-reading rules begin only once another
@@ -269,6 +274,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       // are deliberately probed below: another member may have just joined on
       // another device, while this device still has cached `shared: false`.
       setMembers([]);
+      setMembersLoaded(true);
       setMembersError(null);
       return;
     }
@@ -320,6 +326,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       // the error and retry UI, including deleted/inaccessible paths.
       if (result.kind === 'refused' && result.status === 404 && groupMetaShared !== true) {
         setMembers([]);
+        setMembersLoaded(true);
         setMembersError(null);
         return;
       }
@@ -336,7 +343,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     // updates immediately instead, which is safe for both the modal and the
     // native share sheet.
     setMembers(nextMembers);
-    setSharedMembershipChecked(true);
+    setMembersLoaded(true);
     setMembersError(null);
     // The active member list is the immediate source of truth. Updating the
     // durable mode here means Continue's personal fallback and PathScreen's
@@ -1624,6 +1631,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                     membersLoadVersionRef.current += 1;
                     inviteStatusLoadVersionRef.current += 1;
                     setMembers([]);
+                    setMembersLoaded(true);
                     setMembersError(null);
                     setInviteStatus('none');
                     dispatch(setPathShared({ pathId, shared: false }));

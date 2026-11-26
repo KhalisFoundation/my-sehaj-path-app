@@ -1,5 +1,6 @@
 import { makeStore, store as appStore } from '../../store';
 import { saveGroupPankti } from '../../store/groupPaths';
+import { setOnline } from '../../store/slices/networkSlice';
 import { sehajPathSessionsControllerSavePankti } from '../../api/generated/sdk.gen';
 
 jest.mock('../../api/generated/sdk.gen', () => ({
@@ -387,6 +388,66 @@ describe('saving a pankti on a shared path', () => {
         body: expect.objectContaining({ scrollPosition: 0 }),
       })
     );
+  });
+
+  it('writes no empty reading day, which the calendar would count as a day', async () => {
+    await saveGroupPankti(1, 3, 78, 10);
+
+    const record = appStore.getState().paths.dates.find((entry) => entry.pathid === 1);
+    expect(record?.dates.some((entry) => entry.date === '')).toBe(false);
+  });
+
+  describe('when the save does not succeed', () => {
+    // The generated client never throws on a failed request: it returns the
+    // error with no `data`. A request that never got an HTTP answer has no
+    // `response` at all; a refused one carries the server's status.
+    const neverReachedServer = { data: undefined, error: {}, response: undefined };
+    const savedAng = () =>
+      appStore.getState().paths.paths.find((path) => path.pathId === 1)?.saveData.angNumber;
+
+    afterEach(() => {
+      appStore.dispatch(setOnline(true));
+      jest.restoreAllMocks();
+    });
+
+    it('is "offline", and undone, when the request never reached the server and the device is offline', async () => {
+      appStore.dispatch(setOnline(false));
+      const before = savedAng();
+      savePanktiSpy.mockResolvedValueOnce(neverReachedServer);
+
+      await expect(saveGroupPankti(1, 3, 78, 10)).resolves.toEqual({ status: 'offline' });
+      expect(savePanktiSpy).toHaveBeenCalledTimes(1);
+      expect(savedAng()).toBe(before);
+    });
+
+    it('is "failed", and undone, when the server answered with an error', async () => {
+      const before = savedAng();
+      const serverError = {
+        data: undefined,
+        error: { message: 'boom' },
+        response: { status: 500 },
+      };
+      savePanktiSpy.mockResolvedValueOnce(serverError);
+
+      await expect(saveGroupPankti(1, 3, 78, 10)).resolves.toEqual({ status: 'failed' });
+      expect(savePanktiSpy).toHaveBeenCalledTimes(1);
+      expect(savedAng()).toBe(before);
+    });
+
+    it('is "failed" when the request never reached the server but the device is online', async () => {
+      // `isOnlineNow` probes the network when the device claims to be online.
+      jest.spyOn(globalThis, 'fetch').mockResolvedValue({ status: 204 } as Response);
+      savePanktiSpy.mockResolvedValueOnce(neverReachedServer);
+
+      await expect(saveGroupPankti(1, 3, 78, 10)).resolves.toEqual({ status: 'failed' });
+    });
+
+    it('still reports the failure if something throws outside the client', async () => {
+      appStore.dispatch(setOnline(false));
+      savePanktiSpy.mockRejectedValueOnce(new Error('interceptor blew up'));
+
+      await expect(saveGroupPankti(1, 3, 78, 10)).resolves.toEqual({ status: 'offline' });
+    });
   });
 
   it('addresses the group id, not the id this device syncs under', async () => {

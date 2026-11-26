@@ -876,6 +876,14 @@ const performRefreshPathsFromServer = async (
     return false;
   }
   const settingsUpdatedAtAtStart = state.sync.settingsUpdatedAt;
+  // The groups this device knew about when the request began. The accessible
+  // list that comes back describes the server as it was at that moment, so it
+  // can only say a group is gone if the group existed then. A group joined
+  // while the request was in flight (an invite link opened from outside the
+  // app) is absent from that list by timing, not because it was deleted.
+  const groupIdsAtStart = new Set(
+    Object.values(state.sync.meta).flatMap((meta) => (meta.groupId ? [meta.groupId] : []))
+  );
   const expectedMeta = new Map(
     Object.entries(state.sync.meta).map(([key, meta]) => [
       Number(key),
@@ -1215,6 +1223,7 @@ const performRefreshPathsFromServer = async (
         if (
           typeof groupId === 'string' &&
           groupId.length > 0 &&
+          groupIdsAtStart.has(groupId) &&
           !accessibleGroupIds.has(groupId) &&
           localId !== activePathId
         ) {

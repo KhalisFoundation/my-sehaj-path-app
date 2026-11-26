@@ -153,14 +153,20 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           members={membersByPathId[path.pathId]}
           memberCount={memberMetadata[path.pathId]?.memberCount}
           onPress={() => {
-            // Continue already reads the persisted group id from sync metadata.
-            // Keep normal Home navigation free of a route-level group id: that
-            // id is also present on invite-ready personal paths and, when
-            // cached metadata is stale, could briefly expose group-only UI.
-            navigation.push(Routes.Continue, {
-              pathId: path.pathId,
-              precheckedShared: (memberMetadata[path.pathId]?.memberCount ?? 0) > 1,
-            });
+            // Open straight away, with no request of its own. Waiting for a
+            // members check here left the tap dead for up to the request
+            // timeout, and a second tap pushed Continue twice.
+            //
+            // The member count Home already has from the accessible-paths
+            // snapshot is the server's total of active members, this user
+            // included. More than one lets a shared path show Turns on the
+            // first frame, while a personal path never does. Continue's own
+            // members load then has the final say.
+            //
+            // No route-level group id: invite-ready personal paths have one
+            // too, and with stale metadata it could briefly show group-only UI.
+            const knownOtherMember = (memberMetadata[path.pathId]?.memberCount ?? 0) > 1;
+            navigation.push(Routes.Continue, { pathId: path.pathId, knownOtherMember });
           }}
         />
       )),

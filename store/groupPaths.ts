@@ -165,7 +165,11 @@ export const saveGroupPankti = async (
     const position = response.data;
     if (!position) {
       apply(rollback.angNumber, rollback.verseId, rollback.scrollPosition, rollback.completionDate);
-      return { status: 'failed' };
+      // A request that never got an HTTP answer while the device is offline is
+      // "offline"; any answer from the server is a real failure.
+      return response.response === undefined && !(await isOnlineNow())
+        ? { status: 'offline' }
+        : { status: 'failed' };
     }
 
     // Adopt the server's position whatever it says. When our save was behind
