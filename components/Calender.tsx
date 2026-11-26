@@ -85,7 +85,10 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
   );
 
   const readingDateStrings = useMemo(() => {
-    const persistedDates = progressDates?.dates?.map((date: any) => date.date) ?? [];
+    // Older builds wrote `{ date: '' }` for shared saves. It is not a day, and
+    // counting it made the list non-empty, skipping the loading state.
+    const persistedDates =
+      progressDates?.dates?.map((date: any) => date.date).filter(Boolean) ?? [];
     if (sharedPathId) {
       // Use persisted reading days while the authoritative group streak is
       // loading. Once the group response arrives it replaces this local cache:

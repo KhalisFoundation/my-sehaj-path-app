@@ -265,14 +265,39 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
   });
 
   /**
-   * The last sequence handed to the screen.
+   * The last sequence handed to the screen, kept PER SESSION.
    *
    * Positions can arrive out of order — they cross a pub/sub channel between
    * replicas — and applying an older one moves the whole group backwards, which
    * a follower sees as the reader jumping. Sequence is monotonic per session,
-   * so anything not strictly newer is dropped.
+   * so within one session anything not strictly newer is dropped.
+   *
+   * It is only monotonic per session, though, and one socket outlives many: a
+   * follower who stays on the page sees one reader finish and the next begin,
+   * and the new session does not promise to count on from the old one (a fresh
+   * start begins at 0). A single number for the whole socket would then drop
+   * every position from the new reader until it overtook the old reader's last.
    */
-  let lastSequence = -1;
+  const lastSequence = new Map<string, number>();
+  const retiredSessions = new Set<string>();
+  let currentSessionId: string | null = null;
+  const lastSequenceOf = (sessionId: string): number => lastSequence.get(sessionId) ?? -1;
+  /** Only ever raises a session's mark: a late, lower value must not reopen the door. */
+  const raiseSequence = (sessionId: string, sequence: number): void => {
+    lastSequence.set(sessionId, Math.max(lastSequenceOf(sessionId), sequence));
+  };
+  const activateSession = (sessionId: string): void => {
+    if (currentSessionId !== null && currentSessionId !== sessionId) {
+      retiredSessions.add(currentSessionId);
+    }
+    currentSessionId = sessionId;
+  };
+  const retireSession = (sessionId: string): void => {
+    retiredSessions.add(sessionId);
+    if (currentSessionId === sessionId) {
+      currentSessionId = null;
+    }
+  };
 
   /** True once this device has sent a position, i.e. it holds the turn. */
   let driving = false;
@@ -295,7 +320,8 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
       // is sitting still on one ang.
       const live = payload?.live ?? null;
       if (live) {
-        lastSequence = live.sequence;
+        activateSession(live.sessionId);
+        raiseSequence(live.sessionId, live.sequence);
         if (
           live.saved &&
           typeof live.saved.angNumber === 'number' &&
@@ -310,6 +336,8 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
                 : 0,
           });
         }
+      } else if (currentSessionId !== null) {
+        retireSession(currentSessionId);
       }
       onJoined(live);
     }
@@ -321,10 +349,19 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
     if (driving) {
       return;
     }
-    if (typeof event?.sequence !== 'number' || event.sequence <= lastSequence) {
+    if (typeof event?.sessionId !== 'string' || typeof event.sequence !== 'number') {
       return;
     }
-    lastSequence = event.sequence;
+    if (currentSessionId === null) {
+      if (retiredSessions.has(event.sessionId)) {
+        return;
+      }
+      activateSession(event.sessionId);
+    }
+    if (event.sessionId !== currentSessionId || event.sequence <= lastSequenceOf(event.sessionId)) {
+      return;
+    }
+    raiseSequence(event.sessionId, event.sequence);
     onPosition(event);
   });
 
@@ -350,6 +387,10 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
 
   socket.on('reading-ended', (event: LiveReadingEnded) => {
     if (typeof event?.sessionId === 'string') {
+      // End packets can arrive before this session's first position. Retire it
+      // even when it never became current, otherwise a delayed position could
+      // revive the ended reader and block the next live session.
+      retireSession(event.sessionId);
       onReadingEnded?.(event);
     }
   });
@@ -380,6 +421,13 @@ export const connectLive = async (options: LiveOptions): Promise<LiveHandle> => 
 
   socket.on('reader-takeover-completed', (event: LiveReaderTakeoverCompleted) => {
     if (typeof event?.takeoverId === 'string' && typeof event?.sessionId === 'string') {
+      // The new reader's session is a different session. Seed it from the
+      // snapshot this event carries, so its first positions are measured against
+      // where IT started rather than against the previous reader's count.
+      activateSession(event.sessionId);
+      if (typeof event.sequence === 'number') {
+        raiseSequence(event.sessionId, event.sequence);
+      }
       onTakeoverCompleted?.(event);
     }
   });

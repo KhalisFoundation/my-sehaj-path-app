@@ -226,6 +226,22 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   const sheetStartHeight = useRef(0);
   const sheetHeightRef = useRef(0);
   const automaticStartSelectionRef = useRef<string | null>(null);
+  // True while this sheet is on screen. A request can finish after the sheet was
+  // dismissed (Android back, the iOS back gesture), and `navigation.goBack()` is
+  // not tied to this sheet: it pops whatever is on top by then, which is the
+  // path's Continue screen, and sends the person to Home.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  // Mirrors `booking` for the swipe handler, which is built once.
+  const bookingRef = useRef(false);
+  // The newest `load`. If the date changes while one is in flight, the older
+  // answer is for the wrong day and must not replace the newer one.
+  const loadSequenceRef = useRef(0);
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -262,10 +278,15 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   }, [automaticSelectionKey]);
 
   const load = useCallback(async () => {
+    const sequence = ++loadSequenceRef.current;
+    const isCurrent = () => mountedRef.current && sequence === loadSequenceRef.current;
     setSlots(null);
     const { from, to } = planWindowFor(day);
     try {
       const result = await loadPlan(sehajPathId, from, to);
+      if (!isCurrent()) {
+        return;
+      }
       if (!result.ok) {
         setSlots([]);
         showErrorAlert(result.message, () => {
@@ -275,6 +296,9 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
       }
       setSlots(result.data.slots);
     } catch (error) {
+      if (!isCurrent()) {
+        return;
+      }
       setSlots([]);
       recordError(error, 'ChooseSlot: failed to load schedule');
       showErrorAlert(
@@ -417,6 +441,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
         return;
       }
       setBooking(true);
+      bookingRef.current = true;
       const analyticsEvent = isEditing ? 'TURN_EDIT' : 'TURN_ADD';
       try {
         let result;
@@ -454,21 +479,35 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
 
         if (result.ok) {
           trackSharedPathOutcome(analyticsEvent, 'success');
+          // The turn exists whether or not the sheet is still here, so the plan
+          // is always refreshed. Only leaving is conditional: a late
+          // `goBack()` would pop whatever is on top by then.
           notifyPlanRefresh(sehajPathId, availability.slot.startsAt);
-          navigation.goBack();
+          if (mountedRef.current) {
+            navigation.goBack();
+          }
           return;
         }
 
-        showErrorAlert(result.message || ErrorConstants.FAILED_TO_BOOK_TURN);
+        if (mountedRef.current) {
+          showErrorAlert(result.message || ErrorConstants.FAILED_TO_BOOK_TURN);
+        }
         reportUnexpectedGroupRefusal('turn mutation', result, [400, 409]);
         // The database is the final authority if another member books this range
         // while the sheet is open. Refresh so the exact selection becomes disabled.
-        await load();
+        if (mountedRef.current) {
+          await load();
+        }
       } catch (error) {
         recordError(error, 'ChooseSlot: booking threw');
-        showErrorAlert(ErrorConstants.FAILED_TO_BOOK_TURN);
+        if (mountedRef.current) {
+          showErrorAlert(ErrorConstants.FAILED_TO_BOOK_TURN);
+        }
       } finally {
-        setBooking(false);
+        bookingRef.current = false;
+        if (mountedRef.current) {
+          setBooking(false);
+        }
       }
     },
     [
@@ -530,7 +569,9 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
           setSheetHeight(nextHeight);
         },
         onPanResponderRelease: (_, gesture) => {
-          if (gesture.dy > 180) {
+          // Not while a booking is in flight: leaving would abandon a request
+          // whose result the person has not seen. The sheet settles back instead.
+          if (gesture.dy > 180 && !bookingRef.current) {
             navigation.goBack();
             return;
           }
@@ -547,7 +588,16 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
 
   return (
     <View style={styles.overlay}>
-      <Pressable style={styles.backdrop} onPress={() => navigation.goBack()} />
+      <Pressable
+        style={styles.backdrop}
+        onPress={() => {
+          // Leaving mid-booking would abandon a request whose result the
+          // person has not seen yet.
+          if (!booking) {
+            navigation.goBack();
+          }
+        }}
+      />
       <View
         style={[styles.sheet, sheetHeight > 0 && { height: sheetHeight }]}
         onLayout={({ nativeEvent }) => {

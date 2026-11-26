@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePreventRemove } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Constants, Routes } from '@constants';
 import { fontSizeFor } from '@constants/FontSize';
@@ -112,6 +113,7 @@ export const useReadingSession = ({
   const [finishing, setFinishing] = useState(false);
   const [takeoverUntil, setTakeoverUntil] = useState<number | null>(null);
   const [takeoverSeconds, setTakeoverSeconds] = useState<number | null>(null);
+  const turnEnded = useRef(false);
 
   const onReadingEnded = useCallback(
     (ended: { readerLabel: string; endAng: number; endReason?: 'DISCONNECTED' }) => {
@@ -190,6 +192,7 @@ export const useReadingSession = ({
         // The current Path route is role-bound. Returning to Continue lets its
         // existing live-session refresh present the new reader/follower state
         // without reconnecting this socket as a driver by accident.
+        turnEnded.current = true;
         navigation.goBack();
       }
     },
@@ -248,6 +251,16 @@ export const useReadingSession = ({
     setTakeoverSeconds(null);
   }, []);
 
+  const handlePathDeleted = useCallback(() => {
+    turnEnded.current = true;
+    onPathDeleted?.();
+  }, [onPathDeleted]);
+
+  const handleMembershipEnded = useCallback(() => {
+    turnEnded.current = true;
+    onMembershipEnded?.();
+  }, [onMembershipEnded]);
+
   const { connection, readerLabel, reportNow } = useLiveReading({
     live,
     pathAng,
@@ -262,8 +275,8 @@ export const useReadingSession = ({
     onTakeoverCompleted,
     onTakeoverStarted,
     onTakeoverCancelled,
-    onPathDeleted,
-    onMembershipEnded,
+    onPathDeleted: handlePathDeleted,
+    onMembershipEnded: handleMembershipEnded,
     onSettings: onReaderLayout,
     settings: ownLayout,
   });
@@ -290,14 +303,38 @@ export const useReadingSession = ({
     // Return to the existing route instead.
     navigation.popTo(Routes.Continue, { pathId, initialTab: 'progress' });
   }, [navigation, pathId]);
-  const turnEnded = useRef(false);
+
   const requestExit = useCallback(() => {
     if (live?.driving && live.sessionId && live.startAng !== undefined && !turnEnded.current) {
       setFinishOpen(true);
       return;
     }
+    turnEnded.current = true;
     onLeaveReader();
   }, [live, onLeaveReader]);
+
+  // Keep the iOS swipe-back gesture, but ask first: while this device holds the
+  // turn, a swipe opens the same Finish sheet Android back does.
+  //
+  // This must be `usePreventRemove`, not a plain `beforeRemove` listener.
+  // Native-stack only stops the native swipe (`preventNativeDismiss`) for
+  // routes registered through this hook. With a bare listener iOS had already
+  // removed the screen by the time JS cancelled the pop, leaving the stack
+  // believing the reader was still open while it was gone from view.
+  //
+  // Only a back (swipe, header back) is turned into the Finish prompt. Anything
+  // else — a replace to the error screen, a reset on sign-out — and every exit
+  // once the turn is over (finished, taken over, path deleted) goes through
+  // unchanged. Re-dispatching `data.action` is not prevented again: navigation
+  // marks it as already checked for this screen.
+  usePreventRemove(live?.driving === true, ({ data }) => {
+    const isBack = data.action.type === 'POP' || data.action.type === 'GO_BACK';
+    if (turnEnded.current || !isBack) {
+      navigation.dispatch(data.action);
+      return;
+    }
+    requestExit();
+  });
   const confirmFinish = useCallback(async () => {
     if (!live?.driving || !live.sessionId || live.startAng === undefined || finishing) {
       return;

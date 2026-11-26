@@ -9,8 +9,6 @@ import { SafeAreaStyle } from '@styles';
 import {
   ChooseSlot,
   JoinPath,
-  GroupPath,
-  InviteMember,
   SplashScreen,
   HomeScreen,
   Continue,
@@ -76,8 +74,12 @@ export type RootStackParamList = {
     pathId: number;
     /** Keeps a stale Continue route identifiable after its local card is pruned. */
     sehajPathId?: string;
-    /** Home preflight confirmed another active member before opening this path. */
-    precheckedShared?: boolean;
+    /**
+     * Home's already-loaded member list showed another active member. Lets a
+     * shared path show Turns on the first frame; Continue's own members load
+     * then has the final say.
+     */
+    knownOtherMember?: boolean;
     initialTab?: 'progress' | 'streak' | 'turns' | 'members';
     /** Changes on every notification tap so an already-mounted route reacts. */
     notificationTapAt?: number;
@@ -108,8 +110,6 @@ export type RootStackParamList = {
    * with a session, a loaded database, or a warm store.
    */
   JoinPath: { token: string };
-  GroupPath: { sehajPathId: string; pathId: number; pathName: string };
-  InviteMember: { sehajPathId: string; pathName?: string };
   ChooseSlot: {
     sehajPathId: string;
     pathId: number;
@@ -450,8 +450,6 @@ const App = () => {
               <Stack.Screen name={Routes.About} component={About} />
               <Stack.Screen name={Routes.Error} component={Error} />
               <Stack.Screen name={Routes.JoinPath} component={JoinPath} />
-              <Stack.Screen name={Routes.GroupPath} component={GroupPath} />
-              <Stack.Screen name={Routes.InviteMember} component={InviteMember} />
               <Stack.Screen
                 name={Routes.ChooseSlot}
                 component={ChooseSlot}

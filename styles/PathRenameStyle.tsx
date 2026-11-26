@@ -57,6 +57,10 @@ export const PathRenameStyle = StyleSheet.create({
   },
   inputShell: {
     borderRadius: UIConstants.BORDER_RADIUS * 2,
+    // Transparent until the name hits the length limit, so the error border
+    // does not shift the layout when it appears.
+    borderWidth: 1,
+    borderColor: 'transparent',
     backgroundColor: UIConstants.SURFACE_BACKGROUND,
     width: '90%',
     minHeight: 47,
@@ -99,6 +103,15 @@ export const PathRenameStyle = StyleSheet.create({
     top: 20,
     right: 22,
     zIndex: 999,
+  },
+  inputShellError: {
+    borderColor: UIConstants.DANGER_COLOR,
+  },
+  limitText: {
+    color: UIConstants.DANGER_COLOR,
+    fontSize: UIConstants.CAPTION_FONT_SIZE,
+    fontFamily: font.Baloo_Paaji_2_Medium,
+    textAlign: 'center',
   },
   warningText: {
     color: UIConstants.WARNING_TEXT_COLOR,

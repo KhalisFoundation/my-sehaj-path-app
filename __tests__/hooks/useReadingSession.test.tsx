@@ -33,7 +33,20 @@ let callbacks!: {
   onTakeoverCompleted?: (event: LiveReaderTakeoverCompleted) => void;
 };
 let latest!: SessionValue;
-const navigation = { goBack: jest.fn(), popTo: jest.fn(), reset: jest.fn() };
+type PreventRemoveCallback = (options: { data: { action: { type: string } } }) => void;
+/** What the hook last asked navigation for: whether to prevent removal, and the handler. */
+let preventRemove: { enabled: boolean; callback: PreventRemoveCallback } | undefined;
+jest.mock('@react-navigation/native', () => ({
+  usePreventRemove: (enabled: boolean, callback: PreventRemoveCallback) => {
+    preventRemove = { enabled, callback };
+  },
+}));
+const navigation = {
+  goBack: jest.fn(),
+  popTo: jest.fn(),
+  reset: jest.fn(),
+  dispatch: jest.fn(),
+};
 
 const Probe = ({ live }: { live: Parameters<typeof useReadingSession>[0]['live'] }) => {
   latest = useReadingSession({
@@ -83,6 +96,8 @@ beforeEach(() => {
   navigation.goBack.mockClear();
   navigation.popTo.mockClear();
   navigation.reset.mockClear();
+  navigation.dispatch.mockClear();
+  preventRemove = undefined;
   useLiveReadingMock.mockImplementation((options) => {
     callbacks = options;
     return {
@@ -95,6 +110,83 @@ beforeEach(() => {
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+describe('useReadingSession swipe-back gesture', () => {
+  const swipe = { data: { action: { type: 'POP' } } };
+
+  it('prevents removal while this device holds the turn', async () => {
+    await mount(reader);
+
+    expect(preventRemove?.enabled).toBe(true);
+  });
+
+  it('asks first: a swipe-back opens Finish instead of leaving', async () => {
+    await mount(reader);
+
+    await act(async () => {
+      preventRemove?.callback(swipe);
+    });
+
+    expect(latest.finishOpen).toBe(true);
+    expect(navigation.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('treats the header back (GO_BACK) the same as a swipe', async () => {
+    await mount(reader);
+
+    await act(async () => {
+      preventRemove?.callback({ data: { action: { type: 'GO_BACK' } } });
+    });
+
+    expect(latest.finishOpen).toBe(true);
+    expect(navigation.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('does not prevent anything for a follower, who has no turn to finish', async () => {
+    await mount({ ...reader, driving: false });
+
+    expect(preventRemove?.enabled).toBe(false);
+  });
+
+  // REPLACE: BaniDB failure sends the reader to Error/Home. RESET: a stack
+  // reset such as sign-out. POP_TO: an exit the screen already confirmed.
+  it.each(['REPLACE', 'RESET', 'POP_TO'])(
+    'lets a %s removal through without asking',
+    async (type) => {
+      await mount(reader);
+      const action = { data: { action: { type } } };
+
+      await act(async () => {
+        preventRemove?.callback(action);
+      });
+
+      expect(navigation.dispatch).toHaveBeenCalledWith(action.data.action);
+      expect(latest.finishOpen).toBe(false);
+    }
+  );
+
+  it('lets the back through once a takeover has ended the turn', async () => {
+    await mount(reader);
+
+    await act(async () => {
+      callbacks.onTakeoverCompleted?.({
+        takeoverId: 'takeover-1',
+        sessionId: 'session-2',
+        readerMemberId: 'member-2',
+        readerLabel: 'Member',
+        currentAng: 1,
+        currentVerseId: 10,
+        scrollPosition: 0,
+        sequence: 2,
+      });
+      preventRemove?.callback(swipe);
+    });
+
+    expect(navigation.goBack).toHaveBeenCalledTimes(1);
+    expect(navigation.dispatch).toHaveBeenCalledWith(swipe.data.action);
+    expect(latest.finishOpen).toBe(false);
+  });
 });
 
 describe('useReadingSession takeover feedback', () => {

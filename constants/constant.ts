@@ -12,6 +12,7 @@ export const Constants: Constant = {
   START_A_PATH_TITLE: 'Start new',
   CREATE_PATH_SUBTITLE: 'Start a Sehaj Path with your loved ones. Read together, stay connected.',
   PATH_NAME_INPUT_LABEL: 'Path name input',
+  PATH_NAME_TOO_LONG: 'A path name can be up to {max} characters.',
   PATH_NAME_PLACEHOLDER: 'Path Name',
   CREATING: 'Creating…',
   LOGGING_IN: 'Logging in…',

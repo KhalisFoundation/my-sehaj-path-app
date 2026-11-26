@@ -64,6 +64,47 @@ const createLink = async (findByText: RenderAPI['findByText']) => {
   await findByText('Copy Link');
 };
 
+describe('the automatic link creation', () => {
+  it('tries once, then stops, when the server refuses', async () => {
+    // With `autoCreate` on, a refusal used to send the sheet round again as soon
+    // as it settled: one request per round trip until the sheet was closed.
+    enableSharingMock.mockResolvedValue({ ok: true, data: { sharing: 'PUBLIC' } } as never);
+    createInviteMock.mockResolvedValue({
+      ok: false,
+      kind: 'refused',
+      status: 403,
+      message: 'Only an admin can invite',
+    } as never);
+
+    const { findByText } = renderSheet(true, true);
+    expect(await findByText('Only an admin can invite')).toBeTruthy();
+    // Long enough for any loop to show itself.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(createInviteMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('still lets the person try again by hand after a failure', async () => {
+    enableSharingMock.mockResolvedValue({ ok: true, data: { sharing: 'PUBLIC' } } as never);
+    createInviteMock
+      .mockResolvedValueOnce({
+        ok: false,
+        kind: 'refused',
+        status: 500,
+        message: 'Try later',
+      } as never)
+      .mockResolvedValue({ ok: true, data: { token: 'tok-retry' } } as never);
+
+    const { findByText } = renderSheet(true, true);
+    expect(await findByText('Try later')).toBeTruthy();
+    expect(createInviteMock).toHaveBeenCalledTimes(1);
+
+    fireEvent.press(await findByText('Retry'));
+
+    await waitFor(() => expect(createInviteMock).toHaveBeenCalledTimes(2));
+  });
+});
+
 describe('the invite sheet', () => {
   it('mints nothing while closed, so opening a path cannot share it', async () => {
     minted();
