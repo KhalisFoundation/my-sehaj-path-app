@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useEffect, useLayoutEffect } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View, type ScrollViewInstance } from 'react-native';
 import { ParagraphTextForPath, SimpleTextForPath } from '@components';
 import { PathReaderStyles } from '@styles';
 import { PathNextAng } from './PathNextAng';
@@ -60,7 +60,7 @@ interface PathReaderProps {
      */
     fontSizeIndex?: number;
   };
-  scrollRef: React.RefObject<ScrollView | null>;
+  scrollRef: React.RefObject<ScrollViewInstance | null>;
   scrollOffset: React.RefObject<number>;
   /** First rendered verse at the top of the viewport, used for hand-off save. */
   firstVisibleVerseId: React.MutableRefObject<number>;
@@ -69,6 +69,8 @@ interface PathReaderProps {
   handleRightArrow: (pageNo: number) => void;
   pathId: number;
   isNavigating: boolean;
+  /** Shared progress is persisted by the server-owned save in PathScreen. */
+  usesServerOwnedProgress?: boolean;
   onSaveCommit?: (
     angNumber: number,
     verseId: number,
@@ -110,6 +112,7 @@ const PathReaderComponent = ({
   handleRightArrow,
   pathId,
   isNavigating,
+  usesServerOwnedProgress = false,
   onSaveCommit,
   onSaveFailure,
   setCenterVerseId,
@@ -210,12 +213,18 @@ const PathReaderComponent = ({
 
   const createSaveHandler = useCallback(
     (verseId: number) => async () => {
-      const saved = await savePathProgress(
-        pathId,
-        pathContent?.source?.pageNo,
-        verseId,
-        scrollOffset.current
-      );
+      // Personal paths are local-first. Shared paths are server-owned and must
+      // not write here before `saveGroupPankti` captures its rollback point.
+      // That group save performs the optimistic local update itself.
+      let saved = true;
+      if (!usesServerOwnedProgress) {
+        saved = await savePathProgress(
+          pathId,
+          pathContent?.source?.pageNo,
+          verseId,
+          scrollOffset.current
+        );
+      }
       if (!saved) {
         // Long-press optimistically marks the verse saved for instant feedback.
         // The write failed, so undo that: never leave a "saved" state on screen
@@ -238,6 +247,7 @@ const PathReaderComponent = ({
       pathId,
       pathContent?.source?.pageNo,
       scrollOffset,
+      usesServerOwnedProgress,
       setIsSaved,
       setIsSaving,
       setPressIndex,

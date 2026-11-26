@@ -233,6 +233,129 @@ describe('connectLive', () => {
   });
 });
 
+describe('a follower who stays on the page while the reader changes', () => {
+  const inSession = (sessionId: string, sequence: number, ang: number) => ({
+    ...position(sequence, ang),
+    sessionId,
+  });
+  const takeover = (sessionId: string, sequence: number) => ({
+    takeoverId: 'take-1',
+    sessionId,
+    readerMemberId: 'm2',
+    readerLabel: 'Simran',
+    currentAng: 20,
+    currentVerseId: 200,
+    scrollPosition: 0,
+    sequence,
+  });
+
+  it('follows the new reader even though their count starts below the old reader’s', async () => {
+    // A session numbers its own positions; nothing promises the next one carries on
+    // from where the last one stopped, so one number for the whole socket froze the page.
+    const onTakeoverCompleted = jest.fn();
+    const { socket, onPosition } = await start({ onTakeoverCompleted });
+    socket.fire('joined', { live: { readerLabel: 'Harpreet', ...inSession('s1', 120, 20) } });
+    socket.fire('reader-takeover-completed', takeover('s2', 0));
+    onPosition.mockClear();
+
+    socket.fire('position', inSession('s2', 1, 21));
+    socket.fire('position', inSession('s2', 2, 22));
+
+    expect(onPosition).toHaveBeenCalledTimes(2);
+    expect(onPosition.mock.calls[1][0].currentAng).toBe(22);
+    expect(onTakeoverCompleted).toHaveBeenCalledTimes(1);
+  });
+
+  it('follows a reader who starts after the previous one finished, without a takeover', async () => {
+    const onReadingEnded = jest.fn();
+    const { socket, onPosition } = await start({ onReadingEnded });
+    socket.fire('position', inSession('s1', 900, 30));
+    socket.fire('reading-ended', {
+      sessionId: 's1',
+      readerLabel: 'Harpreet',
+      endAng: 30,
+      endVerseId: 300,
+    });
+    onPosition.mockClear();
+
+    socket.fire('position', inSession('s2', 1, 31));
+
+    expect(onPosition).toHaveBeenCalledWith(expect.objectContaining({ currentAng: 31 }));
+  });
+
+  it('still drops an out-of-order position inside the new session', async () => {
+    const { socket, onPosition } = await start({ onTakeoverCompleted: jest.fn() });
+    socket.fire('position', inSession('s1', 120, 20));
+    socket.fire('reader-takeover-completed', takeover('s2', 0));
+    socket.fire('position', inSession('s2', 5, 25));
+    onPosition.mockClear();
+
+    socket.fire('position', inSession('s2', 4, 24));
+
+    expect(onPosition).not.toHaveBeenCalled();
+  });
+
+  it('does not let a newer late position from the old session move the page back', async () => {
+    const { socket, onPosition } = await start({ onTakeoverCompleted: jest.fn() });
+    socket.fire('position', inSession('s1', 120, 20));
+    socket.fire('reader-takeover-completed', takeover('s2', 0));
+    socket.fire('position', inSession('s2', 1, 25));
+    onPosition.mockClear();
+
+    // Still in flight from before the hand-off. It is newer than the last s1
+    // packet, but s1 is no longer the active session and must stay retired.
+    socket.fire('position', inSession('s1', 121, 19));
+
+    expect(onPosition).not.toHaveBeenCalled();
+  });
+
+  it('does not revive an ended session from a delayed packet', async () => {
+    const { socket, onPosition } = await start({ onReadingEnded: jest.fn() });
+    socket.fire('position', inSession('s1', 120, 20));
+    socket.fire('reading-ended', {
+      sessionId: 's1',
+      readerLabel: 'Harpreet',
+      endAng: 20,
+      endVerseId: 200,
+    });
+    onPosition.mockClear();
+
+    socket.fire('position', inSession('s1', 121, 21));
+
+    expect(onPosition).not.toHaveBeenCalled();
+  });
+
+  it('retires a session that ends before any of its positions arrive', async () => {
+    const { socket, onPosition } = await start({ onReadingEnded: jest.fn() });
+    socket.fire('reading-ended', {
+      sessionId: 's1',
+      readerLabel: 'Harpreet',
+      endAng: 20,
+      endVerseId: 200,
+    });
+
+    // This delayed packet must not make the already-ended session current.
+    socket.fire('position', inSession('s1', 1, 20));
+    // A genuinely new reader must still be accepted afterwards.
+    socket.fire('position', inSession('s2', 1, 21));
+
+    expect(onPosition).toHaveBeenCalledTimes(1);
+    expect(onPosition).toHaveBeenCalledWith(
+      expect.objectContaining({ sessionId: 's2', currentAng: 21 })
+    );
+  });
+
+  it('does not seek behind the point a takeover handed over', async () => {
+    // The completed event carries where the new reader begins; an older packet is stale.
+    const { socket, onPosition } = await start({ onTakeoverCompleted: jest.fn() });
+    socket.fire('reader-takeover-completed', takeover('s2', 50));
+
+    socket.fire('position', inSession('s2', 49, 19));
+
+    expect(onPosition).not.toHaveBeenCalled();
+  });
+});
+
 describe('a save, as distinct from a position', () => {
   it('marks the line the group reached', async () => {
     const onSaved = jest.fn();

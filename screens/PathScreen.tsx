@@ -2,12 +2,12 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   View,
-  ScrollView,
   ActivityIndicator,
   Animated,
   AppState,
   BackHandler,
   Alert,
+  type ScrollViewInstance,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -38,7 +38,11 @@ import { PathReader, PathNavigation, PathSelectionProvider, PathScreenOverlays }
 import { RootStackParamList } from '../App';
 import { useScreenAnalytics } from '@hooks';
 import { ErrorConstants, Routes, EDGES_ALL_SIDES, PATH_DATA } from '@constants';
-import { getDurableSavedVerseId, getPathSavingMessage } from '../utils/pathProgress';
+import {
+  followUpToGroupSave,
+  getDurableSavedVerseId,
+  getPathSavingMessage,
+} from '../utils/pathProgress';
 
 export { getDurableSavedVerseId, getPathSavingMessage } from '../utils/pathProgress';
 
@@ -107,7 +111,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // the centre verse when a reader is handed off mid-screen.
   const firstVisibleVerseId = useRef<number>(0);
   const explicitSaveForSession = useRef<{ angNumber: number; verseId: number } | null>(null);
-  const scrollRef = useRef<ScrollView | null>(null);
+  const scrollRef = useRef<ScrollViewInstance | null>(null);
   const alertIndicator = useRef<React.ReactNode | undefined>(undefined);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fadeAnim = useRef(new Animated.Value(1));
@@ -337,6 +341,43 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     scrollPosition: number;
   } | null>(null);
 
+  const restoreDurableSaveHighlight = useCallback(
+    (angNumber: number) => {
+      const durablePath = store
+        .getState()
+        .paths.paths.find((path) => path.pathId === route.params.pathId);
+      setSavedPathVerseId(getDurableSavedVerseId(durablePath?.saveData, angNumber));
+    },
+    [route.params.pathId]
+  );
+
+  /**
+   * Put this screen back on what the store holds after a shared save failed.
+   *
+   * `commitSavedPathState` moves the highlight, the saved ang, the "saved"
+   * message, the local path copy and the completion flag BEFORE the server has
+   * answered. `saveGroupPankti` rolls the store back when it is refused or never
+   * reached, but nothing else on screen follows, so the reader kept a line
+   * marked saved and a message saying so, while no other member saw anything.
+   */
+  const revertFailedGroupSave = useCallback(
+    (angNumber: number) => {
+      const durablePath = store
+        .getState()
+        .paths.paths.find((path) => path.pathId === route.params.pathId);
+      if (durablePath !== undefined && matchedPath.current) {
+        matchedPath.current.saveData = { ...durablePath.saveData };
+        matchedPath.current.completionDate = durablePath.completionDate;
+        setSavedAngNumber(durablePath.saveData.angNumber);
+      }
+      completionUndoPendingRef.current = false;
+      setIsSaved(false);
+      restoreDurableSaveHighlight(angNumber);
+      showErrorAlert(ErrorConstants.FAILED_TO_SAVE_PATH_PROGRESS);
+    },
+    [restoreDurableSaveHighlight, route.params.pathId]
+  );
+
   const commitSavedPathState = useCallback(
     (
       angNumber: number,
@@ -388,25 +429,18 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
         // somebody else.
         saveGroupPankti(route.params.pathId, angNumber, verseId, scrollPosition)
           .then((result) => {
-            if (result.status === 'behind') {
-              setSavedAngNumber(result.angNumber);
-              setSavedPathVerseId(result.verseId);
+            const followUp = followUpToGroupSave(result);
+            if (followUp.action === 'adopt') {
+              setSavedAngNumber(followUp.angNumber);
+              setSavedPathVerseId(followUp.verseId);
+            } else if (followUp.action === 'revert') {
+              revertFailedGroupSave(angNumber);
             }
           })
           .catch((error) => recordError(error, 'PathScreen: failed to save shared pankti'));
       }
     },
-    [scrollOffset, setIsAngNavigation, live, route.params.pathId]
-  );
-
-  const restoreDurableSaveHighlight = useCallback(
-    (angNumber: number) => {
-      const durablePath = store
-        .getState()
-        .paths.paths.find((path) => path.pathId === route.params.pathId);
-      setSavedPathVerseId(getDurableSavedVerseId(durablePath?.saveData, angNumber));
-    },
-    [route.params.pathId]
+    [scrollOffset, setIsAngNavigation, live, route.params.pathId, revertFailedGroupSave]
   );
 
   const saveTakeoverPankti = useCallback(
@@ -1277,7 +1311,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
             setIsAngsNavigationVisible={isFollowing ? noop : setIsAngsNavigationVisible}
             onMenuPress={() => setIsDrawerVisible(true)}
             isFollowing={isFollowing}
-            onBackPress={() => navigation.replace(Routes.Home)}
+            onBackPress={leaveAfterReading}
           />
         </View>
         <ReaderFontSizeOverride.Provider value={followedFontSize}>
@@ -1305,6 +1339,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
               handleRightArrow={handleRightArrow}
               pathId={route.params.pathId}
               isNavigating={isNavigating}
+              usesServerOwnedProgress={live !== undefined}
               onSaveCommit={handleReaderSaveCommit}
               onSaveFailure={restoreDurableSaveHighlight}
               setCenterVerseId={setCenterVerseId}
