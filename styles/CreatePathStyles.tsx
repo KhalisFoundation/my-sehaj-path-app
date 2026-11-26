@@ -54,6 +54,17 @@ export const CreatePathStyles = StyleSheet.create({
     fontSize: 18,
     textAlignVertical: 'center',
   },
+  inputError: {
+    borderColor: UIConstants.DANGER_COLOR,
+  },
+  inputErrorText: {
+    width: '100%',
+    maxWidth: 500,
+    marginTop: UIConstants.PADDING * 0.5,
+    color: UIConstants.DANGER_COLOR,
+    fontFamily: font.Baloo_Paaji_2_Regular,
+    fontSize: UIConstants.CAPTION_FONT_SIZE,
+  },
   continueButton: {
     width: '100%',
     maxWidth: 500,

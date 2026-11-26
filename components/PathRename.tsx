@@ -11,7 +11,9 @@ import { BlurView } from '@react-native-community/blur';
 import { CrossIcon } from '@icons';
 import { PathRenameStyle } from '@styles';
 import { trackEvent } from '@utils';
+import { Constants, PATH_DATA } from '@constants';
 import { renamePathCommand } from '../store/commands';
+import { isPathNameAtLimit, sanitizePathName } from '../utils/pathName';
 
 interface Props {
   pathId: number;
@@ -26,9 +28,13 @@ export const PathRename = ({ pathId, initialPathName, setPathRename, setPathName
   const [isNameInputFocused, setIsNameInputFocused] = useState(false);
   const nameInputRef = useRef<TextInputInstance>(null);
 
+  // Same rule as CreatePath: one line, and no longer than the server accepts.
+  // A longer name is refused with a 400, so the rename would never sync, and a
+  // pasted line break would be stored and shown in every card.
   const handleNameChange = (text: string) => {
-    setNewName(text);
-    setIsValid(text.trim() !== '');
+    const name = sanitizePathName(text);
+    setNewName(name);
+    setIsValid(name.trim() !== '');
   };
 
   const focusNameInput = () => {
@@ -41,6 +47,8 @@ export const PathRename = ({ pathId, initialPathName, setPathRename, setPathName
       });
     });
   };
+
+  const nameAtLimit = isPathNameAtLimit(newName);
 
   const isUpdateButtonDisabled =
     !isValid || newName.trim() === '' || newName.trim() === initialPathName.trim();
@@ -90,14 +98,19 @@ export const PathRename = ({ pathId, initialPathName, setPathRename, setPathName
             <CrossIcon />
           </Pressable>
           <Text style={PathRenameStyle.renameText}>Rename Your Path</Text>
-          <View style={PathRenameStyle.inputShell}>
+          <View
+            style={[PathRenameStyle.inputShell, nameAtLimit && PathRenameStyle.inputShellError]}
+          >
             <TextInput
               ref={nameInputRef}
               allowFontScaling={false}
               style={PathRenameStyle.input}
               placeholder="Enter New Name"
               placeholderTextColor={'grey'}
-              defaultValue={initialPathName}
+              // Controlled, so a cleaned-up name (a pasted line break turned into
+              // a space) is what the field shows.
+              value={newName}
+              maxLength={PATH_DATA.MAX_NAME_LENGTH}
               selectTextOnFocus={false}
               scrollEnabled
               onFocus={() => setIsNameInputFocused(true)}
@@ -127,6 +140,11 @@ export const PathRename = ({ pathId, initialPathName, setPathRename, setPathName
               </Pressable>
             )}
           </View>
+          {nameAtLimit && (
+            <Text style={PathRenameStyle.limitText} accessibilityLiveRegion="polite">
+              {Constants.PATH_NAME_TOO_LONG.replace('{max}', String(PATH_DATA.MAX_NAME_LENGTH))}
+            </Text>
+          )}
           {!isValid && newName !== '' && (
             <Text style={PathRenameStyle.warningText}>Name cannot be empty</Text>
           )}

@@ -1,5 +1,5 @@
 import { PATH_DATA } from '@constants';
-import { sanitizePathName } from '../../utils/pathName';
+import { isPathNameAtLimit, sanitizePathName } from '../../utils/pathName';
 
 describe('sanitizePathName', () => {
   it('leaves an ordinary name alone', () => {
@@ -32,5 +32,12 @@ describe('sanitizePathName', () => {
   it('matches the limit the API validates', () => {
     // `CreateSehajPathDto` and `SyncPathDto` both use @Length(1, 100).
     expect(PATH_DATA.MAX_NAME_LENGTH).toBe(100);
+  });
+});
+
+describe('isPathNameAtLimit', () => {
+  it('is false below the limit and true at it', () => {
+    expect(isPathNameAtLimit('a'.repeat(PATH_DATA.MAX_NAME_LENGTH - 1))).toBe(false);
+    expect(isPathNameAtLimit('a'.repeat(PATH_DATA.MAX_NAME_LENGTH))).toBe(true);
   });
 });
