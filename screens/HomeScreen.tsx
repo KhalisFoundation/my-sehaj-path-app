@@ -1,5 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { View, ScrollView, BackHandler, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  ScrollView,
+  BackHandler,
+  TouchableOpacity,
+  RefreshControl,
+  type ScrollViewInstance,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
@@ -38,6 +45,25 @@ type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState(false);
+  const scrollRef = useRef<ScrollViewInstance | null>(null);
+  const scrollOffsetY = useRef(0);
+  const viewportHeight = useRef(0);
+
+  /**
+   * Keep the page inside its content when the content gets shorter.
+   *
+   * Every text here follows the reader font setting. Going from Extra Large to
+   * Extra Small shrinks the page while the scroll position stays where it was,
+   * so the page sat scrolled past its own top (the greeting cut off, cards
+   * shifted) until the user scrolled. Clamp back the moment the size changes.
+   */
+  const handleContentSizeChange = useCallback((_: number, contentHeight: number) => {
+    const maxOffset = Math.max(0, contentHeight - viewportHeight.current);
+    if (scrollOffsetY.current > maxOffset + 1) {
+      scrollOffsetY.current = maxOffset;
+      scrollRef.current?.scrollTo({ y: maxOffset, animated: false });
+    }
+  }, []);
   // Not the raw slice: a deleted path lingers there until the server confirms.
   const paths = useAppSelector(selectVisiblePaths);
   const syncMeta = useAppSelector((state) => state.sync.meta);
@@ -213,6 +239,15 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           <MenuIcon color="#0D2346" />
         </TouchableOpacity>
         <ScrollView
+          ref={scrollRef}
+          onScroll={(event) => {
+            scrollOffsetY.current = event.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={16}
+          onLayout={(event) => {
+            viewportHeight.current = event.nativeEvent.layout.height;
+          }}
+          onContentSizeChange={handleContentSizeChange}
           contentContainerStyle={HomeScreenStyles.scrollContainer}
           alwaysBounceVertical={true}
           overScrollMode="always"

@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactTestRenderer, { act } from 'react-test-renderer';
+import { ScrollView } from 'react-native';
 import { Routes } from '../../constants';
 import { HomeScreen } from '../../screens/HomeScreen';
 
@@ -100,5 +101,56 @@ describe('HomeScreen', () => {
       dialog.props.onDismiss();
     });
     expect(navigation.setParams).toHaveBeenCalledWith({ membershipRemovalNotice: undefined });
+  });
+
+  it('scrolls back inside the page when the page gets shorter', async () => {
+    // Every text here follows the reader font. From Extra Large to Extra Small
+    // the page shrinks while the scroll position stays put, so the page sat
+    // scrolled past its own top (the greeting cut off) until the user scrolled.
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <HomeScreen
+          navigation={{ push: jest.fn() } as never}
+          route={{ key: 'Home-test', name: Routes.Home } as never}
+        />
+      );
+    });
+    const scroll = renderer.root.findByType(ScrollView);
+    const scrollTo = jest.fn();
+    (scroll.instance as { scrollTo: jest.Mock }).scrollTo = scrollTo;
+
+    await act(async () => {
+      scroll.props.onLayout({ nativeEvent: { layout: { height: 800 } } });
+      // Scrolled 600 down a 1,600-tall page at Extra Large…
+      scroll.props.onScroll({ nativeEvent: { contentOffset: { y: 600 } } });
+      // …then the page becomes 900 tall: at most 100 can be scrolled.
+      scroll.props.onContentSizeChange(400, 900);
+    });
+
+    expect(scrollTo).toHaveBeenCalledWith({ y: 100, animated: false });
+  });
+
+  it('leaves the position alone when the page is still tall enough', async () => {
+    let renderer!: ReactTestRenderer.ReactTestRenderer;
+    await act(async () => {
+      renderer = ReactTestRenderer.create(
+        <HomeScreen
+          navigation={{ push: jest.fn() } as never}
+          route={{ key: 'Home-test', name: Routes.Home } as never}
+        />
+      );
+    });
+    const scroll = renderer.root.findByType(ScrollView);
+    const scrollTo = jest.fn();
+    (scroll.instance as { scrollTo: jest.Mock }).scrollTo = scrollTo;
+
+    await act(async () => {
+      scroll.props.onLayout({ nativeEvent: { layout: { height: 800 } } });
+      scroll.props.onScroll({ nativeEvent: { contentOffset: { y: 200 } } });
+      scroll.props.onContentSizeChange(400, 1200);
+    });
+
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });
