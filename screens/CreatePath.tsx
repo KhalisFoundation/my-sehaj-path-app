@@ -14,7 +14,7 @@ import {
 } from '@constants';
 import { CreatePathStyles as styles, SafeAreaStyle } from '@styles';
 import { createPath } from '../store/commands';
-import { sanitizePathName } from '../utils/pathName';
+import { isPathNameAtLimit, sanitizePathName } from '../utils/pathName';
 import { recordError, showErrorAlert, trackEvent } from '@utils';
 import type { RootStackParamList } from '../App';
 import { useAppSelector } from '../store/hooks';
@@ -38,6 +38,11 @@ export const CreatePath = ({ navigation }: Props) => {
   // CreatePath screen will calculate the next number on its own mount.
   const [defaultName] = useState(() => `Path #${getNextDefaultPathNumber(paths)}`);
   const [name, setName] = useState<string | null>(null);
+  const nameAtLimit = isPathNameAtLimit(name ?? defaultName);
+  const nameTooLongMessage = Constants.PATH_NAME_TOO_LONG.replace(
+    '{max}',
+    String(PATH_DATA.MAX_NAME_LENGTH)
+  );
   const [creating, setCreating] = useState(false);
   const [signInPromptVisible, setSignInPromptVisible] = useState(false);
   const creatingRef = useRef(false);
@@ -116,9 +121,14 @@ export const CreatePath = ({ navigation }: Props) => {
                 // name, not add a line to it.
                 submitBehavior="blurAndSubmit"
                 accessibilityLabel={Constants.PATH_NAME_INPUT_LABEL}
-                style={styles.input}
+                style={[styles.input, nameAtLimit && styles.inputError]}
                 editable={!creating}
               />
+              {nameAtLimit && (
+                <Text style={styles.inputErrorText} accessibilityLiveRegion="polite">
+                  {nameTooLongMessage}
+                </Text>
+              )}
 
               <TouchableOpacity
                 onPress={handleContinue}
