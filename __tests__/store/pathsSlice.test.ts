@@ -207,6 +207,25 @@ describe('pathsSlice updatePath', () => {
     expect(state.dates[0].dates).toEqual([{ date: '1-January-2026' }, { date: '2-January-2026' }]);
   });
 
+  it('adds no reading day when todayDate is empty (a shared save)', () => {
+    const after = reducer(
+      start(),
+      updatePath({
+        pathId: 1,
+        angNumber: 10,
+        verseId: 1,
+        progress: 1,
+        completionDate: '',
+        todayDate: '',
+        scrollPosition: 50,
+      })
+    );
+
+    expect(after.dates[0].dates).toEqual([{ date: '1-January-2026' }]);
+    expect(after.paths[0].saveData).toEqual({ angNumber: 10, verseId: 1 });
+    expect(after.dates[0].scrollPosition).toBe(50);
+  });
+
   it('normalizes a historical path that has no date record, and can then save', () => {
     // Old builds could leave a path with no pathDateDetails entry. The previous
     // implementation threw here, making the path permanently unsaveable.

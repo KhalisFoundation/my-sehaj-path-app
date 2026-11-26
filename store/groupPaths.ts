@@ -165,13 +165,9 @@ export const saveGroupPankti = async (
     const position = response.data;
     if (!position) {
       apply(rollback.angNumber, rollback.verseId, rollback.scrollPosition, rollback.completionDate);
-      // The generated client does not throw on a failed request unless asked to;
-      // it hands back the error with no `data`. So this branch, not the `catch`
-      // below, is where a dropped connection arrives. A request that never got
-      // an HTTP answer while the device is offline is "offline"; any answer from
-      // the server (even an error), or a reachable network, is a real failure.
-      const gotHttpAnswer = (response as { response?: unknown }).response !== undefined;
-      return !gotHttpAnswer && !(await isOnlineNow())
+      // A request that never got an HTTP answer while the device is offline is
+      // "offline"; any answer from the server is a real failure.
+      return response.response === undefined && !(await isOnlineNow())
         ? { status: 'offline' }
         : { status: 'failed' };
     }
@@ -190,8 +186,6 @@ export const saveGroupPankti = async (
       ? { status: 'saved', angNumber: position.angNumber, verseId: position.verseId }
       : { status: 'behind', angNumber: position.angNumber, verseId: position.verseId };
   } catch {
-    // Not reached by a network failure (see above); kept for anything thrown
-    // outside the client's own error handling, such as in a request interceptor.
     apply(rollback.angNumber, rollback.verseId, rollback.scrollPosition, rollback.completionDate);
     return (await isOnlineNow()) ? { status: 'failed' } : { status: 'offline' };
   }

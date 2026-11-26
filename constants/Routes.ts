@@ -9,7 +9,5 @@ export const Routes = {
   About: 'About',
   Error: 'Error',
   JoinPath: 'JoinPath',
-  GroupPath: 'GroupPath',
-  InviteMember: 'InviteMember',
   ChooseSlot: 'ChooseSlot',
 } as const;

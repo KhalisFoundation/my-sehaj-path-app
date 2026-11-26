@@ -390,6 +390,13 @@ describe('saving a pankti on a shared path', () => {
     );
   });
 
+  it('writes no empty reading day, which the calendar would count as a day', async () => {
+    await saveGroupPankti(1, 3, 78, 10);
+
+    const record = appStore.getState().paths.dates.find((entry) => entry.pathid === 1);
+    expect(record?.dates.some((entry) => entry.date === '')).toBe(false);
+  });
+
   describe('when the save does not succeed', () => {
     // The generated client never throws on a failed request: it returns the
     // error with no `data`. A request that never got an HTTP answer has no
@@ -409,24 +416,27 @@ describe('saving a pankti on a shared path', () => {
       savePanktiSpy.mockResolvedValueOnce(neverReachedServer);
 
       await expect(saveGroupPankti(1, 3, 78, 10)).resolves.toEqual({ status: 'offline' });
+      expect(savePanktiSpy).toHaveBeenCalledTimes(1);
       expect(savedAng()).toBe(before);
     });
 
     it('is "failed", and undone, when the server answered with an error', async () => {
       const before = savedAng();
-      savePanktiSpy.mockResolvedValueOnce({
+      const serverError = {
         data: undefined,
         error: { message: 'boom' },
         response: { status: 500 },
-      });
+      };
+      savePanktiSpy.mockResolvedValueOnce(serverError);
 
       await expect(saveGroupPankti(1, 3, 78, 10)).resolves.toEqual({ status: 'failed' });
+      expect(savePanktiSpy).toHaveBeenCalledTimes(1);
       expect(savedAng()).toBe(before);
     });
 
     it('is "failed" when the request never reached the server but the device is online', async () => {
       // `isOnlineNow` probes the network when the device claims to be online.
-      jest.spyOn(global, 'fetch').mockResolvedValue({ status: 204 } as Response);
+      jest.spyOn(globalThis, 'fetch').mockResolvedValue({ status: 204 } as Response);
       savePanktiSpy.mockResolvedValueOnce(neverReachedServer);
 
       await expect(saveGroupPankti(1, 3, 78, 10)).resolves.toEqual({ status: 'failed' });
