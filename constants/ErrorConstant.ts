@@ -3,11 +3,10 @@ interface ErrorConstant {
 }
 export const ErrorConstants: ErrorConstant = {
   FAILED_TO_SAVE_ANG_FORMAT: 'Failed to save your angs format preference. Please try again.',
-  FAILED_TO_LOAD_ANG_FORMAT: 'Failed to load your angs format preference. Please try again.',
   FAILED_TO_SAVE_FONT_SIZE: 'Failed to save your font size preference. Please try again.',
-  FAILED_TO_LOAD_FONT_SIZE: 'Failed to load your font size preference. Please try again.',
   FAILED_TO_SAVE_LARIVAAR: 'Failed to save your larivaar preference. Please try again.',
-  FAILED_TO_LOAD_LARIVAAR: 'Failed to load your larivaar preference. Please try again.',
+  FAILED_TO_LOAD_SETTINGS_RECOVERED:
+    'Some settings could not be loaded and were reset to their defaults. Your saved path progress was not changed.',
   FAILED_TO_SAVE_PATH_NAME: 'Failed to save your path name. Please try again.',
   FAILED_TO_LOAD_PATH_NAME: 'Failed to load your path name. Please try again.',
   FAILED_TO_LOAD_SEHAJ_PATHS_DATA: 'Failed to load your Sehaj Paths data. Please try again.',
@@ -15,8 +14,18 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_SAVE_PATH_PROGRESS: 'Failed to save your path progress. Please try again.',
   FAILED_TO_LOAD_PATH_PROGRESS: 'Failed to load your path progress.',
   FAILED_TO_RENAME_PATH: 'Failed to rename the path. Please try again.',
-  NO_INTERNET_TITLE: 'Please connect to the internet  .',
-  NO_INTERNET_MESSAGE: 'Offline mode will be soon available.',
+  FAILED_TO_DELETE_SEHAJ_PATH: 'Failed to delete the path. Please try again.',
+  FAILED_TO_DELETE_ACCOUNT:
+    'Your account could not be deleted. Nothing has changed \u2014 please try again.',
+  ACCOUNT_DELETED_NOT_CLEARED:
+    'Your account was deleted, but this device could not remove its reading. ' +
+    'Please reinstall the app to clear it.',
+  ACCOUNT_DELETION_LAST_ADMIN:
+    'Your account manages a group that would be left without an admin. Hand that over first, then try again.',
+  FAILED_TO_SYNC: "Couldn't sync your progress. Check your connection and try again.",
+  FAILED_TO_LOG_OUT: "Couldn't log out safely. Please try again.",
+  NO_INTERNET_TITLE: 'Please connect to the internet.',
+  NO_INTERNET_MESSAGE: 'To read without internet, download the database from Settings → Database.',
   NETWORK_ERROR_TITLE: 'Network Error',
   NETWORK_ERROR_MESSAGE: 'Unable to check network connection.',
   FAILED_TO_LOAD_PATH_DATA: 'Failed to load your path data. Please try again.',
@@ -28,4 +37,23 @@ export const ErrorConstants: ErrorConstant = {
   FAILED_TO_LOAD_PREVIOUS_ANG: 'Failed to load the previous ang. Please try again.',
   FAILED_TO_LOAD_PATH_DATA_GENERIC: 'Failed to load path data. Please try again.',
   ERROR_SCROLLING_TO_SAVED_PATH: 'Error scrolling to saved path:',
+  FAILED_TO_SAVE_PARAGRAPH_MODE: 'Failed to save your paragraph mode preference. Please try again.',
+  FAILED_TO_SAVE_VISHRAAM: 'Failed to save your vishraam preference. Please try again.',
+  FAILED_TO_SAVE_VISHRAAM_SOURCE: 'Failed to save vishraam source',
+  FAILED_TO_SAVE_VISHRAAM_STYLE: 'Failed to save vishraam style',
+  FAILED_TO_SAVE_ANALYTICS: 'Failed to save analytics',
+  FAILED_TO_LOAD_TURNS: 'Unable to load the reading schedule. Please try again.',
+  FAILED_TO_LOAD_INVITE_LINK: 'Unable to load the invite link. Please try again.',
+  FAILED_TO_OPEN_SHARED_PATH: 'Unable to open this shared path. Please try again.',
+  FAILED_TO_LOAD_SUGGESTED_MEMBERS: 'Unable to load suggested members. Please try again.',
+  FAILED_TO_LOAD_MEMBERS: 'Unable to load members. Please try again.',
+  FAILED_TO_ADD_MEMBER: 'Unable to add this member. Please try again.',
+  FAILED_TO_UPDATE_MEMBER_ROLE: 'Unable to update this member. Please try again.',
+  FAILED_TO_REMOVE_MEMBER: 'Unable to remove this member. Please try again.',
+  FAILED_TO_LEAVE_PATH: 'Unable to leave this path. Please try again.',
+  FAILED_TO_BOOK_TURN: 'Unable to book the turn. Please try again.',
+  FAILED_TO_DELETE_TURN: 'Unable to delete the turn. Please try again.',
+  FAILED_TO_START_LOGIN: 'Unable to start login. Please try again.',
+  FAILED_TO_CREATE_INVITE: 'Unable to create link. Please try again later.',
+  FAILED_TO_SHARE_PATH: 'Unable to share this path. Please try again later.',
 };

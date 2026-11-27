@@ -1,65 +1,64 @@
-import React, { useCallback, useRef, useState, useMemo } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, ImageBackground, ScrollView, BackHandler } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  View,
+  ImageBackground,
+  ScrollView,
+  BackHandler,
+  TouchableOpacity,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
-import { Headline, Slider, PrimaryButton, PrimaryCard, SecondaryCard, Label } from '@components';
-import { PathData, useLocal, useScreenAnalytics } from '@hooks';
-import { showErrorAlert, trackEvent } from '@utils';
-import { Constants, ErrorConstants, Routes, EDGES_ALL_SIDES } from '@constants';
+import {
+  Headline,
+  Slider,
+  PrimaryButton,
+  PrimaryCard,
+  SecondaryCard,
+  Label,
+  DrawerMenu,
+  SyncPopup,
+  SignInPopup,
+  SyncUnavailablePopup,
+  Message,
+} from '@components';
+import { PathData, useScreenAnalytics, useDrawerNavigation } from '@hooks';
+import { Constants, Routes, EDGES_ALL_SIDES, UIConstants } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
+import { MenuIcon, SyncedCheckIcon } from '@icons';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { removePathAndSyncState } from '../store';
+import { selectVisiblePaths } from '../store/selectors';
+import { onForeground } from '../store/syncLifecycle';
+import { sortPathsForHome } from '../store/pathOrdering';
+import { avatarUrlFor, listMembers } from '../store/groupApi';
+import type { AvatarMember } from '../components/MemberAvatars';
+import { HomeScreenBackground } from '../assets/Images';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
-export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
-  const [pathDataArrayFromLocal, setPathDataArrayFromLocal] = useState<PathData[]>([]);
-  const { fetchFromLocal, handleNewPath } = useLocal();
-  const errorAlertShownRef = useRef(false);
-  const isLoadingRef = useRef(false);
+export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
+  const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [membersByPathId, setMembersByPathId] = useState<Record<number, AvatarMember[]>>({});
+  const dispatch = useAppDispatch();
+  // Not the raw slice: a deleted path lingers there until the server confirms.
+  const paths = useAppSelector(selectVisiblePaths);
+  const syncMeta = useAppSelector((state) => state.sync.meta);
+  const { handleDrawerNavigate } = useDrawerNavigation();
+  const pathDeleted = route.params?.pathDeleted === true;
+  const pathMembershipEnded = route.params?.pathMembershipEnded === true;
   useScreenAnalytics('HomeScreen', 'HomeScreen');
+
   const { pathInProgress, pathCompleted } = useMemo(() => {
-    const completed = pathDataArrayFromLocal.filter(
-      (path: PathData) => path.saveData.angNumber === 1430 && path.saveData.verseId === 60403
-    );
-    const inProgress = pathDataArrayFromLocal.filter(
-      (path: PathData) => path.saveData.angNumber <= 1430 && path.saveData.verseId < 60403
-    );
+    const orderedPaths = sortPathsForHome(paths, syncMeta);
+    // Keep "completed" strict: both completionDate and final checkpoint must match.
+    const completed = orderedPaths.filter((path: PathData) => path.completionDate !== '');
+    const inProgress = orderedPaths.filter((path: PathData) => path.completionDate === '');
     return { pathInProgress: inProgress, pathCompleted: completed };
-  }, [pathDataArrayFromLocal]);
-
-  const loadData = useCallback(async () => {
-    if (isLoadingRef.current) {
-      return;
-    }
-    isLoadingRef.current = true;
-    errorAlertShownRef.current = false;
-    try {
-      const { pathDataArray } = await fetchFromLocal();
-      setPathDataArrayFromLocal(pathDataArray);
-    } catch (error) {
-      if (!errorAlertShownRef.current) {
-        errorAlertShownRef.current = true;
-        showErrorAlert(
-          ErrorConstants.FAILED_TO_LOAD_SEHAJ_PATHS_DATA,
-          async () => {
-            errorAlertShownRef.current = false;
-            await loadData();
-          },
-          'Retry'
-        );
-      }
-    } finally {
-      isLoadingRef.current = false;
-    }
-  }, [fetchFromLocal]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadData();
-    }, [loadData])
-  );
+  }, [paths, syncMeta]);
 
   useFocusEffect(
     useCallback(() => {
@@ -81,18 +80,111 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
     }, [])
   );
 
-  const handleStart = useCallback(async () => {
-    trackEvent('PathCreated', 'click', 'start new path');
-    try {
-      const { pathDataArray, pathDateDataArray, newPathid } = await handleNewPath();
-      setPathDataArrayFromLocal(pathDataArray);
-      await AsyncStorage.setItem('pathDetails', JSON.stringify(pathDataArray));
-      await AsyncStorage.setItem('pathDateDetails', JSON.stringify(pathDateDataArray));
-      navigation.push(Routes.Continue, { pathId: newPathid });
-    } catch (error) {
-      showErrorAlert(ErrorConstants.FAILED_TO_CREATE_NEW_SEHAJ_PATH);
+  // Member avatars are only meaningful for server-backed shared paths. Keep
+  // this request out of personal paths, and discard a late response when the
+  // user leaves Home before it finishes.
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      const sharedPaths = paths.filter((path) => {
+        const meta = syncMeta[path.pathId];
+        return meta?.shared === true && meta.groupId !== undefined;
+      });
+
+      const loadMembers = async () => {
+        const entries = await Promise.all(
+          sharedPaths.map(async (path) => {
+            const groupId = syncMeta[path.pathId]?.groupId;
+            if (!groupId) {
+              return [path.pathId, []] as const;
+            }
+            const result = await listMembers(groupId);
+            if (!result.ok) {
+              // A status alone is not enough to remove user data. Newer builds
+              // opt into these exact server codes; any other 4xx/5xx response
+              // remains visible and may recover on the next refresh.
+              const pathWasDeleted =
+                result.kind === 'refused' &&
+                result.status === 410 &&
+                result.code === 'PATH_DELETED';
+              const membershipEnded =
+                result.kind === 'refused' &&
+                result.status === 404 &&
+                result.code === 'PATH_MEMBERSHIP_ENDED';
+              const accessWasRemoved = pathWasDeleted || membershipEnded;
+              if (accessWasRemoved && !cancelled) {
+                dispatch(removePathAndSyncState({ pathId: path.pathId }));
+                if (pathWasDeleted) {
+                  navigation.setParams({ pathDeleted: true });
+                } else if (membershipEnded) {
+                  navigation.setParams({ pathMembershipEnded: true });
+                }
+              }
+              return [path.pathId, []] as const;
+            }
+            const members: AvatarMember[] = result.data
+              .filter((member) => member.status === 'ACTIVE')
+              .map((member) => ({
+                id: member.id,
+                displayLabel: member.displayLabel,
+                avatarUri: avatarUrlFor(groupId, member),
+              }));
+            return [path.pathId, members] as const;
+          })
+        );
+
+        if (!cancelled) {
+          setMembersByPathId(Object.fromEntries(entries));
+        }
+      };
+
+      loadMembers().catch(() => {
+        if (!cancelled) {
+          setMembersByPathId({});
+        }
+      });
+
+      return () => {
+        cancelled = true;
+      };
+    }, [dispatch, navigation, paths, syncMeta])
+  );
+
+  // Home is the safe place to pull another device's progress. The lifecycle
+  // helper first uploads any local work; it never applies a stale GET response
+  // over offline edits.
+  useFocusEffect(
+    useCallback(() => {
+      // Home is reached only after leaving the reader. Explicitly request an
+      // unguarded pull so a response cannot be fetched then skipped because
+      // React Navigation has not yet run PathScreen's focus cleanup.
+      onForeground(null);
+      return undefined;
+    }, [])
+  );
+
+  const handleStart = useCallback(() => {
+    navigation.push(Routes.CreatePath);
+  }, [navigation]);
+
+  const handleCloseDrawer = useCallback(() => {
+    setIsDrawerVisible(false);
+  }, []);
+
+  const handleRefresh = useCallback(async () => {
+    if (refreshing) {
+      return;
     }
-  }, [handleNewPath, navigation]);
+    setRefreshing(true);
+    try {
+      // Upload queued local work before pulling another device's paths. This
+      // is the same ordering used when Home regains focus, so a refresh can
+      // never overwrite offline reading progress with an older server copy.
+      await onForeground(null);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshing]);
 
   const pathInProgressCards = useMemo(
     () =>
@@ -102,12 +194,22 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
           sehajPathName={path.pathName}
           angNumber={path.saveData.angNumber}
           progress={path.progress}
+          members={membersByPathId[path.pathId]}
           onPress={() => {
-            navigation.push(Routes.Continue, { pathId: path.pathId });
+            // A server group id is also created for a personal path when its
+            // owner enables invitations. That makes it *shareable*, not
+            // shared. Passing that id to Continue made a same-named personal
+            // path look like a group path and exposed the Turns tab.
+            const meta = syncMeta[path.pathId];
+            const sehajPathId = meta?.shared === true ? meta.groupId : undefined;
+            navigation.push(
+              Routes.Continue,
+              sehajPathId ? { pathId: path.pathId, sehajPathId } : { pathId: path.pathId }
+            );
           }}
         />
       )),
-    [pathInProgress, navigation]
+    [pathInProgress, membersByPathId, navigation, syncMeta]
   );
 
   const pathCompletedCards = useMemo(
@@ -117,19 +219,47 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
           key={path.pathId}
           pathName={path.pathName}
           pathCompletionDate={path.completionDate}
+          members={membersByPathId[path.pathId]}
         />
       )),
-    [pathCompleted]
+    [pathCompleted, membersByPathId]
   );
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
+      <SyncPopup mode="unowned" />
+      <SignInPopup />
+      <SyncUnavailablePopup />
       <ImageBackground
-        source={require('../assets/Images/HomeScreenBg.png')}
+        source={HomeScreenBackground}
         resizeMode="cover"
         style={HomeScreenStyles.backgroundImage}
       >
-        <ScrollView contentContainerStyle={HomeScreenStyles.scrollContainer}>
+        <TouchableOpacity
+          style={HomeScreenStyles.menuButton}
+          onPress={() => setIsDrawerVisible(true)}
+          accessibilityLabel="Menu"
+          accessibilityRole="button"
+          hitSlop={12}
+        >
+          <MenuIcon color="#0D2346" />
+        </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={HomeScreenStyles.scrollContainer}
+          alwaysBounceVertical={true}
+          overScrollMode="always"
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              tintColor={UIConstants.PRIMARY_COLOR}
+              titleColor={UIConstants.PRIMARY_COLOR}
+              colors={[UIConstants.PRIMARY_COLOR]}
+              onRefresh={() => {
+                handleRefresh().catch(() => undefined);
+              }}
+            />
+          }
+        >
           <View style={HomeScreenStyles.container}>
             <Headline headline={Constants.ITS_FINE_DAY_FOR} />
             <Headline headline={Constants.SEHAJ_PATH_ENGLISH} />
@@ -148,6 +278,29 @@ export const HomeScreen = React.memo(({ navigation }: HomeProps) => {
             ) : undefined}
           </View>
         </ScrollView>
+        {pathDeleted ? (
+          <Message
+            message={Constants.PATH_DELETED}
+            icon={<SyncedCheckIcon />}
+            style={HomeScreenStyles.deletedNotice}
+            onHidden={() => navigation.setParams({ pathDeleted: undefined })}
+          />
+        ) : null}
+        {pathMembershipEnded ? (
+          <Message
+            message={Constants.PATH_MEMBERSHIP_ENDED}
+            icon={<SyncedCheckIcon />}
+            style={HomeScreenStyles.deletedNotice}
+            onHidden={() => navigation.setParams({ pathMembershipEnded: undefined })}
+          />
+        ) : null}
+        <DrawerMenu
+          isVisible={isDrawerVisible}
+          onClose={handleCloseDrawer}
+          onNavigate={handleDrawerNavigate}
+          currentRoute={Routes.Home}
+          showOnlyHomeItems={true}
+        />
       </ImageBackground>
     </SafeAreaView>
   );

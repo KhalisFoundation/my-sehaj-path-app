@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from './AppText';
 import { BlurView } from '@react-native-community/blur';
-import { useLocal } from '@hooks';
 import { CrossIcon } from '@icons';
 import { PathRenameStyle } from '@styles';
 import { trackEvent } from '@utils';
+import { renamePathCommand } from '../store/commands';
 
 interface Props {
   pathId: number;
@@ -13,7 +14,6 @@ interface Props {
 }
 
 export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
-  const { renamePath } = useLocal();
   const [newName, setNewName] = useState<string>('');
   const [isValid, setIsValid] = useState<boolean>(true);
 
@@ -24,12 +24,19 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
 
   const isUpdateButtonDisabled = !isValid || newName.trim() === '';
 
-  const handleRename = () => {
+  const handleRename = async () => {
     if (isUpdateButtonDisabled) {
       return;
     }
-    trackEvent('PathRename', 'click', `rename path ${newName}`);
-    renamePath(pathId, newName);
+    // Only close and report the new name once the rename is durable.
+    // renamePathCommand alerts on failure; keep the dialog open so the user
+    // can retry.
+    const saved = await renamePathCommand(pathId, newName);
+    if (!saved) {
+      return;
+    }
+    // Never send user-entered path names to analytics.
+    trackEvent('PathRename', 'result', 'Path Renamed');
     setPathRename(false);
     setPathName(newName);
   };
@@ -40,7 +47,7 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
         blurType="light"
         blurAmount={2}
         reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <View style={PathRenameStyle.overlayContainer}>
         <View style={PathRenameStyle.renameContainer}>
@@ -55,6 +62,7 @@ export const PathRename = ({ pathId, setPathRename, setPathName }: Props) => {
           </Pressable>
           <Text style={PathRenameStyle.renameText}>Rename Your Path:</Text>
           <TextInput
+            allowFontScaling={false}
             style={PathRenameStyle.input}
             placeholder="Enter New Name"
             placeholderTextColor={'grey'}

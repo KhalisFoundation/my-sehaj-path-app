@@ -20,18 +20,21 @@ export const PathProgressCardStyles = StyleSheet.create({
   textContainer: {
     alignItems: 'center',
     marginBottom: 2,
+    // A path name can wrap to two lines, so the leading below has to carry the
+    // rhythm; `gap` only separates the name from the ang beneath it.
+    gap: 4,
   },
   sehajText: {
     fontFamily: font.Brandon_Grotesque_Black,
     fontSize: 18,
-    lineHeight: 26,
+    lineHeight: 28,
     textAlign: 'center',
     color: '#11336A',
   },
   angText: {
     fontFamily: font.Brandon_Grotesque_Regular,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 25,
     textAlign: 'center',
     color: '#666666',
   },

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Pressable, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, Pressable, StyleSheet } from 'react-native';
+import { AppText as Text, AppTextInput as TextInput } from './AppText';
 import { BlurView } from '@react-native-community/blur';
 import { AngsNavigationStyle } from '@styles/AngsNavigation';
 import { CrossIcon, LeftArrowIcon, RightArrowIcon } from '@icons';
-import { useInternet } from '@hooks';
-import { showErrorAlert } from '@utils';
-import { ErrorConstants } from '@constants';
+import { PATH_DATA } from '@constants';
 
 interface Props {
   setIsAngsNavigationVisible: (isAngsNavigationVisible: boolean) => void;
@@ -14,7 +13,8 @@ interface Props {
   pathAng: number;
   isAngNavigation: boolean;
   setIsAngNavigation: (isAngNavigation: boolean) => void;
-  fetchAngData: (angNumber: number) => void;
+  /** True only when the requested ang was loaded successfully. */
+  fetchAngData: (angNumber: number) => Promise<boolean>;
   updatePathAng: (angNumber: number) => void;
 }
 
@@ -30,8 +30,6 @@ export const AngsNavigation = ({
   const [angNumber, setAngNumber] = useState<number>(pathAng);
   const [inputValue, setInputValue] = useState<string>(pathAng.toString());
   const [isValid, setIsValid] = useState<boolean>(true);
-  const { checkNetwork } = useInternet();
-
   useEffect(() => {
     setAngNumber(pathAng);
     setInputValue(pathAng.toString());
@@ -47,7 +45,7 @@ export const AngsNavigation = ({
       return;
     }
     const parsedNumber = parseInt(number, 10);
-    if (isNaN(parsedNumber) || parsedNumber > 1430 || parsedNumber < 1) {
+    if (isNaN(parsedNumber) || parsedNumber > PATH_DATA.LAST_ANG_NUMBER || parsedNumber < 1) {
       setIsValid(false);
       return;
     }
@@ -56,20 +54,8 @@ export const AngsNavigation = ({
   };
 
   const handleNavigation = (navigationFunction: () => void) => {
-    checkNetwork()
-      .then((isConnected) => {
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
-        }
-        navigationFunction();
-        setIsAngsNavigationVisible(false);
-      })
-      .catch((_error) => {
-        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-      });
+    navigationFunction();
+    setIsAngsNavigationVisible(false);
   };
 
   const handleGoToAng = async () => {
@@ -77,22 +63,16 @@ export const AngsNavigation = ({
       return;
     }
 
-    checkNetwork()
-      .then((isConnected) => {
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
-        }
-        fetchAngData(angNumber);
-        setIsAngNavigation(true);
-        setIsAngsNavigationVisible(false);
-        updatePathAng(angNumber);
-      })
-      .catch((_error) => {
-        showErrorAlert(ErrorConstants.FAILED_TO_CHECK_NETWORK_CONNECTION);
-      });
+    // The local DB is tried first. If it is unavailable, `fetchAngData` tries
+    // the API and performs the offline handling. Do not update the reader's
+    // displayed Ang unless one of those sources actually loaded it.
+    const loaded = await fetchAngData(angNumber);
+    if (!loaded) {
+      return;
+    }
+    setIsAngNavigation(true);
+    setIsAngsNavigationVisible(false);
+    updatePathAng(angNumber);
   };
 
   return (
@@ -101,7 +81,7 @@ export const AngsNavigation = ({
         blurType="light"
         blurAmount={2}
         reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.3)"
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
       />
       <View style={AngsNavigationStyle.overlayContainer}>
         <View style={AngsNavigationStyle.angsNavigationContainer}>
@@ -125,6 +105,7 @@ export const AngsNavigation = ({
               <LeftArrowIcon />
             </TouchableOpacity>
             <TextInput
+              allowFontScaling={false}
               style={AngsNavigationStyle.input}
               placeholder="Enter Ang Number"
               placeholderTextColor={'grey'}
@@ -133,7 +114,7 @@ export const AngsNavigation = ({
               onChangeText={handleAngNumber}
               keyboardType="numeric"
               accessibilityLabel="Ang number input field"
-              accessibilityHint="Enter an ang number between 1 and 1430"
+              accessibilityHint={`Enter an ang number between 1 and ${PATH_DATA.LAST_ANG_NUMBER}`}
             />
             <TouchableOpacity
               onPress={() => handleNavigation(handleRightArrow)}
@@ -146,7 +127,7 @@ export const AngsNavigation = ({
           </View>
           {!isValid && inputValue !== '' && (
             <Text style={AngsNavigationStyle.warningText}>
-              Please enter a valid Ang number between 1 and 1430
+              Please enter a valid Ang number between 1 and {PATH_DATA.LAST_ANG_NUMBER}
             </Text>
           )}
           <TouchableOpacity

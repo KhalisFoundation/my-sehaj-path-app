@@ -3,10 +3,10 @@ import font from '@utils/font';
 
 export const LabelStyles = StyleSheet.create({
   label: {
-    fontSize: 14,
+    fontSize: 16,
     color: 'background: rgba(17, 51, 106, 1)',
     textAlign: 'center',
     margin: 10,
-    fontFamily: font.Brandon_Grotesque_Regular,
+    fontFamily: font.Baloo_Paaji_2_Regular,
   },
 });

@@ -1,5 +1,5 @@
 module.exports = {
-  preset: 'react-native',
+  preset: '@react-native/jest-preset',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   moduleNameMapper: {
     '^@assets/(.*)$': '<rootDir>/assets/$1',
@@ -10,13 +10,24 @@ module.exports = {
     '^@styles/(.*)$': '<rootDir>/styles/$1',
     '^@icons/(.*)$': '<rootDir>/icons/$1',
     '^@hooks/(.*)$': '<rootDir>/hooks/$1',
+    '^@api/(.*)$': '<rootDir>/api/$1',
+    '^@auth/(.*)$': '<rootDir>/auth/$1',
+    '^@auth$': '<rootDir>/auth',
+    '^@env$': '<rootDir>/__mocks__/env.js',
+    '^react-native-encrypted-storage$': '<rootDir>/__mocks__/react-native-encrypted-storage.js',
+    '^react-native-inappbrowser-reborn$': '<rootDir>/__mocks__/react-native-inappbrowser-reborn.js',
+    '^@op-engineering/op-sqlite$': '<rootDir>/__mocks__/op-sqlite.js',
+    '^@dr.pogodin/react-native-fs$': '<rootDir>/__mocks__/dr-pogodin-react-native-fs.js',
     'react-native-linear-gradient': '<rootDir>/__mocks__/react-native-linear-gradient.js',
+    '^@react-native-clipboard/clipboard$': '<rootDir>/__mocks__/clipboard.js',
     'react-native-safe-area-context': '<rootDir>/__mocks__/react-native-safe-area-context.js',
     'react-native-svg': '<rootDir>/__mocks__/react-native-svg.js',
-    'react-native-swipe-gestures': '<rootDir>/__mocks__/react-native-swipe-gestures.js',
-    '@react-native-async-storage/async-storage': '<rootDir>/__mocks__/async-storage.js',
+    // Anchored: an unanchored pattern also matches the mock's own internal
+    // require of `.../jest/async-storage-mock`, making it resolve to itself.
+    '^@react-native-async-storage/async-storage$': '<rootDir>/__mocks__/async-storage.js',
     '@react-native-community/netinfo': '<rootDir>/__mocks__/netinfo.js',
     '@react-native-community/blur': '<rootDir>/__mocks__/blur.js',
+    '@react-native-firebase/.*': '<rootDir>/__mocks__/firebase-stub.js',
     '@rneui/themed': '<rootDir>/__mocks__/@rneui/themed.js',
   },
 

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, TouchableOpacity } from 'react-native';
+import { TouchableOpacity } from 'react-native';
+import { AppText as Text } from './AppText';
 import LinearGradient from 'react-native-linear-gradient';
 import { PrimaryButtonStyles } from '@styles';
 import { UIConstants } from '@constants/UIConstants';

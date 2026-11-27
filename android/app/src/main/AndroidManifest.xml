@@ -2,9 +2,25 @@
           xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission
         android:name="com.google.android.gms.permission.AD_ID"
         tools:node="remove" />
+
+    <!-- Android 11+ package visibility: without this, the in-app browser
+         (Chrome Custom Tabs, used for SSO login/logout) cannot detect an
+         installed browser and InAppBrowser.isAvailable() returns false. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.support.customtabs.action.CustomTabsService" />
+        </intent>
+    </queries>
+
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
@@ -12,6 +28,7 @@
       android:roundIcon="@mipmap/app_icon_round"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
+      android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
       <activity
         android:name=".MainActivity"
@@ -23,6 +40,32 @@
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+        <!-- SSO deep-link return. Android matches scheme AND host, so both the
+             login and logout hosts must be listed or the logout return opens a
+             blank page instead of the app. -->
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="khalissehajpath" android:host="login" />
+            <data android:scheme="khalissehajpath" android:host="logout" />
+            <!-- Invite links on the custom scheme. Needs no server-side
+                 verification, so it works on a device the moment the app is
+                 installed — which is what a demo needs. -->
+            <data android:scheme="khalissehajpath" android:host="invite" />
+        </intent-filter>
+        <!-- The https invite link people actually paste into a chat.
+             `autoVerify` makes Android open the app instead of the browser, but
+             ONLY once https://users.khalis.net/.well-known/assetlinks.json serves
+             this app's package name and signing fingerprint. Until that file
+             exists the link opens the website, and the custom scheme above is
+             the working path. -->
+        <intent-filter android:autoVerify="true">
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" android:host="users.khalis.net" android:pathPrefix="/invite" />
         </intent-filter>
       </activity>
     </application>

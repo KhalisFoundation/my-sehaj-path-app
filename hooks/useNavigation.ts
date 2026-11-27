@@ -1,17 +1,17 @@
 import { useCallback } from 'react';
-import { showErrorAlert } from '@utils';
-import { ErrorConstants } from '@constants/ErrorConstant';
-import { ScrollView } from 'react-native';
+import { showErrorAlert, recordError } from '@utils';
+import { ErrorConstants, PATH_DATA } from '@constants';
+import type { ScrollViewInstance } from 'react-native';
 
 export interface UseNavigationParams {
   isNavigating: boolean;
   setIsNavigating: (value: boolean) => void;
   setIsSaving: (value: boolean) => void;
   scrollOffset: React.MutableRefObject<number>;
-  scrollRef: React.MutableRefObject<ScrollView | null>;
+  scrollRef: React.MutableRefObject<ScrollViewInstance | null>;
   setPathAng: (value: number) => void;
-  checkNetwork: () => Promise<boolean>;
-  fetchFromBaniDB: (angNumber: number) => Promise<void>;
+  setCenterVerseId?: (value: number) => void;
+  fetchFromBaniDB: (angNumber: number, options?: { isInitialLoad?: boolean }) => Promise<boolean>;
 }
 
 export const useNavigation = ({
@@ -21,7 +21,7 @@ export const useNavigation = ({
   scrollOffset,
   scrollRef,
   setPathAng,
-  checkNetwork,
+  setCenterVerseId,
   fetchFromBaniDB,
 }: UseNavigationParams) => {
   const handleRightArrow = useCallback(
@@ -29,10 +29,9 @@ export const useNavigation = ({
       if (isNavigating) {
         return;
       }
-      if (pageNo >= 1430) {
+      if (pageNo >= PATH_DATA.LAST_ANG_NUMBER) {
         return;
       }
-
       setIsNavigating(true);
       setIsSaving(false);
       scrollOffset.current = 0;
@@ -42,38 +41,26 @@ export const useNavigation = ({
       });
 
       try {
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
+        if (await fetchFromBaniDB(pageNo + 1)) {
+          setCenterVerseId?.(0);
+          setPathAng(pageNo + 1);
         }
-        await fetchFromBaniDB(pageNo + 1);
-        setPathAng(pageNo + 1);
       } catch (error) {
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
-        } else {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
-        }
+        recordError(error, `useNavigation: failed to load next ang from ${pageNo}`);
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_NEXT_ANG);
       } finally {
         setIsNavigating(false);
       }
     },
     [
       isNavigating,
-      checkNetwork,
       setIsNavigating,
       setIsSaving,
       scrollOffset,
       scrollRef,
       fetchFromBaniDB,
       setPathAng,
+      setCenterVerseId,
     ]
   );
 
@@ -95,24 +82,13 @@ export const useNavigation = ({
       });
 
       try {
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-          return;
+        if (await fetchFromBaniDB(pageNo - 1)) {
+          setCenterVerseId?.(0);
+          setPathAng(pageNo - 1);
         }
-        await fetchFromBaniDB(pageNo - 1);
-        setPathAng(pageNo - 1);
       } catch (error) {
-        const isConnected = await checkNetwork();
-        if (!isConnected) {
-          showErrorAlert(
-            `${ErrorConstants.NO_INTERNET_TITLE} \n ${ErrorConstants.NO_INTERNET_MESSAGE}`
-          );
-        } else {
-          showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
-        }
+        recordError(error, `useNavigation: failed to load previous ang from ${pageNo}`);
+        showErrorAlert(ErrorConstants.FAILED_TO_LOAD_PREVIOUS_ANG);
       } finally {
         setIsNavigating(false);
       }
@@ -124,7 +100,7 @@ export const useNavigation = ({
       scrollOffset,
       scrollRef,
       setPathAng,
-      checkNetwork,
+      setCenterVerseId,
       fetchFromBaniDB,
     ]
   );

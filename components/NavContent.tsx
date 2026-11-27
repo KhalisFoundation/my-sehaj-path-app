@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { View, TouchableOpacity, StyleProp, TextStyle, ViewStyle } from 'react-native';
+import { AppText as Text } from './AppText';
 import { NavContentStyles } from '@styles';
 
 interface Props {
