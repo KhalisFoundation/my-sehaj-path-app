@@ -1,5 +1,6 @@
 import React from 'react';
-import { ImageBackground, View } from 'react-native';
+import { View } from 'react-native';
+import { BackgroundImage } from './BackgroundImage';
 import { AppText as Text } from './AppText';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { EDGES_ALL_SIDES } from '@constants';
@@ -24,7 +25,7 @@ interface HydrationRetryProps {
  */
 export const HydrationRetry = ({ onRetry }: HydrationRetryProps) => (
   <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
-    <ImageBackground source={SplashScreenBackground} style={HydrationRetryStyles.background}>
+    <BackgroundImage source={SplashScreenBackground} style={HydrationRetryStyles.background}>
       <View style={HydrationRetryStyles.overlay}>
         <Text style={HydrationRetryStyles.title}>We couldn&apos;t load your saved paths</Text>
 
@@ -35,6 +36,6 @@ export const HydrationRetry = ({ onRetry }: HydrationRetryProps) => (
 
         <PrimaryButton buttonTitle="Retry" onPress={onRetry} />
       </View>
-    </ImageBackground>
+    </BackgroundImage>
   </SafeAreaView>
 );

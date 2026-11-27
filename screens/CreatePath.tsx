@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { ImageBackground, ScrollView, TouchableOpacity, View } from 'react-native';
+import { ScrollView, TouchableOpacity, View } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText as Text, AppTextInput } from '../components/AppText';
@@ -21,6 +21,7 @@ import { useAppSelector } from '../store/hooks';
 import { selectVisiblePaths } from '../store/selectors';
 import { getNextDefaultPathNumber } from '../store/slices/pathsSlice';
 import { HomeScreenBackground } from '../assets/Images';
+import { BackgroundImage } from '../components/BackgroundImage';
 import { startLogin } from '@auth';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CreatePath'>;
@@ -87,7 +88,7 @@ export const CreatePath = ({ navigation }: Props) => {
 
   return (
     <SafeAreaView style={SafeAreaStyle.safeAreaView} edges={EDGES_ALL_SIDES}>
-      <ImageBackground source={HomeScreenBackground} resizeMode="cover" style={styles.background}>
+      <BackgroundImage source={HomeScreenBackground} resizeMode="cover" style={styles.background}>
         <View style={styles.screen}>
           <BackButton
             onPress={() => navigation.goBack()}
@@ -147,7 +148,7 @@ export const CreatePath = ({ navigation }: Props) => {
             </View>
           </ScrollView>
         </View>
-      </ImageBackground>
+      </BackgroundImage>
       <LoginRequiredDialog
         visible={signInPromptVisible}
         onClose={() => setSignInPromptVisible(false)}
