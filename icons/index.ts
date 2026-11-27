@@ -22,3 +22,6 @@ export { LoginIcon } from './Login.icon';
 export { AllPathLogoIcon } from './AllPathLogo.icon';
 export { KhalisIcon } from './Khalis.icon';
 export { MoreOptionsIcon } from './MoreOptions.icon';
+export { ShareLinkIcon } from './ShareLink.icon';
+export { CalendarIcon } from './Calendar.icon';
+export { PlusIcon } from './Plus.icon';

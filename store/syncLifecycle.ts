@@ -2,7 +2,7 @@ import { isApiConfigured } from '@api/config';
 import { recordError } from '../utils/crashlytics';
 import { refreshPathsFromServer } from './applyServerResponse';
 import { store } from './index';
-import { outbox } from './instance';
+import { outbox, persistence } from './instance';
 import {
   markCatchUpSyncDone,
   markPathEdited,
@@ -10,7 +10,6 @@ import {
   setCatchUpSyncRunning,
 } from './slices/syncSlice';
 import {
-  hasLocalData,
   hasSendablePathOps,
   hasWorkBlockingPull,
   isPathOpBlocked,
@@ -43,17 +42,6 @@ export const canSyncNow = (): boolean => {
 
 const hasPendingWork = (): boolean => hasWorkBlockingPull(store);
 
-/**
- * A cheap signature of the reading the user can see, used to tell whether the
- * catch-up actually brought anything down.
- */
-const pathSignature = (): string => {
-  const { paths } = store.getState();
-  return paths.paths
-    .map((path) => `${path.pathId}:${path.saveData.angNumber}.${path.saveData.verseId}`)
-    .join('|');
-};
-
 const promoteDirtyScroll = (announce = false): boolean => {
   const state = store.getState();
   let promoted = false;
@@ -62,6 +50,11 @@ const promoteDirtyScroll = (announce = false): boolean => {
     const meta = state.sync.meta[pathId];
     if (!meta?.onServer) {
       return; // a pending create already carries the latest scroll
+    }
+    // A shared path is excluded from the `/sync` body, so promoting its scroll
+    // into an op would queue work nothing can ever acknowledge.
+    if (meta.shared) {
+      return;
     }
     const op = state.sync.pathOps[pathId];
     if (!op || isPathOpBlocked(store, pathId, op.localUpdatedAt)) {
@@ -96,12 +89,7 @@ export const onForeground = async (activePathId?: number | null): Promise<void> 
   const isCatchUpSync = !store.getState().sync.catchUpSyncDone;
   if (isCatchUpSync) {
     store.dispatch(setCatchUpSyncRunning(true));
-    if (hasLocalData(store)) {
-      store.dispatch(requestSyncConfirmation());
-    }
   }
-  const before = isCatchUpSync ? pathSignature() : '';
-
   try {
     promoteDirtyScroll();
     if (hasPendingWork()) {
@@ -113,13 +101,19 @@ export const onForeground = async (activePathId?: number | null): Promise<void> 
     const pathToProtect =
       activePathId === undefined ? getActiveReaderPath() ?? undefined : activePathId ?? undefined;
     await refreshPathsFromServer(store, pathToProtect);
+    // Server responses update Redux synchronously, but persistence writes are
+    // queued. Flush the applied snapshot before the screen can be reloaded so
+    // the next launch starts from the latest server data rather than the old
+    // cached copy.
+    await persistence.flush();
   } catch (error) {
     recordError(error, 'syncLifecycle: foreground sync failed');
   } finally {
     if (isCatchUpSync) {
-      if (pathSignature() !== before) {
-        store.dispatch(requestSyncConfirmation());
-      }
+      // Opening or returning to the app is a background refresh. It may bring
+      // down newer data, but it must not flash a Syncing/Synced notice over the
+      // screen. Explicit progress actions and reconnect recovery still request
+      // their own confirmation below.
       store.dispatch(markCatchUpSyncDone());
     }
   }

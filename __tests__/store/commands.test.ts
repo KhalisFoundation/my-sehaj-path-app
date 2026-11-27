@@ -15,6 +15,10 @@ jest.mock('../../utils/analytics', () => ({
   trackScreenView: jest.fn(),
   allowTracking: jest.fn(),
 }));
+jest.mock('../../store/groupApi', () => ({
+  ...jest.requireActual('../../store/groupApi'),
+  renameSharedPath: jest.fn(),
+}));
 
 import { rollbackDurableMutation, store, makeStore } from '../../store';
 import { hydrateStore } from '../../store/persistence';
@@ -35,6 +39,8 @@ import { isSilentPathOp } from '../../store/syncWork';
 import { selectVisiblePaths } from '../../store/selectors';
 import { setLarivaar } from '../../store/slices/settingsSlice';
 import { setSignedIn, setSignedOut } from '../../store/slices/authSlice';
+import { setPathShared } from '../../store/slices/syncSlice';
+import { renameSharedPath } from '../../store/groupApi';
 import type { DateData, PathData } from '../../types';
 
 const pathWithId = (pathId: number): PathData => ({
@@ -416,6 +422,64 @@ describe('renamePathCommand', () => {
     expect(saved).toBe(false);
 
     expect(store.getState().paths.paths[0].pathName).toBe(original);
+    restoreStorageImpls();
+  });
+
+  const makeSharedPath = async (): Promise<number> => {
+    const id = await createPath();
+    expect(id).not.toBeNull();
+    store.dispatch(
+      setPathShared({
+        pathId: id!,
+        shared: true,
+        groupId: 'group-rename-test',
+      })
+    );
+    return id!;
+  };
+
+  it('renames a shared path after the server accepts the admin request', async () => {
+    const id = await makeSharedPath();
+    (renameSharedPath as jest.Mock).mockResolvedValue({
+      ok: true,
+      data: { name: 'Shared Morning', stateVersion: 2 },
+    });
+
+    expect(await renamePathCommand(id, 'Shared Morning')).toBe(true);
+    expect(renameSharedPath).toHaveBeenCalledWith('group-rename-test', 'Shared Morning');
+    expect(store.getState().paths.paths.find((path) => path.pathId === id)?.pathName).toBe(
+      'Shared Morning'
+    );
+  });
+
+  it('does not rename a shared path when the server refuses the request', async () => {
+    const id = await makeSharedPath();
+    (renameSharedPath as jest.Mock).mockResolvedValue({
+      ok: false,
+      kind: 'refused',
+      status: 403,
+      message: 'Admins only',
+    });
+
+    expect(await renamePathCommand(id, 'Should Not Apply')).toBe(false);
+    expect(store.getState().paths.paths.find((path) => path.pathId === id)?.pathName).toBe(
+      `Path #${id}`
+    );
+  });
+
+  it('rolls back the local name when persistence fails after a shared rename succeeds', async () => {
+    const id = await makeSharedPath();
+    (renameSharedPath as jest.Mock).mockResolvedValue({
+      ok: true,
+      data: { name: 'Server Accepted', stateVersion: 2 },
+    });
+    (AsyncStorage.multiSet as jest.Mock).mockRejectedValue(new Error('disk full'));
+
+    expect(await renamePathCommand(id, 'Server Accepted')).toBe(false);
+    expect(renameSharedPath).toHaveBeenCalledWith('group-rename-test', 'Server Accepted');
+    expect(store.getState().paths.paths.find((path) => path.pathId === id)?.pathName).toBe(
+      `Path #${id}`
+    );
     restoreStorageImpls();
   });
 });

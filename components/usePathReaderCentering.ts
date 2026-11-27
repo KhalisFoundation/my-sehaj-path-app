@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 import type { RefObject } from 'react';
-import type { LayoutChangeEvent, ScrollView } from 'react-native';
+import type { LayoutChangeEvent, ScrollViewInstance } from 'react-native';
 
 type VersePosition = {
   y: number;
@@ -48,7 +48,7 @@ const visibleLength = (text: string): number => {
 };
 
 type UsePathReaderCenteringArgs = {
-  scrollRef: RefObject<ScrollView | null>;
+  scrollRef: RefObject<ScrollViewInstance | null>;
   scrollOffset: RefObject<number>;
   setCenterVerseId?: (verseId: number) => void;
   scrollToVerseId?: number;
@@ -124,6 +124,30 @@ export const usePathReaderCentering = ({
     },
     [setCenterVerseId]
   );
+
+  /**
+   * Return the first verse whose rendered bounds intersect the viewport.
+   *
+   * Unlike the centre verse, this is the panktee a reader sees at the top of
+   * the page. It is used only at a reader hand-off; normal live packets still
+   * carry the centre verse so follower centring remains unchanged.
+   */
+  const findFirstVisibleVerseId = useCallback((scrollY: number): number | null => {
+    if (versePositions.current.size === 0) {
+      return null;
+    }
+
+    const viewportTop = Math.max(0, scrollY);
+    let firstVerseId: number | null = null;
+    let firstVerseY = Infinity;
+    versePositions.current.forEach((position, verseId) => {
+      if (position.y + position.height > viewportTop && position.y < firstVerseY) {
+        firstVerseY = position.y;
+        firstVerseId = verseId;
+      }
+    });
+    return firstVerseId;
+  }, []);
 
   const syncParagraphVersePosition = useCallback(
     (verseId: number) => {
@@ -342,6 +366,7 @@ export const usePathReaderCentering = ({
     createParagraphVerseTextLayoutHandler,
     createShabadLayoutHandler,
     findCenterVerseId,
+    findFirstVisibleVerseId,
     handleViewportLayout,
     requestRecenter,
   };

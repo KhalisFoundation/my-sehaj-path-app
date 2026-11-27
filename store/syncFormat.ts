@@ -54,6 +54,28 @@ const hasExactKeys = (value: Record<string, unknown>, allowed: readonly string[]
   return keys.length === allowed.length && keys.every((key) => allowed.includes(key));
 };
 
+/**
+ * The same rejection of unknown fields, but with declared optional keys.
+ *
+ * Enumerating one exact-key array per optional-field combination does not
+ * scale, and the failure it produces is severe and silent: adding `shared` to
+ * `SyncMeta` without extending the allowlist meant every record the app wrote
+ * failed validation on the NEXT launch. Hydration then treated the whole blob
+ * as malformed, wiped the in-memory account and set `recoveryNeeded` — which
+ * disables all cloud sync until a manual repair. The only symptom was an app
+ * that never contacted the server and a Sync button that reported a generic
+ * error, with the correct metadata sitting intact on disk.
+ *
+ * So optional keys are declared once, here, rather than by combination.
+ */
+const hasAllowedKeys = (
+  value: Record<string, unknown>,
+  required: readonly string[],
+  optional: readonly string[]
+): boolean =>
+  required.every((key) => key in value) &&
+  Object.keys(value).every((key) => required.includes(key) || optional.includes(key));
+
 const META_KEYS = [
   'serverPathId',
   'serverUpdatedAt',
@@ -62,7 +84,12 @@ const META_KEYS = [
   'deletedAt',
   'onServer',
 ] as const;
-const META_KEYS_WITH_SERVER_CREATED_AT = [...META_KEYS, 'serverCreatedAt'] as const;
+/**
+ * Fields a record may carry but need not. `serverCreatedAt` predates group
+ * reading; `shared` marks a path the server owns. Both are absent from metadata
+ * written by older binaries, which must still hydrate.
+ */
+const META_OPTIONAL_KEYS = ['serverCreatedAt', 'shared', 'groupId'] as const;
 
 const OP_KEYS = ['kind', 'localUpdatedAt'] as const;
 
@@ -79,7 +106,7 @@ const TOP_LEVEL_KEYS = [
 
 const isSyncMeta = (value: unknown): value is SyncMeta =>
   isObject(value) &&
-  (hasExactKeys(value, META_KEYS) || hasExactKeys(value, META_KEYS_WITH_SERVER_CREATED_AT)) &&
+  hasAllowedKeys(value, META_KEYS, META_OPTIONAL_KEYS) &&
   typeof value.serverPathId === 'string' &&
   UUID_RE.test(value.serverPathId) &&
   isFiniteNonNegative(value.serverUpdatedAt) &&
@@ -87,7 +114,10 @@ const isSyncMeta = (value: unknown): value is SyncMeta =>
   isFiniteNonNegative(value.startDate) &&
   (value.serverCreatedAt === undefined || isFiniteNonNegative(value.serverCreatedAt)) &&
   isNullableTimestamp(value.deletedAt) &&
-  typeof value.onServer === 'boolean';
+  typeof value.onServer === 'boolean' &&
+  (value.shared === undefined || typeof value.shared === 'boolean') &&
+  (value.groupId === undefined ||
+    (typeof value.groupId === 'string' && UUID_RE.test(value.groupId)));
 
 const isPendingPathOp = (value: unknown): value is PendingPathOp =>
   isObject(value) &&

@@ -80,18 +80,25 @@ export const OfflineDbNotice = () => {
   }, [completed]);
 
   return (
-    <Dialog key={presentKey} visible={shown !== null} onRequestClose={dismiss} onShow={consume}>
-      <Text style={styles.title}>
+    <Dialog
+      key={presentKey}
+      visible={shown !== null}
+      onRequestClose={dismiss}
+      onShow={consume}
+      backdropStyle={styles.compactBackdrop}
+      cardStyle={styles.compactCard}
+    >
+      <Text style={[styles.title, styles.compactTitle]}>
         {shown === 'updated' ? 'Database updated' : 'Offline reading ready'}
       </Text>
-      <Text style={styles.message}>
+      <Text style={[styles.message, styles.compactMessage]}>
         {shown === 'updated'
           ? 'The reading database has been updated to the latest version.'
           : 'The reading database has been downloaded. Now you can do path even without internet.'}
       </Text>
-      <View style={styles.actions}>
+      <View style={[styles.actions, styles.compactActions]}>
         <TouchableOpacity
-          style={styles.primaryButton}
+          style={[styles.primaryButton, styles.compactActionButton]}
           onPress={dismiss}
           accessibilityRole="button"
           accessibilityLabel={Constants.OK}
