@@ -8,6 +8,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { ModalBackdrop } from './ModalBackdrop';
 import { DialogStyles as styles } from '@styles';
 
 // iOS native modals default to portrait unless every supported orientation is
@@ -67,6 +68,7 @@ const DialogComponent = ({
       accessibilityViewIsModal
       importantForAccessibility="yes"
     >
+      <ModalBackdrop />
       {dismissOnBackdropPress && onRequestClose ? (
         <Pressable
           style={StyleSheet.absoluteFill}

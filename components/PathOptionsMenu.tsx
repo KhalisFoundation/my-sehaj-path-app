@@ -1,5 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Dimensions, Modal, Pressable, TouchableOpacity, View } from 'react-native';
+import { ModalBackdrop } from './ModalBackdrop';
 import { AppText as Text } from './AppText';
 import { MoreOptionsIcon } from '@icons';
 import { Constants, ErrorConstants } from '@constants';
@@ -181,6 +182,7 @@ export const PathOptionsMenu = ({
           </View>
         ) : view === 'confirm' ? (
           <View style={DialogStyles.backdrop}>
+            <ModalBackdrop />
             <View style={DialogStyles.card}>
               <Text style={DialogStyles.title}>{Constants.DELETE_SEHAJ_PATH_TITLE}</Text>
               <Text style={DialogStyles.message}>
@@ -215,6 +217,7 @@ export const PathOptionsMenu = ({
           </View>
         ) : view === 'leaveBlocked' ? (
           <View style={DialogStyles.backdrop}>
+            <ModalBackdrop />
             <View style={DialogStyles.card}>
               <Text style={DialogStyles.title}>{Constants.LEAVE_PATH_ADMIN_TITLE}</Text>
               <Text style={DialogStyles.message}>{Constants.LEAVE_PATH_ADMIN_MESSAGE}</Text>
@@ -243,6 +246,7 @@ export const PathOptionsMenu = ({
           </View>
         ) : view === 'leaveConfirm' ? (
           <View style={DialogStyles.backdrop}>
+            <ModalBackdrop />
             <View style={DialogStyles.card}>
               <Text style={DialogStyles.title}>{Constants.LEAVE_PATH_TITLE}</Text>
               <Text style={DialogStyles.message}>{Constants.LEAVE_PATH_MESSAGE}</Text>
@@ -271,6 +275,7 @@ export const PathOptionsMenu = ({
           </View>
         ) : view === 'error' ? (
           <View style={DialogStyles.backdrop}>
+            <ModalBackdrop />
             <View style={DialogStyles.card}>
               <Text style={DialogStyles.title}>{Constants.DELETE_SEHAJ_PATH_FAILED_TITLE}</Text>
               <Text style={DialogStyles.message}>{ErrorConstants.FAILED_TO_DELETE_SEHAJ_PATH}</Text>

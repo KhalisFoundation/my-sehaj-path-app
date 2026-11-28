@@ -7,7 +7,7 @@ import {
   type TextInputInstance,
 } from 'react-native';
 import { AppText as Text, AppTextInput as TextInput } from './AppText';
-import { BlurView } from '@react-native-community/blur';
+import { ModalBackdrop } from './ModalBackdrop';
 import { CrossIcon } from '@icons';
 import { PathRenameStyle } from '@styles';
 import { trackEvent } from '@utils';
@@ -72,13 +72,7 @@ export const PathRename = ({ pathId, initialPathName, setPathRename, setPathName
 
   return (
     <View style={PathRenameStyle.blurView}>
-      <BlurView
-        blurType="dark"
-        blurAmount={1}
-        reducedTransparencyFallbackColor="rgba(0, 0, 0, 0.55)"
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
+      <ModalBackdrop />
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={() => setPathRename(false)}

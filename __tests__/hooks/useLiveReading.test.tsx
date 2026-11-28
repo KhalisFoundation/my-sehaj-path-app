@@ -11,6 +11,9 @@ const connectLiveMock = connectLive as jest.MockedFunction<typeof connectLive>;
 let handle: { close: jest.Mock; sendPosition: jest.Mock; sendSettings: jest.Mock };
 let listeners: Parameters<typeof connectLive>[0];
 
+/** The reader name the hook last returned, for assertions. */
+let latestReaderLabel: string | null = null;
+
 const Probe = ({
   live,
   pathAng,
@@ -35,7 +38,7 @@ const Probe = ({
 }) => {
   const scrollOffset = React.useRef(offset);
   scrollOffset.current = offset;
-  useLiveReading({
+  const result = useLiveReading({
     live,
     pathAng,
     centerVerseId,
@@ -44,6 +47,7 @@ const Probe = ({
     onSettings,
     settings,
   });
+  latestReaderLabel = result.readerLabel;
   return null;
 };
 
@@ -180,6 +184,34 @@ describe('useLiveReading', () => {
     });
 
     expect(onRemotePosition).toHaveBeenCalledWith(expect.objectContaining({ currentAng: 42 }));
+  });
+
+  it('shows the new reader’s name when the reading is handed over', async () => {
+    await mount(baseProps({ sehajPathId: 'p1', driving: false }));
+    await act(async () => {
+      listeners.onJoined({
+        sessionId: 's1',
+        readerLabel: 'Amrit',
+        currentAng: 42,
+        currentVerseId: 420,
+        scrollPosition: 0,
+        sequence: 1,
+      });
+    });
+    expect(latestReaderLabel).toBe('Amrit');
+
+    await act(async () => {
+      // The name must follow the hand-over even if the position fields are
+      // unusable: who is reading is what the follower shows.
+      listeners.onTakeoverCompleted?.({
+        takeoverId: 't1',
+        sessionId: 's2',
+        readerMemberId: 'm2',
+        readerLabel: 'Gurbaj',
+      } as never);
+    });
+
+    expect(latestReaderLabel).toBe('Gurbaj');
   });
 
   it('does not reconnect when the callback changes on every page', async () => {

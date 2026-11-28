@@ -18,13 +18,20 @@ export const useDrawerNavigation = () => {
 
         const params = { pathId, initialTab };
         const state = navigation.getState();
-        const currentRoute = state.routes[state.index]?.name;
+        const current = state.routes[state.index];
+        const currentRoute = current?.name;
 
         // Path is normally opened from Continue. Pushing here created
         // Home -> Continue -> Path -> Continue, so Back appeared to reopen
         // Continue and the heavy reader route briefly exposed a blank frame.
         if (currentRoute === Routes.Path) {
-          navigation.popTo(Routes.Continue, params);
+          // The reader is closed here, so tell Continue how it was opened: its
+          // back button then reads "Go to path" and reopens it the same way.
+          const reader = current?.params as RootStackParamList['Path'] | undefined;
+          navigation.popTo(Routes.Continue, {
+            ...params,
+            returnToReader: { live: reader?.live },
+          });
           return;
         }
 

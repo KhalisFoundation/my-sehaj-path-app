@@ -5,7 +5,6 @@ import { UIConstants } from '@constants/UIConstants';
 export const InviteSheetStyles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(10, 20, 40, 0.45)',
   },
   sheet: {
     backgroundColor: '#FDFCF7',

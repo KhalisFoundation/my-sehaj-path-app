@@ -80,6 +80,10 @@ export const UIConstants: UIConstant = {
   // Neutral rather than navy: sheets should dim the current screen without
   // recolouring the calendar, background artwork, or status bar beneath them.
   MODAL_BACKDROP_COLOR: 'rgba(0, 0, 0, 0.32)',
+  /** Blur behind every sheet, pop-up and dialog (see ModalBackdrop). */
+  MODAL_BACKDROP_BLUR_AMOUNT: 4,
+  /** Shown instead of the blur when the system asks for reduced transparency. */
+  MODAL_BACKDROP_BLUR_FALLBACK: 'rgba(255, 255, 255, 0.72)',
   MODAL_SECONDARY_TEXT_COLOR: '#6E747B',
   FORM_DIALOG_BACKDROP_COLOR: 'rgba(0, 0, 0, 0.42)',
   SHEET_HANDLE_COLOR: '#AAB6C6',

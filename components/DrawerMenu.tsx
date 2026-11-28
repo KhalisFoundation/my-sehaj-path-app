@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { AppText as Text } from './AppText';
 import { Dialog } from './Dialog';
-import { BlurView } from '@react-native-community/blur';
+import { ModalBackdrop } from './ModalBackdrop';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import {
   Constants,
@@ -87,6 +87,25 @@ const DrawerMenuComponent = ({
 }: DrawerMenuProps) => {
   const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const [isDrawerMounted, setIsDrawerMounted] = useState(isVisible);
+  // The backdrop follows the panel: fully shown when it is open, gone when it
+  // is closed. It used to stay at full strength until the Modal unmounted.
+  const backdropOpacity = useMemo(
+    () =>
+      slideAnim.interpolate({
+        inputRange: [-DRAWER_WIDTH, 0],
+        outputRange: [0, 1],
+        extrapolate: 'clamp',
+      }),
+    [slideAnim]
+  );
+  /**
+   * A destination chosen from the menu, opened once the drawer has closed.
+   *
+   * Navigating first left the drawer's full-screen Modal (and its backdrop) on
+   * top of the new screen for the whole close animation, so Settings appeared
+   * under a white veil with the previous screen's text showing through.
+   */
+  const pendingNavigation = useRef<(() => void) | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isManualSyncing, setIsManualSyncing] = useState(false);
   const [syncRecoveryPrompt, setSyncRecoveryPrompt] = useState<'recovery' | 'restore' | null>(null);
@@ -309,6 +328,8 @@ const DrawerMenuComponent = ({
       // before mounting it and animate on the next frame, so every open starts
       // off-screen instead of occasionally reusing the previous resting value.
       slideAnim.setValue(-DRAWER_WIDTH);
+      // Reopened before a previous close finished: that destination is dropped.
+      pendingNavigation.current = null;
       setIsDrawerMounted(true);
       const animationFrame = requestAnimationFrame(() => {
         Animated.timing(slideAnim, {
@@ -335,6 +356,9 @@ const DrawerMenuComponent = ({
     closeAnimation.start(({ finished }) => {
       if (finished) {
         setIsDrawerMounted(false);
+        const navigate = pendingNavigation.current;
+        pendingNavigation.current = null;
+        navigate?.();
       }
     });
     return () => closeAnimation.stop();
@@ -349,10 +373,10 @@ const DrawerMenuComponent = ({
       onSavePress();
       onClose();
     } else if ((route === 'Progress' || route === 'Streaks') && pathId) {
-      onNavigate(route, pathId);
+      pendingNavigation.current = () => onNavigate(route, pathId);
       onClose();
     } else {
-      onNavigate(route);
+      pendingNavigation.current = () => onNavigate(route);
       onClose();
     }
   };
@@ -372,12 +396,12 @@ const DrawerMenuComponent = ({
     >
       <SafeAreaProvider>
         <View style={DrawerMenuStyles.modalRoot}>
-          <BlurView
-            blurType="light"
-            blurAmount={2}
-            reducedTransparencyFallbackColor={UIConstants.DRAWER_REDUCED_TRANSPARENCY_FALLBACK}
-            style={StyleSheet.absoluteFill}
-          />
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { opacity: backdropOpacity }]}
+          >
+            <ModalBackdrop />
+          </Animated.View>
           <View style={DrawerMenuStyles.drawerRow}>
             <View style={DrawerMenuStyles.drawerSlot}>
               <Animated.View

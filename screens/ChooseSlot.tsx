@@ -10,12 +10,13 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { ModalBackdrop } from '../components/ModalBackdrop';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AppText as Text } from '../components/AppText';
 import { ChooseSlotStyles as styles } from '@styles';
 import { Constants, ErrorConstants, UIConstants } from '@constants';
-import { CalendarIcon } from '@icons';
+import { CalendarIcon, RepeatIcon, RightChevronIcon } from '@icons';
 import { bookSlot, loadPlan, reportUnexpectedGroupRefusal, updateSlot } from '../store/groupApi';
 import {
   availabilityForSelectedTime,
@@ -47,6 +48,92 @@ import {
 type Props = NativeStackScreenProps<RootStackParamList, 'ChooseSlot'>;
 
 const DURATIONS = [15, 30, 45, 60, 75, 90, 105, 120] as const;
+type RepeatOption = 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
+type RecurringEditScope = 'OCCURRENCE' | 'THIS_AND_FUTURE';
+type ScopeOption = { scope: RecurringEditScope; title: string; description: string };
+
+const WEEKDAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+
+const ordinal = (day: number): string => {
+  const remainder = day % 100;
+  if (remainder >= 11 && remainder <= 13) {
+    return `${day}th`;
+  }
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+};
+
+const repeatRuleFor = (repeat: RepeatOption, startsAt: Date): string | undefined => {
+  const start = asLocalDateTime(startsAt);
+  switch (repeat) {
+    case 'daily':
+      return 'FREQ=DAILY';
+    case 'weekly':
+      return `FREQ=WEEKLY;BYDAY=${WEEKDAY_CODES[start.day()]}`;
+    case 'monthly':
+      return `FREQ=MONTHLY;BYMONTHDAY=${start.date()}`;
+    case 'yearly':
+      return `FREQ=YEARLY;BYMONTH=${start.month() + 1};BYMONTHDAY=${start.date()}`;
+    default:
+      return undefined;
+  }
+};
+
+const repeatLabelFor = (repeat: RepeatOption, startsAt: Date): string => {
+  const start = asLocalDateTime(startsAt);
+  switch (repeat) {
+    case 'daily':
+      return Constants.EVERY_DAY;
+    case 'weekly':
+      return `${Constants.EVERY_WEEK} ${start.format('dddd')}`;
+    case 'monthly':
+      return `${Constants.EVERY_MONTH} ${ordinal(start.date())}`;
+    case 'yearly':
+      return `${Constants.EVERY_YEAR} ${start.format('MMMM D')}`;
+    default:
+      return Constants.DO_NOT_REPEAT;
+  }
+};
+
+const repeatDescriptionFor = (repeat: RepeatOption): string | undefined => {
+  switch (repeat) {
+    case 'weekly':
+      return 'Repeats weekly on the selected day';
+    case 'monthly':
+      return 'Repeats monthly on the selected date';
+    case 'yearly':
+      return 'Repeats yearly on the selected date';
+    default:
+      return undefined;
+  }
+};
+
+const repeatOptionForRule = (rule?: string): RepeatOption => {
+  if (rule?.startsWith('FREQ=DAILY')) {
+    return 'daily';
+  }
+  if (rule?.startsWith('FREQ=WEEKLY')) {
+    return 'weekly';
+  }
+  if (rule?.startsWith('FREQ=MONTHLY')) {
+    return 'monthly';
+  }
+  if (rule?.startsWith('FREQ=YEARLY')) {
+    return 'yearly';
+  }
+  return 'none';
+};
+
+const deviceTimeZone = (): string => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+
 const nextSelectableMinute = (now = new Date()): Date => {
   const earliest = addMinutes(now, MINIMUM_BOOKING_LEAD_MINUTES);
   return ceilToLocalMinute(earliest);
@@ -106,6 +193,11 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   const { sehajPathId } = route.params;
   const editingSlotId = route.params.slotId;
   const isEditing = editingSlotId !== undefined;
+  const isRecurringEdit = isEditing && route.params.isRecurring === true;
+  const initialRepeat = useMemo(
+    () => (isRecurringEdit ? repeatOptionForRule(route.params.initialRecurrenceRule) : 'none'),
+    [isRecurringEdit, route.params.initialRecurrenceRule]
+  );
   const initial = useMemo(
     () => initialSelection(route.params.initialStartsAt),
     [route.params.initialStartsAt]
@@ -119,6 +211,11 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   const [day, setDay] = useState(initial.day);
   const [time, setTime] = useState(initial.time);
   const [minutes, setMinutes] = useState<number>(route.params.initialDurationMinutes ?? 15);
+  const [repeat, setRepeat] = useState<RepeatOption>('none');
+  const [repeatPickerOpen, setRepeatPickerOpen] = useState(false);
+  const [recurringEditScopeOpen, setRecurringEditScopeOpen] = useState(false);
+  // Which turns the edit applies to, chosen in the sheet before saving.
+  const [editScopeChoice, setEditScopeChoice] = useState<RecurringEditScope>('OCCURRENCE');
   const [slots, setSlots] = useState<SehajPathSlot[] | null>(null);
   const [booking, setBooking] = useState(false);
   const [timePickerOpen, setTimePickerOpen] = useState(false);
@@ -160,7 +257,18 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
     setDraftDay(selection.day);
     setDraftTime(selection.time);
     setMinutes(route.params.initialDurationMinutes ?? 15);
-  }, [route.params.initialDurationMinutes, route.params.initialStartsAt, editingSlotId]);
+    setRepeat(
+      route.params.isRecurring === true
+        ? repeatOptionForRule(route.params.initialRecurrenceRule)
+        : 'none'
+    );
+  }, [
+    editingSlotId,
+    route.params.initialDurationMinutes,
+    route.params.initialRecurrenceRule,
+    route.params.initialStartsAt,
+    route.params.isRecurring,
+  ]);
 
   const automaticSelectionKey = `${editingSlotId ?? 'new'}:${
     route.params.initialStartsAt ?? 'default'
@@ -238,6 +346,8 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   }, []);
 
   const startsAt = useMemo(() => timeOnDay(day, time), [day, time]);
+  const recurrenceRule = useMemo(() => repeatRuleFor(repeat, startsAt), [repeat, startsAt]);
+  const recurrenceChanged = isRecurringEdit && repeat !== initialRepeat;
   const availability = useMemo(() => {
     if (slots === null) {
       return null;
@@ -304,72 +414,144 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
     setTimePickerOpen(true);
   }, [time]);
 
+  const selectRepeat = useCallback((option: RepeatOption) => {
+    setRepeat(option);
+    setRepeatPickerOpen(false);
+  }, []);
+
   const hasChanges = useMemo(
     () =>
       !isEditing ||
       startsAt.getTime() !== originalStartsAt.getTime() ||
-      minutes !== originalDurationMinutes,
-    [isEditing, minutes, originalDurationMinutes, originalStartsAt, startsAt]
+      minutes !== originalDurationMinutes ||
+      recurrenceChanged,
+    [isEditing, minutes, originalDurationMinutes, originalStartsAt, recurrenceChanged, startsAt]
   );
 
-  const book = useCallback(async () => {
-    if (!availability?.available || booking || (isEditing && !hasChanges)) {
-      return;
-    }
-    setBooking(true);
-    bookingRef.current = true;
-    const analyticsEvent = isEditing ? 'TURN_EDIT' : 'TURN_ADD';
-    try {
-      let result;
-      if (isEditing) {
-        result = await updateSlot(
-          sehajPathId,
-          editingSlotId,
-          availability.slot.startsAt,
-          availability.slot.endsAt
-        );
-      } else {
-        result = await bookSlot(sehajPathId, availability.slot.startsAt, availability.slot.endsAt);
-      }
-
-      if (result.ok) {
-        trackSharedPathOutcome(analyticsEvent, 'success');
-        // The turn exists whether or not the sheet is still here, so the plan
-        // is always refreshed. Only leaving is conditional.
-        notifyPlanRefresh(sehajPathId, availability.slot.startsAt);
-        if (mountedRef.current) {
-          navigation.goBack();
-        }
+  const book = useCallback(
+    async (editScope?: RecurringEditScope) => {
+      if (!availability?.available || booking || (isEditing && !hasChanges)) {
         return;
       }
+      if (isRecurringEdit && editScope === undefined) {
+        // Which turns change is the user's call, so ask every time. A changed
+        // repeat rule can only apply from this turn onward, so that single
+        // option comes pre-selected; otherwise start on the narrower choice.
+        setEditScopeChoice(recurrenceChanged ? 'THIS_AND_FUTURE' : 'OCCURRENCE');
+        setRecurringEditScopeOpen(true);
+        return;
+      }
+      setBooking(true);
+      bookingRef.current = true;
+      const analyticsEvent = isEditing ? 'TURN_EDIT' : 'TURN_ADD';
+      try {
+        let result;
+        if (isEditing) {
+          let updatedRecurrence: { recurrenceRule: string; recurrenceTimezone: string } | undefined;
+          if (editScope === 'THIS_AND_FUTURE' && recurrenceRule) {
+            updatedRecurrence = {
+              recurrenceRule,
+              recurrenceTimezone: deviceTimeZone(),
+            };
+          }
+          result = await updateSlot(
+            sehajPathId,
+            editingSlotId,
+            availability.slot.startsAt,
+            availability.slot.endsAt,
+            editScope,
+            updatedRecurrence
+          );
+        } else {
+          let recurrence;
+          if (recurrenceRule) {
+            recurrence = {
+              recurrenceRule,
+              recurrenceTimezone: deviceTimeZone(),
+            };
+          }
+          result = await bookSlot(
+            sehajPathId,
+            availability.slot.startsAt,
+            availability.slot.endsAt,
+            recurrence
+          );
+        }
 
-      if (mountedRef.current) {
-        showErrorAlert(result.message || ErrorConstants.FAILED_TO_BOOK_TURN);
+        if (result.ok) {
+          trackSharedPathOutcome(analyticsEvent, 'success');
+          // The turn exists whether or not the sheet is still here, so the plan
+          // is always refreshed. Only leaving is conditional: a late
+          // `goBack()` would pop whatever is on top by then.
+          notifyPlanRefresh(sehajPathId, availability.slot.startsAt);
+          if (mountedRef.current) {
+            navigation.goBack();
+          }
+          return;
+        }
+
+        if (mountedRef.current) {
+          showErrorAlert(result.message || ErrorConstants.FAILED_TO_BOOK_TURN);
+        }
+        reportUnexpectedGroupRefusal('turn mutation', result, [400, 409]);
+        // The database is the final authority if another member books this range
+        // while the sheet is open. Refresh so the exact selection becomes disabled.
+        if (mountedRef.current) {
+          await load();
+        }
+      } catch (error) {
+        recordError(error, 'ChooseSlot: booking threw');
+        if (mountedRef.current) {
+          showErrorAlert(ErrorConstants.FAILED_TO_BOOK_TURN);
+        }
+      } finally {
+        bookingRef.current = false;
+        if (mountedRef.current) {
+          setBooking(false);
+        }
       }
-      reportUnexpectedGroupRefusal('turn mutation', result, [400, 409]);
-      // The database is the final authority if another member books this range
-      // while the sheet is open. Refresh so the exact selection becomes disabled.
-      if (mountedRef.current) {
-        await load();
-      }
-    } catch (error) {
-      recordError(error, 'ChooseSlot: booking threw');
-      if (mountedRef.current) {
-        showErrorAlert(ErrorConstants.FAILED_TO_BOOK_TURN);
-      }
-    } finally {
-      bookingRef.current = false;
-      if (mountedRef.current) {
-        setBooking(false);
-      }
-    }
-  }, [availability, booking, editingSlotId, hasChanges, isEditing, load, navigation, sehajPathId]);
+    },
+    [
+      availability,
+      booking,
+      editingSlotId,
+      hasChanges,
+      isEditing,
+      isRecurringEdit,
+      load,
+      navigation,
+      recurrenceChanged,
+      recurrenceRule,
+      sehajPathId,
+    ]
+  );
 
   const addDisabled = availability?.available !== true || booking || (isEditing && !hasChanges);
-  let actionLabel = isEditing ? Constants.SAVE_TURN_CHANGES : Constants.ADD_TURN;
+  // A recurring edit always opens the scope sheet before anything is saved.
+  // "Continue" accurately describes this intermediate action; the sheet's
+  // final button remains the explicit update confirmation.
+  let actionLabel = isEditing ? 'Update turn' : Constants.ADD_TURN;
+  if (isRecurringEdit) {
+    actionLabel = Constants.CONTINUE;
+  }
   if (booking) {
     actionLabel = isEditing ? Constants.EDITING : Constants.BOOKING;
   }
+  // What the edit sheet offers. Changing the repeat rule has only one valid
+  // meaning (from this turn onward); anything else lets the user pick.
+  const thisTurnOnly: ScopeOption = {
+    scope: 'OCCURRENCE',
+    title: 'Update this turn',
+    description: 'Only this scheduled turn will change.',
+  };
+  const thisAndFollowing: ScopeOption = {
+    scope: 'THIS_AND_FUTURE',
+    title: 'Update this and following turns',
+    description: recurrenceChanged
+      ? 'The new repeat schedule applies from this turn onward.'
+      : 'Past turns and already booked turns stay unchanged.',
+  };
+  const scopeOptions = recurrenceChanged ? [thisAndFollowing] : [thisTurnOnly, thisAndFollowing];
   const panResponder = useMemo(
     () =>
       PanResponder.create({
@@ -406,17 +588,20 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   );
 
   return (
-    <Pressable
-      style={styles.overlay}
-      onPress={() => {
-        if (!booking) {
-          navigation.goBack();
-        }
-      }}
-    >
+    <View style={styles.overlay}>
+      <ModalBackdrop />
       <Pressable
+        style={styles.backdrop}
+        onPress={() => {
+          // Leaving mid-booking would abandon a request whose result the
+          // person has not seen yet.
+          if (!booking) {
+            navigation.goBack();
+          }
+        }}
+      />
+      <View
         style={[styles.sheet, sheetHeight > 0 && { height: sheetHeight }]}
-        onPress={() => {}}
         onLayout={({ nativeEvent }) => {
           if (sheetHeight === 0) {
             sheetHeightRef.current = nativeEvent.layout.height;
@@ -427,7 +612,12 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
         <View style={styles.grabberHitArea} {...panResponder.panHandlers}>
           <View style={styles.grabber} />
         </View>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.title}>
             {isEditing ? Constants.EDIT_TURN_TITLE : Constants.ADD_TURN_TITLE}
           </Text>
@@ -459,6 +649,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
               onRequestClose={() => setDatePickerOpen(false)}
             >
               <Pressable style={styles.pickerOverlay} onPress={() => setDatePickerOpen(false)}>
+                <ModalBackdrop />
                 <Pressable style={styles.pickerCard} onPress={() => {}}>
                   <DateTimePicker
                     value={draftDay}
@@ -514,6 +705,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
               onRequestClose={() => setTimePickerOpen(false)}
             >
               <Pressable style={styles.pickerOverlay} onPress={() => setTimePickerOpen(false)}>
+                <ModalBackdrop />
                 <Pressable style={styles.pickerCard} onPress={() => {}}>
                   <DateTimePicker
                     value={draftTime}
@@ -543,7 +735,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
           )}
 
           {slots === null ? (
-            <ActivityIndicator style={styles.loading} />
+            <ActivityIndicator testID="turn-plan-loading" style={styles.loading} />
           ) : availability?.available ? (
             <Text style={styles.available}>
               {`${Constants.SELECTED_TIME_AVAILABLE}: ${selectedTimeRangeLabel(
@@ -589,7 +781,118 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
               );
             })}
           </View>
+
+          {!isEditing || isRecurringEdit ? (
+            <>
+              <Text style={styles.sectionLabel}>{Constants.REPEAT}</Text>
+              <TouchableOpacity
+                style={styles.field}
+                onPress={() => setRepeatPickerOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Repeat options"
+              >
+                <RepeatIcon />
+                <Text style={[styles.fieldText, styles.repeatFieldText]}>
+                  {repeatLabelFor(repeat, startsAt)}
+                </Text>
+                <View style={styles.repeatFieldChevron}>
+                  <RightChevronIcon />
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : null}
         </ScrollView>
+
+        <Modal
+          transparent
+          animationType="fade"
+          visible={repeatPickerOpen}
+          onRequestClose={() => setRepeatPickerOpen(false)}
+        >
+          <Pressable style={styles.repeatOverlay} onPress={() => setRepeatPickerOpen(false)}>
+            <ModalBackdrop />
+            <Pressable style={styles.repeatSheet} onPress={() => {}}>
+              <View style={styles.repeatGrabber} />
+              <Text style={styles.repeatTitle}>{Constants.REPEAT}</Text>
+              {(
+                (isRecurringEdit
+                  ? ['daily', 'weekly', 'monthly', 'yearly']
+                  : ['none', 'daily', 'weekly', 'monthly', 'yearly']) as RepeatOption[]
+              ).map((option) => {
+                const description = repeatDescriptionFor(option);
+                const selected = repeat === option;
+                return (
+                  <TouchableOpacity
+                    key={option}
+                    style={styles.repeatOption}
+                    onPress={() => selectRepeat(option)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                  >
+                    {option === 'none' ? <RepeatIcon /> : <CalendarIcon />}
+                    <View style={styles.repeatOptionCopy}>
+                      <Text style={styles.repeatOptionText}>
+                        {repeatLabelFor(option, startsAt)}
+                      </Text>
+                      {description ? (
+                        <Text style={styles.repeatOptionDescription}>{description}</Text>
+                      ) : null}
+                    </View>
+                    <View style={[styles.repeatRadio, selected && styles.repeatRadioSelected]}>
+                      {selected ? <View style={styles.repeatRadioDot} /> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </Pressable>
+          </Pressable>
+        </Modal>
+
+        <Modal
+          transparent
+          animationType="fade"
+          visible={recurringEditScopeOpen}
+          onRequestClose={() => setRecurringEditScopeOpen(false)}
+        >
+          <Pressable style={styles.repeatOverlay} onPress={() => setRecurringEditScopeOpen(false)}>
+            <ModalBackdrop />
+            <Pressable style={styles.repeatSheet} onPress={() => {}}>
+              <View style={styles.repeatGrabber} />
+              <Text style={styles.repeatTitle}>Update recurring turn</Text>
+              {scopeOptions.map((option) => {
+                const selected = editScopeChoice === option.scope;
+                return (
+                  <TouchableOpacity
+                    key={option.scope}
+                    style={styles.repeatOption}
+                    onPress={() => setEditScopeChoice(option.scope)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                  >
+                    <View style={styles.repeatOptionCopy}>
+                      <Text style={styles.repeatOptionText}>{option.title}</Text>
+                      <Text style={styles.repeatOptionDescription}>{option.description}</Text>
+                    </View>
+                    <View style={[styles.repeatRadio, selected && styles.repeatRadioSelected]}>
+                      {selected ? <View style={styles.repeatRadioDot} /> : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+              <TouchableOpacity
+                style={styles.scopeConfirm}
+                onPress={() => {
+                  setRecurringEditScopeOpen(false);
+                  book(editScopeChoice).catch(() => undefined);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm update"
+              >
+                <Text style={styles.bookText}>Update turn</Text>
+              </TouchableOpacity>
+            </Pressable>
+          </Pressable>
+        </Modal>
 
         <TouchableOpacity
           // Keep the action above the home indicator without lifting the sheet
@@ -600,14 +903,16 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
             { marginBottom: Math.max(insets.bottom, UIConstants.RHYTHM) },
             addDisabled && styles.disabled,
           ]}
-          onPress={book}
+          onPress={() => {
+            book().catch(() => undefined);
+          }}
           disabled={addDisabled}
           accessibilityRole="button"
           accessibilityState={{ disabled: addDisabled }}
         >
           <Text style={styles.bookText}>{actionLabel}</Text>
         </TouchableOpacity>
-      </Pressable>
-    </Pressable>
+      </View>
+    </View>
   );
 };

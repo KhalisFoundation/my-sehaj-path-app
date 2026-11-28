@@ -1,5 +1,6 @@
 import { makeStore, store as appStore } from '../../store';
 import { saveGroupPankti } from '../../store/groupPaths';
+import { PATH_DATA } from '../../constants/PathData';
 import { setOnline } from '../../store/slices/networkSlice';
 import { sehajPathSessionsControllerSavePankti } from '../../api/generated/sdk.gen';
 
@@ -395,6 +396,63 @@ describe('saving a pankti on a shared path', () => {
 
     const record = appStore.getState().paths.dates.find((entry) => entry.pathid === 1);
     expect(record?.dates.some((entry) => entry.date === '')).toBe(false);
+  });
+
+  describe('the completion date the server sends back', () => {
+    const savedPath = () => appStore.getState().paths.paths.find((path) => path.pathId === 1);
+    /** The tests share the app's store, so each one starts from a known date. */
+    const givenCompletionDate = (completionDate: string) =>
+      appStore.dispatch(
+        updatePath({
+          pathId: 1,
+          angNumber: PATH_DATA.LAST_ANG_NUMBER,
+          verseId: PATH_DATA.LAST_VERSE_ID,
+          progress: 100,
+          completionDate,
+          todayDate: '',
+          scrollPosition: 0,
+        })
+      );
+    const answerWith = (completionDate: string | null) =>
+      savePanktiSpy.mockResolvedValueOnce({
+        data: {
+          applied: true,
+          angNumber: PATH_DATA.LAST_ANG_NUMBER,
+          verseId: PATH_DATA.LAST_VERSE_ID,
+          scrollPosition: 0,
+          progress: 100,
+          completionDate,
+        },
+      });
+
+    it('is stored as a date, not as the raw milliseconds', async () => {
+      // The server sends epoch milliseconds in a string. Stored as is, the
+      // completed card showed "1782950400000" where its date should be.
+      givenCompletionDate('');
+      answerWith(String(Date.UTC(2026, 6, 2)));
+
+      await saveGroupPankti(1, PATH_DATA.LAST_ANG_NUMBER, PATH_DATA.LAST_VERSE_ID, 0);
+
+      expect(savedPath()?.completionDate).toBe('2-July-2026');
+    });
+
+    it('keeps the date the path already had when the server sends none', async () => {
+      givenCompletionDate('5-March-2026');
+      answerWith(null);
+
+      await saveGroupPankti(1, PATH_DATA.LAST_ANG_NUMBER, PATH_DATA.LAST_VERSE_ID, 0);
+
+      expect(savedPath()?.completionDate).toBe('5-March-2026');
+    });
+
+    it('keeps the date the path already had when the value is not a timestamp', async () => {
+      givenCompletionDate('5-March-2026');
+      answerWith('not-a-date');
+
+      await saveGroupPankti(1, PATH_DATA.LAST_ANG_NUMBER, PATH_DATA.LAST_VERSE_ID, 0);
+
+      expect(savedPath()?.completionDate).toBe('5-March-2026');
+    });
   });
 
   describe('when the save does not succeed', () => {

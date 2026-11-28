@@ -9,10 +9,8 @@ export const FinishReadingSheetStyles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(10, 20, 40, 0.45)',
   },
   centre: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-
   card: {
     width: '100%',
     maxWidth: 340,
@@ -36,7 +34,6 @@ export const FinishReadingSheetStyles = StyleSheet.create({
     marginBottom: 10,
   },
   tickMark: { fontSize: 34, color: '#2E7D46' },
-
   title: {
     fontFamily: font.Baloo_Paaji_2_Extra_Bold,
     fontSize: 20,

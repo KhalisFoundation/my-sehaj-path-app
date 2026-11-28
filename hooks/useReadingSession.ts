@@ -19,6 +19,16 @@ export type ReaderLayout = {
   fontSizeIndex?: number;
 };
 
+/**
+ * How long a follower waits after "reader left" before telling the person.
+ *
+ * A reader's connection blips for ordinary reasons (a lift, a weak signal, the
+ * app briefly in the background) and is usually back within seconds. Showing a
+ * "Reader has left" popup for every blip, then taking it away, is worse than
+ * waiting a moment: the notice appears only if the reader is still gone.
+ */
+export const READER_LEFT_NOTICE_DELAY_MS = 5_000;
+
 interface Props {
   live: LivePath;
   pathId: number;
@@ -75,6 +85,30 @@ export const useReadingSession = ({
   const [endedNoticeOpen, setEndedNoticeOpen] = useState(false);
   const [readerLeftNoticeOpen, setReaderLeftNoticeOpen] = useState(false);
   const [readerRejoined, setReaderRejoined] = useState(false);
+  // Pending "reader left" notice, and whether one has actually been shown.
+  const readerLeftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const readerLeftShown = useRef(false);
+  // The notice describes one particular reader. `leftReader` remembers who it
+  // was about, so it can be withdrawn if somebody else becomes the reader.
+  // `readerLeftFinal` marks the permanent case (the server ended that reading),
+  // which no change of reader can undo.
+  const leftReader = useRef<string | null>(null);
+  const readerLeftFinal = useRef(false);
+  const currentReaderLabel = useRef<string | null>(null);
+  const clearReaderLeftTimer = useCallback(() => {
+    if (readerLeftTimer.current !== null) {
+      clearTimeout(readerLeftTimer.current);
+      readerLeftTimer.current = null;
+    }
+  }, []);
+  useEffect(() => clearReaderLeftTimer, [clearReaderLeftTimer]);
+  /** Take back a pending or visible "reader left" notice. */
+  const withdrawReaderLeftNotice = useCallback(() => {
+    clearReaderLeftTimer();
+    readerLeftShown.current = false;
+    setReaderLeftNoticeOpen(false);
+    setReaderRejoined(false);
+  }, [clearReaderLeftTimer]);
   const [finishOpen, setFinishOpen] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [takeoverUntil, setTakeoverUntil] = useState<number | null>(null);
@@ -83,37 +117,67 @@ export const useReadingSession = ({
 
   const onReadingEnded = useCallback(
     (ended: { readerLabel: string; endAng: number; endReason?: 'DISCONNECTED' }) => {
+      // The reading is over either way, so any pending "left" notice is moot.
+      clearReaderLeftTimer();
       if (ended.endReason === 'DISCONNECTED') {
+        // Ended for good on the server: there is no rejoining, so nothing to
+        // wait for. Tell the follower now.
         setEndedBy(null);
         setEndedAt(null);
         setEndedNoticeOpen(false);
         setReaderRejoined(false);
+        readerLeftShown.current = true;
+        readerLeftFinal.current = true;
         setReaderLeftNoticeOpen(true);
         return;
       }
+      readerLeftShown.current = false;
       setReaderLeftNoticeOpen(false);
       setReaderRejoined(false);
       setEndedBy(ended.readerLabel);
       setEndedAt({ startAng: live?.startAng ?? ended.endAng, endAng: ended.endAng });
       setEndedNoticeOpen(true);
     },
-    [live?.startAng]
+    [clearReaderLeftTimer, live?.startAng]
   );
   const onReaderLeft = useCallback(() => {
-    if (isFollowing && endedBy === null) {
-      setReaderLeftNoticeOpen(true);
-      setReaderRejoined(false);
+    if (!isFollowing || endedBy !== null) {
+      return;
     }
-  }, [endedBy, isFollowing]);
+    // Wait before announcing it: if the reader is back within a few seconds it
+    // was a network blip, and the follower never needs to hear about it.
+    clearReaderLeftTimer();
+    leftReader.current = currentReaderLabel.current;
+    readerLeftTimer.current = setTimeout(() => {
+      readerLeftTimer.current = null;
+      readerLeftShown.current = true;
+      setReaderRejoined(false);
+      setReaderLeftNoticeOpen(true);
+    }, READER_LEFT_NOTICE_DELAY_MS);
+  }, [clearReaderLeftTimer, endedBy, isFollowing]);
   const onReaderRejoined = useCallback(() => {
-    if (isFollowing && endedBy === null) {
+    if (!isFollowing || endedBy !== null) {
+      return;
+    }
+    clearReaderLeftTimer();
+    // The popup goes away the moment the reader is back. If it was never shown
+    // (the blip was shorter than the wait) there is nothing to retract, and
+    // saying "rejoined" about a departure nobody was told of would only confuse.
+    if (readerLeftShown.current) {
+      readerLeftShown.current = false;
       setReaderLeftNoticeOpen(false);
       setReaderRejoined(true);
     }
-  }, [endedBy, isFollowing]);
+  }, [clearReaderLeftTimer, endedBy, isFollowing]);
 
   const onTakeoverCompleted = useCallback(
     (takeover: { sessionId: string; readerMemberId: string | null }) => {
+      // Somebody else is reading now. Whatever was said about the previous
+      // reader leaving no longer applies, and must not be read as being about
+      // the new one.
+      if (isFollowing && !readerLeftFinal.current) {
+        withdrawReaderLeftNotice();
+      }
       setTakeoverUntil(null);
       setTakeoverSeconds(null);
       // The old reader is the only device that knows the rendered first
@@ -139,6 +203,7 @@ export const useReadingSession = ({
       navigation,
       onTakeoverSave,
       scrollOffset,
+      withdrawReaderLeftNotice,
     ]
   );
   const onTakeoverStarted = useCallback(
@@ -215,6 +280,20 @@ export const useReadingSession = ({
     onSettings: onReaderLayout,
     settings: ownLayout,
   });
+
+  // Keep the latest name where the socket callbacks above can read it, and
+  // withdraw a "reader left" notice if the reader has changed since it was
+  // raised: a follower that reconnects mid-wait is told who is reading now, and
+  // the popup prints that name, so it would otherwise say the NEW reader left.
+  useEffect(() => {
+    currentReaderLabel.current = readerLabel;
+    const aboutSomeoneElse =
+      readerLabel !== null && leftReader.current !== null && readerLabel !== leftReader.current;
+    const noticeActive = readerLeftTimer.current !== null || readerLeftShown.current;
+    if (noticeActive && aboutSomeoneElse && !readerLeftFinal.current) {
+      withdrawReaderLeftNotice();
+    }
+  }, [readerLabel, withdrawReaderLeftNotice]);
 
   const leaveAfterReading = useCallback(() => {
     setEndedNoticeOpen(false);

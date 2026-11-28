@@ -2,6 +2,7 @@ import { sehajPathSessionsControllerSavePankti } from '../api/generated/sdk.gen'
 import { isOnlineNow } from '../db/connectivity';
 import { PATH_DATA } from '../constants/PathData';
 import { updatePath } from './slices/pathsSlice';
+import { msToLegacy } from './syncDateUtils';
 import { store, type RootState } from './index';
 
 /**
@@ -96,6 +97,26 @@ export type GroupSaveResult =
  * to promise a save that may land minutes later against a position that has
  * since moved.
  */
+/**
+ * The completion date from a save response, in the app's own format.
+ *
+ * The server sends it as epoch milliseconds in a string ("1756800000000"), but
+ * the app stores completion dates as "2-July-2026". Storing the raw value put
+ * that number on the completed card as its date, and nothing could read it
+ * back as a date. No date (`null`) or anything that is not a valid timestamp
+ * keeps what the path already had.
+ */
+const completionDateFromSave = (value: string | number | null | undefined, fallback: string) => {
+  if (value === null || value === undefined || value === '') {
+    return fallback;
+  }
+  const ms = Number(value);
+  if (!Number.isFinite(ms)) {
+    return fallback;
+  }
+  return msToLegacy(ms) || fallback;
+};
+
 export const saveGroupPankti = async (
   pathId: number,
   angNumber: number,
@@ -179,7 +200,7 @@ export const saveGroupPankti = async (
       position.angNumber,
       position.verseId,
       position.scrollPosition,
-      position.completionDate ?? rollback.completionDate
+      completionDateFromSave(position.completionDate, rollback.completionDate)
     );
 
     return position.applied

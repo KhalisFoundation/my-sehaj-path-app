@@ -130,6 +130,12 @@ export const Constants: Constant = {
   DATE: 'Date',
   START_TIME: 'Start time',
   DURATION: 'Duration',
+  REPEAT: 'Repeat',
+  DO_NOT_REPEAT: 'Do not repeat',
+  EVERY_DAY: 'Every day',
+  EVERY_WEEK: 'Every week on',
+  EVERY_MONTH: 'Every month on the',
+  EVERY_YEAR: 'Every year on',
   SELECT_START_TIME: 'Select a start time',
   SELECTED_TIME_AVAILABLE: 'This time is available',
   SELECTED_TIME_PAST: 'Select a time that has not passed.',
@@ -280,4 +286,5 @@ export const Constants: Constant = {
   GO_TO_ANG: 'Go To Ang',
   SAVE: 'Save',
   BACK_TO_PATH: 'Back to path',
+  GO_TO_PATH: 'Go to path',
 };
