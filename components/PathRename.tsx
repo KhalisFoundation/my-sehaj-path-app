@@ -129,7 +129,7 @@ export const PathRename = ({ pathId, initialPathName, setPathRename, setPathName
                   numberOfLines={1}
                   ellipsizeMode="tail"
                 >
-                  {newName || 'Enter New Name'}
+                  {newName === '' ? 'Enter New Name' : newName}
                 </Text>
               </Pressable>
             )}
