@@ -12,6 +12,7 @@ export const Constants: Constant = {
   START_A_PATH_TITLE: 'Start new',
   CREATE_PATH_SUBTITLE: 'Start a Sehaj Path with your loved ones. Read together, stay connected.',
   PATH_NAME_INPUT_LABEL: 'Path name input',
+  PATH_NAME_TOO_LONG: 'A path name can be up to {max} characters.',
   PATH_NAME_PLACEHOLDER: 'Path Name',
   CREATING: 'Creating…',
   LOGGING_IN: 'Logging in…',
@@ -101,6 +102,9 @@ export const Constants: Constant = {
   ADD_TURN_AT_TIME: 'Add turn at this time',
   TURN_OPTIONS: 'Turn options',
   DELETE_TURN: 'Delete turn',
+  DELETE_TURN_CONFIRMATION_TITLE: 'Delete this turn?',
+  DELETE_TURN_CONFIRMATION_MESSAGE:
+    'This will permanently remove the scheduled turn. This action cannot be undone.',
   DELETE_TURN_FAILED_TITLE: 'Unable to delete turn',
   DELETING_TURN: 'Deleting…',
   ADD_TURN_TITLE: 'Add a turn',

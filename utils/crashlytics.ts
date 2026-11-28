@@ -4,7 +4,6 @@ import {
   recordError as crashlyticsRecordError,
   setAttributes,
   setCrashlyticsCollectionEnabled,
-  crash,
 } from '@react-native-firebase/crashlytics';
 
 const instance = getCrashlytics();
@@ -21,6 +20,7 @@ const allowCrashReporting = async (): Promise<void> => {
   }
 };
 
+/** A non-fatal note attached to the next crash or error report. Never throws. */
 const logBreadcrumb = (message: string): void => {
   try {
     log(instance, message);
@@ -119,8 +119,4 @@ const recordError = (
     .catch(() => undefined);
 };
 
-const testCrash = (): void => {
-  crash(instance);
-};
-
-export { allowCrashReporting, logBreadcrumb, recordError, testCrash };
+export { allowCrashReporting, logBreadcrumb, recordError };

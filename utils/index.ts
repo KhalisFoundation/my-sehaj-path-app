@@ -12,7 +12,7 @@ export {
 export { convertToPunjabiNumber, convertNumberToFormat, type NumberFormat } from './numberUtils';
 export { allowTracking, trackEvent, trackScreenView } from './analytics';
 export { trackSharedPathEvent, trackSharedPathOutcome } from './sharedPathAnalytics';
-export { allowCrashReporting, recordError, testCrash } from './crashlytics';
+export { allowCrashReporting, recordError } from './crashlytics';
 export { getOrCreatePathUuid } from './pathIdUtils';
 export { displayReadingAng } from './readingAng';
 export * from './dateTime';

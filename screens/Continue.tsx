@@ -81,7 +81,7 @@ import { ContinueScreenBackground } from '../assets/Images';
 import { BackgroundImage } from '../components/BackgroundImage';
 import { onForeground } from '../store/syncLifecycle';
 import { setPathShared } from '../store/slices/syncSlice';
-import { notifyPlanRefresh } from '../store/planEvents';
+import { notifyPlanRefresh, subscribePlanRefresh } from '../store/planEvents';
 import { persistence } from '../store/instance';
 import { getStoredInviteState } from '../store/inviteLink';
 import { connectLive, type LiveHandle, type LivePosition } from '../store/liveSession';
@@ -105,7 +105,13 @@ const formatLiveReaderTime = (reader: {
   ].join(' - ');
 
 export const Continue = ({ route, navigation }: ContinueProps) => {
-  const { pathId, initialTab, notificationTapAt, sehajPathId: routeSehajPathId } = route.params;
+  const {
+    pathId,
+    initialTab,
+    notificationTapAt,
+    sehajPathId: routeSehajPathId,
+    knownOtherMember = false,
+  } = route.params;
 
   /**
    * Group data is loaded only when a path can be represented on the server.
@@ -159,6 +165,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }
 
   const [members, setMembers] = useState<SehajPathMember[]>([]);
+  // Whether this screen's own members load has answered. Until it has, Home's
+  // already-loaded hint (`knownOtherMember`) stands in for it.
+  const [membersLoaded, setMembersLoaded] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteAutoCreate, setInviteAutoCreate] = useState(false);
@@ -210,12 +219,17 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   // Keep the shared UI available immediately from the persisted sync flag.
   // Membership is refreshed in the background, so waiting for that request
   // made Continue briefly look like a personal path on every launch.
-  const isSharedPath = hasOtherMember || groupMetaShared === true || hasExplicitGroupRoute;
-  // Turns is a group-only feature. Wait for the persisted/server-confirmed
-  // shared flag instead of optimistically rendering it while metadata is still
-  // unknown; otherwise a personal path flashes Turns and removes it again as
-  // the first sync completes.
-  const showTurnsTab = groupMetaShared === true || hasExplicitGroupRoute;
+  // Home's hint counts only until this screen's own members load answers.
+  const otherMemberHint = knownOtherMember && !membersLoaded;
+  const isSharedPath =
+    hasOtherMember || groupMetaShared === true || hasExplicitGroupRoute || otherMemberHint;
+  // Turns is a group-only feature. Cached metadata can briefly say `shared`
+  // after a member has left, so it never decides Turns. A Home open uses Home's
+  // already-loaded members until this screen's own load answers, so a shared
+  // path shows Turns at once and a personal path never shows it. Invite joins
+  // and notification routes carry an explicit group id and are already known
+  // to be group paths, so they can render immediately.
+  const showTurnsTab = hasOtherMember || hasExplicitGroupRoute || otherMemberHint;
 
   // A link makes a path shareable, not shared. Its owner is the first active
   // membership, so group turns and live-reading rules begin only once another
@@ -247,13 +261,13 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const loadMembers = useCallback(async () => {
     const requestVersion = ++membersLoadVersionRef.current;
-    if (!invitableId || (groupMetaShared === false && !hasExplicitGroupRoute)) {
+    if (!invitableId) {
       // The path has not reached the server yet, so there is no membership
-      // endpoint to ask. A personal path may still have a server id (and an
-      // invite can be created for it), but it is not PUBLIC and therefore the
-      // members endpoint correctly returns 404. The local fallback below is
-      // the member row that should be shown in that state.
+      // endpoint to ask. Invite-ready personal paths do have a group id and
+      // are deliberately probed below: another member may have just joined on
+      // another device, while this device still has cached `shared: false`.
       setMembers([]);
+      setMembersLoaded(true);
       setMembersError(null);
       return;
     }
@@ -305,6 +319,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       // the error and retry UI, including deleted/inaccessible paths.
       if (result.kind === 'refused' && result.status === 404 && groupMetaShared !== true) {
         setMembers([]);
+        setMembersLoaded(true);
         setMembersError(null);
         return;
       }
@@ -321,6 +336,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     // updates immediately instead, which is safe for both the modal and the
     // native share sheet.
     setMembers(nextMembers);
+    setMembersLoaded(true);
     setMembersError(null);
     // The active member list is the immediate source of truth. Updating the
     // durable mode here means Continue's personal fallback and PathScreen's
@@ -339,15 +355,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     // a rapid app close/reopen. This is intentionally a flush of the existing
     // persistence coordinator, not a second cache or storage key.
     await persistence.flush();
-  }, [
-    dispatch,
-    groupMetaGroupId,
-    groupMetaShared,
-    hasExplicitGroupRoute,
-    invitableId,
-    navigation,
-    pathId,
-  ]);
+  }, [dispatch, groupMetaGroupId, groupMetaShared, invitableId, navigation, pathId]);
 
   const loadInviteStatus = useCallback(async () => {
     const requestVersion = ++inviteStatusLoadVersionRef.current;
@@ -760,6 +768,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   const [activeOwnTurn, setActiveOwnTurn] = useState<SehajPathSlot | null>(null);
   const [scheduleSlots, setScheduleSlots] = useState<SehajPathSlot[]>([]);
   const [upcomingTurnsLoading, setUpcomingTurnsLoading] = useState(false);
+  const upcomingTurnsRequestRef = useRef(0);
   const [refreshing, setRefreshing] = useState(false);
   const [previewLines, setPreviewLines] = useState<string[]>([]);
   /** The live socket is the source of truth for the preview's current position. */
@@ -953,6 +962,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   }, [dispatch, liveReader?.sessionId, navigation, pathId, sehajPathId, uiState.tabs]);
 
   const loadUpcomingTurn = useCallback(async () => {
+    const requestVersion = ++upcomingTurnsRequestRef.current;
     if (sehajPathId === null || !isSharedPath) {
       setUpcomingTurn(null);
       setActiveOwnTurn(null);
@@ -965,6 +975,9 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     const from = now;
     const to = addLocalDays(now, UPCOMING_TURN_LOOKAHEAD_DAYS);
     const result = await loadPlan(sehajPathId, from, to);
+    if (requestVersion !== upcomingTurnsRequestRef.current) {
+      return;
+    }
     if (!result.ok) {
       setUpcomingTurn(null);
       setActiveOwnTurn(null);
@@ -979,6 +992,24 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setUpcomingTurn(next ?? null);
     setUpcomingTurnsLoading(false);
   }, [isSharedPath, sehajPathId]);
+
+  // The calendar, slot editor, and turn notifications publish this event after
+  // a server-side schedule change. The Progress tab derives its upcoming card
+  // from a separate query, so it must subscribe too instead of waiting for the
+  // user to pull to refresh or navigate away and back.
+  useEffect(() => {
+    if (sehajPathId === null || !isSharedPath) {
+      return;
+    }
+    return subscribePlanRefresh((changedPathId) => {
+      if (changedPathId !== sehajPathId) {
+        return;
+      }
+      loadUpcomingTurn().catch((error: unknown) => {
+        recordError(error, 'Continue: plan event upcoming-turn refresh failed');
+      });
+    }, sehajPathId);
+  }, [isSharedPath, loadUpcomingTurn, sehajPathId]);
 
   /**
    * Refresh all server-backed data owned by Continue. Notification taps can
@@ -1593,6 +1624,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                     membersLoadVersionRef.current += 1;
                     inviteStatusLoadVersionRef.current += 1;
                     setMembers([]);
+                    setMembersLoaded(true);
                     setMembersError(null);
                     setInviteStatus('none');
                     dispatch(setPathShared({ pathId, shared: false }));
@@ -1983,6 +2015,11 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
                   }
                   trackSharedPathOutcome('TURN_DELETE', 'success');
                 }}
+                onPlanChanged={() => {
+                  loadUpcomingTurn().catch((error: unknown) => {
+                    recordError(error, 'Continue: deleted-turn upcoming refresh failed');
+                  });
+                }}
                 onEditSlot={(slot) =>
                   navigation.navigate(Routes.ChooseSlot, {
                     sehajPathId,
@@ -2137,6 +2174,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
       {uiState.showPathRename && canManagePath && (
         <PathRename
           pathId={pathId}
+          initialPathName={displayedPathName}
           setPathRename={(show) => setUiState((prev) => ({ ...prev, showPathRename: show }))}
           setPathName={(name) => setPathState((prev) => ({ ...prev, pathName: name }))}
         />

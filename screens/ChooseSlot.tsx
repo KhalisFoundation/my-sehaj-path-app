@@ -19,6 +19,7 @@ import { CalendarIcon } from '@icons';
 import { bookSlot, loadPlan, reportUnexpectedGroupRefusal, updateSlot } from '../store/groupApi';
 import {
   availabilityForSelectedTime,
+  earliestBookableStart,
   ENFORCE_EDIT_BOOKING_LEAD_TIME,
   MINIMUM_BOOKING_LEAD_MINUTES,
   planWindowFor,
@@ -128,6 +129,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   const [sheetHeight, setSheetHeight] = useState(0);
   const sheetStartHeight = useRef(0);
   const sheetHeightRef = useRef(0);
+  const automaticStartSelectionRef = useRef<string | null>(null);
   // True while this sheet is on screen. A request can finish after the sheet was
   // dismissed (Android back, the iOS back gesture), and `navigation.goBack()` is
   // not tied to this sheet: it pops whatever is on top by then, which is the
@@ -159,6 +161,14 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
     setDraftTime(selection.time);
     setMinutes(route.params.initialDurationMinutes ?? 15);
   }, [route.params.initialDurationMinutes, route.params.initialStartsAt, editingSlotId]);
+
+  const automaticSelectionKey = `${editingSlotId ?? 'new'}:${
+    route.params.initialStartsAt ?? 'default'
+  }`;
+
+  useEffect(() => {
+    automaticStartSelectionRef.current = null;
+  }, [automaticSelectionKey]);
 
   const load = useCallback(async () => {
     const sequence = ++loadSequenceRef.current;
@@ -197,6 +207,30 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
   useEffect(() => {
     load().catch(() => undefined);
   }, [load]);
+
+  // A generic Add Turn entry point has no user-selected time yet. Once its
+  // plan arrives, replace the provisional "now + lead time" default with the
+  // earliest gap that fits the default duration. Do not override an edit or a
+  // time chosen by tapping the calendar.
+  useEffect(() => {
+    const canChooseAutomatically =
+      !isEditing && route.params.initialStartsAt === undefined && slots !== null;
+    if (!canChooseAutomatically || automaticStartSelectionRef.current === automaticSelectionKey) {
+      return;
+    }
+
+    automaticStartSelectionRef.current = automaticSelectionKey;
+    const nextStart = earliestBookableStart({
+      slots,
+      durationMinutes: minutes,
+      now,
+    });
+    const nextDay = startOfLocalDay(nextStart);
+    setDay(nextDay);
+    setTime(nextStart);
+    setDraftDay(nextDay);
+    setDraftTime(nextStart);
+  }, [automaticSelectionKey, isEditing, minutes, now, route.params.initialStartsAt, slots]);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 30 * 1000);
@@ -381,11 +415,7 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
       }}
     >
       <Pressable
-        style={[
-          styles.sheet,
-          { marginBottom: insets.bottom },
-          sheetHeight > 0 && { height: sheetHeight },
-        ]}
+        style={[styles.sheet, sheetHeight > 0 && { height: sheetHeight }]}
         onPress={() => {}}
         onLayout={({ nativeEvent }) => {
           if (sheetHeight === 0) {
@@ -562,7 +592,14 @@ export const ChooseSlot = ({ route, navigation }: Props) => {
         </ScrollView>
 
         <TouchableOpacity
-          style={[styles.book, addDisabled && styles.disabled]}
+          // Keep the action above the home indicator without lifting the sheet
+          // itself off the bottom edge. The sheet should read as one continuous
+          // full-width surface, not as a floating card.
+          style={[
+            styles.book,
+            { marginBottom: Math.max(insets.bottom, UIConstants.RHYTHM) },
+            addDisabled && styles.disabled,
+          ]}
           onPress={book}
           disabled={addDisabled}
           accessibilityRole="button"

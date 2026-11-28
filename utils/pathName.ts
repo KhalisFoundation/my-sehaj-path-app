@@ -10,3 +10,10 @@ import { PATH_DATA } from '@constants';
  */
 export const sanitizePathName = (text: string): string =>
   text.replace(/[\r\n]+/g, ' ').slice(0, PATH_DATA.MAX_NAME_LENGTH);
+
+/**
+ * Whether the name is at the length limit. The inputs' `maxLength` stops any
+ * further typing there, so this is the moment to say why nothing more goes in.
+ */
+export const isPathNameAtLimit = (name: string): boolean =>
+  name.length >= PATH_DATA.MAX_NAME_LENGTH;

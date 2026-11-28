@@ -25,11 +25,13 @@ import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { removePathAndSyncState } from '../store';
 import { selectVisiblePaths } from '../store/selectors';
 import { onForeground } from '../store/syncLifecycle';
-import { sortPathsForHome } from '../store/pathOrdering';
+import { isPathCompletedForHome, sortPathsForHome } from '../store/pathOrdering';
 import { avatarUrlFor, listMembers } from '../store/groupApi';
 import type { AvatarMember } from '../components/MemberAvatars';
 import { HomeScreenBackground } from '../assets/Images';
 import { BackgroundImage } from '../components/BackgroundImage';
+import { completedCardDimensionsFor } from '../components/SecondaryCard';
+import { fontSizeIndexOf } from '@constants/FontSize';
 
 type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -41,6 +43,9 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   // Not the raw slice: a deleted path lingers there until the server confirms.
   const paths = useAppSelector(selectVisiblePaths);
   const syncMeta = useAppSelector((state) => state.sync.meta);
+  const completedCardWidth = completedCardDimensionsFor(
+    useAppSelector((state) => fontSizeIndexOf(state.settings.fontSize))
+  ).width;
   const { handleDrawerNavigate } = useDrawerNavigation();
   const pathDeleted = route.params?.pathDeleted === true;
   const pathMembershipEnded = route.params?.pathMembershipEnded === true;
@@ -48,9 +53,8 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
 
   const { pathInProgress, pathCompleted } = useMemo(() => {
     const orderedPaths = sortPathsForHome(paths, syncMeta);
-    // Keep "completed" strict: both completionDate and final checkpoint must match.
-    const completed = orderedPaths.filter((path: PathData) => path.completionDate !== '');
-    const inProgress = orderedPaths.filter((path: PathData) => path.completionDate === '');
+    const completed = orderedPaths.filter((path: PathData) => isPathCompletedForHome(path));
+    const inProgress = orderedPaths.filter((path: PathData) => !isPathCompletedForHome(path));
     return { pathInProgress: inProgress, pathCompleted: completed };
   }, [paths, syncMeta]);
 
@@ -190,20 +194,24 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           progress={path.progress}
           members={membersByPathId[path.pathId]}
           onPress={() => {
-            // A server group id is also created for a personal path when its
-            // owner enables invitations. That makes it *shareable*, not
-            // shared. Passing that id to Continue made a same-named personal
-            // path look like a group path and exposed the Turns tab.
-            const meta = syncMeta[path.pathId];
-            const sehajPathId = meta?.shared === true ? meta.groupId : undefined;
-            navigation.push(
-              Routes.Continue,
-              sehajPathId ? { pathId: path.pathId, sehajPathId } : { pathId: path.pathId }
-            );
+            // Open straight away, with no request of its own. Waiting for a
+            // members check here left the tap dead for up to the request
+            // timeout, and a second tap pushed Continue twice.
+            //
+            // The avatar list Home already loaded says whether another active
+            // member exists (it holds active members only, including this
+            // user). Passing that lets a shared path show Turns on the first
+            // frame, while a personal path, which has no list, never does.
+            // Continue's own members load then has the final say.
+            //
+            // No route-level group id: invite-ready personal paths have one
+            // too, and with stale metadata it could briefly show group-only UI.
+            const knownOtherMember = (membersByPathId[path.pathId]?.length ?? 0) > 1;
+            navigation.push(Routes.Continue, { pathId: path.pathId, knownOtherMember });
           }}
         />
       )),
-    [pathInProgress, membersByPathId, navigation, syncMeta]
+    [pathInProgress, membersByPathId, navigation]
   );
 
   const pathCompletedCards = useMemo(
@@ -260,14 +268,24 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
             {pathInProgress?.length > 0 ? (
               <View style={HomeScreenStyles.pathInProgressContianer}>
                 <Label label={Constants.SEHAJ_PATH_IN_PROGRESS} />
-                <Slider arrayOfCards={pathInProgressCards} widthOfCard={199} dotsIndicator={true} />
+                <Slider
+                  arrayOfCards={pathInProgressCards}
+                  widthOfCard={199}
+                  dotsIndicator={true}
+                  dotsContainerStyle={HomeScreenStyles.progressDots}
+                />
               </View>
             ) : undefined}
             <PrimaryButton buttonTitle={Constants.START_NEW} onPress={handleStart} />
             {pathCompleted?.length > 0 ? (
               <View style={HomeScreenStyles.pathCompletedContainer}>
                 <Label label={Constants.SEHAJ_PATH_COMPLETED} />
-                <Slider arrayOfCards={pathCompletedCards} widthOfCard={130} dotsIndicator={false} />
+                <Slider
+                  arrayOfCards={pathCompletedCards}
+                  widthOfCard={completedCardWidth}
+                  dotsIndicator={false}
+                  contentContainerStyle={HomeScreenStyles.completedCardsContent}
+                />
               </View>
             ) : undefined}
           </View>
