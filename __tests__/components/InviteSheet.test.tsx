@@ -23,7 +23,7 @@ const setString = Clipboard.setString as jest.Mock;
 const onClose = jest.fn();
 const onShared = jest.fn();
 
-const renderSheet = (visible = true, autoCreate = false) => {
+const renderSheet = (visible = true, autoCreate = false, localPathId?: number) => {
   const testStore = makeStore();
   testStore.dispatch(
     setSignedIn({
@@ -38,6 +38,7 @@ const renderSheet = (visible = true, autoCreate = false) => {
       <InviteSheet
         visible={visible}
         sehajPathId="p1"
+        localPathId={localPathId}
         onClose={onClose}
         onShared={onShared}
         autoCreate={autoCreate}
@@ -121,6 +122,14 @@ describe('the invite sheet', () => {
     expect(enableSharingMock.mock.invocationCallOrder[0]).toBeLessThan(
       createInviteMock.mock.invocationCallOrder[0]
     );
+  });
+
+  it("carries the owner's local reading history when sharing before V2 metadata refreshes", async () => {
+    minted();
+    const { findByText } = renderSheet(true, false, 7);
+    await createLink(findByText);
+
+    expect(enableSharingMock).toHaveBeenCalledWith('p1', 7);
   });
 
   it('tells the path to reload its members once sharing is on', async () => {

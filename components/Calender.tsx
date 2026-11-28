@@ -18,6 +18,18 @@ interface Props {
   onStreakUpdate?: (streakValue: number | null) => void;
 }
 
+const sharedDayToLegacy = (value: string): string | null => {
+  // New servers return a date-only group key. Parse it in UTC so it can never
+  // move to the previous/next day on this device. Keep accepting the older
+  // timestamp response during a rolling API deployment.
+  const canonical = dayjs.utc(value, 'YYYY-MM-DD', true);
+  if (canonical.isValid()) {
+    return canonical.format('D-MMMM-YYYY');
+  }
+  const legacyTimestamp = dayjs(value);
+  return legacyTimestamp.isValid() ? legacyTimestamp.format('D-MMMM-YYYY') : null;
+};
+
 export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props) => {
   const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [days, setDays] = useState<string[]>([]);
@@ -32,7 +44,7 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
       return null;
     }
     const result = await listSharedReadingDays(sharedPathId);
-    return result.ok ? result.data.dates : [];
+    return result.ok ? result.data.dates : null;
   }, [sharedPathId]);
 
   useFocusEffect(
@@ -43,19 +55,19 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
         .then((dates) => {
           if (active) {
             setSharedDates(dates);
-            if (dates && dates.length > 0) {
-              const existing =
-                store.getState().paths.dates.find((entry) => entry.pathid === pathId)?.dates ?? [];
-              const merged = new Map(existing.map((entry) => [entry.date, entry]));
-              dates.forEach((date) => {
-                const localDate = dayjs(date).format('D-MMMM-YYYY');
-                merged.set(localDate, { date: localDate });
+            if (dates !== null) {
+              const canonicalDates = dates.flatMap((date) => {
+                const localDate = sharedDayToLegacy(date);
+                return localDate === null ? [] : [{ date: localDate }];
               });
               store.dispatch(
                 applyServerPathData({
                   pathId,
                   pathPatch: {},
-                  datePatch: { dates: [...merged.values()] },
+                  // Once the API answers, it is the shared path's one source
+                  // of truth. Merging personal cached dates made different
+                  // members render different calendars indefinitely.
+                  datePatch: { dates: canonicalDates },
                 })
               );
             }
@@ -63,7 +75,7 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
         })
         .catch(() => {
           if (active && sharedPathId) {
-            setSharedDates([]);
+            setSharedDates(null);
           }
         });
       return () => {
@@ -73,16 +85,22 @@ export const Calender = ({ pathId, sharedPathId, streak, onStreakUpdate }: Props
   );
 
   const readingDateStrings = useMemo(() => {
-    if (sharedPathId) {
-      // Use persisted reading days while the authoritative group streak is
-      // loading. Treating "not loaded" as an empty list made the UI flash 0.
-      if (sharedDates !== null) {
-        return sharedDates.map((date) => dayjs(date).format('D-MMMM-YYYY'));
-      }
-    }
     // Older builds wrote `{ date: '' }` for shared saves. It is not a day, and
     // counting it made the list non-empty, skipping the loading state.
-    return progressDates?.dates?.map((date: any) => date.date).filter(Boolean) ?? [];
+    const persistedDates =
+      progressDates?.dates?.map((date: any) => date.date).filter(Boolean) ?? [];
+    if (sharedPathId) {
+      // Use persisted reading days while the authoritative group streak is
+      // loading. Once the group response arrives it replaces this local cache:
+      // a shared streak must be identical for every member.
+      if (sharedDates !== null) {
+        return sharedDates.flatMap((date) => {
+          const legacy = sharedDayToLegacy(date);
+          return legacy === null ? [] : [legacy];
+        });
+      }
+    }
+    return persistedDates;
   }, [progressDates, sharedDates, sharedPathId]);
 
   const isStreakLoading =

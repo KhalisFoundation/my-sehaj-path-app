@@ -20,7 +20,6 @@ import { useScreenAnalytics } from '@hooks';
 import { ensureAccessiblePath } from '../store/applyServerResponse';
 import { store } from '../store';
 import { runConfirmedAccountSync } from '../store/confirmedSync';
-import { hasLocalData } from '../store/syncWork';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JoinPath'>;
 
@@ -87,16 +86,11 @@ export const JoinPath = ({ route, navigation }: Props) => {
     setStage({ name: 'loading' });
 
     // Invite joining must not race the account association performed after SSO.
-    // If this device has unowned reading, automatically back it up to the
-    // signed-in account before resolving/joining the shared path. This is
-    // deliberately silent: the invite flow has already established the
+    // Finish any fresh-account association or A → B switch before resolving
+    // the invite, otherwise B's group response could be written into A's local
+    // dataset. This is deliberately silent: the invite already established the
     // account context, and local progress is never merged into the group.
-    if (
-      authStatus === 'signedIn' &&
-      authEmail &&
-      store.getState().sync.account === null &&
-      hasLocalData(store)
-    ) {
+    if (authStatus === 'signedIn' && authEmail && store.getState().sync.account !== authEmail) {
       const synced = await runConfirmedAccountSync(store, authEmail);
       if (!synced) {
         setStage({

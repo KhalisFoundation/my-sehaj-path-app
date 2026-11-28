@@ -33,6 +33,8 @@ const formatExpiry = (expiresAt: string | null): string => {
 interface Props {
   visible: boolean;
   sehajPathId: string;
+  /** Owner's local row, used to carry pre-share reading history on first share. */
+  localPathId?: number;
   onClose: () => void;
   /** Called once sharing is on, so the caller can reload its member list. */
   onShared?: () => void;
@@ -58,6 +60,7 @@ interface Props {
 export const InviteSheet = ({
   visible,
   sehajPathId,
+  localPathId,
   onClose,
   onShared,
   onCreated,
@@ -145,7 +148,7 @@ export const InviteSheet = ({
           setProblem(Constants.INVITE_GO_ONLINE_TO_SHARE);
           return;
         }
-        const shared = await enableSharing(sehajPathId);
+        const shared = await enableSharing(sehajPathId, localPathId);
         if (cancelled) {
           return;
         }

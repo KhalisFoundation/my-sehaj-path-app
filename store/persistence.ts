@@ -16,9 +16,11 @@ import {
   type Snapshot,
 } from './legacyFormat';
 import { SYNC_META_KEY, parseSyncMeta, toPersisted, type SyncParseResult } from './syncFormat';
+import { readMemberMetadata } from './memberMetadata';
 import { setAll } from './slices/pathsSlice';
 import { hydrateSettings } from './slices/settingsSlice';
 import { hydrateEmptySync, hydrateSync, hydrateSyncRecovery } from './slices/syncSlice';
+import { hydrateMemberMetadata } from './slices/memberMetadataSlice';
 
 const READ_ATTEMPTS = 3;
 const COMMIT_ATTEMPTS = 2;
@@ -367,7 +369,6 @@ export const hydrateStore = async (
     if (!recovered) {
       return false;
     }
-
     const raw = await readAllLegacy();
     const parsed = parseLegacy(raw);
 
@@ -397,7 +398,13 @@ export const hydrateStore = async (
     store.dispatch(setAll({ paths: parsed.value.paths, dates: parsed.value.dates }));
     switch (syncResult.status) {
       case 'valid':
-        store.dispatch(hydrateSync(syncResult.value));
+        {
+          const memberMetadata = await readMemberMetadata(syncResult.value.account);
+          store.dispatch(hydrateSync(syncResult.value));
+          store.dispatch(
+            hydrateMemberMetadata({ account: syncResult.value.account, byPathId: memberMetadata })
+          );
+        }
         break;
       case 'recovery':
         // Preserve the raw value untouched (we never write it here) and disable
@@ -407,10 +414,12 @@ export const hydrateStore = async (
           'persistence: sync metadata recovery'
         );
         store.dispatch(hydrateSyncRecovery());
+        store.dispatch(hydrateMemberMetadata({ account: null, byPathId: {} }));
         break;
       default:
         // Absent key: a first install or pre-sync upgrade.
         store.dispatch(hydrateEmptySync());
+        store.dispatch(hydrateMemberMetadata({ account: null, byPathId: {} }));
         break;
     }
     await repairLegacySettings(store, parsed.settingsToRepair);

@@ -10,7 +10,7 @@ import {
   type ScrollViewInstance,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, usePreventRemove } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { displayReadingAng, showErrorAlert, convertNumberToFormat, recordError } from '@utils';
 import { getAngContent } from '../db';
@@ -954,6 +954,14 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
     onError: showErrorAlert,
   });
 
+  // Native-stack dismissals (the iOS swipe-back gesture and header back
+  // button) cannot reliably be stopped by a plain `beforeRemove` listener.
+  // Register this while a jumped ang is on screen so those exits use the same
+  // save/discard decision as Android hardware back.
+  usePreventRemove(isAngNavigation, () => {
+    requestExit();
+  });
+
   const handlePathDrawerNavigate = useCallback(
     (targetRoute: string, targetPathId?: number) => {
       // Settings is a round trip and does not leave the reader. Every other
@@ -1253,6 +1261,12 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
   // App backgrounding is covered separately by the AppState listener below.
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', () => {
+      // `usePreventRemove` above has blocked a native gesture while the alert
+      // is open. Do not checkpoint the unsaved ang merely because its blocked
+      // removal event was observed here.
+      if (isAngNavigation) {
+        return;
+      }
       if (leaveCheckpointDone.current) {
         return;
       }
@@ -1262,7 +1276,7 @@ export const PathScreen = React.memo(({ navigation, route }: PathScreenProps) =>
       );
     });
     return unsubscribe;
-  }, [navigation, checkpointScrollBeforeBackground]);
+  }, [navigation, checkpointScrollBeforeBackground, isAngNavigation]);
 
   // While the reader is focused: register it as the active path (so a foreground
   // GET /paths refresh never overwrites/removes the path being read), and run the

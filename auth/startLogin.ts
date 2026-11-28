@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 import { recordError, showErrorAlert } from '@utils';
 import { openAuthSession } from './browser';
-import { getSSOLoginUrl, REDIRECT_URL } from './constants';
+import { REDIRECT_URL, SSO_LOGIN_URL } from './constants';
 import { consumeLoginUrl } from './loginCallback';
 import { clearLoginPending, setLoginPending } from './loginPending';
 
@@ -49,7 +49,7 @@ export async function startLogin({
   }
 
   try {
-    const result = await openAuthSession(getSSOLoginUrl(), REDIRECT_URL);
+    const result = await openAuthSession(SSO_LOGIN_URL, REDIRECT_URL);
 
     // iOS ASWebAuthenticationSession owns the whole flow end to end.
     if (Platform.OS === 'ios') {

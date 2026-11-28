@@ -26,10 +26,7 @@ export const IDP_API = stripTrailingSlash(SSO_IDP_URL ?? 'https://sso.khalis.net
 export const REDIRECT_URL = 'khalissehajpath://login';
 export const LOGOUT_REDIRECT_URL = 'khalissehajpath://logout';
 
-export function getSSOLoginUrl(): string {
-  const encoded = encodeURIComponent(REDIRECT_URL);
-  return `${SP_API}/login/sso?redirect_url=${encoded}`;
-}
+export const SSO_LOGIN_URL = `${SP_API}/login/sso?redirect_url=${encodeURIComponent(REDIRECT_URL)}`;
 
 /**
  * Account deletion, required by App Store guideline 5.1.1(v).

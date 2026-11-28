@@ -31,10 +31,6 @@ export type SyncParseResult =
    */
   | { status: 'recovery' };
 
-// ---------------------------------------------------------------------------
-// primitives
-// ---------------------------------------------------------------------------
-
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -217,7 +213,6 @@ export const salvageAccountOwner = (raw: string | null): string | null => {
   }
 };
 
-/** Extracts the persisted subset of the runtime slice; never includes the token. */
 export const toPersisted = (sync: SyncState): PersistedSyncState => ({
   version: 1,
   account: sync.account,

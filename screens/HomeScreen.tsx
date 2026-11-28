@@ -22,12 +22,11 @@ import { Constants, Routes, EDGES_ALL_SIDES, UIConstants } from '@constants';
 import { HomeScreenStyles, SafeAreaStyle } from '@styles';
 import { RootStackParamList } from '../App';
 import { MenuIcon, SyncedCheckIcon } from '@icons';
-import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { removePathAndSyncState } from '../store';
+import { useAppSelector } from '../store/hooks';
 import { selectVisiblePaths } from '../store/selectors';
 import { onForeground } from '../store/syncLifecycle';
 import { isPathCompletedForHome, sortPathsForHome } from '../store/pathOrdering';
-import { avatarUrlFor, listMembers } from '../store/groupApi';
+import { avatarUrlFor } from '../store/groupApi';
 import type { AvatarMember } from '../components/MemberAvatars';
 import { HomeScreenBackground } from '../assets/Images';
 import { BackgroundImage } from '../components/BackgroundImage';
@@ -39,11 +38,10 @@ type HomeProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
   const [isDrawerVisible, setIsDrawerVisible] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [membersByPathId, setMembersByPathId] = useState<Record<number, AvatarMember[]>>({});
-  const dispatch = useAppDispatch();
   // Not the raw slice: a deleted path lingers there until the server confirms.
   const paths = useAppSelector(selectVisiblePaths);
   const syncMeta = useAppSelector((state) => state.sync.meta);
+  const memberMetadata = useAppSelector((state) => state.memberMetadata.byPathId);
   const completedCardWidth = completedCardDimensionsFor(
     useAppSelector((state) => fontSizeIndexOf(state.settings.fontSize))
   ).width;
@@ -60,6 +58,29 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
     const inProgress = orderedPaths.filter((path: PathData) => !isPathCompletedForHome(path));
     return { pathInProgress: inProgress, pathCompleted: completed };
   }, [paths, syncMeta]);
+
+  // V2 supplies the capped avatar stack and exact active-reader count with the
+  // path itself. Do not turn one Home refresh into a `/members` request per
+  // card; full rosters are loaded only by the member-management screens.
+  const membersByPathId = useMemo<Record<number, AvatarMember[]>>(
+    () =>
+      Object.fromEntries(
+        paths.map((path) => {
+          const meta = syncMeta[path.pathId];
+          const groupId = meta?.groupId;
+          let members: AvatarMember[] = [];
+          if (meta?.shared && groupId) {
+            members = (memberMetadata[path.pathId]?.memberPreviews ?? []).map((member) => ({
+              id: member.id,
+              displayLabel: member.displayLabel,
+              avatarUri: avatarUrlFor(groupId, member),
+            }));
+          }
+          return [path.pathId, members];
+        })
+      ),
+    [memberMetadata, paths, syncMeta]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -79,76 +100,6 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
         backHandler.remove();
       };
     }, [])
-  );
-
-  // Member avatars are only meaningful for server-backed shared paths. Keep
-  // this request out of personal paths, and discard a late response when the
-  // user leaves Home before it finishes.
-  useFocusEffect(
-    useCallback(() => {
-      let cancelled = false;
-      const sharedPaths = paths.filter((path) => {
-        const meta = syncMeta[path.pathId];
-        return meta?.shared === true && meta.groupId !== undefined;
-      });
-
-      const loadMembers = async () => {
-        const entries = await Promise.all(
-          sharedPaths.map(async (path) => {
-            const groupId = syncMeta[path.pathId]?.groupId;
-            if (!groupId) {
-              return [path.pathId, []] as const;
-            }
-            const result = await listMembers(groupId);
-            if (!result.ok) {
-              // A status alone is not enough to remove user data. Newer builds
-              // opt into these exact server codes; any other 4xx/5xx response
-              // remains visible and may recover on the next refresh.
-              const pathWasDeleted =
-                result.kind === 'refused' &&
-                result.status === 410 &&
-                result.code === 'PATH_DELETED';
-              const membershipEnded =
-                result.kind === 'refused' &&
-                result.status === 404 &&
-                result.code === 'PATH_MEMBERSHIP_ENDED';
-              const accessWasRemoved = pathWasDeleted || membershipEnded;
-              if (accessWasRemoved && !cancelled) {
-                dispatch(removePathAndSyncState({ pathId: path.pathId }));
-                if (pathWasDeleted) {
-                  navigation.setParams({ pathDeleted: true });
-                } else if (membershipEnded) {
-                  navigation.setParams({ pathMembershipEnded: true });
-                }
-              }
-              return [path.pathId, []] as const;
-            }
-            const members: AvatarMember[] = result.data
-              .filter((member) => member.status === 'ACTIVE')
-              .map((member) => ({
-                id: member.id,
-                displayLabel: member.displayLabel,
-                avatarUri: avatarUrlFor(groupId, member),
-              }));
-            return [path.pathId, members] as const;
-          })
-        );
-
-        if (!cancelled) {
-          setMembersByPathId(Object.fromEntries(entries));
-        }
-      };
-
-      loadMembers().catch(() => {
-        if (!cancelled) {
-          setMembersByPathId({});
-        }
-      });
-
-      return () => {
-        cancelled = true;
-      };
-    }, [dispatch, navigation, paths, syncMeta])
   );
 
   // Home is the safe place to pull another device's progress. The lifecycle
@@ -200,25 +151,26 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           angNumber={path.saveData.angNumber}
           progress={path.progress}
           members={membersByPathId[path.pathId]}
+          memberCount={memberMetadata[path.pathId]?.memberCount}
           onPress={() => {
             // Open straight away, with no request of its own. Waiting for a
             // members check here left the tap dead for up to the request
             // timeout, and a second tap pushed Continue twice.
             //
-            // The avatar list Home already loaded says whether another active
-            // member exists (it holds active members only, including this
-            // user). Passing that lets a shared path show Turns on the first
-            // frame, while a personal path, which has no list, never does.
-            // Continue's own members load then has the final say.
+            // The member count Home already has from the accessible-paths
+            // snapshot is the server's total of active members, this user
+            // included. More than one lets a shared path show Turns on the
+            // first frame, while a personal path never does. Continue's own
+            // members load then has the final say.
             //
             // No route-level group id: invite-ready personal paths have one
             // too, and with stale metadata it could briefly show group-only UI.
-            const knownOtherMember = (membersByPathId[path.pathId]?.length ?? 0) > 1;
+            const knownOtherMember = (memberMetadata[path.pathId]?.memberCount ?? 0) > 1;
             navigation.push(Routes.Continue, { pathId: path.pathId, knownOtherMember });
           }}
         />
       )),
-    [pathInProgress, membersByPathId, navigation]
+    [pathInProgress, membersByPathId, memberMetadata, navigation]
   );
 
   const pathCompletedCards = useMemo(
@@ -229,9 +181,10 @@ export const HomeScreen = React.memo(({ navigation, route }: HomeProps) => {
           pathName={path.pathName}
           pathCompletionDate={path.completionDate}
           members={membersByPathId[path.pathId]}
+          memberCount={memberMetadata[path.pathId]?.memberCount}
         />
       )),
-    [pathCompleted, membersByPathId]
+    [memberMetadata, pathCompleted, membersByPathId]
   );
 
   return (

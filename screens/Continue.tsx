@@ -258,6 +258,13 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
   // the server membership role, so regular members must not receive owner
   // controls such as rename or delete.
   const canManagePath = sehajPathId === null || hasOnlyCurrentMember || isSharedPathAdmin;
+  // `/invites/active` intentionally reveals recoverable invite tokens, so the
+  // server limits it to admins. Do not probe it for a regular member while the
+  // Members tab is loading; that was the source of the repeated expected 403s.
+  // Do not infer invite permission from an owner relationship, a cached
+  // `shared` flag, or an empty member list. `active` returns reusable tokens,
+  // so only a membership response that explicitly says ADMIN may call it.
+  const canManageInvites = isSharedPathAdmin;
 
   const loadMembers = useCallback(async () => {
     const requestVersion = ++membersLoadVersionRef.current;
@@ -359,7 +366,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
 
   const loadInviteStatus = useCallback(async () => {
     const requestVersion = ++inviteStatusLoadVersionRef.current;
-    if (!invitableId) {
+    if (!invitableId || !canManageInvites) {
       setInviteStatus('none');
       return;
     }
@@ -407,7 +414,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
     setInviteStatus((current) =>
       storedState === 'active' ? 'active' : current === 'unknown' ? 'unknown' : current
     );
-  }, [invitableId]);
+  }, [canManageInvites, invitableId]);
 
   useEffect(() => {
     loadMembers().catch(() => undefined);
@@ -2127,6 +2134,7 @@ export const Continue = ({ route, navigation }: ContinueProps) => {
         <InviteSheet
           visible={inviteOpen}
           sehajPathId={invitableId}
+          localPathId={groupMetaShared === true ? undefined : pathId}
           onClose={() => {
             setInviteOpen(false);
             setInviteAutoCreate(false);

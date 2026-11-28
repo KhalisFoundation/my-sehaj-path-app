@@ -19,9 +19,17 @@ interface Prop {
    * draws nothing: a stack of one is not a group.
    */
   members?: AvatarMember[];
+  memberCount?: number;
 }
 
-export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress, members }: Prop) => {
+export const PrimaryCard = ({
+  sehajPathName,
+  angNumber,
+  progress,
+  onPress,
+  members,
+  memberCount,
+}: Prop) => {
   const displayedAngNumber = displayReadingAng(angNumber);
   progress = progress >= 100 ? UIConstants.PROGRESS_CIRCLE_MAX_PROGRESS : progress;
   const size = UIConstants.PROGRESS_CIRCLE_SIZE;
@@ -121,7 +129,7 @@ export const PrimaryCard = ({ sehajPathName, angNumber, progress, onPress, membe
           />
         </Svg>
       </View>
-      <MemberAvatars members={members ?? []} />
+      <MemberAvatars members={members ?? []} memberCount={memberCount} />
     </TouchableOpacity>
   );
 };

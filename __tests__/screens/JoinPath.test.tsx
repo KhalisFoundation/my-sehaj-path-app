@@ -4,6 +4,7 @@ import { fireEvent, render } from '@testing-library/react-native';
 import { JoinPath } from '../../screens/JoinPath';
 import { store } from '../../store';
 import { setSignedIn } from '../../store/slices/authSlice';
+import { setAccount } from '../../store/slices/syncSlice';
 import { resolveInvite } from '../../store/groupApi';
 import { runConfirmedAccountSync } from '../../store/confirmedSync';
 import { hasLocalData } from '../../store/syncWork';
@@ -43,6 +44,9 @@ beforeEach(() => {
   store.dispatch(
     setSignedIn({ token: 't', email: 'reader@example.com', firstname: 'R', lastname: 'S' })
   );
+  // Join syncs first whenever this device is not yet linked to the signed-in
+  // account (a fresh login or an A → B switch). Linked is the normal case.
+  store.dispatch(setAccount('reader@example.com'));
   hasLocalDataMock.mockReturnValue(false);
 });
 
@@ -62,7 +66,9 @@ describe('the invite screen, opened cold from a link', () => {
   });
 
   it('lets someone whose sync keeps failing leave instead of retrying for ever', async () => {
-    // This device has reading that is not yet backed up, and backing it up fails.
+    // This device is not linked to the account yet, so Join syncs first, and
+    // that sync fails.
+    store.dispatch(setAccount(null));
     hasLocalDataMock.mockReturnValue(true);
     syncMock.mockResolvedValue(false);
 

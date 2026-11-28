@@ -24,9 +24,10 @@ interface Props {
   pathCompletionDate: string;
   pathName: string;
   members?: AvatarMember[];
+  memberCount?: number;
 }
 
-export const SecondaryCard = ({ pathCompletionDate, pathName, members }: Props) => {
+export const SecondaryCard = ({ pathCompletionDate, pathName, members, memberCount }: Props) => {
   const fontSizeIndex = useAppSelector((state) => fontSizeIndexOf(state.settings.fontSize));
   const dimensions = completedCardDimensionsFor(fontSizeIndex);
   const completionDate = formatPathCompletionDate(pathCompletionDate);
@@ -39,7 +40,7 @@ export const SecondaryCard = ({ pathCompletionDate, pathName, members }: Props) 
       <Text style={CompletedPathCardStyles.dateText} numberOfLines={2} ellipsizeMode="tail">
         {completionDate}
       </Text>
-      <MemberAvatars members={members ?? []} />
+      <MemberAvatars members={members ?? []} memberCount={memberCount} />
     </View>
   );
 };
