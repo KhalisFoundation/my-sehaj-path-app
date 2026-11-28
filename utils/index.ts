@@ -20,6 +20,7 @@ export {
   detachPushDevice,
   displayPushMessage,
   isTurnNotificationType,
+  isPathMembershipRemovedNotificationType,
   registerPushNotifications,
   registerPushNotificationTapHandlers,
   subscribePushTap,

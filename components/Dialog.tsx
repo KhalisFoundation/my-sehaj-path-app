@@ -1,6 +1,23 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  View,
+  type ModalProps,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { DialogStyles as styles } from '@styles';
+
+// iOS native modals default to portrait unless every supported orientation is
+// declared, even when the navigator underneath is already in landscape.
+const supportedOrientations: NonNullable<ModalProps['supportedOrientations']> = [
+  'portrait',
+  'landscape',
+  'landscape-left',
+  'landscape-right',
+];
 
 interface DialogProps {
   visible: boolean;
@@ -67,7 +84,14 @@ const DialogComponent = ({
   }
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onRequestClose} onShow={onShow}>
+    <Modal
+      visible
+      transparent
+      animationType="fade"
+      onRequestClose={onRequestClose}
+      onShow={onShow}
+      supportedOrientations={supportedOrientations}
+    >
       {content}
     </Modal>
   );
